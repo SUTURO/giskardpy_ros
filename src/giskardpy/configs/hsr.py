@@ -57,6 +57,30 @@ class HSR_Mujoco(HSR_Base):
                                                     soft_threshold=0.1,
                                                     hard_threshold=0.03)
 
+class HSR_Gazebo(HSR_Base):
+    def __init__(self):
+        self.add_robot_from_parameter_server(joint_state_topics=['/hsrb/joint_states'])
+        super().__init__()
+        self.add_sync_tf_frame('map', 'odom')
+        self.add_omni_drive_joint(parent_link_name='odom',
+                                  child_link_name='base_footprint',
+                                  odom_x_name='odom_x',
+                                  odom_y_name='odom_y',
+                                  odom_yaw_name='odom_t',
+                                  odometry_topic='/hsrb/odom')
+        self.add_follow_joint_trajectory_server(namespace='/hsrb/head_trajectory_controller/follow_joint_trajectory',
+                                                state_topic='/hsrb/head_trajectory_controller/state',
+                                                fill_velocity_values=True)
+        self.add_follow_joint_trajectory_server(namespace='/hsrb/omni_base_controller/follow_joint_trajectory',
+                                                state_topic='/hsrb/omni_base_controller/state',
+                                                fill_velocity_values=True)
+        self.add_follow_joint_trajectory_server(namespace='/hsrb/arm_trajectory_controller/follow_joint_trajectory',
+                                                state_topic='/hsrb/arm_trajectory_controller/state',
+                                                fill_velocity_values=True)
+        self.overwrite_external_collision_avoidance(joint_name='brumbrum',
+                                                    number_of_repeller=2,
+                                                    soft_threshold=0.1,
+                                                    hard_threshold=0.03)
 
 class HSR_StandAlone(HSR_Base):
     def __init__(self):

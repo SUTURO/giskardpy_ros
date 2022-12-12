@@ -948,3 +948,19 @@ class GiskardWrapper:
         if res.error_codes == UpdateWorldResponse.UNKNOWN_GROUP_ERROR:
             raise UnknownGroupException(res.error_msg)
         raise ServiceException(res.error_msg)
+
+    def set_hand_out_of_sight(self):
+        self.set_json_goal(constraint_type='MoveHandOutOfSight')
+
+    def grab_mueslibox(self, box_pose, tip_link, box_z):
+        self.set_json_goal(constraint_type='GraspBox',
+                           box_pose=box_pose,
+                           tip_link=tip_link,
+                           box_z_length=box_z)
+
+    def open_drawer(self):
+        pass
+
+    def close_drawer(self):
+        pass
+
