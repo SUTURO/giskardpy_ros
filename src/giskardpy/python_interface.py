@@ -952,16 +952,19 @@ class GiskardWrapper:
     def set_hand_out_of_sight(self):
         self.set_json_goal(constraint_type='MoveHandOutOfSight')
 
-    def grab_box(self,
-                 box_pose: PoseStamped,
-                 tip_link: Optional[str] = 'hand_palm_link',
-                 box_z: Optional[float] = 0.05,
-                 mueslibox: Optional[bool] = True):
+    def grasp_box(self,
+                  box_pose: PoseStamped,
+                  tip_link: Optional[str] = 'hand_palm_link',
+                  box_z: Optional[float] = 0.05,
+                  mueslibox: Optional[bool] = False,
+                  grasp_vertical: Optional[bool] = False
+                  ):
         self.set_json_goal(constraint_type='PrepareGraspBox',
                            box_pose=box_pose,
-                           mueslibox=mueslibox,
                            tip_link=tip_link,
-                           box_z_length=box_z)
+                           box_z_length=box_z,
+                           mueslibox=mueslibox,
+                           grasp_vertical=grasp_vertical)
 
     def open_drawer(self, knob_pose, direction, distance):
         self.set_json_goal(constraint_type='OpenDrawer',
@@ -971,4 +974,3 @@ class GiskardWrapper:
 
     def close_drawer(self):
         pass
-
