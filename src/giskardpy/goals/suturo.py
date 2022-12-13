@@ -90,7 +90,7 @@ class Test(Goal):
                                                    weight=weight))
 
 
-class GraspBox(Goal):
+class PrepareGraspBox(Goal):
     def __init__(self,
                  box_pose: PoseStamped,
                  tip_link: str,
@@ -113,10 +113,13 @@ class GraspBox(Goal):
         tip_grasp_a = Vector3Stamped()
         tip_grasp_a.header.frame_id = giskard_link_name
         tip_grasp_a.vector.x = 1
+        #tip_grasp_a.vector.x = 1 # drawer
 
         # bar_center
         bar_c = PointStamped()
         bar_c.point = box_pose.point
+
+        loginfo(box_pose.header.frame_id)
 
         loginfo(box_pose)
         loginfo(box_pose.point)
@@ -124,31 +127,53 @@ class GraspBox(Goal):
         # bar_axis
         bar_a = Vector3Stamped()
         bar_a.vector.z = 1
-
-        loginfo(bar_a)
+        #bar_a.vector.z = 1 # drawer
 
         bar_l = box_z_length
 
-        # move to table
+        # align with axis
+        tip_grasp_axis_b = Vector3Stamped()
+        tip_grasp_axis_b.header.frame_id = giskard_link_name
+        tip_grasp_axis_b.vector.z = 1
+        #tip_grasp_axis_b.vector.z = -1 # drawer
+
+        bar_axis_b = Vector3Stamped()
+        bar_axis_b.vector.y = 1
+        #bar_axis_b.vector.y = 1 # drawer
 
         # TODO: open gripper
 
+        # align hand with x
+        self.add_constraints_of_goal(GraspBar(root_link=root_l,
+                                              tip_link=giskard_link_name,
+                                              tip_grasp_axis=tip_grasp_axis_b,
+                                              bar_center=bar_c,
+                                              bar_axis=bar_axis_b,
+                                              bar_length=0.001))
+        #'''
+        # align hand with z
         self.add_constraints_of_goal(GraspBar(root_link=root_l,
                                               tip_link=giskard_link_name,
                                               tip_grasp_axis=tip_grasp_a,
                                               bar_center=bar_c,
                                               bar_axis=bar_a,
                                               bar_length=bar_l))
+        #'''
+        # plan and execute
 
         # TODO close gripper
 
+        # plan and execute
+
         # TODO raise arm
+
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
         return super().__str__()
+
 
 
 class OpenDrawer(Goal):
