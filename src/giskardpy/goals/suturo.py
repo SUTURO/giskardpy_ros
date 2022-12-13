@@ -98,7 +98,8 @@ class PrepareGraspBox(Goal):
                  box_z_length: float,
                  box_x_length: Optional[float] = None,
                  box_y_length: Optional[float] = None,
-                 mueslibox: Optional[bool] = False):
+                 mueslibox: Optional[bool] = False,
+                 grasp_vertical: Optional[bool] = False):
         super().__init__()
         # giskard_link_name = self.world.get_link_name(tip_link)
         # root_link = self.world.root_link_name
@@ -114,22 +115,18 @@ class PrepareGraspBox(Goal):
         # tip_axis
         tip_grasp_a = Vector3Stamped()
         tip_grasp_a.header.frame_id = giskard_link_name
-        tip_grasp_a.vector.x = 1
-        #tip_grasp_a.vector.x = 1 # drawer
+        if grasp_vertical:
+            tip_grasp_a.vector.y = 1
+        else:
+            tip_grasp_a.vector.x = 1
 
         # bar_center
         bar_c = PointStamped()
         bar_c.point = box_pose.pose.position
 
-        loginfo(box_pose.header.frame_id)
-
-        loginfo(box_pose)
-        loginfo(box_pose.pose.position)
-
         # bar_axis
         bar_a = Vector3Stamped()
         bar_a.vector.z = 1
-        #bar_a.vector.z = 1 # drawer
 
         bar_l = box_z_length
 
@@ -148,8 +145,8 @@ class PrepareGraspBox(Goal):
 
         # TODO: open gripper
 
-        self.add_constraints_of_goal(AlignPlanes(root_link='map',
-                                                 tip_link='hand_palm_link',
+        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
+                                                 tip_link=giskard_link_name,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
 
@@ -186,8 +183,17 @@ class OpenDrawer(Goal):
                  distance: float):
 
         # TODO Grasp drawer knob
+        # Grasp box
 
         # TODO pull the knob in the given direction for the given distance
+
+        new_x = direction.x * distance
+        new_y = direction.y * distance
+        new_z = direction.z * distance
+        calculated_direction = Vector3(new_x, new_y, new_z)
+
+
+
         pass
 
     def make_constraints(self):
