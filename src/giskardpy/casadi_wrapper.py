@@ -75,13 +75,13 @@ class Symbol_:
         return self.s.shape
 
     def __len__(self):
-        return self.shape[0] * self.shape[1]
+        return self.shape[0]
 
     def free_symbols(self):
         return free_symbols(self.s)
 
     def evaluate(self):
-        if len(self) <= 1:
+        if self.s.shape[0] * self.s.shape[1] <= 1:
             return float(ca.evalf(self.s))
         else:
             return np.array(ca.evalf(self.s))
@@ -1468,11 +1468,12 @@ def if_eq(a, b, if_result, else_result):
 @profile
 def if_eq_cases(a, b_result_cases, else_result):
     a = _to_sx(a)
+    else_result = _to_sx(else_result)
     result = _to_sx(else_result)
     for i in range(len(b_result_cases)):
         b = _to_sx(b_result_cases[i][0])
         b_result = _to_sx(b_result_cases[i][1])
-        result = ca.if_else(ca.eq(a, b), b_result, else_result)
+        result = ca.if_else(ca.eq(a, b), b_result, result)
     return Expression(result)
 
 
