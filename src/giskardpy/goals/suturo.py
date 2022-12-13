@@ -2,6 +2,7 @@ from typing import Tuple, Optional
 
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
 
+from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPositionStraight
 from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA
 from giskardpy.goals.grasp_bar import GraspBar
@@ -96,7 +97,8 @@ class PrepareGraspBox(Goal):
                  tip_link: str,
                  box_z_length: float,
                  box_x_length: Optional[float] = None,
-                 box_y_length: Optional[float] = None):
+                 box_y_length: Optional[float] = None,
+                 mueslibox: Optional[bool] = False):
         super().__init__()
         # giskard_link_name = self.world.get_link_name(tip_link)
         # root_link = self.world.root_link_name
@@ -117,12 +119,12 @@ class PrepareGraspBox(Goal):
 
         # bar_center
         bar_c = PointStamped()
-        bar_c.point = box_pose.point
+        bar_c.point = box_pose.pose.position
 
         loginfo(box_pose.header.frame_id)
 
         loginfo(box_pose)
-        loginfo(box_pose.point)
+        loginfo(box_pose.pose.position)
 
         # bar_axis
         bar_a = Vector3Stamped()
@@ -134,8 +136,11 @@ class PrepareGraspBox(Goal):
         # align with axis
         tip_grasp_axis_b = Vector3Stamped()
         tip_grasp_axis_b.header.frame_id = giskard_link_name
-        tip_grasp_axis_b.vector.z = 1
-        #tip_grasp_axis_b.vector.z = -1 # drawer
+
+        if mueslibox:
+            tip_grasp_axis_b.vector.z = 1
+        else:
+            tip_grasp_axis_b.vector.z = -1
 
         bar_axis_b = Vector3Stamped()
         bar_axis_b.vector.y = 1
@@ -143,13 +148,11 @@ class PrepareGraspBox(Goal):
 
         # TODO: open gripper
 
-        # align hand with x
-        self.add_constraints_of_goal(GraspBar(root_link=root_l,
-                                              tip_link=giskard_link_name,
-                                              tip_grasp_axis=tip_grasp_axis_b,
-                                              bar_center=bar_c,
-                                              bar_axis=bar_axis_b,
-                                              bar_length=0.001))
+        self.add_constraints_of_goal(AlignPlanes(root_link='map',
+                                                 tip_link='hand_palm_link',
+                                                 goal_normal=bar_axis_b,
+                                                 tip_normal=tip_grasp_axis_b))
+
         #'''
         # align hand with z
         self.add_constraints_of_goal(GraspBar(root_link=root_l,
