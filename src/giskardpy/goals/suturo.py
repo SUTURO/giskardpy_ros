@@ -129,10 +129,10 @@ class PrepareGraspBox(Goal):
         # tip_axis
         tip_grasp_a = Vector3Stamped()
         tip_grasp_a.header.frame_id = giskard_link_name
-        if grasp_vertical:
-            tip_grasp_a.vector.y = 1
-        else:
+        if mueslibox:
             tip_grasp_a.vector.x = 1
+        else:
+            tip_grasp_a.vector.y = 1
 
         # bar_center
         bar_c = PointStamped()
