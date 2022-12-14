@@ -4,7 +4,7 @@ from typing import Dict, Tuple, Optional, Union, List
 import rospy
 from actionlib import SimpleActionClient
 from genpy import Message
-from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped
+from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3
 from rospy import ServiceException
 from sensor_msgs.msg import JointState
 from shape_msgs.msg import SolidPrimitive
@@ -966,8 +966,11 @@ class GiskardWrapper:
                            mueslibox=mueslibox,
                            grasp_vertical=grasp_vertical)
 
-    def open_drawer(self, knob_pose, direction, distance):
-        self.set_json_goal(constraint_type='OpenDrawer',
+    def move_drawer(self,
+                    knob_pose: PoseStamped,
+                    direction: Vector3,
+                    distance: float):
+        self.set_json_goal(constraint_type='MoveDrawer',
                            knob_pose=knob_pose,
                            direction=direction,
                            distance=distance)
