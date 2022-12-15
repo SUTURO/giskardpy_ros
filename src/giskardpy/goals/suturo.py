@@ -8,6 +8,7 @@ from giskardpy.goals.goal import Goal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition, JointPositionList
 from giskardpy.utils.logging import loginfo
+from suturo_manipulation.gripper import Gripper
 
 
 class SetBasePosition(Goal):
@@ -25,6 +26,22 @@ class SetBasePosition(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
+class MoveGripper(Goal):
+    def __init__(self, open_gripper=True):
+        super().__init__()
+        g = Gripper(apply_force_action_server='/hsrb/gripper_controller/apply_force',
+                    follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
+
+        if open_gripper:
+            g.set_gripper_joint_position(1)
+        else:
+            g.close_gripper_force(1)
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
 
 class PrepareGraspBox(Goal):
     def __init__(self,
