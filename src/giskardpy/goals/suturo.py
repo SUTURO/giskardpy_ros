@@ -11,7 +11,7 @@ from giskardpy.goals.open_close import Open
 from giskardpy.utils.logging import loginfo
 
 
-class MoveHandOutOfSight(Goal):
+class SetBasePosition(Goal):
     def __init__(self):
         super().__init__()
 
@@ -23,7 +23,7 @@ class MoveHandOutOfSight(Goal):
         max_linear_velocity = None
         reference_linear_velocity = None
         weight = WEIGHT_ABOVE_CA
-        
+
         self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_link,
                                                                root_group=root_group,
                                                                 tip_link=tip_link,
@@ -46,60 +46,14 @@ class MoveHandOutOfSight(Goal):
         return super().__str__()
 
 
-class Test(Goal):
-    def __init__(self,
-                 tip_link: str,
-                 environment_link: str,
-                 tip_group: Optional[str] = None,
-                 environment_group: Optional[str] = None,
-                 goal_joint_state: Optional[float] = None,
-                 weight: float = WEIGHT_ABOVE_CA):
-        """
-        Open a container in an environment.
-        Only works with the environment was added as urdf.
-        Assumes that a handle has already been grasped.
-        Can only handle containers with 1 dof, e.g. drawers or doors.
-        :param tip_link: end effector that is grasping the handle
-        :param environment_link: name of the handle that was grasped
-        :param tip_group: if tip_link is not unique, search in this group for matches
-        :param environment_group: if environment_link is not unique, search in this group for matches
-        :param goal_joint_state: goal state for the container. default is maximum joint state.
-        :param weight:
-        """
-        super().__init__()
-        self.weight = weight
-        self.tip_link = self.world.get_link_name(tip_link, tip_group)
-        self.handle_link = self.world.get_link_name(environment_link, environment_group)
-        self.joint_name = self.world.get_movable_parent_joint(self.handle_link)
-        self.joint_group = self.world.get_group_of_joint(self.joint_name)
-        self.handle_T_tip = self.world.compute_fk_pose(self.handle_link, self.tip_link)
-
-        _, max_position = self.world.get_joint_position_limits(self.joint_name)
-        if goal_joint_state is None:
-            goal_joint_state = max_position
-        else:
-            goal_joint_state = min(max_position, goal_joint_state)
-
-        self.add_constraints_of_goal(CartesianPose(root_link=environment_link,
-                                                   root_group=environment_group,
-                                                   tip_link=tip_link,
-                                                   tip_group=tip_group,
-                                                   goal_pose=self.handle_T_tip,
-                                                   weight=self.weight * 100))
-        self.add_constraints_of_goal(JointPosition(joint_name=self.joint_name.short_name,
-                                                   group_name=self.joint_group.name,
-                                                   goal=goal_joint_state,
-                                                   weight=weight))
-
-
 class PrepareGraspBox(Goal):
     def __init__(self,
                  box_pose: PoseStamped,
-                 tip_link: str,
-                 box_z_length: float,
+                 tip_link: Optional[str] = 'hand_palm_link',
+                 box_z_length: Optional[float] = 0.001,
                  box_x_length: Optional[float] = None,
                  box_y_length: Optional[float] = None,
-                 mueslibox: Optional[bool] = False,
+                 grasp_type: Optional[bool] = True,
                  grasp_vertical: Optional[bool] = False):
 
         """
@@ -110,7 +64,7 @@ class PrepareGraspBox(Goal):
         :param box_z_length: length of the box along the z-axis
         :param box_x_length: length of the box along the x-axis
         :param box_y_length: length of the box along the y-axis
-        :param mueslibox: parameter to decide if the mueslibox iis grasped
+        :param grasp_type: parameter to decide if the mueslibox is grasped
         :param grasp_vertical: parameter to align the gripper vertical
 
         """
@@ -129,10 +83,10 @@ class PrepareGraspBox(Goal):
         # tip_axis
         tip_grasp_a = Vector3Stamped()
         tip_grasp_a.header.frame_id = giskard_link_name
-        if grasp_vertical:
-            tip_grasp_a.vector.y = 1
-        else:
+        if grasp_type:
             tip_grasp_a.vector.x = 1
+        else:
+            tip_grasp_a.vector.y = 1
 
         # bar_center
         bar_c = PointStamped()
@@ -148,7 +102,7 @@ class PrepareGraspBox(Goal):
         tip_grasp_axis_b = Vector3Stamped()
         tip_grasp_axis_b.header.frame_id = giskard_link_name
 
-        if mueslibox:
+        if grasp_type:
             tip_grasp_axis_b.vector.z = 1
         else:
             tip_grasp_axis_b.vector.z = -1
@@ -185,7 +139,6 @@ class MoveDrawer(Goal):
                  knob_pose: PoseStamped,
                  direction: Vector3,
                  distance: float):
-
         """
         Move drawer in a given direction.
         The drawer knob has to be grasped first, f.e. with PrepareGraspBox.

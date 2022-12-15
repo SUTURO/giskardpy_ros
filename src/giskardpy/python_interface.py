@@ -949,13 +949,13 @@ class GiskardWrapper:
             raise UnknownGroupException(res.error_msg)
         raise ServiceException(res.error_msg)
 
-    def set_hand_out_of_sight(self):
-        self.set_json_goal(constraint_type='MoveHandOutOfSight')
+    def set_base_position(self):
+        self.set_json_goal(constraint_type='SetBasePosition')
 
     def grasp_box(self,
                   box_pose: PoseStamped,
                   tip_link: Optional[str] = 'hand_palm_link',
-                  box_z: Optional[float] = 0.05,
+                  box_z: Optional[float] = 0.001,
                   mueslibox: Optional[bool] = False,
                   grasp_vertical: Optional[bool] = False
                   ):
@@ -963,8 +963,7 @@ class GiskardWrapper:
                            box_pose=box_pose,
                            tip_link=tip_link,
                            box_z_length=box_z,
-                           mueslibox=mueslibox,
-                           grasp_vertical=grasp_vertical)
+                           mueslibox=mueslibox)
 
     def move_drawer(self,
                     knob_pose: PoseStamped,
