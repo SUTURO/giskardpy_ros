@@ -957,13 +957,14 @@ class GiskardWrapper:
                   tip_link: Optional[str] = 'hand_palm_link',
                   box_z: Optional[float] = 0.001,
                   mueslibox: Optional[bool] = False,
+                  grasp_type: Optional[bool] = False,
                   grasp_vertical: Optional[bool] = False
                   ):
         self.set_json_goal(constraint_type='PrepareGraspBox',
                            box_pose=box_pose,
                            tip_link=tip_link,
                            box_z_length=box_z,
-                           mueslibox=mueslibox)
+                           grasp_type=grasp_type)
 
     def move_drawer(self,
                     knob_pose: PoseStamped,
@@ -976,3 +977,7 @@ class GiskardWrapper:
 
     def close_drawer(self):
         pass
+
+    def move_gripper(self, open_gripper=True):
+        self.set_json_goal(constraint_type='MoveGripper',
+                           open_gripper=open_gripper)
