@@ -949,8 +949,8 @@ class GiskardWrapper:
             raise UnknownGroupException(res.error_msg)
         raise ServiceException(res.error_msg)
 
-    def set_hand_out_of_sight(self):
-        self.set_json_goal(constraint_type='MoveHandOutOfSight')
+    def set_base_position(self):
+        self.set_json_goal(constraint_type='SetBasePosition')
 
     def grasp_box(self,
                   box_pose: PoseStamped,
