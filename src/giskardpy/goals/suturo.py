@@ -1,13 +1,12 @@
-from typing import Tuple, Optional
+from typing import Optional
 
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
 
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPositionStraight, CartesianPosition
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA
+from giskardpy.goals.goal import Goal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition, JointPositionList
-from giskardpy.goals.open_close import Open
 from giskardpy.utils.logging import loginfo
 
 
@@ -15,29 +14,10 @@ class SetBasePosition(Goal):
     def __init__(self):
         super().__init__()
 
-        '''
-        root_link = str(self.world.root_link_name)
-        root_group = None
-        tip_group = None
-
-        max_linear_velocity = None
-        reference_linear_velocity = None
-        weight = WEIGHT_ABOVE_CA
-
-        self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_link,
-                                                               root_group=root_group,
-                                                                tip_link=tip_link,
-                                                               tip_group=tip_group,
-                                                               goal_point=goal_point,
-                                                               max_velocity=max_linear_velocity,
-                                                               reference_velocity=reference_linear_velocity,
-                                                                weight=weight))
-        General movement goal
-        '''
-
         goal_new_state = {'arm_roll_joint': 1.6}
         self.add_constraints_of_goal(JointPositionList(goal_state=goal_new_state))
-        # logging: loginfo(f'Moved hand out of sight')
+
+        loginfo(f'Moved hand out of sight')
 
     def make_constraints(self):
         pass
@@ -115,7 +95,6 @@ class PrepareGraspBox(Goal):
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
 
-        # '''
         # align hand with z
         self.add_constraints_of_goal(GraspBar(root_link=root_l,
                                               tip_link=giskard_link_name,
@@ -123,9 +102,6 @@ class PrepareGraspBox(Goal):
                                               bar_center=bar_c,
                                               bar_axis=bar_a,
                                               bar_length=bar_l))
-        # '''
-
-        # TODO raise arm
 
     def make_constraints(self):
         pass
