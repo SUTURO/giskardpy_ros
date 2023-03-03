@@ -8,7 +8,7 @@ from giskardpy.tree.behaviors.plugin import GiskardBehavior
 
 from rosprolog_client import Prolog
 
-import pydevd_pycharm
+#import pydevd_pycharm
 
 
 # pydevd_pycharm.settrace('localhost', port=1234, stdoutToServer=True, stderrToServer=True, suspend=False)
@@ -56,8 +56,11 @@ class SuturoWorldSynchroniser(GiskardBehavior):
         for element in updates['Updates']:
             # self.world.root_link_name
             # self.world.groups
-
-            obj = element[3]['term']
+            if element[3] == type(str):
+                print("Bugged element with string instead of dict")
+                continue
+            else:
+                obj = element[3]['term']
 
             obj_name = str(element[2][0])
 
@@ -95,5 +98,5 @@ class SuturoWorldSynchroniser(GiskardBehavior):
 
     @profile
     def update(self):
-        self.poll()
+        #self.poll()
         return Status.SUCCESS
