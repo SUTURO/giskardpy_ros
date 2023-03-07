@@ -51,28 +51,24 @@ class MoveGripper(Goal):
 class PrepareGraspBox(Goal):
     def __init__(self,
                  box_pose: PoseStamped,
-                 box_size: List[float],
+                 #box_size: Vector3,
+                 box_size: Optional[List[float]] = [0.04, 0.1, 0.2],
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link',
-                 wrist_flex=-1.57,
-                 wrist_roll=0.0
+                 tip_link: Optional[str] = 'hand_palm_link'
                  ):
         """
         Move to a given position where a box can be grasped.
 
         :param box_pose: center position of the grasped object
+        :param box_size: box size as Vector3 (x, y, z)
         :param tip_link: name of the tip link of the kin chain
-        :param box_z_length: length of the box along the z-axis
-        :param box_x_length: length of the box along the x-axis
-        :param box_y_length: length of the box along the y-axis
+
 
         """
         super().__init__()
         # giskard_link_name = self.world.get_link_name(tip_link)
         # root_link = self.world.root_link_name
         # map_box_pose = self.transform_msg('map', box_pose)
-
-        self.wrist_roll = wrist_roll
 
         box_point = PointStamped()
         box_point.header.frame_id = root_link
@@ -93,9 +89,10 @@ class PrepareGraspBox(Goal):
         tip_grasp_a = Vector3Stamped()
         tip_grasp_a.header.frame_id = giskard_link_name
 
+        #box_size_array = [box_size.x, box_size.y, box_size.z]
         box_size_array = [box_size[0], box_size[1], box_size[2]]
 
-        #tip_grasp_a.vector = set_grasp_axis(box_size_array)
+        # tip_grasp_a.vector = set_grasp_axis(box_size_array)
 
         tip_grasp_a.vector.x = 1
         # print(tip_grasp_a.vector)
@@ -115,15 +112,14 @@ class PrepareGraspBox(Goal):
         bar_a = Vector3Stamped()
         bar_a.header.frame_id = root_link
         bar_a.vector = set_grasp_axis(box_size_array, maximum=True)
-        # bar_a.vector.z = 1
 
+        # bar length
         tolerance = 0.5
         bar_l = max(box_size_array) * tolerance
 
         # align with axis
         tip_grasp_axis_b = Vector3Stamped()
         tip_grasp_axis_b.header.frame_id = giskard_link_name
-
         tip_grasp_axis_b.vector.y = 1
         # else:
         #    tip_grasp_axis_b.vector.z = -1
@@ -131,21 +127,19 @@ class PrepareGraspBox(Goal):
         bar_axis_b = Vector3Stamped()
         bar_axis_b.header.frame_id = root_link
         bar_axis_b.vector.z = 1
+
+
         '''
         self.add_constraints_of_goal(Pointing(root_link=root_link,
                                               tip_link=giskard_link_name,
                                               goal_point=box_point))
+                                              
+                                              
         self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
                                                  tip_link=giskard_link_name,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
-        
-
         '''
-        # align hand with z
-
-        print(bar_a)
-        print(tip_grasp_a)
 
         self.add_constraints_of_goal(GraspBar(root_link=root_link,
                                               tip_link=giskard_link_name,
@@ -154,31 +148,23 @@ class PrepareGraspBox(Goal):
                                               bar_axis=bar_a,
                                               bar_length=bar_l))
 
-        self.add_constraints_of_goal(MoveGripper(True))
+        self.add_constraints_of_goal(MoveGripper(open_gripper=True))
 
-        '''
+    def make_constraints(self):
+        """
         w_roll values:
 
         grasp vertical: 1.6
 
         grasp horizontal: 0.5
-        '''
-        goal_state = {
-            # u'wrist_flex_joint': wrist_flex,
-            u'wrist_roll_joint': wrist_roll}
-        # hard = True
-        # self.add_constraints_of_goal(JointPositionList(
-        #    goal_state=goal_state))
 
-    def make_constraints(self):
-        '''
         goal_state = {
             #u'wrist_flex_joint': wrist_flex,
             u'wrist_roll_joint': self.wrist_roll}
         #hard = True
         self.add_constraints_of_goal(JointPositionList(
             goal_state=goal_state))
-        '''
+        """
 
     def __str__(self) -> str:
         return super().__str__()

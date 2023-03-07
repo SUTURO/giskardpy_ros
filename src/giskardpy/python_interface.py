@@ -1,6 +1,7 @@
 import json
 from typing import Dict, Tuple, Optional, Union, List
 
+import geometry_msgs.msg
 import rospy
 from actionlib import SimpleActionClient
 from genpy import Message
@@ -952,20 +953,16 @@ class GiskardWrapper:
     def set_base_position(self):
         self.set_json_goal(constraint_type='SetBasePosition')
 
+
     def grasp_box(self,
-                  box_pose: PoseStamped
-                  ):
+              box_pose: PoseStamped,
+              #box_size: Vector3,
+              tip_link: Optional[str] = 'hand_palm_link',
+              w_flex=None,
+              w_roll=None
+              ):
 
-        '''
-        def grasp_box(self,
-                  box_pose: PoseStamped,
-                  box_size=None,
-                  tip_link: Optional[str] = 'hand_palm_link',
-                  w_flex=None,
-                  w_roll=None
-                  ):
 
-        '''
 
         tip_link = 'hand_palm_link'
         box_size = [0.04, 0.1, 0.2]
