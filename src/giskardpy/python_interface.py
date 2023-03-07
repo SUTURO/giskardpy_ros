@@ -954,18 +954,40 @@ class GiskardWrapper:
 
     def grasp_box(self,
                   box_pose: PoseStamped,
+                  box_size: [float],
                   tip_link: Optional[str] = 'hand_palm_link',
-                  box_z: Optional[float] = 0.001,
-                  mueslibox: Optional[bool] = False,
-                  grasp_type: Optional[bool] = False,
-                  grasp_vertical: Optional[bool] = False
+                  w_flex=None,
+                  w_roll=None
                   ):
+
+        add_to_giskard = False
+
+        if add_to_giskard:
+            gisk_name = box_pose.header.frame_id
+            gisk_size = (0.1, 0.1, 0.1)
+            gisk_pose = box_pose
+
+            self.add_box(name=gisk_name,
+                         size=gisk_size,
+                         pose=gisk_pose)
+
         self.set_json_goal(constraint_type='PrepareGraspBox',
                            box_pose=box_pose,
+                           box_size=box_size,
                            tip_link=tip_link,
-                           box_z_length=box_z,
-                           grasp_type=grasp_type)
+                           wrist_flex=w_flex,
+                           wrist_roll=w_roll)
 
+        '''
+        test_point = PointStamped()
+        test_point.point.y = box_pose.pose.position.y
+        test_point.point.x = box_pose.pose.position.x
+        test_point.point.z = box_pose.pose.position.z
+        self.set_json_goal(constraint_type='Pointing',
+                           tip_link=tip_link,
+                           goal_point=test_point,
+                           root_link='map')
+        '''
     def move_drawer(self,
                     knob_pose: PoseStamped,
                     direction: Vector3,

@@ -1,14 +1,17 @@
-from typing import Optional
+from typing import Optional, Tuple, List
 
-from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
+from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, Point
 
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPositionStraight, CartesianPosition
 from giskardpy.goals.goal import Goal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition, JointPositionList
+from giskardpy.goals.pointing import Pointing
 from giskardpy.utils.logging import loginfo
 from suturo_manipulation.gripper import Gripper
+import giskardpy.utils.tfwrapper as tf
+from giskardpy import casadi_wrapper as w
 
 
 class SetBasePosition(Goal):
@@ -48,13 +51,12 @@ class MoveGripper(Goal):
 class PrepareGraspBox(Goal):
     def __init__(self,
                  box_pose: PoseStamped,
+                 box_size: Tuple[float],
+                 root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link',
-                 box_z_length: Optional[float] = 0.001,
-                 box_x_length: Optional[float] = None,
-                 box_y_length: Optional[float] = None,
-                 grasp_type: Optional[int] = 1,
-                 grasp_vertical: Optional[bool] = False):
-
+                 wrist_flex=-1.57,
+                 wrist_roll=0.0
+                 ):
         """
         Move to a given position where a box can be grasped.
 
@@ -63,8 +65,6 @@ class PrepareGraspBox(Goal):
         :param box_z_length: length of the box along the z-axis
         :param box_x_length: length of the box along the x-axis
         :param box_y_length: length of the box along the y-axis
-        :param grasp_type: parameter to decide if the mueslibox is grasped
-        :param grasp_vertical: parameter to align the gripper vertical
 
         """
         super().__init__()
@@ -72,8 +72,18 @@ class PrepareGraspBox(Goal):
         # root_link = self.world.root_link_name
         # map_box_pose = self.transform_msg('map', box_pose)
 
+        self.wrist_roll = wrist_roll
+
+        box_point = PointStamped()
+        box_point.header.frame_id = root_link
+        box_point.point.x = box_pose.pose.position.x
+        box_point.point.y = box_pose.pose.position.y
+        box_point.point.z = box_pose.pose.position.z
+
         # root link
-        root_l = 'map'
+        self.root = self.world.get_link_name(root_link, None)
+        self.tip = self.world.get_link_name(tip_link, None)
+        self.root_P_goal_point = self.transform_msg(self.root, box_point)
 
         # tip link
         giskard_link_name = str(self.world.get_link_name(tip_link))
@@ -82,12 +92,20 @@ class PrepareGraspBox(Goal):
         # tip_axis
         tip_grasp_a = Vector3Stamped()
         tip_grasp_a.header.frame_id = giskard_link_name
-        if grasp_type == 1:
-            tip_grasp_a.vector.x = 1
-            box_pose.pose.position.y -= 0.078
-        else:
-            tip_grasp_a.vector.y = 1
-            box_pose.pose.position.y += 0.078
+
+        box_size_array = [box_size[0], box_size[1], box_size[2]]
+
+        # tip_grasp_a.vector = set_grasp_axis(box_size_array)
+
+        tip_grasp_a.vector.x = 1
+        # print(tip_grasp_a.vector)
+
+        # if grasp_type == 1:
+        #   tip_grasp_a.vector.x = 1
+        #   box_pose.pose.position.y -= 0.078
+        # else:
+        #    tip_grasp_a.vector.y = 1
+        #    box_pose.pose.position.y += 0.078
 
         # bar_center
         bar_c = PointStamped()
@@ -95,29 +113,43 @@ class PrepareGraspBox(Goal):
 
         # bar_axis
         bar_a = Vector3Stamped()
-        bar_a.vector.z = 1
+        bar_a.header.frame_id = root_link
+        bar_a.vector = set_grasp_axis(box_size_array, minimum=False)
+        # bar_a.vector.z = 1
 
-        bar_l = box_z_length
+        tolerance = 0.8
+        bar_l = max(box_size_array) * tolerance
 
         # align with axis
         tip_grasp_axis_b = Vector3Stamped()
         tip_grasp_axis_b.header.frame_id = giskard_link_name
 
-        if grasp_type:
-            tip_grasp_axis_b.vector.z = 1
-        else:
-            tip_grasp_axis_b.vector.z = -1
+        tip_grasp_axis_b.vector.y = 1
+        # else:
+        #    tip_grasp_axis_b.vector.z = -1
 
         bar_axis_b = Vector3Stamped()
-        bar_axis_b.vector.y = 1
+        bar_axis_b.header.frame_id = root_link
+        bar_axis_b.vector.x = 1
 
-        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
+
+        self.add_constraints_of_goal(Pointing(root_link=root_link,
+                                              tip_link=giskard_link_name,
+                                              goal_point=box_point))
+
+        
+        '''                          
+        self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
                                                  tip_link=giskard_link_name,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
-
+        '''
         # align hand with z
-        self.add_constraints_of_goal(GraspBar(root_link=root_l,
+
+        print(bar_a)
+        print(tip_grasp_a)
+
+        self.add_constraints_of_goal(GraspBar(root_link=root_link,
                                               tip_link=giskard_link_name,
                                               tip_grasp_axis=tip_grasp_a,
                                               bar_center=bar_c,
@@ -126,8 +158,30 @@ class PrepareGraspBox(Goal):
 
         self.add_constraints_of_goal(MoveGripper(True))
 
+
+        '''
+        w_roll values:
+
+        grasp vertical: 1.6
+
+        grasp horizontal: 0.5
+        '''
+        goal_state = {
+            #u'wrist_flex_joint': wrist_flex,
+            u'wrist_roll_joint': wrist_roll}
+        #hard = True
+        #self.add_constraints_of_goal(JointPositionList(
+        #    goal_state=goal_state))
+
     def make_constraints(self):
-        pass
+        '''
+        goal_state = {
+            #u'wrist_flex_joint': wrist_flex,
+            u'wrist_roll_joint': self.wrist_roll}
+        #hard = True
+        self.add_constraints_of_goal(JointPositionList(
+            goal_state=goal_state))
+        '''
 
     def __str__(self) -> str:
         return super().__str__()
@@ -158,8 +212,8 @@ class MoveDrawer(Goal):
                 direction.y = -1
 
         if distance is None:
-            distance = 0.4 # mueslibox
-            #distance = 0.4 - 0.075  # drawer
+            distance = 0.4  # mueslibox
+            # distance = 0.4 - 0.075  # drawer
 
         root_l = 'map'
         giskard_link_name = str(self.world.get_link_name('hand_palm_link'))
@@ -253,3 +307,23 @@ class PlaceObject(Goal):
 
     def __str__(self) -> str:
         return super().__str__()
+
+
+def set_grasp_axis(axes: List[float],
+                   minimum: Optional[bool] = True):
+    values = axes
+    values.sort(reverse=minimum)
+    index_sorted_values = []
+    for e in values:
+        index_sorted_values.append(values.index(e))
+
+
+    grasp_vector = Vector3()
+    if index_sorted_values[0] == 0:
+        grasp_vector.x = 1
+    elif index_sorted_values[0] == 1:
+        grasp_vector.y = 1
+    else:
+        grasp_vector.z = 1
+
+    return grasp_vector
