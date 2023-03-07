@@ -51,7 +51,7 @@ class MoveGripper(Goal):
 class PrepareGraspBox(Goal):
     def __init__(self,
                  box_pose: PoseStamped,
-                 box_size: Tuple[float],
+                 box_size: List[float],
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link',
                  wrist_flex=-1.57,
@@ -95,7 +95,7 @@ class PrepareGraspBox(Goal):
 
         box_size_array = [box_size[0], box_size[1], box_size[2]]
 
-        # tip_grasp_a.vector = set_grasp_axis(box_size_array)
+        #tip_grasp_a.vector = set_grasp_axis(box_size_array)
 
         tip_grasp_a.vector.x = 1
         # print(tip_grasp_a.vector)
@@ -114,10 +114,10 @@ class PrepareGraspBox(Goal):
         # bar_axis
         bar_a = Vector3Stamped()
         bar_a.header.frame_id = root_link
-        bar_a.vector = set_grasp_axis(box_size_array, minimum=False)
+        bar_a.vector = set_grasp_axis(box_size_array, maximum=True)
         # bar_a.vector.z = 1
 
-        tolerance = 0.8
+        tolerance = 0.5
         bar_l = max(box_size_array) * tolerance
 
         # align with axis
@@ -130,19 +130,17 @@ class PrepareGraspBox(Goal):
 
         bar_axis_b = Vector3Stamped()
         bar_axis_b.header.frame_id = root_link
-        bar_axis_b.vector.x = 1
-
-
+        bar_axis_b.vector.z = 1
+        '''
         self.add_constraints_of_goal(Pointing(root_link=root_link,
                                               tip_link=giskard_link_name,
                                               goal_point=box_point))
-
-        
-        '''                          
         self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
                                                  tip_link=giskard_link_name,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
+        
+
         '''
         # align hand with z
 
@@ -158,7 +156,6 @@ class PrepareGraspBox(Goal):
 
         self.add_constraints_of_goal(MoveGripper(True))
 
-
         '''
         w_roll values:
 
@@ -167,10 +164,10 @@ class PrepareGraspBox(Goal):
         grasp horizontal: 0.5
         '''
         goal_state = {
-            #u'wrist_flex_joint': wrist_flex,
+            # u'wrist_flex_joint': wrist_flex,
             u'wrist_roll_joint': wrist_roll}
-        #hard = True
-        #self.add_constraints_of_goal(JointPositionList(
+        # hard = True
+        # self.add_constraints_of_goal(JointPositionList(
         #    goal_state=goal_state))
 
     def make_constraints(self):
@@ -310,13 +307,13 @@ class PlaceObject(Goal):
 
 
 def set_grasp_axis(axes: List[float],
-                   minimum: Optional[bool] = True):
-    values = axes
-    values.sort(reverse=minimum)
+                   maximum: Optional[bool] = False):
+    values = axes.copy()
+    values.sort(reverse=maximum)
+
     index_sorted_values = []
     for e in values:
-        index_sorted_values.append(values.index(e))
-
+        index_sorted_values.append(axes.index(e))
 
     grasp_vector = Vector3()
     if index_sorted_values[0] == 0:

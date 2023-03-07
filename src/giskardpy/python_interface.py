@@ -953,6 +953,11 @@ class GiskardWrapper:
         self.set_json_goal(constraint_type='SetBasePosition')
 
     def grasp_box(self,
+                  box_pose: PoseStamped
+                  ):
+
+        '''
+        def grasp_box(self,
                   box_pose: PoseStamped,
                   box_size=None,
                   tip_link: Optional[str] = 'hand_palm_link',
@@ -960,8 +965,10 @@ class GiskardWrapper:
                   w_roll=None
                   ):
 
-        if box_size == None:
-            box_size = (0.04, 0.1, 0.2)
+        '''
+
+        tip_link = 'hand_palm_link'
+        box_size = [0.04, 0.1, 0.2]
 
         add_to_giskard = False
 
@@ -977,9 +984,7 @@ class GiskardWrapper:
         self.set_json_goal(constraint_type='PrepareGraspBox',
                            box_pose=box_pose,
                            box_size=box_size,
-                           tip_link=tip_link,
-                           wrist_flex=w_flex,
-                           wrist_roll=w_roll)
+                           tip_link=tip_link)
 
         '''
         test_point = PointStamped()
