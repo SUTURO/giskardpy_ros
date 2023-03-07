@@ -954,11 +954,14 @@ class GiskardWrapper:
 
     def grasp_box(self,
                   box_pose: PoseStamped,
-                  box_size: [float],
+                  box_size=None,
                   tip_link: Optional[str] = 'hand_palm_link',
                   w_flex=None,
                   w_roll=None
                   ):
+
+        if box_size == None:
+            box_size = (0.04, 0.1, 0.2)
 
         add_to_giskard = False
 
