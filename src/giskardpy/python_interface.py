@@ -953,46 +953,56 @@ class GiskardWrapper:
     def set_base_position(self):
         self.set_json_goal(constraint_type='SetBasePosition')
 
-
     def grasp_box(self,
-              box_pose: PoseStamped,
-              #box_size: Vector3,
-              tip_link: Optional[str] = 'hand_palm_link',
-              w_flex=None,
-              w_roll=None
-              ):
+                  box_name: str,
+                  box_pose: PoseStamped,
+                  # box_size: Vector3,
+                  box_size=None,
+                  tip_link: Optional[str] = 'hand_palm_link'):
+
+        testing = True
+        if testing:
+            self.set_json_goal(constraint_type='MoveGripper',
+                               open_gripper=1)
+        self.plan_and_execute(wait=True)
 
 
+        tip_link = tip_link
+        box_size = [0.04, 0.1, 0.2]  # FIXME make box size dynamic
 
-        tip_link = 'hand_palm_link'
-        box_size = [0.04, 0.1, 0.2]
-
-        add_to_giskard = False
-
-        if add_to_giskard:
-            gisk_name = box_pose.header.frame_id
-            gisk_size = (0.1, 0.1, 0.1)
+        ### Will be removed with knowledge synchronization ###
+        if box_name not in self.get_group_names():
+            gisk_name = box_name
+            gisk_size = (box_size[0], box_size[1], box_size[2])
             gisk_pose = box_pose
 
             self.add_box(name=gisk_name,
                          size=gisk_size,
                          pose=gisk_pose)
+        #######################################################
+
+        #self.update_parent_link_of_group(name=box_name, parent_link=self.robot_name)
+        #self.allow_collision(self.robot_name, box_name)
 
         self.set_json_goal(constraint_type='PrepareGraspBox',
+                           box_name=box_name,
                            box_pose=box_pose,
                            box_size=box_size,
                            tip_link=tip_link)
 
-        '''
-        test_point = PointStamped()
-        test_point.point.y = box_pose.pose.position.y
-        test_point.point.x = box_pose.pose.position.x
-        test_point.point.z = box_pose.pose.position.z
-        self.set_json_goal(constraint_type='Pointing',
-                           tip_link=tip_link,
-                           goal_point=test_point,
-                           root_link='map')
-        '''
+        print("waiting")
+        self.plan_and_execute(wait=True)
+        print("waiting done")
+
+        if testing:
+            self.set_json_goal(constraint_type='MoveGripper',
+                               open_gripper=0)
+        self.set_json_goal(constraint_type='AddToRobot',
+                           object_name=box_name,
+                           link_name=tip_link)
+        self.allow_collision(self.robot_name, box_name)
+
+
     def move_drawer(self,
                     knob_pose: PoseStamped,
                     direction: Vector3,
@@ -1008,3 +1018,11 @@ class GiskardWrapper:
     def move_gripper(self, open_gripper=True):
         self.set_json_goal(constraint_type='MoveGripper',
                            open_gripper=open_gripper)
+
+    def place_object(self,
+                     goal_pose: PoseStamped,
+                     object_height: float):
+
+        self.set_json_goal(constraint_type='PlaceObject',
+                           goal_pose=goal_pose,
+                           object_height=object_height)
