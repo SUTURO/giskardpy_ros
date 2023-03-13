@@ -52,7 +52,7 @@ class PrepareGraspBox(Goal):
     def __init__(self,
                  box_name: str,
                  box_pose: PoseStamped,
-                 #box_size: Vector3,
+                 # box_size: Vector3,
                  box_size: Optional[List[float]] = [0.04, 0.1, 0.2],
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link'
@@ -71,7 +71,26 @@ class PrepareGraspBox(Goal):
         # root_link = self.world.root_link_name
         # map_box_pose = self.transform_msg('map', box_pose)
 
-        #Frame/grasp difference
+        def set_grasp_axis(axes: List[float],
+                           maximum: Optional[bool] = False):
+            values = axes.copy()
+            values.sort(reverse=maximum)
+
+            index_sorted_values = []
+            for e in values:
+                index_sorted_values.append(axes.index(e))
+
+            grasp_vector = Vector3()
+            if index_sorted_values[0] == 0:
+                grasp_vector.x = 1
+            elif index_sorted_values[0] == 1:
+                grasp_vector.y = 1
+            else:
+                grasp_vector.z = 1
+
+            return grasp_vector
+
+        # Frame/grasp difference
         grasping_difference = 0.07
 
         box_point = PointStamped()
@@ -89,7 +108,7 @@ class PrepareGraspBox(Goal):
         giskard_link_name = str(self.world.get_link_name(tip_link))
         loginfo('giskard_link_name: {}'.format(giskard_link_name))
 
-        #box_size_array = [box_size.x, box_size.y, box_size.z]
+        # box_size_array = [box_size.x, box_size.y, box_size.z]
         box_size_array = [box_size[0], box_size[1], box_size[2]]
 
         # tip_axis
@@ -114,19 +133,16 @@ class PrepareGraspBox(Goal):
         tolerance = 0.5
         bar_l = max(box_size_array) * tolerance
 
-
         # Align Planes
         # object axis horizontal/vertical
         bar_axis_b = Vector3Stamped()
         bar_axis_b.header.frame_id = root_link
         bar_axis_b.vector.y = 1
 
-
         # align z tip axis with object axis
         tip_grasp_axis_b = Vector3Stamped()
         tip_grasp_axis_b.header.frame_id = giskard_link_name
         tip_grasp_axis_b.vector.z = 1
-
 
         '''
         self.add_constraints_of_goal(Pointing(root_link=root_link,
@@ -145,7 +161,6 @@ class PrepareGraspBox(Goal):
                                               bar_center=bar_c,
                                               bar_axis=bar_a,
                                               bar_length=bar_l))
-
 
     def make_constraints(self):
         pass
@@ -275,6 +290,7 @@ class PlaceObject(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
+
 class AddToRobot(Goal):
     def __init__(self,
                  object_name: str,
@@ -293,21 +309,28 @@ class AddToRobot(Goal):
         return super().__str__()
 
 
-def set_grasp_axis(axes: List[float],
-                   maximum: Optional[bool] = False):
-    values = axes.copy()
-    values.sort(reverse=maximum)
+class Lift(Goal):
+    def __init__(self,
+                 distance: float,
+                 tip_link: Optional[str] = 'hand_palm_link'):
+        super().__init__()
 
-    index_sorted_values = []
-    for e in values:
-        index_sorted_values.append(axes.index(e))
+        root_name = 'map'
+        tip_name = tip_link
 
-    grasp_vector = Vector3()
-    if index_sorted_values[0] == 0:
-        grasp_vector.x = 1
-    elif index_sorted_values[0] == 1:
-        grasp_vector.y = 1
-    else:
-        grasp_vector.z = 1
+        goal_position = PointStamped()
+        goal_position.header.frame_id = tip_name
+        goal_position.point.x += distance
 
-    return grasp_vector
+        self.add_constraints_of_goal(CartesianPosition(root_link=root_name,
+                                                       tip_link=tip_name,
+                                                       goal_point=goal_position))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+
+

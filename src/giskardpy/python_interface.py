@@ -958,14 +958,17 @@ class GiskardWrapper:
                   box_pose: PoseStamped,
                   # box_size: Vector3,
                   box_size=None,
-                  tip_link: Optional[str] = 'hand_palm_link'):
+                  tip_link: Optional[str] = 'hand_palm_link',
+                  testing: Optional[bool] = False):
 
-        testing = True
         if testing:
+            print("Open Gripper")
             self.set_json_goal(constraint_type='MoveGripper',
                                open_gripper=1)
-        self.plan_and_execute(wait=True)
+            self.plan_and_execute(wait=True)
 
+
+        print("Getting in position")
 
         tip_link = tip_link
         box_size = [0.04, 0.1, 0.2]  # FIXME make box size dynamic
@@ -981,26 +984,31 @@ class GiskardWrapper:
                          pose=gisk_pose)
         #######################################################
 
-        #self.update_parent_link_of_group(name=box_name, parent_link=self.robot_name)
-        #self.allow_collision(self.robot_name, box_name)
-
         self.set_json_goal(constraint_type='PrepareGraspBox',
                            box_name=box_name,
                            box_pose=box_pose,
                            box_size=box_size,
                            tip_link=tip_link)
 
-        print("waiting")
         self.plan_and_execute(wait=True)
-        print("waiting done")
+
+        print("Grabbing Object")
+        #self.allow_collision(self.robot_name, box_name)
+
+        # Add Object
+        self.update_parent_link_of_group(box_name, tip_link)
 
         if testing:
             self.set_json_goal(constraint_type='MoveGripper',
                                open_gripper=0)
-        self.set_json_goal(constraint_type='AddToRobot',
-                           object_name=box_name,
-                           link_name=tip_link)
-        self.allow_collision(self.robot_name, box_name)
+
+            self.plan_and_execute(wait=True)
+
+            # Lift Object
+            print("Lifting Object")
+            self.set_json_goal(constraint_type='Lift',
+                               distance=0.02)
+
 
 
     def move_drawer(self,
