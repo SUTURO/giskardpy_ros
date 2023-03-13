@@ -964,10 +964,8 @@ class GiskardWrapper:
 
         if testing:
             print("Open Gripper")
-            self.set_json_goal(constraint_type='MoveGripper',
-                               open_gripper=1)
+            self.move_gripper(True)
             self.plan_and_execute(wait=True)
-
 
         print("Getting in position")
 
@@ -985,7 +983,7 @@ class GiskardWrapper:
                          pose=gisk_pose)
         #######################################################
 
-        self.set_json_goal(constraint_type='PrepareGraspBox',
+        self.set_json_goal(constraint_type='GraspObject',
                            box_name=box_name,
                            box_pose=box_pose,
                            box_size=box_size,
@@ -993,25 +991,22 @@ class GiskardWrapper:
 
         self.plan_and_execute(wait=True)
 
-        print("Grabbing Object")
-        #self.allow_collision(self.robot_name, box_name)
-
-        # Add Object
+        # Attach Object
         self.update_parent_link_of_group(box_name, tip_link)
 
         if testing:
-            self.set_json_goal(constraint_type='MoveGripper',
-                               open_gripper=0)
-
+            print("Grabbing Object")
+            self.move_gripper(False)
             self.plan_and_execute(wait=True)
 
             # Lift Object
             print("Lifting Object")
-            self.set_json_goal(constraint_type='Lift',
+            self.set_json_goal(constraint_type='LiftObject',
                                distance=0.02)
+            self.set_json_goal(constraint_type='DriveBack',
+                               distance=0.1)
 
-
-
+    # DEPRECATED
     def move_drawer(self,
                     knob_pose: PoseStamped,
                     direction: Vector3,
@@ -1036,27 +1031,25 @@ class GiskardWrapper:
                      tip_link: Optional[str] = 'hand_palm_link',
                      testing: Optional[bool] = False
                      ):
-
+        # Place Object
         self.set_json_goal(constraint_type='PlaceObject',
                            object_name=object_name,
                            goal_pose=goal_pose,
                            object_height=object_height)
 
-        self.plan_and_execute(wait=True)
-
-
         if testing:
-            self.set_json_goal(constraint_type='MoveGripper',
-                               open_gripper=1)
-
             self.plan_and_execute(wait=True)
 
-            # Remove Object
+            # Open Gripper
+            print("Open Gripper")
+            self.move_gripper(True)
+            self.plan_and_execute(wait=True)
+
+            # Detach Object
+            print("Move Back")
             self.update_parent_link_of_group(object_name, root_link)
             self.avoid_collision(min_distance=0.01, group1=self.robot_name, group2=object_name)
-
             self.set_json_goal(constraint_type='DriveBack')
-
 
     def drive_back(self,
                    distance: Optional[float] = 0.05):

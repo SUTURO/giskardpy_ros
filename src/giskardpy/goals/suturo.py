@@ -31,12 +31,19 @@ class SetBasePosition(Goal):
 
 
 class MoveGripper(Goal):
-    def __init__(self, open_gripper=1):
+    def __init__(self, open_gripper=True):
+        """
+        Open / CLose Gripper.
+        Current implementation is not final and will be replaced with a follow joint trajectory connection.
+
+        :param open_gripper: True to open gripper; False to close gripper.
+        """
+
         super().__init__()
         g = Gripper(apply_force_action_server='/hsrb/gripper_controller/apply_force',
                     follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
 
-        if open_gripper == 1:
+        if open_gripper:
             g.set_gripper_joint_position(1)
         else:
             g.close_gripper_force(1)
@@ -48,7 +55,7 @@ class MoveGripper(Goal):
         return super().__str__()
 
 
-class PrepareGraspBox(Goal):
+class GraspObject(Goal):
     def __init__(self,
                  box_name: str,
                  box_pose: PoseStamped,
@@ -60,10 +67,10 @@ class PrepareGraspBox(Goal):
         """
         Move to a given position where a box can be grasped.
 
+        :param box_name: name of the object
         :param box_pose: center position of the grasped object
         :param box_size: box size as Vector3 (x, y, z)
         :param tip_link: name of the tip link of the kin chain
-
 
         """
         super().__init__()
@@ -127,8 +134,6 @@ class PrepareGraspBox(Goal):
         bar_a.header.frame_id = root_link
         bar_a.vector = set_grasp_axis(box_size_array, maximum=True)
 
-        print(f'bar axis {bar_a}')
-
         # bar length
         tolerance = 0.5
         bar_l = max(box_size_array) * tolerance
@@ -150,6 +155,7 @@ class PrepareGraspBox(Goal):
                                               goal_point=box_point))
         
         '''
+
         self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
                                                  tip_link=giskard_link_name,
                                                  goal_normal=bar_axis_b,
@@ -168,7 +174,7 @@ class PrepareGraspBox(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
-
+# DEPRECATED
 class MoveDrawer(Goal):
     def __init__(self,
                  knob_pose: PoseStamped,
@@ -295,7 +301,7 @@ class PlaceObject(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
-
+# DEPRECATED
 class AddToRobot(Goal):
     def __init__(self,
                  object_name: str,
@@ -314,7 +320,7 @@ class AddToRobot(Goal):
         return super().__str__()
 
 
-class Lift(Goal):
+class LiftObject(Goal):
     def __init__(self,
                  distance: float,
                  tip_link: Optional[str] = 'hand_palm_link'):
@@ -348,13 +354,13 @@ class DriveBack(Goal):
         root_l = root
         tip_l = tip
 
-        goal_pose = PoseStamped()
-        goal_pose.header.frame_id = tip_l
-        goal_pose.pose.position.x -= distance
+        goal_point = PointStamped()
+        goal_point.header.frame_id = tip_l
+        goal_point.point.z -= distance
 
-        self.add_constraints_of_goal(CartesianPose(root_link=root_l,
-                                                   tip_link=tip_l,
-                                                   goal_pose=goal_pose))
+        self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_l,
+                                                               tip_link=tip_l,
+                                                               goal_point=goal_point))
 
     def make_constraints(self):
         pass
