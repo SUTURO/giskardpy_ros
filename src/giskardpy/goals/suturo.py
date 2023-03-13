@@ -84,7 +84,7 @@ class PrepareGraspBox(Goal):
             if index_sorted_values[0] == 0:
                 grasp_vector.x = 1
             elif index_sorted_values[0] == 1:
-                grasp_vector.y = 1
+                grasp_vector.y= 1
             else:
                 grasp_vector.z = 1
 
@@ -245,17 +245,22 @@ class MoveDrawer(Goal):
 
 class PlaceObject(Goal):
     def __init__(self,
+                 object_name: str,
                  goal_pose: PoseStamped,
-                 object_height: Optional[float] = 0.1):
+                 object_height: float,
+                 root_link: Optional[str] = 'map',
+                 tip_link: Optional[str] = 'hand_palm_link'):
+
         super().__init__()
 
-        root_l = 'map'
-        giskard_link_name = str(self.world.get_link_name('hand_palm_link'))
+        root_l = root_link
+        tip_l = tip_link
+        giskard_link_name = str(self.world.get_link_name(tip_l))
 
         goal_pose.pose.position.z = goal_pose.pose.position.z + (object_height / 2)
 
         bar_axis = Vector3Stamped()
-        bar_axis.header.frame_id = 'map'
+        bar_axis.header.frame_id = root_l
         bar_axis.vector.y = 1
 
         tip_grasp_axis = Vector3Stamped()
@@ -263,12 +268,12 @@ class PlaceObject(Goal):
         tip_grasp_axis.vector.z = 1
 
         bar_axis_b = Vector3Stamped()
-        bar_axis_b.header.frame_id = 'map'
-        bar_axis_b.vector.x = 1
+        bar_axis_b.header.frame_id = root_l
+        bar_axis_b.vector.z = 1
 
         tip_grasp_axis_b = Vector3Stamped()
         tip_grasp_axis_b.header.frame_id = giskard_link_name
-        tip_grasp_axis_b.vector.y = 1
+        tip_grasp_axis_b.vector.x = 1
 
         self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
                                                  tip_link=giskard_link_name,
@@ -326,11 +331,35 @@ class Lift(Goal):
                                                        tip_link=tip_name,
                                                        goal_point=goal_position))
 
+
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
         return super().__str__()
 
+class DriveBack(Goal):
+    def __init__(self,
+                 distance: Optional[float] = 0.05,
+                 root: Optional[str] = 'map',
+                 tip: Optional[str] = 'base_link'):
+        super().__init__()
+
+        root_l = root
+        tip_l = tip
+
+        goal_pose = PoseStamped()
+        goal_pose.header.frame_id = tip_l
+        goal_pose.pose.position.x -= distance
+
+        self.add_constraints_of_goal(CartesianPose(root_link=root_l,
+                                                   tip_link=tip_l,
+                                                   goal_pose=goal_pose))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
 
 
