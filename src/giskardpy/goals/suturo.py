@@ -83,7 +83,7 @@ class GraspObject(Goal):
         ### Will be removed with knowledge synchronization ###
         object_type = 'box'
         object_size = [0.04, 0.1, 0.2]
-        '''
+
         # Create object body
         if object_type == 'box':
             # object_size = [0.04, 0.1, 0.2]
@@ -115,11 +115,11 @@ class GraspObject(Goal):
         obj_parent_link_group = ''
         parent_link = self.world.get_link_name(obj_parent_link, obj_parent_link_group)
 
-        # Add Object to giskard
-        self.world.add_world_body(object_name, obj_body, obj_pose, parent_link)
+        # Add Object to giskard # FIXME Currently crashing grasp action
+        #self.world.add_world_body(object_name, obj_body, obj_pose, parent_link)
 
         #######################################################
-        '''
+
 
         def set_grasp_axis(axes: List[float],
                            maximum: Optional[bool] = False):
