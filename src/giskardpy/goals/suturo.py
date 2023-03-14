@@ -1,6 +1,6 @@
 from typing import Optional, Tuple, List
 
-from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, Point
+from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, Point, Pose
 
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPositionStraight, CartesianPosition
@@ -8,6 +8,7 @@ from giskardpy.goals.goal import Goal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition, JointPositionList
 from giskardpy.goals.pointing import Pointing
+from giskardpy.model.utils import make_world_body_box, make_world_body_cylinder, make_world_body_sphere
 from giskardpy.utils.logging import loginfo
 from suturo_manipulation.gripper import Gripper
 import giskardpy.utils.tfwrapper as tf
@@ -57,10 +58,10 @@ class MoveGripper(Goal):
 
 class GraspObject(Goal):
     def __init__(self,
-                 box_name: str,
-                 box_pose: PoseStamped,
+                 object_name: str,
+                 object_pose: PoseStamped,
                  # box_size: Vector3,
-                 box_size: Optional[List[float]] = [0.04, 0.1, 0.2],
+                 object_size: Optional[List[float]] = [0.04, 0.1, 0.2],
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link'
                  ):
@@ -78,6 +79,47 @@ class GraspObject(Goal):
         # giskard_link_name = self.world.get_link_name(tip_link)
         # root_link = self.world.root_link_name
         # map_box_pose = self.transform_msg('map', box_pose)
+
+        ### Will be removed with knowledge synchronization ###
+        object_type = 'box'
+        object_size = [0.04, 0.1, 0.2]
+        '''
+        # Create object body
+        if object_type == 'box':
+            # object_size = [0.04, 0.1, 0.2]
+            obj_body = make_world_body_box(object_size[0], object_size[1], object_size[2])
+            print("added box")
+
+        elif object_type == 'cylinder':
+            object_height = 0.259
+            radius = 0.0395
+            obj_body = make_world_body_cylinder(object_height, radius)
+            print('added cylinder')
+
+        elif object_type == 'sphere':
+            radius = 0.0395
+            obj_body = make_world_body_sphere(radius)
+            print('added sphere')
+
+        else:
+            obj_body = Pose()
+            print("No object body to add")
+
+        # Set object Pose
+        obj_pose = Pose()
+        obj_pose.position = object_pose.pose.position
+        obj_pose.orientation = object_pose.pose.orientation
+
+        # Parent link
+        obj_parent_link = ''
+        obj_parent_link_group = ''
+        parent_link = self.world.get_link_name(obj_parent_link, obj_parent_link_group)
+
+        # Add Object to giskard
+        self.world.add_world_body(object_name, obj_body, obj_pose, parent_link)
+
+        #######################################################
+        '''
 
         def set_grasp_axis(axes: List[float],
                            maximum: Optional[bool] = False):
@@ -103,9 +145,9 @@ class GraspObject(Goal):
 
         box_point = PointStamped()
         box_point.header.frame_id = root_link
-        box_point.point.x = box_pose.pose.position.x
-        box_point.point.y = box_pose.pose.position.y - grasping_difference
-        box_point.point.z = box_pose.pose.position.z
+        box_point.point.x = object_pose.pose.position.x
+        box_point.point.y = object_pose.pose.position.y - grasping_difference
+        box_point.point.z = object_pose.pose.position.z
 
         # root link
         self.root = self.world.get_link_name(root_link, None)
@@ -117,18 +159,18 @@ class GraspObject(Goal):
         loginfo('giskard_link_name: {}'.format(giskard_link_name))
 
         # box_size_array = [box_size.x, box_size.y, box_size.z]
-        box_size_array = [box_size[0], box_size[1], box_size[2]]
+        box_size_array = [object_size[0], object_size[1], object_size[2]]
 
         # tip_axis
         tip_grasp_a = Vector3Stamped()
         tip_grasp_a.header.frame_id = giskard_link_name
         tip_grasp_a.vector.x = 1
 
-        box_pose.pose.position.y = box_pose.pose.position.y - grasping_difference
+        object_pose.pose.position.y = object_pose.pose.position.y - grasping_difference
 
         # bar_center
         bar_c = PointStamped()
-        bar_c.point = box_pose.pose.position
+        bar_c.point = object_pose.pose.position
 
         # bar_axis
         bar_a = Vector3Stamped()

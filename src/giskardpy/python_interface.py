@@ -953,14 +953,16 @@ class GiskardWrapper:
     def set_base_position(self):
         self.set_json_goal(constraint_type='SetBasePosition')
 
-    def grasp_box(self,
-                  box_name: str,
-                  box_pose: PoseStamped,
-                  # box_size: Vector3,
-                  box_size=None,
+    def grasp_object(self,
+                  object_name: str,
+                  object_pose: PoseStamped,
+                  # object_size: Vector3,
+                  object_size=None,
                   root_link: Optional[str] = 'map',
                   tip_link: Optional[str] = 'hand_palm_link',
                   testing: Optional[bool] = False):
+
+        object_type = 'box'
 
         if testing:
             print("Open Gripper")
@@ -969,30 +971,37 @@ class GiskardWrapper:
 
         print("Getting in position")
 
-        tip_link = tip_link
-        box_size = [0.04, 0.1, 0.2]  # FIXME make box size dynamic
+        object_size = [0.04, 0.1, 0.2]  # FIXME make box size dynamic
+        height = 0.259
+        radius = 0.0395
 
+        '''
         ### Will be removed with knowledge synchronization ###
-        if box_name not in self.get_group_names():
-            gisk_name = box_name
-            gisk_size = (box_size[0], box_size[1], box_size[2])
-            gisk_pose = box_pose
+        if object_name not in self.get_group_names():
+            gisk_size = (object_size[0], object_size[1], object_size[2])
+            gisk_pose = object_pose
 
-            self.add_box(name=gisk_name,
-                         size=gisk_size,
-                         pose=gisk_pose)
+            if object_type == 'box':
+                self.add_box(name=object_name,
+                             size=gisk_size,
+                             pose=object_pose)
+            elif object_type == 'cylinder':
+                self.add_cylinder(name=object_name,
+                                  height=height,
+                                  radius=radius,
+                                  pose=object_pose)
+
         #######################################################
-
+        '''
         self.set_json_goal(constraint_type='GraspObject',
-                           box_name=box_name,
-                           box_pose=box_pose,
-                           box_size=box_size,
+                           object_name=object_name,
+                           object_pose=object_pose,
                            tip_link=tip_link)
 
         self.plan_and_execute(wait=True)
 
         # Attach Object
-        self.update_parent_link_of_group(box_name, tip_link)
+        self.update_parent_link_of_group(object_name, tip_link)
 
         if testing:
             print("Grabbing Object")
