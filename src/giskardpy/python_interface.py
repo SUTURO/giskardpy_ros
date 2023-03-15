@@ -962,7 +962,7 @@ class GiskardWrapper:
                   tip_link: Optional[str] = 'hand_palm_link',
                   testing: Optional[bool] = False):
 
-        object_type = 'box'
+        object_type = 'cylinder'
 
         if testing:
             print("Open Gripper")
@@ -984,12 +984,13 @@ class GiskardWrapper:
             if object_type == 'box':
                 self.add_box(name=object_name,
                              size=gisk_size,
-                             pose=object_pose)
+                             pose=gisk_pose)
             elif object_type == 'cylinder':
+
                 self.add_cylinder(name=object_name,
                                   height=height,
                                   radius=radius,
-                                  pose=object_pose)
+                                  pose=gisk_pose)
 
         #######################################################
 
@@ -1011,9 +1012,9 @@ class GiskardWrapper:
             # Lift Object
             print("Lifting Object")
             self.set_json_goal(constraint_type='LiftObject',
-                               distance=0.02)
-            self.set_json_goal(constraint_type='DriveBack',
-                               distance=0.1)
+                               object_name=object_name)
+            self.set_json_goal(constraint_type='Retracting',
+                               object_name=object_name)
 
 
     def move_gripper(self, open_gripper=True):

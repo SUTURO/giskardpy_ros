@@ -242,7 +242,7 @@ class PlaceObject(Goal):
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
 
-        object_height = 0.27
+        object_height = 0.28
 
         root_l = root_link
         tip_l = tip_link
