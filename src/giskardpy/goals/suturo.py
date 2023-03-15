@@ -140,7 +140,7 @@ class GraspObject(Goal):
             return grasp_vector
 
         # Frame/grasp difference
-        grasping_difference = 0.04
+        grasping_difference = 0.07
 
         box_point = PointStamped()
         box_point.header.frame_id = root_link
