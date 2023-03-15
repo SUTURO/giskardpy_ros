@@ -975,7 +975,7 @@ class GiskardWrapper:
         height = 0.259
         radius = 0.0395
 
-        '''
+
         ### Will be removed with knowledge synchronization ###
         if object_name not in self.get_group_names():
             gisk_size = (object_size[0], object_size[1], object_size[2])
@@ -992,7 +992,7 @@ class GiskardWrapper:
                                   pose=object_pose)
 
         #######################################################
-        '''
+
         self.set_json_goal(constraint_type='GraspObject',
                            object_name=object_name,
                            object_pose=object_pose,
@@ -1015,18 +1015,6 @@ class GiskardWrapper:
             self.set_json_goal(constraint_type='DriveBack',
                                distance=0.1)
 
-    # DEPRECATED
-    def move_drawer(self,
-                    knob_pose: PoseStamped,
-                    direction: Vector3,
-                    distance: float):
-        self.set_json_goal(constraint_type='MoveDrawer',
-                           knob_pose=knob_pose,
-                           direction=direction,
-                           distance=distance)
-
-    def close_drawer(self):
-        pass
 
     def move_gripper(self, open_gripper=True):
         self.set_json_goal(constraint_type='MoveGripper',
@@ -1058,9 +1046,10 @@ class GiskardWrapper:
             print("Move Back")
             self.update_parent_link_of_group(object_name, root_link)
             self.avoid_collision(min_distance=0.01, group1=self.robot_name, group2=object_name)
-            self.set_json_goal(constraint_type='DriveBack')
+            self.set_json_goal(constraint_type='Retracting')
 
-    def drive_back(self,
+    def retract(self,
                    distance: Optional[float] = 0.05):
-        self.set_json_goal(constraint_type='DriveBack',
+        self.set_json_goal(constraint_type='Retracting',
                            distance=distance)
+

@@ -11,9 +11,6 @@ from giskardpy.goals.pointing import Pointing
 from giskardpy.model.utils import make_world_body_box, make_world_body_cylinder, make_world_body_sphere
 from giskardpy.utils.logging import loginfo
 from suturo_manipulation.gripper import Gripper
-import giskardpy.utils.tfwrapper as tf
-from giskardpy import casadi_wrapper as w
-
 
 class SetBasePosition(Goal):
     def __init__(self):
@@ -56,40 +53,23 @@ class MoveGripper(Goal):
         return super().__str__()
 
 
-class GraspObject(Goal):
+class AddObjectToWorld(Goal):
     def __init__(self,
                  object_name: str,
-                 object_pose: PoseStamped,
-                 # box_size: Vector3,
-                 object_size: Optional[List[float]] = [0.04, 0.1, 0.2],
-                 root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link'
-                 ):
-        """
-        Move to a given position where a box can be grasped.
+                 object_pose: PoseStamped,):
 
-        :param box_name: name of the object
-        :param box_pose: center position of the grasped object
-        :param box_size: box size as Vector3 (x, y, z)
-        :param tip_link: name of the tip link of the kin chain
-
-        """
         super().__init__()
-
-        # giskard_link_name = self.world.get_link_name(tip_link)
-        # root_link = self.world.root_link_name
-        # map_box_pose = self.transform_msg('map', box_pose)
 
         ### Will be removed with knowledge synchronization ###
         object_type = 'box'
-        object_size = [0.04, 0.1, 0.2]
+        object_size = [0.04, 0.1, 0.1]
 
         # Create object body
-        if object_type == 'box':
+        #if object_type == 'box':
             # object_size = [0.04, 0.1, 0.2]
-            obj_body = make_world_body_box(object_size[0], object_size[1], object_size[2])
-            print("added box")
-
+        obj_body = make_world_body_box(object_size[0], object_size[1], object_size[2])
+        print("added box")
+        '''
         elif object_type == 'cylinder':
             object_height = 0.259
             radius = 0.0395
@@ -104,11 +84,16 @@ class GraspObject(Goal):
         else:
             obj_body = Pose()
             print("No object body to add")
+        '''
 
         # Set object Pose
         obj_pose = Pose()
-        obj_pose.position = object_pose.pose.position
-        obj_pose.orientation = object_pose.pose.orientation
+        obj_pose.position.x = object_pose.pose.position.x
+        obj_pose.position.y = object_pose.pose.position.y
+        obj_pose.position.z = object_pose.pose.position.z
+        obj_pose.orientation.x = object_pose.pose.orientation.x
+        obj_pose.orientation.y = object_pose.pose.orientation.y
+        obj_pose.orientation.z = object_pose.pose.orientation.z
 
         # Parent link
         obj_parent_link = ''
@@ -116,9 +101,39 @@ class GraspObject(Goal):
         parent_link = self.world.get_link_name(obj_parent_link, obj_parent_link_group)
 
         # Add Object to giskard # FIXME Currently crashing grasp action
-        #self.world.add_world_body(object_name, obj_body, obj_pose, parent_link)
+        self.world.add_world_body(object_name, obj_body, obj_pose, parent_link)
 
-        #######################################################
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+
+class GraspObject(Goal):
+    def __init__(self,
+                 object_name: str,
+                 object_pose: PoseStamped,
+                 # box_size: Vector3,
+                 object_size: Optional[List[float]] = [0.04, 0.1, 0.2],
+                 root_link: Optional[str] = 'map',
+                 tip_link: Optional[str] = 'hand_palm_link'
+                 ):
+        """
+        Move to a given position where a box can be grasped.
+
+        :param object_name: name of the object
+        :param object_pose: center position of the grasped object
+        :param object_size: box size as Vector3 (x, y, z)
+        :param tip_link: name of the tip link of the kin chain
+
+        """
+        super().__init__()
+
+        # giskard_link_name = self.world.get_link_name(tip_link)
+        # root_link = self.world.root_link_name
+        # map_box_pose = self.transform_msg('map', box_pose)
 
         def set_grasp_axis(axes: List[float],
                            maximum: Optional[bool] = False):
@@ -138,6 +153,8 @@ class GraspObject(Goal):
                 grasp_vector.z = 1
 
             return grasp_vector
+
+        object_size = [0.04, 0.1, 0.2]
 
         # Frame/grasp difference
         grasping_difference = 0.07
@@ -207,80 +224,7 @@ class GraspObject(Goal):
                                               bar_axis=bar_a,
                                               bar_length=bar_l))
 
-    def make_constraints(self):
-        pass
 
-    def __str__(self) -> str:
-        return super().__str__()
-
-
-# DEPRECATED
-class MoveDrawer(Goal):
-    def __init__(self,
-                 knob_pose: PoseStamped,
-                 direction: Optional[Vector3] = None,
-                 distance: Optional[float] = None,
-                 open_drawer: Optional[int] = 1,
-                 align_horizontal: Optional[int] = 1):
-        """
-        Move drawer in a given direction.
-        The drawer knob has to be grasped first, f.e. with PrepareGraspBox.
-        :param knob_pose: current position of the knob
-        :param direction: direction vector in which the drawer should move
-        :param distance: distance the drawer should move
-        """
-
-        super().__init__()
-
-        if direction is None:
-            direction = Vector3()
-            if open_drawer == 1:
-                direction.y = 1
-            else:
-                direction.y = -1
-
-        if distance is None:
-            distance = 0.4  # mueslibox
-            # distance = 0.4 - 0.075  # drawer
-
-        root_l = 'map'
-        giskard_link_name = str(self.world.get_link_name('hand_palm_link'))
-
-        new_x = (direction.x * distance) + knob_pose.pose.position.x
-        new_y = (direction.y * distance) + knob_pose.pose.position.y
-        new_z = (direction.z * distance) + knob_pose.pose.position.z
-        calculated_position = Vector3(new_x, new_y, new_z)
-
-        goal_position = PoseStamped()
-        goal_position.header.frame_id = root_l
-        goal_position.pose.position = calculated_position
-        loginfo(goal_position)
-
-        # position straight
-        goal_pos = PoseStamped()
-        goal_pos.header.frame_id = root_l
-        goal_pos.pose.position = calculated_position
-
-        tip_grasp_axis_b = Vector3Stamped()
-        tip_grasp_axis_b.header.frame_id = giskard_link_name
-
-        bar_axis_b = Vector3Stamped()
-
-        if align_horizontal == 1:
-            tip_grasp_axis_b.vector.x = 1
-            bar_axis_b.vector.z = 1
-        else:
-            tip_grasp_axis_b.vector.z = -1
-            bar_axis_b.vector.y = 1
-
-        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
-                                                 tip_link=giskard_link_name,
-                                                 goal_normal=bar_axis_b,
-                                                 tip_normal=tip_grasp_axis_b))
-
-        self.add_constraints_of_goal(CartesianPose(root_link=root_l,
-                                                   tip_link=giskard_link_name,
-                                                   goal_pose=goal_pos))
 
     def make_constraints(self):
         pass
@@ -344,27 +288,11 @@ class PlaceObject(Goal):
                                                  tip_link=giskard_link_name,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
+
+        # Move to Position
         self.add_constraints_of_goal(CartesianPosition(root_link=root_l,
                                                        tip_link=giskard_link_name,
                                                        goal_point=goal_point))
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        return super().__str__()
-
-
-# DEPRECATED
-class AddToRobot(Goal):
-    def __init__(self,
-                 object_name: str,
-                 link_name: str):
-        super().__init__()
-
-        giskard_link_name_prefix_name = self.world.get_link_name(link_name)
-
-        self.world.move_group(object_name, giskard_link_name_prefix_name)
 
     def make_constraints(self):
         pass
@@ -377,7 +305,6 @@ class LiftObject(Goal):
     def __init__(self,
                  object_name: str,
                  lifting: Optional[float] = 0.02,
-                 distance: Optional[float] = 0.2,
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
 
@@ -388,11 +315,6 @@ class LiftObject(Goal):
         goal_position.header.frame_id = tip_link
         goal_position.point.x += lifting
 
-        # Drive Back
-        # goal_point = PointStamped()
-        # goal_point.header.frame_id = tip_link
-        # goal_position.point.z -= distance
-
         # Algin Horizontal
         map_z = Vector3Stamped()
         map_z.header.frame_id = root_name
@@ -401,10 +323,6 @@ class LiftObject(Goal):
         tip_horizontal = Vector3Stamped()
         tip_horizontal.header.frame_id = tip_link
         tip_horizontal.vector.x = 1
-
-        # self.add_constraints_of_goal(CartesianPosition(root_link=root_name,
-        #                                               tip_link=tip_link,
-        #                                               goal_point=goal_point))
 
         self.add_constraints_of_goal(CartesianPosition(root_link=root_name,
                                                        tip_link=tip_link,
