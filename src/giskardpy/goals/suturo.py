@@ -115,8 +115,8 @@ class GraspObject(Goal):
     def __init__(self,
                  object_name: str,
                  object_pose: PoseStamped,
-                 # box_size: Vector3,
-                 object_size: Optional[List[float]] = [0.04, 0.1, 0.2],
+                 object_size: Vector3,
+                 #object_size: Optional[List[float]] = [0.04, 0.1, 0.2],
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link'
                  ):
@@ -154,7 +154,7 @@ class GraspObject(Goal):
 
             return grasp_vector
 
-        object_size = [0.04, 0.1, 0.2]
+        obj_size = [object_size.x, object_size.y, object_size.z]
 
         # Frame/grasp difference
         grasping_difference = 0.07
@@ -175,7 +175,7 @@ class GraspObject(Goal):
         loginfo('giskard_link_name: {}'.format(giskard_link_name))
 
         # box_size_array = [box_size.x, box_size.y, box_size.z]
-        box_size_array = [object_size[0], object_size[1], object_size[2]]
+        box_size_array = [obj_size[0], obj_size[1], obj_size[2]]
 
         # tip_axis
         tip_grasp_a = Vector3Stamped()
@@ -277,6 +277,8 @@ class PlaceObject(Goal):
         goal_point.point.x = target_pose.pose.position.x
         goal_point.point.y = target_pose.pose.position.y
         goal_point.point.z = target_pose.pose.position.z
+
+
 
         '''
         self.add_constraints_of_goal(Pointing(tip_link=tip_link,
