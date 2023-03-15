@@ -237,12 +237,12 @@ class PlaceObject(Goal):
     def __init__(self,
                  object_name: str,
                  target_pose: PoseStamped,
-                 object_height: Optional[float] = 0.01,
+                 object_height: float,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
 
-        object_height = 0.28
+        #object_height = 0.28
 
         root_l = root_link
         tip_l = tip_link

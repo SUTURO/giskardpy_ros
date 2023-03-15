@@ -1024,7 +1024,7 @@ class GiskardWrapper:
     def place_object(self,
                      object_name: str,
                      goal_pose: PoseStamped,
-                     object_height: Optional[float] = 0.1,
+                     object_height: float = 0.1,
                      root_link: Optional[str] = 'map',
                      tip_link: Optional[str] = 'hand_palm_link',
                      testing: Optional[bool] = False
