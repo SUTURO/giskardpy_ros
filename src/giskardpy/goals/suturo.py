@@ -247,6 +247,7 @@ class Retracting(Goal):
 class PreparePlacing(Goal):
     def __init__(self,
                  target_pose: PoseStamped,
+                 object_height: float,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
@@ -264,6 +265,7 @@ class PreparePlacing(Goal):
         root_P_goal_point = self.transform_msg(self.tip_link, goal_point)
 
         # root_P_goal_point.point.x = 0
+        root_P_goal_point.point.x += object_height / 2
         root_P_goal_point.point.y = 0
         root_P_goal_point.point.z = 0
 
