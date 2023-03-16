@@ -1,18 +1,15 @@
-from typing import Optional, Tuple, List
+from typing import Optional, List
 
-from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, Point, Pose
+from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
 
 from giskardpy.goals.align_planes import AlignPlanes
-from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPositionStraight, CartesianPosition, \
-    DiffDriveBaseGoal
+from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition
 from giskardpy.goals.goal import Goal
 from giskardpy.goals.grasp_bar import GraspBar
-from giskardpy.goals.joint_goals import JointPosition, JointPositionList
+from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.goals.pointing import Pointing
-from giskardpy.model.utils import make_world_body_box, make_world_body_cylinder, make_world_body_sphere
 from giskardpy.utils.logging import loginfo
 from suturo_manipulation.gripper import Gripper
-from giskardpy import casadi_wrapper as w
 
 
 class SetBasePosition(Goal):
@@ -48,62 +45,6 @@ class MoveGripper(Goal):
             g.set_gripper_joint_position(1)
         else:
             g.close_gripper_force(1)
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        return super().__str__()
-
-
-class AddObjectToWorld(Goal):
-    def __init__(self,
-                 object_name: str,
-                 object_pose: PoseStamped, ):
-        super().__init__()
-
-        ### Will be removed with knowledge synchronization ###
-        object_type = 'box'
-        object_size = [0.04, 0.1, 0.1]
-
-        # Create object body
-        # if object_type == 'box':
-        # object_size = [0.04, 0.1, 0.2]
-        obj_body = make_world_body_box(object_size[0], object_size[1], object_size[2])
-        print("added box")
-        '''
-        elif object_type == 'cylinder':
-            object_height = 0.259
-            radius = 0.0395
-            obj_body = make_world_body_cylinder(object_height, radius)
-            print('added cylinder')
-
-        elif object_type == 'sphere':
-            radius = 0.0395
-            obj_body = make_world_body_sphere(radius)
-            print('added sphere')
-
-        else:
-            obj_body = Pose()
-            print("No object body to add")
-        '''
-
-        # Set object Pose
-        obj_pose = Pose()
-        obj_pose.position.x = object_pose.pose.position.x
-        obj_pose.position.y = object_pose.pose.position.y
-        obj_pose.position.z = object_pose.pose.position.z
-        obj_pose.orientation.x = object_pose.pose.orientation.x
-        obj_pose.orientation.y = object_pose.pose.orientation.y
-        obj_pose.orientation.z = object_pose.pose.orientation.z
-
-        # Parent link
-        obj_parent_link = ''
-        obj_parent_link_group = ''
-        parent_link = self.world.get_link_name(obj_parent_link, obj_parent_link_group)
-
-        # Add Object to giskard # FIXME Currently crashing grasp action
-        self.world.add_world_body(object_name, obj_body, obj_pose, parent_link)
 
     def make_constraints(self):
         pass
@@ -217,74 +158,6 @@ class GraspObject(Goal):
                                               bar_center=bar_c,
                                               bar_axis=bar_a,
                                               bar_length=bar_l))
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        return super().__str__()
-
-
-class PlaceObject(Goal):
-    def __init__(self,
-                 object_name: str,
-                 target_pose: PoseStamped,
-                 object_height: float,
-                 root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link'):
-        super().__init__()
-
-        # object_height = 0.28
-
-        root_l = root_link
-        tip_l = tip_link
-        giskard_link_name = str(self.world.get_link_name(tip_l))
-
-        target_pose.pose.position.z = target_pose.pose.position.z + (object_height / 2)
-
-        bar_axis = Vector3Stamped()
-        bar_axis.header.frame_id = "base_link"
-        bar_axis.vector.x = 1
-
-        tip_grasp_axis = Vector3Stamped()
-        tip_grasp_axis.header.frame_id = giskard_link_name
-        tip_grasp_axis.vector.z = 1
-
-        bar_axis_b = Vector3Stamped()
-        bar_axis_b.header.frame_id = root_l
-        bar_axis_b.vector.z = 1
-
-        tip_grasp_axis_b = Vector3Stamped()
-        tip_grasp_axis_b.header.frame_id = giskard_link_name
-        tip_grasp_axis_b.vector.x = 1
-
-        # align towards object
-        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
-                                                 tip_link=giskard_link_name,
-                                                 goal_normal=bar_axis,
-                                                 tip_normal=tip_grasp_axis))
-
-        goal_point = PointStamped()
-        goal_point.header.frame_id = root_l
-        goal_point.point.x = target_pose.pose.position.x
-        goal_point.point.y = target_pose.pose.position.y
-        goal_point.point.z = target_pose.pose.position.z
-
-        '''
-        self.add_constraints_of_goal(Pointing(tip_link=tip_link,
-                                              goal_point=goal_point,
-                                              root_link=root_link))
-        '''
-        # align horizontal
-        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
-                                                 tip_link=giskard_link_name,
-                                                 goal_normal=bar_axis_b,
-                                                 tip_normal=tip_grasp_axis_b))
-
-        # Move to Position
-        self.add_constraints_of_goal(CartesianPosition(root_link=root_l,
-                                                       tip_link=giskard_link_name,
-                                                       goal_point=goal_point))
 
     def make_constraints(self):
         pass
@@ -424,3 +297,72 @@ class PreparePlacing(Goal):
 
     def __str__(self) -> str:
         return super().__str__()
+
+
+class PlaceObject(Goal):
+    def __init__(self,
+                 object_name: str,
+                 target_pose: PoseStamped,
+                 object_height: float,
+                 root_link: Optional[str] = 'map',
+                 tip_link: Optional[str] = 'hand_palm_link'):
+        super().__init__()
+
+        # object_height = 0.28
+
+        root_l = root_link
+        tip_l = tip_link
+        giskard_link_name = str(self.world.get_link_name(tip_l))
+
+        target_pose.pose.position.z = target_pose.pose.position.z + (object_height / 2)
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = "base_link"
+        bar_axis.vector.x = 1
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = giskard_link_name
+        tip_grasp_axis.vector.z = 1
+
+        bar_axis_b = Vector3Stamped()
+        bar_axis_b.header.frame_id = root_l
+        bar_axis_b.vector.z = 1
+
+        tip_grasp_axis_b = Vector3Stamped()
+        tip_grasp_axis_b.header.frame_id = giskard_link_name
+        tip_grasp_axis_b.vector.x = 1
+
+        # align towards object
+        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
+                                                 tip_link=giskard_link_name,
+                                                 goal_normal=bar_axis,
+                                                 tip_normal=tip_grasp_axis))
+
+        goal_point = PointStamped()
+        goal_point.header.frame_id = root_l
+        goal_point.point.x = target_pose.pose.position.x
+        goal_point.point.y = target_pose.pose.position.y
+        goal_point.point.z = target_pose.pose.position.z
+
+        '''
+        self.add_constraints_of_goal(Pointing(tip_link=tip_link,
+                                              goal_point=goal_point,
+                                              root_link=root_link))
+        '''
+        # align horizontal
+        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
+                                                 tip_link=giskard_link_name,
+                                                 goal_normal=bar_axis_b,
+                                                 tip_normal=tip_grasp_axis_b))
+
+        # Move to Position
+        self.add_constraints_of_goal(CartesianPosition(root_link=root_l,
+                                                       tip_link=giskard_link_name,
+                                                       goal_point=goal_point))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
