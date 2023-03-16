@@ -95,7 +95,7 @@ class GraspObject(Goal):
         obj_size = [object_size.x, object_size.y, object_size.z]
 
         # Frame/grasp difference
-        grasping_difference = 0.07
+        grasping_difference = 0.04
 
         box_point = PointStamped()
         box_point.header.frame_id = root_link
@@ -169,7 +169,7 @@ class GraspObject(Goal):
 class LiftObject(Goal):
     def __init__(self,
                  object_name: str,
-                 lifting: Optional[float] = 0.2,
+                 lifting: Optional[float] = 0.02,
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
 
