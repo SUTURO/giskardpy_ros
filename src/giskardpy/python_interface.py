@@ -953,104 +953,62 @@ class GiskardWrapper:
     def set_base_position(self):
         self.set_json_goal(constraint_type='SetBasePosition')
 
-    def grasp_object(self,
-                  object_name: str,
-                  object_pose: PoseStamped,
-                  # object_size: Vector3,
-                  object_size=None,
-                  root_link: Optional[str] = 'map',
-                  tip_link: Optional[str] = 'hand_palm_link',
-                  testing: Optional[bool] = False):
-
-        object_type = 'cylinder'
-
-        if testing:
-            print("Open Gripper")
-            self.move_gripper(True)
-            self.plan_and_execute(wait=True)
-
-        print("Getting in position")
-
-        object_size = [0.04, 0.1, 0.2]  # FIXME make box size dynamic
-        height = 0.259
-        radius = 0.0395
-
-
-        ### Will be removed with knowledge synchronization ###
-        if object_name not in self.get_group_names():
-            gisk_size = (object_size[0], object_size[1], object_size[2])
-            gisk_pose = object_pose
-
-            if object_type == 'box':
-                self.add_box(name=object_name,
-                             size=gisk_size,
-                             pose=gisk_pose)
-            elif object_type == 'cylinder':
-
-                self.add_cylinder(name=object_name,
-                                  height=height,
-                                  radius=radius,
-                                  pose=gisk_pose)
-
-        #######################################################
-
-        self.set_json_goal(constraint_type='GraspObject',
-                           object_name=object_name,
-                           object_pose=object_pose,
-                           tip_link=tip_link)
-
-        self.plan_and_execute(wait=True)
-
-        # Attach Object
-        self.update_parent_link_of_group(object_name, tip_link)
-
-        if testing:
-            print("Grabbing Object")
-            self.move_gripper(False)
-            self.plan_and_execute(wait=True)
-
-            # Lift Object
-            print("Lifting Object")
-            self.set_json_goal(constraint_type='LiftObject',
-                               object_name=object_name)
-            self.set_json_goal(constraint_type='Retracting',
-                               object_name=object_name)
-
 
     def move_gripper(self, open_gripper=True):
         self.set_json_goal(constraint_type='MoveGripper',
                            open_gripper=open_gripper)
 
+    def grasp_object(self,
+                     object_name: str,
+                     object_pose: PoseStamped,
+                     object_size: Vector3,
+                     root_link: Optional[str] = 'map',
+                     tip_link: Optional[str] = 'hand_palm_link'):
+
+        self.set_json_goal(constraint_type='GraspObject',
+                           object_name=object_name,
+                           object_pose=object_pose,
+                           object_size=object_size,
+                           root_link=root_link,
+                           tip_link=tip_link)
+
     def place_object(self,
                      object_name: str,
                      goal_pose: PoseStamped,
-                     object_height: float = 0.1,
+                     object_height: float,
                      root_link: Optional[str] = 'map',
-                     tip_link: Optional[str] = 'hand_palm_link',
-                     testing: Optional[bool] = False
-                     ):
-        # Place Object
+                     tip_link: Optional[str] = 'hand_palm_link'):
+
         self.set_json_goal(constraint_type='PlaceObject',
                            object_name=object_name,
-                           goal_pose=goal_pose,
-                           object_height=object_height)
+                           target_pose=goal_pose,
+                           object_height=object_height,
+                           root_link=root_link,
+                           tip_link=tip_link)
 
-        if testing:
-            self.plan_and_execute(wait=True)
+    def lift_object(self,
+                    object_name: str,
+                    lifting: Optional[float] = 0.02,
+                    tip_link: Optional[str] = 'hand_palm_link'):
 
-            # Open Gripper
-            print("Open Gripper")
-            self.move_gripper(True)
-            self.plan_and_execute(wait=True)
-
-            # Detach Object
-            print("Move Back")
-            self.update_parent_link_of_group(object_name, root_link)
-            self.avoid_collision(min_distance=0.01, group1=self.robot_name, group2=object_name)
-            self.set_json_goal(constraint_type='Retracting')
+        self.set_json_goal(constraint_type='LiftObject',
+                           object_name=object_name,
+                           lifting=lifting,
+                           tip_link=tip_link)
 
     def retract(self,
-                   distance: Optional[float] = 0.05):
-        self.set_json_goal(constraint_type='Retracting',
-                           distance=distance)
+                object_name: str,
+                distance: Optional[float] = 0.1,
+                root_link: Optional[str] = 'map',
+                tip_link: Optional[str] = 'base_link'):
 
+        self.set_json_goal(constraint_type='Retracting',
+                           object_name=object_name,
+                           distance=distance,
+                           root_link=root_link,
+                           tip_link=tip_link)
+
+    def prepare_placing(self,
+                        object_pose: PoseStamped):
+        self.set_json_goal(constraint_type='PreparePlacing',
+                           object_pose=object_pose)
