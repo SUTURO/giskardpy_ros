@@ -270,10 +270,30 @@ class PreparePlacing(Goal):
         root_P_goal_point.point.z = 0
 
         print(root_P_goal_point)
-
+        '''
         self.add_constraints_of_goal(Pointing(root_link=root_link,
                                               tip_link=tip_link,
                                               goal_point=goal_point))
+        '''
+
+        # Align Planes
+        # object axis horizontal/vertical
+        bar_axis_b = Vector3Stamped()
+        bar_axis_b.header.frame_id = 'base_link'
+        bar_axis_b.vector.x = 1
+
+        # align z tip axis with object axis
+        tip_grasp_axis_b = Vector3Stamped()
+        tip_grasp_axis_b.header.frame_id = tip_link
+        tip_grasp_axis_b.vector.z = 1
+
+
+        self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
+                                                 tip_link=tip_link,
+                                                 goal_normal=bar_axis_b,
+                                                 tip_normal=tip_grasp_axis_b))
+
+
 
         # Algin Horizontal
         map_z = Vector3Stamped()
