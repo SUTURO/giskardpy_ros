@@ -287,13 +287,10 @@ class PreparePlacing(Goal):
         tip_grasp_axis_b.header.frame_id = tip_link
         tip_grasp_axis_b.vector.z = 1
 
-
         self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
                                                  tip_link=tip_link,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
-
-
 
         # Algin Horizontal
         map_z = Vector3Stamped()
@@ -312,7 +309,7 @@ class PreparePlacing(Goal):
         # Align height
         self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_link,
                                                                tip_link=tip_link,
-                                                       goal_point=root_P_goal_point))
+                                                               goal_point=root_P_goal_point))
 
     def make_constraints(self):
         pass
@@ -378,13 +375,12 @@ class PlaceObject(Goal):
                                                  tip_normal=tip_grasp_axis_b))
 
         # Move to Position
-        self.add_constraints_of_goal(CartesianPosition(root_link=root_l,
-                                                       tip_link=giskard_link_name,
-                                                       goal_point=goal_point))
+        self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_l,
+                                                               tip_link=giskard_link_name,
+                                                               goal_point=goal_point))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
         return super().__str__()
-
