@@ -248,7 +248,7 @@ class PreparePlacing(Goal):
     def __init__(self,
                  target_pose: PoseStamped,
                  object_height: float,
-                 root_link: Optional[str] = 'map',
+                 root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
 
