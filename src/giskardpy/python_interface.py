@@ -1011,4 +1011,4 @@ class GiskardWrapper:
     def prepare_placing(self,
                         object_pose: PoseStamped):
         self.set_json_goal(constraint_type='PreparePlacing',
-                           object_pose=object_pose)
+                           target_pose=object_pose)

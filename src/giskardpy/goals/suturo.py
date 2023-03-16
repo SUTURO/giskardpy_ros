@@ -246,7 +246,7 @@ class Retracting(Goal):
 
 class PreparePlacing(Goal):
     def __init__(self,
-                 object_pose: PoseStamped,
+                 target_pose: PoseStamped,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
@@ -257,9 +257,9 @@ class PreparePlacing(Goal):
         # Pointing
         goal_point = PointStamped()
         goal_point.header.frame_id = root_link
-        goal_point.point.x = object_pose.pose.position.x
-        goal_point.point.y = object_pose.pose.position.y
-        goal_point.point.z = object_pose.pose.position.z
+        goal_point.point.x = target_pose.pose.position.x
+        goal_point.point.y = target_pose.pose.position.y
+        goal_point.point.z = target_pose.pose.position.z
 
         root_P_goal_point = self.transform_msg(self.tip_link, goal_point)
 
