@@ -280,7 +280,7 @@ class PreparePlacing(Goal):
         # object axis horizontal/vertical
         bar_axis_b = Vector3Stamped()
         bar_axis_b.header.frame_id = 'base_link'
-        bar_axis_b.vector.x = 1
+        bar_axis_b.vector.y = 1
 
         # align z tip axis with object axis
         tip_grasp_axis_b = Vector3Stamped()
@@ -291,7 +291,7 @@ class PreparePlacing(Goal):
                                                  tip_link=tip_link,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
-
+        '''
         # Algin Horizontal
         map_z = Vector3Stamped()
         map_z.header.frame_id = root_link
@@ -305,9 +305,9 @@ class PreparePlacing(Goal):
                                                  tip_link=tip_link,
                                                  goal_normal=map_z,
                                                  tip_normal=tip_horizontal))
-        '''
+
         # Align height
-        self.add_constraints_of_goal(CartesianPositionStraight(root_link='odom',
+        self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_link,
                                                                tip_link=tip_link,
                                                                goal_point=root_P_goal_point))
 
