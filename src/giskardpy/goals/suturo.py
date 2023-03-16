@@ -248,7 +248,7 @@ class PreparePlacing(Goal):
     def __init__(self,
                  target_pose: PoseStamped,
                  object_height: float,
-                 root_link: Optional[str] = 'odom',
+                 root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
 
@@ -262,10 +262,10 @@ class PreparePlacing(Goal):
         goal_point.point.y = target_pose.pose.position.y
         goal_point.point.z = target_pose.pose.position.z
 
-        root_P_goal_point = self.transform_msg(self.tip_link, goal_point)
+        root_P_goal_point = self.transform_msg(tip_link, goal_point)
 
         # root_P_goal_point.point.x = 0
-        root_P_goal_point.point.x += object_height / 2
+        root_P_goal_point.point.x += (object_height / 2)
         root_P_goal_point.point.y = 0
         root_P_goal_point.point.z = 0
 
@@ -286,7 +286,7 @@ class PreparePlacing(Goal):
         tip_grasp_axis_b = Vector3Stamped()
         tip_grasp_axis_b.header.frame_id = tip_link
         tip_grasp_axis_b.vector.z = 1
-
+        '''
         self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
                                                  tip_link=tip_link,
                                                  goal_normal=bar_axis_b,
@@ -305,9 +305,9 @@ class PreparePlacing(Goal):
                                                  tip_link=tip_link,
                                                  goal_normal=map_z,
                                                  tip_normal=tip_horizontal))
-
+        '''
         # Align height
-        self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_link,
+        self.add_constraints_of_goal(CartesianPositionStraight(root_link='odom',
                                                                tip_link=tip_link,
                                                                goal_point=root_P_goal_point))
 
@@ -375,9 +375,9 @@ class PlaceObject(Goal):
                                                  tip_normal=tip_grasp_axis_b))
 
         # Move to Position
-        self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_l,
-                                                               tip_link=giskard_link_name,
-                                                               goal_point=goal_point))
+        self.add_constraints_of_goal(CartesianPosition(root_link=root_l,
+                                                       tip_link=giskard_link_name,
+                                                       goal_point=goal_point))
 
     def make_constraints(self):
         pass
