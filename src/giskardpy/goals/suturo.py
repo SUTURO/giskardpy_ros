@@ -310,8 +310,8 @@ class PreparePlacing(Goal):
                                                  tip_normal=tip_horizontal))
 
         # Align height
-        self.add_constraints_of_goal(CartesianPosition(root_link=root_link,
-                                                       tip_link=tip_link,
+        self.add_constraints_of_goal(CartesianPositionStraight(root_link=root_link,
+                                                               tip_link=tip_link,
                                                        goal_point=root_P_goal_point))
 
     def make_constraints(self):
