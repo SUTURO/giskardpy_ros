@@ -1,31 +1,17 @@
 from typing import Optional, List
 
-from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
+from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped
+from tf.transformations import quaternion_from_matrix
 
 from giskardpy.goals.align_planes import AlignPlanes
-from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition
+from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation
 from giskardpy.goals.goal import Goal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.goals.pointing import Pointing
+from giskardpy.model.links import BoxGeometry
 from giskardpy.utils.logging import loginfo
 from suturo_manipulation.gripper import Gripper
-
-
-class SetBasePosition(Goal):
-    def __init__(self):
-        super().__init__()
-
-        goal_new_state = {'arm_roll_joint': 1.6}
-        self.add_constraints_of_goal(JointPositionList(goal_state=goal_new_state))
-
-        loginfo(f'Moved hand out of sight')
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        return super().__str__()
 
 
 class MoveGripper(Goal):
@@ -73,44 +59,26 @@ class GraspObject(Goal):
         """
         super().__init__()
 
-        def set_grasp_axis(axes: List[float],
-                           maximum: Optional[bool] = False):
-            values = axes.copy()
-            values.sort(reverse=maximum)
-
-            index_sorted_values = []
-            for e in values:
-                index_sorted_values.append(axes.index(e))
-
-            grasp_vector = Vector3()
-            if index_sorted_values[0] == 0:
-                grasp_vector.x = 1
-            elif index_sorted_values[0] == 1:
-                grasp_vector.y = 1
-            else:
-                grasp_vector.z = 1
-
-            return grasp_vector
-
         obj_size = [object_size.x, object_size.y, object_size.z]
+        # geometry: BoxGeometry = self.world.groups['box'].root_link.collisions[0] # how to get geometry of a link
 
         # Frame/grasp difference
         grasping_difference = 0.04
 
-        box_point = PointStamped()
-        box_point.header.frame_id = root_link
-        box_point.point.x = object_pose.pose.position.x
-        box_point.point.y = object_pose.pose.position.y - grasping_difference
-        box_point.point.z = object_pose.pose.position.z
+        root_P_box_point = PointStamped()
+        root_P_box_point.header.frame_id = root_link
+        root_P_box_point.point.x = object_pose.pose.position.x
+        root_P_box_point.point.y = object_pose.pose.position.y - grasping_difference  # TODO ??
+        root_P_box_point.point.z = object_pose.pose.position.z
 
         # root link
         self.root = self.world.get_link_name(root_link, None)
         self.tip = self.world.get_link_name(tip_link, None)
-        self.root_P_goal_point = self.transform_msg(self.root, box_point)
+        self.root_P_goal_point = self.transform_msg(self.root, root_P_box_point)  # TODO ??
 
         # tip link
-        giskard_link_name = str(self.world.get_link_name(tip_link))
-        loginfo('giskard_link_name: {}'.format(giskard_link_name))
+        giskard_link_name = str(self.tip)
+        loginfo(f'giskard_link_name: {self.tip}')
 
         # tip_axis
         tip_grasp_a = Vector3Stamped()
@@ -126,7 +94,7 @@ class GraspObject(Goal):
         # bar_axis
         bar_a = Vector3Stamped()
         bar_a.header.frame_id = root_link
-        bar_a.vector = set_grasp_axis(obj_size, maximum=True)
+        bar_a.vector = self.set_grasp_axis(obj_size, maximum=True)
 
         # bar length
         tolerance = 0.5
@@ -143,9 +111,10 @@ class GraspObject(Goal):
         tip_grasp_axis_b.header.frame_id = giskard_link_name
         tip_grasp_axis_b.vector.z = 1
 
-        self.add_constraints_of_goal(Pointing(root_link=root_link,
-                                              tip_link=giskard_link_name,
-                                              goal_point=box_point))
+        # Constraints
+        # self.add_constraints_of_goal(Pointing(root_link=root_link,
+        #                                       tip_link=giskard_link_name,
+        #                                       goal_point=root_P_box_point))
 
         self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
                                                  tip_link=giskard_link_name,
@@ -159,6 +128,25 @@ class GraspObject(Goal):
                                               bar_axis=bar_a,
                                               bar_length=bar_l))
 
+    def set_grasp_axis(self, axes: List[float],
+                       maximum: Optional[bool] = False):
+        values = axes.copy()
+        values.sort(reverse=maximum)
+
+        index_sorted_values = []
+        for e in values:
+            index_sorted_values.append(axes.index(e))
+
+        grasp_vector = Vector3()
+        if index_sorted_values[0] == 0:
+            grasp_vector.x = 1
+        elif index_sorted_values[0] == 1:
+            grasp_vector.y = 1
+        else:
+            grasp_vector.z = 1
+
+        return grasp_vector
+
     def make_constraints(self):
         pass
 
@@ -169,8 +157,8 @@ class GraspObject(Goal):
 class LiftObject(Goal):
     def __init__(self,
                  object_name: str,
-                 lifting: Optional[float] = 0.02,
-                 tip_link: Optional[str] = 'hand_palm_link'):
+                 lifting: float = 0.02,
+                 tip_link: str = 'hand_palm_link'):
         super().__init__()
 
         root_name = 'map'
@@ -180,7 +168,7 @@ class LiftObject(Goal):
         goal_position.header.frame_id = tip_link
         goal_position.point.x += lifting
 
-        # Algin Horizontal
+        # Align Horizontal
         map_z = Vector3Stamped()
         map_z.header.frame_id = root_name
         map_z.vector.z = 1
@@ -269,7 +257,7 @@ class PreparePlacing(Goal):
         root_P_goal_point.point.y = 0
         root_P_goal_point.point.z = 0
 
-        print(root_P_goal_point)
+        #print(root_P_goal_point)
         '''
         self.add_constraints_of_goal(Pointing(root_link=root_link,
                                               tip_link=tip_link,
@@ -286,12 +274,14 @@ class PreparePlacing(Goal):
         tip_grasp_axis_b = Vector3Stamped()
         tip_grasp_axis_b.header.frame_id = tip_link
         tip_grasp_axis_b.vector.z = 1
+
         '''
         self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
                                                  tip_link=tip_link,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
         '''
+
         # Algin Horizontal
         map_z = Vector3Stamped()
         map_z.header.frame_id = root_link
@@ -327,11 +317,9 @@ class PlaceObject(Goal):
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
 
-        # object_height = 0.28
-
-        root_l = root_link
-        tip_l = tip_link
-        giskard_link_name = str(self.world.get_link_name(tip_l))
+        self.root_link = root_link
+        self.tip_link = tip_link
+        giskard_link_name = str(self.world.get_link_name(self.tip_link))
 
         target_pose.pose.position.z = target_pose.pose.position.z + (object_height / 2)
 
@@ -344,7 +332,7 @@ class PlaceObject(Goal):
         tip_grasp_axis.vector.z = 1
 
         bar_axis_b = Vector3Stamped()
-        bar_axis_b.header.frame_id = root_l
+        bar_axis_b.header.frame_id = self.root_link
         bar_axis_b.vector.z = 1
 
         tip_grasp_axis_b = Vector3Stamped()
@@ -352,13 +340,13 @@ class PlaceObject(Goal):
         tip_grasp_axis_b.vector.x = 1
 
         # align towards object
-        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
-                                                 tip_link=giskard_link_name,
+        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_link,
+                                                 tip_link=self.tip_link,
                                                  goal_normal=bar_axis,
                                                  tip_normal=tip_grasp_axis))
 
         goal_point = PointStamped()
-        goal_point.header.frame_id = root_l
+        goal_point.header.frame_id = self.root_link
         goal_point.point.x = target_pose.pose.position.x
         goal_point.point.y = target_pose.pose.position.y
         goal_point.point.z = target_pose.pose.position.z
@@ -369,14 +357,17 @@ class PlaceObject(Goal):
                                               root_link=root_link))
         '''
         # align horizontal
-        self.add_constraints_of_goal(AlignPlanes(root_link=root_l,
-                                                 tip_link=giskard_link_name,
+        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_link,
+                                                 tip_link=self.tip_link,
                                                  goal_normal=bar_axis_b,
                                                  tip_normal=tip_grasp_axis_b))
+        # q = quaternion_from_matrix()
+        # QuaternionStamped(*q)
+        # CartesianOrientation
 
         # Move to Position
-        self.add_constraints_of_goal(CartesianPosition(root_link=root_l,
-                                                       tip_link=giskard_link_name,
+        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_link,
+                                                       tip_link=self.tip_link,
                                                        goal_point=goal_point))
 
     def make_constraints(self):

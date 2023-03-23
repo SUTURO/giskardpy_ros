@@ -950,10 +950,6 @@ class GiskardWrapper:
             raise UnknownGroupException(res.error_msg)
         raise ServiceException(res.error_msg)
 
-    def set_base_position(self):
-        self.set_json_goal(constraint_type='SetBasePosition')
-
-
     def move_gripper(self, open_gripper=True):
         self.set_json_goal(constraint_type='MoveGripper',
                            open_gripper=open_gripper)
