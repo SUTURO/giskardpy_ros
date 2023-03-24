@@ -57,6 +57,10 @@ class AlignPlanes(Goal):
         root_R_tip = self.get_fk(self.root, self.tip).to_rotation()
         root_V_tip_normal = root_R_tip.dot(tip_V_tip_normal)
         root_V_root_normal = w.Vector3(self.root_V_root_normal)
+        root_V_tip_normal.vis_frame = self.world.get_link_name('hand_palm_link')
+        root_V_root_normal.vis_frame = self.world.get_link_name('hand_palm_link')
+        self.add_debug_expr('root_V_tip_normal', root_V_tip_normal)
+        self.add_debug_expr('root_V_root_normal', root_V_root_normal)
         self.add_vector_goal_constraints(frame_V_current=root_V_tip_normal,
                                          frame_V_goal=root_V_root_normal,
                                          reference_velocity=self.max_velocity,

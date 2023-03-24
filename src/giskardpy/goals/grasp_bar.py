@@ -70,6 +70,10 @@ class GraspBar(Goal):
         root_T_tip = self.get_fk(self.root, self.tip)
         root_V_tip_normal = w.dot(root_T_tip, tip_V_tip_grasp_axis)
 
+        root_V_tip_normal.vis_frame = self.world.get_link_name('hand_palm_link')
+        root_V_bar_axis.vis_frame = self.world.get_link_name('hand_palm_link')
+        self.add_debug_expr('root_V_tip_normal2', root_V_tip_normal)
+        self.add_debug_expr('root_V_bar_axis', root_V_bar_axis)
         self.add_vector_goal_constraints(frame_V_current=root_V_tip_normal,
                                          frame_V_goal=root_V_bar_axis,
                                          reference_velocity=self.reference_angular_velocity,
@@ -82,6 +86,7 @@ class GraspBar(Goal):
 
         dist, nearest = w.distance_point_to_line_segment(root_P_tip, root_P_line_start, root_P_line_end)
 
+        self.add_debug_expr('nearest', nearest)
         self.add_point_goal_constraints(frame_P_current=root_T_tip.to_position(),
                                         frame_P_goal=nearest,
                                         reference_velocity=self.reference_linear_velocity,

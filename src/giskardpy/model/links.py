@@ -209,7 +209,7 @@ class Link:
             name = PrefixName(name, None)
         self.name = name
         self.visuals = []
-        self.collisions = []
+        self.collisions: List[LinkGeometry] = []
         self.parent_joint_name = None
         self.child_joint_names = []
 

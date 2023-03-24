@@ -6,6 +6,7 @@ class HSR_Base(Giskard):
     def __init__(self):
         super().__init__()
         self.load_moveit_self_collision_matrix('package://giskardpy/config/hsrb.srdf')
+        self.configure_DebugMarkerPublisher(enabled=True)
         self.set_default_external_collision_avoidance(soft_threshold=0.05,
                                                       hard_threshold=0.0)
         for joint_name in ['r_wrist_roll_joint', 'l_wrist_roll_joint']:
