@@ -13,6 +13,41 @@ from giskardpy.model.links import BoxGeometry
 from giskardpy.utils.logging import loginfo
 from suturo_manipulation.gripper import Gripper
 
+import hsrb_interface
+import rospy
+import sys
+from hsrb_interface import geometry
+
+
+class TestGoal(Goal):
+
+    def __init__(self,
+                 object_name='',
+                 object_pose: PoseStamped = None,
+                 grasp_object: bool = True):
+        super().__init__()
+
+        g = Gripper(apply_force_action_server='/hsrb/gripper_controller/apply_force',
+                    follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
+
+        if grasp_object:
+            g.close_gripper_force(1)
+            print(g.object_in_gripper())
+            if g.object_in_gripper():
+                g.publish_object_in_gripper(object_frame_id=object_name, pose_stamped=object_pose, mode=0)
+        else:
+            g.set_gripper_joint_position(1)
+            g.publish_object_in_gripper(object_frame_id=object_name, pose_stamped=object_pose, mode=1)
+
+    def make_constraints(self):
+        # Does not work
+        # robot = hsrb_interface.Robot()
+        # gripper = robot.try_get('gripper')
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
 
 class MoveGripper(Goal):
     def __init__(self, open_gripper=True):
@@ -58,6 +93,11 @@ class GraspObject(Goal):
 
         """
         super().__init__()
+
+        self.object_pose = object_pose
+
+        self.object_orientation = QuaternionStamped()
+        self.object_orientation.quaternion = object_pose.pose.orientation
 
         obj_size = [object_size.x, object_size.y, object_size.z]
         # geometry: BoxGeometry = self.world.groups['box'].root_link.collisions[0] # how to get geometry of a link
@@ -139,13 +179,20 @@ class GraspObject(Goal):
                                                  tip_link=tip_link,
                                                  goal_normal=self.obj_front_axis,
                                                  tip_normal=self.tip_front_axis))
+        '''
+
+        self.add_constraints_of_goal(CartesianOrientation(root_link=root_link,
+                                                          tip_link=tip_link,
+                                                          goal_orientation=self.object_orientation))
+        '''
 
         self.add_constraints_of_goal(GraspBar(root_link=root_link,
                                               tip_link=tip_link,
                                               tip_grasp_axis=self.tip_horizontal_axis,
                                               bar_center=self.bar_center,
                                               bar_axis=self.bar_axis,
-                                              bar_length=self.bar_length))
+                                              bar_length=self.bar_length
+                                              ))
 
     def __str__(self) -> str:
         return super().__str__()

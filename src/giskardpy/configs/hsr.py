@@ -79,6 +79,11 @@ class HSR_Gazebo(HSR_Base):
         self.add_follow_joint_trajectory_server(namespace='/hsrb/arm_trajectory_controller/follow_joint_trajectory',
                                                 state_topic='/hsrb/arm_trajectory_controller/state',
                                                 fill_velocity_values=True)
+
+        #self.add_follow_joint_trajectory_server(namespace='/hsrb/gripper_controller/follow_joint_trajectory',
+        #                                        state_topic='',
+        #                                        fill_velocity_values=True)
+
         self.overwrite_external_collision_avoidance(joint_name='brumbrum',
                                                     number_of_repeller=2,
                                                     soft_threshold=0.1,

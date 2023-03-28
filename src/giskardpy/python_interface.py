@@ -1008,3 +1008,12 @@ class GiskardWrapper:
                         object_pose: PoseStamped):
         self.set_json_goal(constraint_type='PreparePlacing',
                            target_pose=object_pose)
+
+    def test_goal(self,
+                  object_name='',
+                  object_pose: PoseStamped = None,
+                  grasp_object: bool = True):
+        self.set_json_goal(constraint_type='TestGoal',
+                           object_name=object_name,
+                           object_pose=object_pose,
+                           grasp_object=grasp_object)
