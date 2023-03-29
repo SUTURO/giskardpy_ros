@@ -959,14 +959,16 @@ class GiskardWrapper:
                      object_pose: PoseStamped,
                      object_size: Vector3,
                      root_link: Optional[str] = 'map',
-                     tip_link: Optional[str] = 'hand_palm_link'):
+                     tip_link: Optional[str] = 'hand_palm_link',
+                     offset: float = 0.001):
 
         self.set_json_goal(constraint_type='GraspObject',
                            object_name=object_name,
                            object_pose=object_pose,
                            object_size=object_size,
                            root_link=root_link,
-                           tip_link=tip_link)
+                           tip_link=tip_link,
+                           offset=offset)
 
     def place_object(self,
                      object_name: str,
@@ -1017,3 +1019,14 @@ class GiskardWrapper:
                            object_name=object_name,
                            object_pose=object_pose,
                            grasp_object=grasp_object)
+
+    def set_pointing(self,
+                     goal_pose: PoseStamped,
+                     root_link: str = 'map',
+                     tip_link: str = 'hand_palm_link'):
+
+        self.set_json_goal(constraint_type='SetPointing',
+                           goal_pose=goal_pose,
+                           root_link=root_link,
+                           tip_link=tip_link)
+
