@@ -960,7 +960,7 @@ class GiskardWrapper:
                      object_size: Vector3,
                      root_link: Optional[str] = 'map',
                      tip_link: Optional[str] = 'hand_palm_link',
-                     offset: float = 0.001):
+                     offset: float = 0.01):
 
         self.set_json_goal(constraint_type='GraspObject',
                            object_name=object_name,

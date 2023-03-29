@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List
 
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped
@@ -11,7 +12,7 @@ from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
-from giskardpy.utils.logging import loginfo
+from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
 
 import giskardpy.utils.tfwrapper as tf
@@ -103,11 +104,11 @@ class SetPointing(Goal):
 class GraspObject(Goal):
     def __init__(self,
                  object_name: str,
-                 object_pose: PoseStamped,
-                 object_size: Vector3,
+                 object_pose: Optional[PoseStamped] = None,
+                 object_size: Optional[Vector3] = None,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link',
-                 offset: float = 0.001
+                 offset: Optional[float] = 0.01
                  ):
         """
         Move to a given position where a box can be grasped.
@@ -121,61 +122,53 @@ class GraspObject(Goal):
         """
         super().__init__()
 
-        self.object_pose = object_pose
+        # root link
+        self.root = self.world.get_link_name(root_link, None)
+        loginfo(f'root_link: {self.root}')
+        self.root_str = str(self.root)
+
+        # tip link
+        self.tip = self.world.get_link_name(tip_link, None)
+        loginfo(f'tip_link: {self.tip}')
+        self.tip_str = str(self.tip)
+
+        self.object_pose = None
+        self.object_geometry = None
 
         ### Orientation testing ###
         self.object_orientation = QuaternionStamped()
         self.object_orientation.header.frame_id = 'map'
         self.object_orientation.quaternion = object_pose.pose.orientation
 
-        # Size of box object as array
-        obj_size = [object_size.x, object_size.y, object_size.z]
-        obj_type = 'box'
+        # Get object geometry from name
+        self.get_object_by_name(object_name)
 
-        try:
-            loginfo('trying to get objects with name')
-
-            # Get geometry of object/link
-            object_geometry: LinkGeometry = self.world.groups[object_name].root_link.collisions[0]
-
-            # Declare instance of geometry
-            if isinstance(object_geometry, BoxGeometry):
-                object_geometry: BoxGeometry = object_geometry
-                obj_size = [object_geometry.width, object_geometry.depth, object_geometry.height]
-
-            elif isinstance(object_geometry, CylinderGeometry):
-                object_geometry: CylinderGeometry = object_geometry
-                obj_type = 'cylinder'
-                obj_size = [object_geometry.height, object_geometry.radius]
-
-            elif isinstance(object_geometry, SphereGeometry):
-                object_geometry: SphereGeometry = object_geometry
-                obj_type = 'sphere'
-                obj_size = [object_geometry.radius]
-
-            else:
-                raise Exception('Not supported geometry')
-
-            loginfo(f'Got geometry: {obj_type}')
-        except:
-            loginfo('Could not get geometry from name')
-
-        # root link
-        self.root = self.world.get_link_name(root_link, None)
-        # tip link
-        self.tip = self.world.get_link_name(tip_link, None)
+        # Assign object if no name was given
+        if self.object_pose is None:
+            logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
+            self.object_pose = object_pose
+            self.obj_size = [object_size.x, object_size.y, object_size.z]
+            self.obj_type = 'box'
 
         # Frame/grasp difference
-        grasp_axis = self.set_grasp_axis(obj_size, maximum=False)
+        frame_difference = 0.07
+
+        grasp_axis = self.set_grasp_axis(self.obj_size, maximum=False)
         if grasp_axis.x == 1:
-            grasping_difference = (object_size.y / 2) + offset
+            if (object_size.y/2) > frame_difference:
+                grasping_difference = (object_size.y / 2) + offset
+            else:
+                grasping_difference = frame_difference
         elif grasp_axis.y == 1:
-            grasping_difference = (object_size.x / 2) + offset
+            if (object_size.x/2) > frame_difference:
+                grasping_difference = (object_size.x / 2) + offset
+            else:
+                grasping_difference = frame_difference
         else:
             grasping_difference = offset
 
         root_P_box_point = PointStamped()
-        root_P_box_point.header.frame_id = root_link
+        root_P_box_point.header.frame_id = self.root_str
         root_P_box_point.point = object_pose.pose.position
 
         # root -> tip tranfsormation
@@ -184,13 +177,9 @@ class GraspObject(Goal):
         self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
         # TODO Calculate tip offset correctly. HSR will now push objects a little bit
 
-        # tip link
-        giskard_link_name = str(self.tip)
-        loginfo(f'giskard_link_name: {self.tip}')
-
         # tip_axis
         self.tip_horizontal_axis = Vector3Stamped()
-        self.tip_horizontal_axis.header.frame_id = giskard_link_name
+        self.tip_horizontal_axis.header.frame_id = self.tip_str
         self.tip_horizontal_axis.vector.x = 1
 
         # bar_center
@@ -198,12 +187,12 @@ class GraspObject(Goal):
 
         # bar_axis
         self.bar_axis = Vector3Stamped()
-        self.bar_axis.header.frame_id = root_link
-        self.bar_axis.vector = self.set_grasp_axis(obj_size, maximum=True)
+        self.bar_axis.header.frame_id = self.root_str
+        self.bar_axis.vector = self.set_grasp_axis(self.obj_size, maximum=True)
 
         # bar length
         tolerance = 0.5
-        self.bar_length = max(obj_size) * tolerance
+        self.bar_length = max(self.obj_size) * tolerance
 
         # Align Planes
         # object axis horizontal/vertical
@@ -214,20 +203,18 @@ class GraspObject(Goal):
 
         # align z tip axis with object axis
         self.tip_front_axis = Vector3Stamped()
-        self.tip_front_axis.header.frame_id = giskard_link_name
+        self.tip_front_axis.header.frame_id = self.tip_str
         self.tip_front_axis.vector.z = 1
 
     def make_constraints(self):
-        root_link = str(self.root)
-        tip_link = str(self.tip)
 
-        self.add_constraints_of_goal(AlignPlanes(root_link=root_link,
-                                                 tip_link=tip_link,
+        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
+                                                 tip_link=self.tip_str,
                                                  goal_normal=self.obj_front_axis,
                                                  tip_normal=self.tip_front_axis))
 
-        self.add_constraints_of_goal(GraspBar(root_link=root_link,
-                                              tip_link=tip_link,
+        self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
+                                              tip_link=self.tip_str,
                                               tip_grasp_axis=self.tip_horizontal_axis,
                                               bar_center=self.bar_center,
                                               bar_axis=self.bar_axis,
@@ -254,6 +241,43 @@ class GraspObject(Goal):
             grasp_vector.z = 1
 
         return grasp_vector
+
+    def get_object_by_name(self, object_name):
+        try:
+            loginfo('trying to get objects with name')
+
+            # Get object
+            self.object_pose = PoseStamped()
+            self.object_pose.header.frame_id = self.world.groups[object_name].root_link
+            self.object_pose.pose = self.world.groups[object_name].base_pose
+
+            loginfo(f'Object_pose by name: {self.object_pose}')
+
+            object_geometry: LinkGeometry = self.world.groups[object_name].root_link.collisions[0]
+
+            # Declare instance of geometry
+            if isinstance(object_geometry, BoxGeometry):
+                self.obj_type = 'box'
+                self.object_geometry: BoxGeometry = object_geometry
+                self.obj_size = [object_geometry.width, object_geometry.depth, object_geometry.height]
+
+            elif isinstance(object_geometry, CylinderGeometry):
+                self.obj_type = 'cylinder'
+                self.object_geometry: CylinderGeometry = object_geometry
+                self.obj_size = [object_geometry.height, object_geometry.radius]
+
+            elif isinstance(object_geometry, SphereGeometry):
+                self.obj_type = 'sphere'
+                self.object_geometry: SphereGeometry = object_geometry
+                self.obj_size = [object_geometry.radius]
+
+            else:
+                raise Exception('Not supported geometry')
+
+            loginfo(f'Got geometry: {self.obj_type}')
+
+        except:
+            loginfo('Could not get geometry from name')
 
 
 class LiftObject(Goal):
