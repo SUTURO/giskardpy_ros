@@ -6,7 +6,7 @@ from py_trees import Status
 from giskardpy.model.utils import make_world_body_box, make_world_body_cylinder, make_world_body_sphere
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 
-from rosprolog_client import Prolog
+#from rosprolog_client import Prolog
 
 #import pydevd_pycharm
 
