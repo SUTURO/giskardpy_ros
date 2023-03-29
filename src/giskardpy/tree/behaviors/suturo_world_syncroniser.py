@@ -1,4 +1,4 @@
-'''import rospy
+import rospy
 from geometry_msgs.msg import PoseStamped, Pose
 from giskard_msgs.srv import UpdateWorldRequest, UpdateWorld
 from py_trees import Status
@@ -16,8 +16,8 @@ from giskardpy.utils import logging
 
 
 class SuturoWorldSynchroniser(GiskardBehavior):
-    prolog: Prolog
-    last_update: float
+    '''prolog: Prolog
+    last_update: float'''
 
     @profile
     def __init__(self, name=None,
@@ -29,9 +29,9 @@ class SuturoWorldSynchroniser(GiskardBehavior):
 
     @profile
     def setup(self, timeout=0.0):
-        self.prolog = Prolog(name_space=self.name_space,
+        '''self.prolog = Prolog(name_space=self.name_space,
                              wait_for_services=False)
-        self.last_update = 0.0
+        self.last_update = 0.0'''
         return True
 
     # shape terms:
@@ -46,7 +46,7 @@ class SuturoWorldSynchroniser(GiskardBehavior):
     # sphere(Radius)
 
     def poll(self):
-        updates = self.prolog.once(f'giskard_updates({self.last_update}, CurrentTime, Updates)')
+        '''updates = self.prolog.once(f'giskard_updates({self.last_update}, CurrentTime, Updates)')
         self.last_update = updates['CurrentTime']
         # print(updates, flush=True)
         # logging.loginfo(updates)
@@ -100,10 +100,10 @@ class SuturoWorldSynchroniser(GiskardBehavior):
                 # self.collision_scene.update_group_blacklist(parent_group)
                 # self.collision_scene.blacklist_inter_group_collisions()
             except:
-                logging.loginfo('caught invalid object')
+                logging.loginfo('caught invalid object')'''
+        pass
 
     @profile
     def update(self):
         #self.poll()
         return Status.SUCCESS
-'''
