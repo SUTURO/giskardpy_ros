@@ -1,4 +1,4 @@
-import rospy
+'''import rospy
 from geometry_msgs.msg import PoseStamped, Pose
 from giskard_msgs.srv import UpdateWorldRequest, UpdateWorld
 from py_trees import Status
@@ -106,3 +106,4 @@ class SuturoWorldSynchroniser(GiskardBehavior):
     def update(self):
         #self.poll()
         return Status.SUCCESS
+'''
