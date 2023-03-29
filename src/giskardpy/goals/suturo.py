@@ -10,7 +10,7 @@ from giskardpy.goals.goal import Goal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.goals.pointing import Pointing
-from giskardpy.model.links import BoxGeometry
+from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.utils.logging import loginfo
 from suturo_manipulation.gripper import Gripper
 
@@ -128,9 +128,37 @@ class GraspObject(Goal):
         self.object_orientation.header.frame_id = 'map'
         self.object_orientation.quaternion = object_pose.pose.orientation
 
-        # Size of object as array
+        # Size of box object as array
         obj_size = [object_size.x, object_size.y, object_size.z]
-        # geometry: BoxGeometry = self.world.groups['box'].root_link.collisions[0] # how to get geometry of a link
+        obj_type = 'box'
+
+        try:
+            loginfo('trying to get objects with name')
+
+            # Get geometry of object/link
+            object_geometry: LinkGeometry = self.world.groups[object_name].root_link.collisions[0]
+
+            # Declare instance of geometry
+            if isinstance(object_geometry, BoxGeometry):
+                object_geometry: BoxGeometry = object_geometry
+                obj_size = [object_geometry.width, object_geometry.depth, object_geometry.height]
+
+            elif isinstance(object_geometry, CylinderGeometry):
+                object_geometry: CylinderGeometry = object_geometry
+                obj_type = 'cylinder'
+                obj_size = [object_geometry.height, object_geometry.radius]
+
+            elif isinstance(object_geometry, SphereGeometry):
+                object_geometry: SphereGeometry = object_geometry
+                obj_type = 'sphere'
+                obj_size = [object_geometry.radius]
+
+            else:
+                raise Exception('Not supported geometry')
+
+            loginfo(f'Got geometry: {obj_type}')
+        except:
+            loginfo('Could not get geometry from name')
 
         # root link
         self.root = self.world.get_link_name(root_link, None)
@@ -179,6 +207,7 @@ class GraspObject(Goal):
 
         # Align Planes
         # object axis horizontal/vertical
+        # TODO replace with object orientation
         self.obj_front_axis = Vector3Stamped()
         self.obj_front_axis.header.frame_id = 'base_link'
         self.obj_front_axis.vector.x = 1
