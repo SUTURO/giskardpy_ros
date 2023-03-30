@@ -16,7 +16,7 @@ from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
 
 import giskardpy.utils.tfwrapper as tf
-from giskardpy import casadi_wrapper as w
+from giskardpy import casadi_wrapper as w, identifier
 
 import hsrb_interface
 import rospy
@@ -24,7 +24,43 @@ import sys
 from hsrb_interface import geometry
 
 
-class TestGoal(Goal):
+
+class TestRotationGoal(Goal):
+
+    def __init__(self,
+                 object_name='',
+                 object_pose: PoseStamped = None):
+        super().__init__()
+
+        root_link = 'map'
+        tip_link = 'hand_palm_link'
+
+        root_name = self.world.get_link_name(root_link)
+        tip_name = self.world.get_link_name(tip_link)
+
+
+
+
+        object_orientation = QuaternionStamped()
+        object_orientation.header.frame_id = tip_link
+        object_orientation.quaternion = object_pose.pose.orientation
+
+        self.add_constraints_of_goal(CartesianOrientation(root_link=root_link,
+                                                          tip_link=tip_link,
+                                                          goal_orientation=object_orientation))
+
+
+    def make_constraints(self):
+        # Does not work
+        # robot = hsrb_interface.Robot()
+        # gripper = robot.try_get('gripper')
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+
+class TestGripperGoal(Goal):
 
     def __init__(self,
                  object_name='',
@@ -36,10 +72,11 @@ class TestGoal(Goal):
                     follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
 
         if grasp_object:
-            g.close_gripper_force(1)
+            #g.close_gripper_force(1)
             print(g.object_in_gripper())
             if g.object_in_gripper():
                 g.publish_object_in_gripper(object_frame_id=object_name, pose_stamped=object_pose, mode=0)
+
         else:
             g.set_gripper_joint_position(1)
             g.publish_object_in_gripper(object_frame_id=object_name, pose_stamped=object_pose, mode=1)
@@ -55,7 +92,9 @@ class TestGoal(Goal):
 
 
 class MoveGripper(Goal):
-    def __init__(self, open_gripper=True):
+    def __init__(self,
+                 open_gripper=True,
+                 joint_position=1.0):
         """
         Open / CLose Gripper.
         Current implementation is not final and will be replaced with a follow joint trajectory connection.
@@ -64,13 +103,14 @@ class MoveGripper(Goal):
         """
 
         super().__init__()
-        g = Gripper(apply_force_action_server='/hsrb/gripper_controller/apply_force',
+        self.g = Gripper(apply_force_action_server='/hsrb/gripper_controller/apply_force',
                     follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
 
         if open_gripper:
-            g.set_gripper_joint_position(1)
+            self.g.set_gripper_joint_position(joint_position)
+
         else:
-            g.close_gripper_force(1)
+            self.g.close_gripper_force(1)
 
     def make_constraints(self):
         pass
@@ -141,14 +181,14 @@ class GraspObject(Goal):
         self.object_orientation.quaternion = object_pose.pose.orientation
 
         # Get object geometry from name
-        self.get_object_by_name(object_name)
+        #self.get_object_by_name(object_name)
 
         # Assign object if no name was given
-        if self.object_pose is None:
-            logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
-            self.object_pose = object_pose
-            self.obj_size = [object_size.x, object_size.y, object_size.z]
-            self.obj_type = 'box'
+        #if self.object_pose is None:
+        logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
+        self.object_pose = object_pose
+        self.obj_size = [object_size.x, object_size.y, object_size.z]
+        self.obj_type = 'box'
 
         # Frame/grasp difference
         frame_difference = 0.07
