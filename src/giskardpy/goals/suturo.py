@@ -191,7 +191,7 @@ class GraspObject(Goal):
         self.obj_type = 'box'
 
         # Frame/grasp difference
-        frame_difference = 0.07
+        frame_difference = 0.05
 
         grasp_axis = self.set_grasp_axis(self.obj_size, maximum=False)
         if grasp_axis.x == 1:
