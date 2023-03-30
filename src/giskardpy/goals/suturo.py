@@ -232,7 +232,7 @@ class GraspObject(Goal):
 
         # bar length
         tolerance = 0.5
-        self.bar_length = max(self.obj_size) * tolerance
+        self.bar_length = 0.01 # max(self.obj_size) * tolerance
 
         # Align Planes
         # object axis horizontal/vertical
