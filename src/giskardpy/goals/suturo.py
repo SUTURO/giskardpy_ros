@@ -196,12 +196,12 @@ class GraspObject(Goal):
         grasp_axis = self.set_grasp_axis(self.obj_size, maximum=False)
         if grasp_axis.x == 1:
             if (object_size.y/2) > frame_difference:
-                grasping_difference = (object_size.y / 2) + offset
+                grasping_difference = ((object_size.y / 2) + offset) - frame_difference
             else:
                 grasping_difference = frame_difference
         elif grasp_axis.y == 1:
             if (object_size.x/2) > frame_difference:
-                grasping_difference = (object_size.x / 2) + offset
+                grasping_difference = ((object_size.x / 2) + offset) - frame_difference
             else:
                 grasping_difference = frame_difference
         else:
