@@ -210,7 +210,7 @@ class GraspObject(Goal):
 
         root_P_box_point = PointStamped()
         root_P_box_point.header.frame_id = self.root_str
-        root_P_box_point.point = object_pose.pose.position
+        root_P_box_point.point = self.object_pose.pose.position
 
         # root -> tip tranfsormation
         self.tip_P_goal_point = self.transform_msg(self.tip, root_P_box_point)
