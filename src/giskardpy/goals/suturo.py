@@ -186,6 +186,7 @@ class GraspObject(Goal):
         # Assign object if no name was given
         #if self.object_pose is None:
         logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
+        object_pose.pose.position.z -= 0.01
         self.object_pose = object_pose
         self.obj_size = [object_size.x, object_size.y, object_size.z]
         self.obj_type = 'box'
