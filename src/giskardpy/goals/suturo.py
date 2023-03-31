@@ -186,7 +186,7 @@ class GraspObject(Goal):
         # Assign object if no name was given
         #if self.object_pose is None:
         logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
-        object_pose.pose.position.z -= 0.01
+        object_pose.pose.position.z = object_pose.pose.position.z - 0.02
         self.object_pose = object_pose
         self.obj_size = [object_size.x, object_size.y, object_size.z]
         self.obj_type = 'box'
@@ -254,6 +254,11 @@ class GraspObject(Goal):
                                                  goal_normal=self.obj_front_axis,
                                                  tip_normal=self.tip_front_axis))
 
+        '''
+        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
+                                                          tip_link=self.tip_str,
+                                                          goal_orientation=self.object_orientation))
+        '''
         self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
                                               tip_link=self.tip_str,
                                               tip_grasp_axis=self.tip_horizontal_axis,
