@@ -1,22 +1,29 @@
-import rospy
-from geometry_msgs.msg import PoseStamped, Pose
-from giskard_msgs.srv import UpdateWorldRequest, UpdateWorld
+from geometry_msgs.msg import Pose
 from py_trees import Status
 
 from giskardpy.model.utils import make_world_body_box, make_world_body_cylinder, make_world_body_sphere
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 
-from rosprolog_client import Prolog
-
-#import pydevd_pycharm
-
-
-# pydevd_pycharm.settrace('localhost', port=1234, stdoutToServer=True, stderrToServer=True, suspend=False)
 from giskardpy.utils import logging
+
+from importlib import import_module
+
+try:
+    rosprolog_client = import_module("rosprolog_client")
+    Prolog = rosprolog_client.Prolog
+    prolog_exists = True
+except:
+    prolog_exists = False
+
+# Debugging
+# import pydevd_pycharm
+# pydevd_pycharm.settrace('localhost', port=1234, stdoutToServer=True, stderrToServer=True, suspend=False)
 
 
 class SuturoWorldSynchroniser(GiskardBehavior):
-    prolog: Prolog
+    if prolog_exists:
+        prolog: Prolog
+
     last_update: float
     receiving_updates: bool
 
@@ -30,8 +37,11 @@ class SuturoWorldSynchroniser(GiskardBehavior):
 
     @profile
     def setup(self, timeout=0.0):
-        self.prolog = Prolog(name_space=self.name_space,
-                             wait_for_services=False)
+        if prolog_exists:
+            self.prolog = Prolog(name_space=self.name_space,
+                                 wait_for_services=False)
+        else:
+            logging.logwarn('Knowledge synchronizer: Prolog not found. Won\'t pull updates' )
         self.last_update = 0.0
         self.receiving_updates = True
         return True
@@ -105,17 +115,18 @@ class SuturoWorldSynchroniser(GiskardBehavior):
                 except:
                     logging.loginfo('caught invalid object')
             if not self.receiving_updates:
-                logging.loginfo('Knowledge synchronizer: receiving updates')
+                logging.loginfo('Knowledge synchronizer: connected')
                 self.receiving_updates = True
 
         except:
             # Was not able to receive updates
             # Can happen due to missing connection
             if self.receiving_updates:
-                logging.logwarn('Knowledge synchronizer: Couldn\'t receive updates')
+                logging.logwarn('Knowledge synchronizer: not connected')
             self.receiving_updates = False
 
     @profile
     def update(self):
-        self.poll()
+        if prolog_exists:
+            self.poll()
         return Status.SUCCESS
