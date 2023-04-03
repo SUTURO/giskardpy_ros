@@ -1,9 +1,9 @@
-from geometry_msgs.msg import Pose
 from py_trees import Status
+
+from geometry_msgs.msg import Pose
 
 from giskardpy.model.utils import make_world_body_box, make_world_body_cylinder, make_world_body_sphere
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
-
 from giskardpy.utils import logging
 
 from importlib import import_module
@@ -21,6 +21,13 @@ except:
 
 
 class SuturoWorldSynchroniser(GiskardBehavior):
+    """
+    Receive updates and add objects newly added into the world to synchronise world states.
+
+    Note:
+        Only works when rosprolog is installed as well. Skips update otherwise.
+        Will also stop/continue whenever rosprolog is stopped/continued.
+    """
     if prolog_exists:
         prolog: Prolog
 
@@ -41,7 +48,7 @@ class SuturoWorldSynchroniser(GiskardBehavior):
             self.prolog = Prolog(name_space=self.name_space,
                                  wait_for_services=False)
         else:
-            logging.logwarn('Knowledge synchronizer: Prolog not found. Won\'t pull updates' )
+            logging.logwarn('Knowledge synchronizer: Prolog not found. Can\'t receive updates.')
         self.last_update = 0.0
         self.receiving_updates = True
         return True
@@ -73,22 +80,20 @@ class SuturoWorldSynchroniser(GiskardBehavior):
                         obj = element[3]['term']
 
                     obj_name = str(element[2][0])
+                    obj_type = obj[0]
 
                     # Create object body
-                    if obj[0] == 'box':
+                    if obj_type == 'box':
                         obj_body = make_world_body_box(obj[1], obj[2], obj[3])
-                        obj_msg = 'added box'
-                    elif obj[0] == 'cylinder':
+                    elif obj_type == 'cylinder':
                         obj_body = make_world_body_cylinder(obj[2], obj[1])
-                        obj_msg = 'added cylinder'
-                    elif obj[0] == 'sphere':
+                    elif obj_type == 'sphere':
                         obj_body = make_world_body_sphere(obj[1])
-                        obj_msg = 'added sphere'
                     else:
                         logging.loginfo('No object body to add')
                         continue
 
-                    logging.loginfo(obj_msg)
+                    logging.loginfo(f'added {obj_type}')
 
                     # Object pose
                     obj_pose = Pose()
@@ -104,7 +109,7 @@ class SuturoWorldSynchroniser(GiskardBehavior):
                     # Parent link
                     obj_parent_link_group = ''
                     obj_parent_link = ''
-                    #parent_link = self.world.get_link_name(obj_parent_link, obj_parent_link_group)
+                    # parent_link = self.world.get_link_name(obj_parent_link, obj_parent_link_group)
 
                     self.world.add_world_body(obj_name, obj_body, obj_pose, parent_link)
 
@@ -115,7 +120,7 @@ class SuturoWorldSynchroniser(GiskardBehavior):
                 except:
                     logging.loginfo('caught invalid object')
             if not self.receiving_updates:
-                logging.loginfo('Knowledge synchronizer: connected')
+                logging.logwarn('Knowledge synchronizer: connected')
                 self.receiving_updates = True
 
         except:
