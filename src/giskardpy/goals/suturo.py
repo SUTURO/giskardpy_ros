@@ -24,7 +24,6 @@ import sys
 from hsrb_interface import geometry
 
 
-
 class TestRotationGoal(Goal):
 
     def __init__(self,
@@ -34,21 +33,38 @@ class TestRotationGoal(Goal):
 
         root_link = 'map'
         tip_link = 'hand_palm_link'
-
+        '''
         root_name = self.world.get_link_name(root_link)
         tip_name = self.world.get_link_name(tip_link)
 
+        print(object_pose)
 
+        test_x_pose = QuaternionStamped()
+        test_x_pose.header.frame_id = tip_link
+        test_x_pose.quaternion.x = 0.0
 
+        new_object_pose = self.transform_msg(tip_name, object_pose)
+
+        print(new_object_pose)
+
+        goal_pose = new_object_pose
 
         object_orientation = QuaternionStamped()
-        object_orientation.header.frame_id = tip_link
-        object_orientation.quaternion = object_pose.pose.orientation
+        object_orientation.header.frame_id = root_link
+        object_orientation.quaternion = goal_pose.pose.orientation
+        '''
+        origin_quaternion = QuaternionStamped()
+        origin_quaternion.header.frame_id = root_link
+        origin_quaternion.quaternion.x = object_pose.pose.orientation.x
+        origin_quaternion.quaternion.y = object_pose.pose.orientation.y
+        origin_quaternion.quaternion.z = object_pose.pose.orientation.z
+        origin_quaternion.quaternion.w = object_pose.pose.orientation.w
+
+        used_quaternion = origin_quaternion
 
         self.add_constraints_of_goal(CartesianOrientation(root_link=root_link,
                                                           tip_link=tip_link,
-                                                          goal_orientation=object_orientation))
-
+                                                          goal_orientation=used_quaternion))
 
     def make_constraints(self):
         # Does not work
@@ -72,7 +88,7 @@ class TestGripperGoal(Goal):
                     follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
 
         if grasp_object:
-            #g.close_gripper_force(1)
+            # g.close_gripper_force(1)
             print(g.object_in_gripper())
             if g.object_in_gripper():
                 g.publish_object_in_gripper(object_frame_id=object_name, pose_stamped=object_pose, mode=0)
@@ -104,7 +120,7 @@ class MoveGripper(Goal):
 
         super().__init__()
         self.g = Gripper(apply_force_action_server='/hsrb/gripper_controller/apply_force',
-                    follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
+                         follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
 
         if open_gripper:
             self.g.set_gripper_joint_position(joint_position)
@@ -148,12 +164,114 @@ class GraspObject(Goal):
                  object_size: Optional[Vector3] = None,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link',
-                 offset: Optional[float] = 0.01
-                 ):
+                 offset: Optional[float] = 0.01,
+                 frontal_grasping=True):
+        """
+        Determine if the object needs to be grasped from the front or from above.
+        """
+        super().__init__()
+        self.object_name = object_name
+        self.object_pose = object_pose
+        self.object_size = object_size
+        self.object_geometry = None
+        self.root_link = root_link
+        self.tip_link = tip_link
+        self.offset = offset
+        self.frontal_grasping = frontal_grasping
+
+        # Get object geometry from name
+        if object_pose is None:
+            self.object_pose, self.object_size, self.object_geometry = self.get_object_by_name(self.object_name)
+        else:
+            logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
+
+        # TODO: Implement check if grasping should be frontal or above
+
+    def make_constraints(self):
+        if self.frontal_grasping:
+            self.add_constraints_of_goal(GraspFrontal(object_pose=self.object_pose,
+                                                      object_size=self.object_size,
+                                                      object_geometry=self.object_geometry,
+                                                      root_link=self.root_link,
+                                                      tip_link=self.tip_link,
+                                                      offset=self.offset))
+        else:
+            self.add_constraints_of_goal(GraspAbove())
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+    def get_object_by_name(self, object_name):
+        try:
+            loginfo('trying to get objects with name')
+
+            # Get object
+            object_pose = PoseStamped()
+            object_pose.header.frame_id = self.world.groups[object_name].root_link
+            object_pose.pose = self.world.groups[object_name].base_pose
+
+            object_pose = object_pose
+            loginfo(f'Object_pose by name: {object_pose}')
+
+            object_geometry: LinkGeometry = self.world.groups[object_name].root_link.collisions[0]
+
+            # Declare instance of geometry
+            if isinstance(object_geometry, BoxGeometry):
+                object_type = 'box'
+                object_geometry: BoxGeometry = object_geometry
+                object_size = Vector3(object_geometry.width, object_geometry.depth, object_geometry.height)
+
+            elif isinstance(object_geometry, CylinderGeometry):
+                object_type = 'cylinder'
+                object_geometry: CylinderGeometry = object_geometry
+                object_size = None  # [object_geometry.height, object_geometry.radius]
+
+            elif isinstance(object_geometry, SphereGeometry):
+                object_type = 'sphere'
+                object_geometry: SphereGeometry = object_geometry
+                object_size = None  # [object_geometry.radius]
+
+            else:
+                raise Exception('Not supported geometry')
+
+            loginfo(f'Got geometry: {object_type}')
+
+            return object_pose, object_size, object_geometry
+
+        except:
+            loginfo('Could not get geometry from name')
+
+
+class GraspAbove(Goal):
+    def __init__(self,
+                 object_pose: Optional[PoseStamped] = None,
+                 object_size: Optional[Vector3] = None,
+                 object_geometry: Optional[LinkGeometry] = None,
+                 root_link: Optional[str] = 'map',
+                 tip_link: Optional[str] = 'hand_palm_link',
+                 offset: Optional[float] = 0.01):
+        super().__init__()
+
+        pass
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+
+class GraspFrontal(Goal):
+    def __init__(self,
+                 object_pose: Optional[PoseStamped] = None,
+                 object_size: Optional[Vector3] = None,
+                 object_geometry: Optional[LinkGeometry] = None,
+                 root_link: Optional[str] = 'map',
+                 tip_link: Optional[str] = 'hand_palm_link',
+                 offset: Optional[float] = 0.01):
         """
         Move to a given position where a box can be grasped.
 
-        :param object_name: name of the object
         :param object_pose: center position of the grasped object
         :param object_size: box size as Vector3 (x, y, z)
         :param root_link: name of the root link of the kin chain
@@ -172,41 +290,39 @@ class GraspObject(Goal):
         loginfo(f'tip_link: {self.tip}')
         self.tip_str = str(self.tip)
 
-        self.object_pose = None
-        self.object_geometry = None
-
         ### Orientation testing ###
-        self.object_orientation = QuaternionStamped()
-        self.object_orientation.header.frame_id = 'map'
-        self.object_orientation.quaternion = object_pose.pose.orientation
+        object_orientation = QuaternionStamped()
+        object_orientation.header.frame_id = self.root_str
+        object_orientation.quaternion.x = object_pose.pose.orientation.z
+        object_orientation.quaternion.y = object_pose.pose.orientation.x
+        object_orientation.quaternion.z = object_pose.pose.orientation.y
 
-        # Get object geometry from name
-        #self.get_object_by_name(object_name)
+        self.object_orientation = self.transform_msg(tip_link, object_orientation)
+        print(self.object_orientation)
+        #############################
 
-        # Assign object if no name was given
-        #if self.object_pose is None:
-        logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
+        # Grasp slightly below the center of the object
         object_pose.pose.position.z = object_pose.pose.position.z - 0.02
         self.object_pose = object_pose
-        self.obj_size = [object_size.x, object_size.y, object_size.z]
-        self.obj_type = 'box'
 
         # Frame/grasp difference
         frame_difference = 0.05
+        object_axis_size = 2*frame_difference
 
-        grasp_axis = self.set_grasp_axis(self.obj_size, maximum=False)
-        if grasp_axis.x == 1:
-            if (object_size.y/2) > frame_difference:
-                grasping_difference = ((object_size.y / 2) + offset) - frame_difference
-            else:
-                grasping_difference = frame_difference
-        elif grasp_axis.y == 1:
-            if (object_size.x/2) > frame_difference:
-                grasping_difference = ((object_size.x / 2) + offset) - frame_difference
-            else:
-                grasping_difference = frame_difference
+        if isinstance(object_geometry, BoxGeometry):
+            self.object_size = [object_geometry.width, object_geometry.depth, object_geometry.height]
+
+            grasp_axis = self.set_grasp_axis(self.object_size, maximum=False)
+
+            if grasp_axis.x == 1:
+                object_axis_size = object_geometry.depth / 2
+
+            elif grasp_axis.y == 1:
+                object_axis_size = object_geometry.width / 2
         else:
-            grasping_difference = offset
+            self.object_size = [object_size.x, object_size.y, object_size.z]
+
+        grasping_difference = (object_axis_size + offset) - frame_difference
 
         root_P_box_point = PointStamped()
         root_P_box_point.header.frame_id = self.root_str
@@ -215,7 +331,7 @@ class GraspObject(Goal):
         # root -> tip tranfsormation
         self.tip_P_goal_point = self.transform_msg(self.tip, root_P_box_point)
         self.tip_P_goal_point.header.frame_id = self.tip
-        self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
+        # self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
         # TODO Calculate tip offset correctly. HSR will now push objects a little bit
 
         # tip_axis
@@ -229,11 +345,11 @@ class GraspObject(Goal):
         # bar_axis
         self.bar_axis = Vector3Stamped()
         self.bar_axis.header.frame_id = self.root_str
-        self.bar_axis.vector = self.set_grasp_axis(self.obj_size, maximum=True)
+        self.bar_axis.vector = self.set_grasp_axis(self.object_size, maximum=True)
 
         # bar length
         tolerance = 0.5
-        self.bar_length = 0.01 # max(self.obj_size) * tolerance
+        self.bar_length = 0.01  # max(self.obj_size) * tolerance
 
         # Align Planes
         # object axis horizontal/vertical
@@ -287,43 +403,6 @@ class GraspObject(Goal):
             grasp_vector.z = 1
 
         return grasp_vector
-
-    def get_object_by_name(self, object_name):
-        try:
-            loginfo('trying to get objects with name')
-
-            # Get object
-            self.object_pose = PoseStamped()
-            self.object_pose.header.frame_id = self.world.groups[object_name].root_link
-            self.object_pose.pose = self.world.groups[object_name].base_pose
-
-            loginfo(f'Object_pose by name: {self.object_pose}')
-
-            object_geometry: LinkGeometry = self.world.groups[object_name].root_link.collisions[0]
-
-            # Declare instance of geometry
-            if isinstance(object_geometry, BoxGeometry):
-                self.obj_type = 'box'
-                self.object_geometry: BoxGeometry = object_geometry
-                self.obj_size = [object_geometry.width, object_geometry.depth, object_geometry.height]
-
-            elif isinstance(object_geometry, CylinderGeometry):
-                self.obj_type = 'cylinder'
-                self.object_geometry: CylinderGeometry = object_geometry
-                self.obj_size = [object_geometry.height, object_geometry.radius]
-
-            elif isinstance(object_geometry, SphereGeometry):
-                self.obj_type = 'sphere'
-                self.object_geometry: SphereGeometry = object_geometry
-                self.obj_size = [object_geometry.radius]
-
-            else:
-                raise Exception('Not supported geometry')
-
-            loginfo(f'Got geometry: {self.obj_type}')
-
-        except:
-            loginfo('Could not get geometry from name')
 
 
 class LiftObject(Goal):
