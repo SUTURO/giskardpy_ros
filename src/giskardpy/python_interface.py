@@ -959,13 +959,12 @@ class GiskardWrapper:
 
     def grasp_object(self,
                      object_name: str,
-                     object_pose: Optional[PoseStamped],
-                     object_size: Optional[Vector3],
+                     object_pose: Optional[PoseStamped] = None,
+                     object_size: Optional[Vector3] = None,
                      root_link: Optional[str] = 'map',
                      tip_link: Optional[str] = 'hand_palm_link',
                      offset: float = 0.01,
                      frontal_grasping=True):
-
         self.set_json_goal(constraint_type='GraspObject',
                            object_name=object_name,
                            object_pose=object_pose,
@@ -974,6 +973,8 @@ class GiskardWrapper:
                            tip_link=tip_link,
                            offset=offset,
                            frontal_grasping=frontal_grasping)
+
+
 
     def place_object(self,
                      object_name: str,
@@ -1016,22 +1017,6 @@ class GiskardWrapper:
         self.set_json_goal(constraint_type='PreparePlacing',
                            target_pose=object_pose)
 
-    def test_goal_gripper(self,
-                  object_name='',
-                  object_pose: PoseStamped = None,
-                  grasp_object: bool = True):
-        self.set_json_goal(constraint_type='TestGripperGoal',
-                           object_name=object_name,
-                           object_pose=object_pose,
-                           grasp_object=grasp_object)
-
-    def test_goal_rotation(self,
-                           object_name='',
-                           object_pose: PoseStamped = None):
-        self.set_json_goal(constraint_type='TestRotationGoal',
-                           object_name=object_name,
-                           object_pose=object_pose)
-
     def set_pointing(self,
                      goal_pose: PoseStamped,
                      root_link: str = 'map',
@@ -1042,3 +1027,14 @@ class GiskardWrapper:
                            root_link=root_link,
                            tip_link=tip_link)
 
+    def test_goal(self,
+                  goal_name: str,
+                  object_pose: Optional[PoseStamped] = None,
+                  object_name: Optional[str] = '',
+                  grasp_object: Optional[bool] = True):
+
+        self.set_json_goal(constraint_type='TestGoal',
+                           goal_name=goal_name,
+                           object_pose=object_pose,
+                           object_name=object_name,
+                           grasp_object=grasp_object)
