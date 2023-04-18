@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import time
 from typing import Optional, List
 
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped
@@ -61,17 +63,31 @@ class TestSequenceGoal(Goal):
 
         self.object_name = object_name
 
+        self.var_number = True
+        self.changing_weight = lambda: self.change_weight_to_zero()
+        print(f'TestSequence: {self.changing_weight}')
+        print(type(self.changing_weight))
+
         print('working TestSequenceGoal')
 
-
     def make_constraints(self):
+        self.add_constraints_of_goal(LiftObject(object_name=self.object_name, weight=self.changing_weight))
 
-        self.add_constraints_of_goal(LiftObject(object_name=self.object_name))
+        self.add_constraints_of_goal(Retracting(object_name=self.object_name, weight=self.changing_weight))
 
-        self.add_constraints_of_goal((Retracting(object_name=self.object_name)))
+        # self.change_weight_to_zero_delay(delay=1)
 
     def __str__(self) -> str:
         return super().__str__()
+
+    def change_weight_to_zero(self):
+
+        self.var_number = not self.var_number
+
+        if self.var_number:
+            return 1.0
+        else:
+            return 0.0
 
 
 class TestRotationGoal(Goal):
@@ -93,9 +109,7 @@ class TestRotationGoal(Goal):
         self.used_quaternion = QuaternionStamped()
         self.used_quaternion.quaternion = origin_quaternion
 
-
     def make_constraints(self):
-
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_link,
                                                           tip_link=self.tip_link,
                                                           goal_orientation=self.used_quaternion))
@@ -114,7 +128,6 @@ class TestGripperGoal(Goal):
         super().__init__()
 
         print('TestGripperGoal')
-
 
         g = Gripper(apply_force_action_server='/hsrb/gripper_controller/apply_force',
                     follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
@@ -283,6 +296,16 @@ class GraspObject(Goal):
         except:
             loginfo('Could not get geometry from name')
 
+class GraspGoal(Goal):
+    def __init__(self):
+        pass
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
 
 class GraspAbove(Goal):
     def __init__(self,
@@ -308,8 +331,59 @@ class GraspAbove(Goal):
         # object_pose.pose.position.z = object_pose.pose.position.z - 0.02
         self.object_pose = object_pose
 
+
+        root_P_box_point = PointStamped()
+        root_P_box_point.header.frame_id = self.root_str
+        root_P_box_point.point = self.object_pose.pose.position
+
+        # root -> tip tranfsormation
+        self.tip_P_goal_point = self.transform_msg(self.tip, root_P_box_point)
+        self.tip_P_goal_point.header.frame_id = self.tip
+        # self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
+        # TODO Calculate tip offset correctly. HSR will now push objects a little bit
+
+        # bar_center
+        self.bar_center = self.tip_P_goal_point
+
+        # bar_length
+        self.bar_length = 0.01
+
+        self.tip_horizontal_axis = Vector3Stamped()
+        self.tip_horizontal_axis.header.frame_id = self.tip_str
+        self.tip_horizontal_axis.vector.x = 1
+
+        # bar_axis
+        hardcoded_y = Vector3(x=0, y=1, z=0)
+        self.bar_axis = Vector3Stamped()
+        self.bar_axis.header.frame_id = self.root_str
+        #self.bar_axis.vector = self.set_grasp_axis(self.object_size, maximum=True)
+        self.bar_axis.vector = hardcoded_y
+
+
+        # Align Planes
+        # object axis horizontal/vertical
+        # TODO replace with object orientation
+        self.obj_front_axis = Vector3Stamped()
+        self.obj_front_axis.header.frame_id = 'base_link'
+        self.obj_front_axis.vector.z = -1
+
+        # align z tip axis with object axis
+        self.tip_front_axis = Vector3Stamped()
+        self.tip_front_axis.header.frame_id = self.tip_str
+        self.tip_front_axis.vector.z = 1
+
     def make_constraints(self):
-        pass
+        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
+                                                 tip_link=self.tip_str,
+                                                 goal_normal=self.obj_front_axis,
+                                                 tip_normal=self.tip_front_axis))
+
+        self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
+                                              tip_link=self.tip_str,
+                                              tip_grasp_axis=self.tip_horizontal_axis,
+                                              bar_center=self.bar_center,
+                                              bar_axis=self.bar_axis,
+                                              bar_length=self.bar_length))
 
     def __str__(self) -> str:
         return super().__str__()
@@ -346,17 +420,6 @@ class GraspFrontal(Goal):
         self.tip = self.world.get_link_name(tip_link, None)
         loginfo(f'tip_link: {self.tip}')
         self.tip_str = str(self.tip)
-
-        ### Orientation testing ###
-        object_orientation = QuaternionStamped()
-        object_orientation.header.frame_id = self.root_str
-        object_orientation.quaternion.x = object_pose.pose.orientation.z
-        object_orientation.quaternion.y = object_pose.pose.orientation.x
-        object_orientation.quaternion.z = object_pose.pose.orientation.y
-
-        self.object_orientation = self.transform_msg(tip_link, object_orientation)
-        print(self.object_orientation)
-        #############################
 
         # Grasp slightly below the center of the object
         object_pose.pose.position.z = object_pose.pose.position.z - 0.02
@@ -422,25 +485,17 @@ class GraspFrontal(Goal):
 
     def make_constraints(self):
 
-        '''
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.obj_front_axis,
                                                  tip_normal=self.tip_front_axis))
 
-        '''
-        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
-                                                          tip_link=self.tip_str,
-                                                          goal_orientation=self.object_orientation))
-
-        '''
         self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
                                               tip_link=self.tip_str,
                                               tip_grasp_axis=self.tip_horizontal_axis,
                                               bar_center=self.bar_center,
                                               bar_axis=self.bar_axis,
                                               bar_length=self.bar_length))
-        '''
 
     def __str__(self) -> str:
         return super().__str__()
@@ -471,16 +526,21 @@ class LiftObject(Goal):
                  lifting: float = 0.02,
                  root_link: str = 'map',
                  tip_link: str = 'hand_palm_link',
-                 weight: float = WEIGHT_ABOVE_CA):
+                 weight=WEIGHT_ABOVE_CA):
         super().__init__()
 
         self.root_link = root_link
         self.tip_link = tip_link
         self.lifting = lifting
-        self.weight = weight
+        if isinstance(weight, float):
+            self.weight = weight
+        else:
+            self.weight = weight()
+
+        print(f'LiftObject: {self.weight}')
+        print(type(self.weight))
 
     def make_constraints(self):
-
         # Lifting
         goal_position = PointStamped()
         goal_position.header.frame_id = self.tip_link
@@ -516,16 +576,22 @@ class Retracting(Goal):
                  distance: Optional[float] = 0.2,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'base_link',
-                 weight: float = WEIGHT_ABOVE_CA):
+                 weight=WEIGHT_ABOVE_CA):
         super().__init__()
 
         self.root_link = root_link
         self.tip_link = tip_link
         self.distance = distance
-        self.weight = weight
+
+        if isinstance(weight, float):
+            self.weight = weight
+        else:
+            self.weight = weight()
+
+        print(f'Retract: {self.weight}')
+        print(type(self.weight))
 
     def make_constraints(self):
-
         goal_point = PointStamped()
         goal_point.header.frame_id = self.tip_link
         goal_point.point.x -= self.distance
