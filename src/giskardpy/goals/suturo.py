@@ -55,6 +55,7 @@ class TestSequenceGoal(Goal):
     def __init__(self,
                  object_name='',
                  object_pose: PoseStamped = None,
+                 lift_first=True,
                  **kwargs):
         super().__init__()
 
@@ -63,8 +64,8 @@ class TestSequenceGoal(Goal):
 
         self.object_name = object_name
 
-        self.var_number = True
-        self.changing_weight = lambda: self.change_weight_to_zero()
+        self.var_number = lift_first
+        self.changing_weight = lambda: self.inverse_weight()
         print(f'TestSequence: {self.changing_weight}')
         print(type(self.changing_weight))
 
@@ -80,7 +81,7 @@ class TestSequenceGoal(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
-    def change_weight_to_zero(self):
+    def inverse_weight(self):
 
         self.var_number = not self.var_number
 
