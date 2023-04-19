@@ -330,6 +330,9 @@ class GraspAbove(Goal):
 
         # Grasp slightly below the center of the object
         # object_pose.pose.position.z = object_pose.pose.position.z - 0.02
+
+        # Grasp at the upper edge of the object
+        object_pose.pose.position.z += object_size.z / 2
         self.object_pose = object_pose
 
 
