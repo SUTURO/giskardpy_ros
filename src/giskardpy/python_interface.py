@@ -1032,7 +1032,7 @@ class GiskardWrapper:
                   object_pose: Optional[PoseStamped] = None,
                   object_name: Optional[str] = '',
                   grasp_object: Optional[bool] = True,
-                  lift_first = True):
+                  lift_first=True):
 
         self.set_json_goal(constraint_type='TestGoal',
                            goal_name=goal_name,
