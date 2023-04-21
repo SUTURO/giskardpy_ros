@@ -28,6 +28,15 @@ class Open(Goal):
         :param weight:
         """
         super().__init__()
+
+        tip_link = 'hand_palm_link'
+        print(tip_link)
+        print(environment_link)
+        print(tip_group)
+        print(environment_group)
+        print(goal_joint_state)
+        print(weight)
+
         self.weight = weight
         self.tip_link = self.world.get_link_name(tip_link, tip_group)
         self.handle_link = self.world.get_link_name(environment_link, environment_group)

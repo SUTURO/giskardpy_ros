@@ -225,15 +225,30 @@ class GraspObject(Goal):
         self.offset = offset
         self.frontal_grasping = frontal_grasping
 
-        # print(self.world.groups)
-        # print(self.world.groups[object_name])
-        # print(self.world.groups[object_name].root_link.collisions[0])
+        print(object_name)
+        print(self.world.groups)
+        handle = self.world.groups['iai_kitchen'].get_link(object_name)
+        print(handle)
+        print(handle.collisions)
+        print(type(handle.collisions))
+        handlebox: BoxGeometry = handle.collisions[0]
 
+        self.object_pose = self.world.compute_fk_pose('map', object_name)
+
+        object_size_vector = Vector3()
+        object_size_vector.x = handlebox.width
+        object_size_vector.y = handlebox.depth
+        object_size_vector.z = handlebox.height
+
+        self.object_size = object_size_vector
+        '''
         # Get object geometry from name
         if object_pose is None:
             self.object_pose, self.object_size, self.object_geometry = self.get_object_by_name(self.object_name)
+
+            print(self.object_name)
         else:
-            logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
+            logwarn(f'Deprecated warning: Please add object to giskard and set object name.')'''
 
         # TODO: Implement check if grasping should be frontal or above
 
@@ -357,9 +372,10 @@ class GraspAbove(Goal):
         self.tip_horizontal_axis.vector.x = 1
 
         # bar_axis
-        hardcoded_y = Vector3(x=0, y=1, z=0)
+        hardcoded_y = Vector3(x=1, y=0, z=0)
         self.bar_axis = Vector3Stamped()
-        self.bar_axis.header.frame_id = self.root_str
+        self.bar_axis.header.frame_id = "base_link"
+
         #self.bar_axis.vector = self.set_grasp_axis(self.object_size, maximum=True)
         self.bar_axis.vector = hardcoded_y
 
@@ -447,15 +463,22 @@ class GraspFrontal(Goal):
             self.object_size = [object_size.x, object_size.y, object_size.z]
 
         grasping_difference = (object_axis_size + offset) - frame_difference
+        grasping_difference = 0.082
 
         root_P_box_point = PointStamped()
         root_P_box_point.header.frame_id = self.root_str
         root_P_box_point.point = self.object_pose.pose.position
 
+        # Root -> Base link for hand_palm_link offset
+        base_P_goal_point = self.transform_msg('base_link', root_P_box_point)
+        base_P_goal_point.header.frame_id = 'base_link'
+        base_P_goal_point.point.x = base_P_goal_point.point.x - grasping_difference
+
+
         # root -> tip tranfsormation
-        self.tip_P_goal_point = self.transform_msg(self.tip, root_P_box_point)
+        self.tip_P_goal_point = self.transform_msg(self.tip, base_P_goal_point)
         self.tip_P_goal_point.header.frame_id = self.tip
-        # self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
+        #self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
         # TODO Calculate tip offset correctly. HSR will now push objects a little bit
 
         # tip_axis
@@ -473,7 +496,7 @@ class GraspFrontal(Goal):
 
         # bar length
         tolerance = 0.5
-        self.bar_length = 0.01  # max(self.obj_size) * tolerance
+        self.bar_length = 0.00001  # max(self.obj_size) * tolerance
 
         # Align Planes
         # object axis horizontal/vertical
