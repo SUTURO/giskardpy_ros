@@ -31,20 +31,23 @@ class TestGoal(Goal):
                  goal_name: str,
                  object_name: Optional[str] = '',
                  object_pose: Optional[PoseStamped] = None,
-                 grasp_object: Optional[bool] = True):
+                 grasp_object: Optional[bool] = True,
+                 lift_first: Optional[bool] = True):
         super().__init__()
 
         self.goal_name = goal_name
         self.object_name = object_name
         self.object_pose = object_pose
         self.grasp_object = grasp_object
+        self.lift_first = lift_first
 
         print('Test Goal')
 
     def make_constraints(self):
         goal = globals()[self.goal_name](object_name=self.object_name,
                                          object_pose=self.object_pose,
-                                         grasp_object=self.grasp_object)
+                                         grasp_object=self.grasp_object,
+                                         lift_first=self.lift_first)
         self.add_constraints_of_goal(goal)
 
     def __str__(self) -> str:
