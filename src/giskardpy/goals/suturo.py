@@ -370,7 +370,7 @@ class GraspFrontal(Goal):
         if isinstance(object_geometry, BoxGeometry):
             self.object_size = Vector3(x=object_geometry.width, y=object_geometry.depth, z=object_geometry.height)
 
-            reference_frame = object_name
+            reference_frame = 'base_link' # object_name
 
             #self.object_size = [object_geometry.width, object_geometry.depth, object_geometry.height]
 
@@ -383,7 +383,7 @@ class GraspFrontal(Goal):
                 object_axis_size = object_geometry.width / 2'''
         else:
             # Object not in giskard. Calculation will be less precise
-            self.object_size = [object_size.x, object_size.y, object_size.z]
+            self.object_size = Vector3(x=object_size.x, y=object_size.y, z=object_size.z)
 
             reference_frame = 'base_link'
 
@@ -541,11 +541,11 @@ class Retracting(Goal):
         super().__init__()
 
         # root link
-        self.root = self.world.get_link_name(root_link, None)
+        self.root = self.world.get_link_name(root_link, None).short_name
         self.root_str = str(self.root)
 
         # tip link
-        self.tip = self.world.get_link_name(tip_link, None)
+        self.tip = self.world.get_link_name(tip_link, None).short_name
         self.tip_str = str(self.tip)
 
         self.distance = distance
@@ -561,7 +561,7 @@ class Retracting(Goal):
     def make_constraints(self):
         goal_point = PointStamped()
         goal_point.header.frame_id = self.tip_str
-
+        print(self.tip_str)
         if self.tip_str == 'hand_palm_link':
             goal_point.point.z -= self.distance
 
