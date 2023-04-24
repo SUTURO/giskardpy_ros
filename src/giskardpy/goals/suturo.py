@@ -14,6 +14,7 @@ from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
+from giskardpy.my_types import PrefixName
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
 
@@ -228,30 +229,12 @@ class GraspObject(Goal):
         self.offset = offset
         self.frontal_grasping = frontal_grasping
 
-        print(object_name)
-        print(self.world.groups)
-        handle = self.world.groups['iai_kitchen'].get_link(object_name)
-        print(handle)
-        print(handle.collisions)
-        print(type(handle.collisions))
-        handlebox: BoxGeometry = handle.collisions[0]
-
-        self.object_pose = self.world.compute_fk_pose('map', object_name)
-
-        object_size_vector = Vector3()
-        object_size_vector.x = handlebox.width
-        object_size_vector.y = handlebox.depth
-        object_size_vector.z = handlebox.height
-
-        self.object_size = object_size_vector
-        '''
         # Get object geometry from name
         if object_pose is None:
             self.object_pose, self.object_size, self.object_geometry = self.get_object_by_name(self.object_name)
 
-            print(self.object_name)
         else:
-            logwarn(f'Deprecated warning: Please add object to giskard and set object name.')'''
+            logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
 
         # TODO: Implement check if grasping should be frontal or above
 
@@ -279,15 +262,13 @@ class GraspObject(Goal):
         try:
             loginfo('trying to get objects with name')
 
+            object_link = self.world.get_link(object_name)
+            object_geometry: LinkGeometry = object_link.collisions[0]
+
             # Get object
-            object_pose = PoseStamped()
-            object_pose.header.frame_id = self.world.groups[object_name].root_link
-            object_pose.pose = self.world.groups[object_name].base_pose
+            object_pose = self.world.compute_fk_pose('map', object_name)
 
-            object_pose = object_pose
             loginfo(f'Object_pose by name: {object_pose}')
-
-            object_geometry: LinkGeometry = self.world.groups[object_name].root_link.collisions[0]
 
             # Declare instance of geometry
             if isinstance(object_geometry, BoxGeometry):
@@ -466,7 +447,13 @@ class GraspFrontal(Goal):
             self.object_size = [object_size.x, object_size.y, object_size.z]
 
         grasping_difference = (object_axis_size + offset) - frame_difference
-        grasping_difference = 0.082
+        grasping_difference = 0.082 # Offset for shelf handle
+        grasping_difference = 0.078
+
+        grasping_difference = max(0.001, 0.098 - (object_size.y/2))
+        print(object_size)
+        print(grasping_difference)
+
 
         root_P_box_point = PointStamped()
         root_P_box_point.header.frame_id = self.root_str
