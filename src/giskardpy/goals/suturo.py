@@ -426,50 +426,59 @@ class GraspFrontal(Goal):
         self.tip_str = str(self.tip)
 
         # Grasp slightly below the center of the object
-        object_pose.pose.position.z = object_pose.pose.position.z - 0.02
+        object_pose.pose.position.z = object_pose.pose.position.z - 0.01
         self.object_pose = object_pose
 
         # Frame/grasp difference
         frame_difference = 0.05
         object_axis_size = 2 * frame_difference
 
-        if isinstance(object_geometry, BoxGeometry):
-            self.object_size = [object_geometry.width, object_geometry.depth, object_geometry.height]
 
-            grasp_axis = self.set_grasp_axis(self.object_size, maximum=False)
+        if isinstance(object_geometry, BoxGeometry):
+            self.object_size = Vector3(x=object_geometry.width, y=object_geometry.depth, z=object_geometry.height)
+
+            reference_frame = object_name
+
+            #self.object_size = [object_geometry.width, object_geometry.depth, object_geometry.height]
+
+            '''grasp_axis = self.set_grasp_axis(self.object_size, maximum=False)
 
             if grasp_axis.x == 1:
                 object_axis_size = object_geometry.depth / 2
 
             elif grasp_axis.y == 1:
-                object_axis_size = object_geometry.width / 2
+                object_axis_size = object_geometry.width / 2'''
         else:
+            # Object not in giskard. Calculation will be less precise
             self.object_size = [object_size.x, object_size.y, object_size.z]
 
-        grasping_difference = (object_axis_size + offset) - frame_difference
-        grasping_difference = 0.082 # Offset for shelf handle
-        grasping_difference = 0.078
+            reference_frame = 'base_link'
 
-        grasping_difference = max(0.001, 0.098 - (object_size.y/2))
-        print(object_size)
-        print(grasping_difference)
 
+        #grasping_difference = (object_axis_size + offset) - frame_difference
+        #grasping_difference = 0.082 # Offset for shelf handle
+        #grasping_difference = 0.078
+
+        grasping_difference = max(0.001, 0.098 - (self.object_size.y/2))
 
         root_P_box_point = PointStamped()
         root_P_box_point.header.frame_id = self.root_str
         root_P_box_point.point = self.object_pose.pose.position
 
         # Root -> Base link for hand_palm_link offset
-        base_P_goal_point = self.transform_msg('base_link', root_P_box_point)
-        base_P_goal_point.header.frame_id = 'base_link'
-        base_P_goal_point.point.x = base_P_goal_point.point.x - grasping_difference
-
+        offset_P_goal_point = self.transform_msg(reference_frame, root_P_box_point)
+        #offset_P_goal_point.header.frame_id = 'base_link'
+        offset_P_goal_point.point.x = offset_P_goal_point.point.x - grasping_difference
 
         # root -> tip tranfsormation
-        self.tip_P_goal_point = self.transform_msg(self.tip, base_P_goal_point)
-        self.tip_P_goal_point.header.frame_id = self.tip
+        self.tip_P_goal_point = self.transform_msg(self.tip, offset_P_goal_point)
+        #self.tip_P_goal_point.header.frame_id = self.tip
         #self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
-        # TODO Calculate tip offset correctly. HSR will now push objects a little bit
+
+        # object axis horizontal/vertical
+        self.obj_front_axis = Vector3Stamped()
+        self.obj_front_axis.header.frame_id = reference_frame
+        self.obj_front_axis.vector.x = 1
 
         # tip_axis
         self.tip_horizontal_axis = Vector3Stamped()
@@ -485,15 +494,7 @@ class GraspFrontal(Goal):
         self.bar_axis.vector = self.set_grasp_axis(self.object_size, maximum=True)
 
         # bar length
-        tolerance = 0.5
         self.bar_length = 0.00001  # max(self.obj_size) * tolerance
-
-        # Align Planes
-        # object axis horizontal/vertical
-        # TODO replace with object orientation
-        self.obj_front_axis = Vector3Stamped()
-        self.obj_front_axis.header.frame_id = 'base_link'
-        self.obj_front_axis.vector.x = 1
 
         # align z tip axis with object axis
         self.tip_front_axis = Vector3Stamped()
@@ -517,14 +518,17 @@ class GraspFrontal(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
-    def set_grasp_axis(self, axes: List[float],
+    def set_grasp_axis(self, axes: Vector3,
                        maximum: Optional[bool] = False):
-        values = axes.copy()
-        values.sort(reverse=maximum)
+
+        axes_array = [axes.x, axes.y, axes.z]
+
+        sorting_values = axes_array.copy()
+        sorting_values.sort(reverse=maximum)
 
         index_sorted_values = []
-        for e in values:
-            index_sorted_values.append(axes.index(e))
+        for e in sorting_values:
+            index_sorted_values.append(axes_array.index(e))
 
         grasp_vector = Vector3()
         if index_sorted_values[0] == 0:
