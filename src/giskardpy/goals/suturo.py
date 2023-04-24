@@ -611,7 +611,13 @@ class Retracting(Goal):
     def make_constraints(self):
         goal_point = PointStamped()
         goal_point.header.frame_id = self.tip_link
-        goal_point.point.x -= self.distance
+
+        if self.tip_link == 'hand_palm_link':
+            goal_point.point.z -= self.distance
+
+        elif self.tip_link == 'base_link':
+            goal_point.point.x -= self.distance
+
         self.add_constraints_of_goal(CartesianPositionStraight(root_link=self.root_link,
                                                                tip_link=self.tip_link,
                                                                goal_point=goal_point,
