@@ -367,7 +367,6 @@ class GraspFrontal(Goal):
         frame_difference = 0.05
         object_axis_size = 2 * frame_difference
 
-
         if isinstance(object_geometry, BoxGeometry):
             self.object_size = Vector3(x=object_geometry.width, y=object_geometry.depth, z=object_geometry.height)
 
@@ -404,11 +403,6 @@ class GraspFrontal(Goal):
         #offset_P_goal_point.header.frame_id = 'base_link'
         offset_P_goal_point.point.x = offset_P_goal_point.point.x - grasping_difference
 
-        # root -> tip tranfsormation
-        self.tip_P_goal_point = self.transform_msg(self.tip, offset_P_goal_point)
-        #self.tip_P_goal_point.header.frame_id = self.tip
-        #self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
-
         # object axis horizontal/vertical
         self.goal_frontal_axis = Vector3Stamped()
         self.goal_frontal_axis.header.frame_id = reference_frame
@@ -420,7 +414,11 @@ class GraspFrontal(Goal):
         self.tip_vertical_axis.vector.x = 1
 
         # bar_center
-        self.bar_center_point = self.tip_P_goal_point
+        # root -> tip tranfsormation
+        tip_P_goal_point = self.transform_msg(self.tip, offset_P_goal_point)
+        #self.tip_P_goal_point.header.frame_id = self.tip
+        #self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
+        self.bar_center_point = tip_P_goal_point
 
         # bar_axis
         self.bar_axis = Vector3Stamped()
@@ -437,17 +435,18 @@ class GraspFrontal(Goal):
 
     def make_constraints(self):
 
-        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
-                                                 tip_link=self.tip_str,
-                                                 goal_normal=self.goal_frontal_axis,
-                                                 tip_normal=self.tip_frontal_axis))
-
         self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
                                               tip_link=self.tip_str,
                                               tip_grasp_axis=self.tip_vertical_axis,
                                               bar_center=self.bar_center_point,
                                               bar_axis=self.bar_axis,
                                               bar_length=self.bar_length))
+
+        # Align frontal
+        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
+                                                 tip_link=self.tip_str,
+                                                 goal_normal=self.goal_frontal_axis,
+                                                 tip_normal=self.tip_frontal_axis))
 
     def __str__(self) -> str:
         return super().__str__()
@@ -508,7 +507,12 @@ class LiftObject(Goal):
         goal_point.header.frame_id = self.tip_str
         goal_point.point.x += self.lifting_distance
 
-        # Align Horizontal
+        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
+                                                       tip_link=self.tip_str,
+                                                       goal_point=goal_point,
+                                                       weight=self.weight))
+
+        # Align vertical
         goal_vertical_axis = Vector3Stamped()
         goal_vertical_axis.header.frame_id = self.root_str
         goal_vertical_axis.vector.z = 1
@@ -516,11 +520,6 @@ class LiftObject(Goal):
         tip_vertical_axis = Vector3Stamped()
         tip_vertical_axis.header.frame_id = self.tip_str
         tip_vertical_axis.vector.x = 1
-
-        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
-                                                       tip_link=self.tip_str,
-                                                       goal_point=goal_point,
-                                                       weight=self.weight))
 
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
@@ -574,7 +573,7 @@ class Retracting(Goal):
                                                                goal_point=goal_point,
                                                                weight=self.weight))
 
-        # Align Hand
+        # Align vertical
         goal_vertical_axis = Vector3Stamped()
         goal_vertical_axis.header.frame_id = self.root_str
         goal_vertical_axis.vector.z = 1
@@ -657,7 +656,7 @@ class PreparePlacing(Goal):
                                                                tip_link=self.tip_str,
                                                                goal_point=root_P_goal_point))
 
-        # Align Hand
+        # Align vertical
         goal_vertical_axis = Vector3Stamped()
         goal_vertical_axis.header.frame_id = self.root_str
         goal_vertical_axis.vector.z = 1
@@ -721,13 +720,13 @@ class PlaceObject(Goal):
         goal_point.point.y = self.goal_floor_position.pose.position.y
         goal_point.point.z = self.goal_floor_position.pose.position.z + (self.object_height / 2)
 
-        # align towards object
+        # Align towards object
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_frontal_axis,
                                                  tip_normal=self.tip_frontal_axis))
 
-        # align horizontal
+        # Align vertical
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_vertical_axis,
