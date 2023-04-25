@@ -271,18 +271,18 @@ class GraspAbove(Goal):
         object_pose.pose.position.z += object_size.z / 2
         self.object_pose = object_pose
 
-        root_P_box_point = PointStamped()
-        root_P_box_point.header.frame_id = self.root_str
-        root_P_box_point.point = self.object_pose.pose.position
+        root_goal_point = PointStamped()
+        root_goal_point.header.frame_id = self.object_pose.header.frame_id
+        root_goal_point.point = self.object_pose.pose.position
 
         # root -> tip tranfsormation
-        self.tip_P_goal_point = self.transform_msg(self.tip, root_P_box_point)
-        self.tip_P_goal_point.header.frame_id = self.tip
+        self.tip_goal_point = self.transform_msg(self.tip, root_goal_point)
+        self.tip_goal_point.header.frame_id = self.tip
         # self.tip_P_goal_point.point.z = self.tip_P_goal_point.point.z - grasping_difference
         # TODO Calculate tip offset correctly. HSR will now push objects a little bit
 
         # bar_center
-        self.bar_center = self.tip_P_goal_point
+        self.bar_center = self.tip_goal_point
 
         # bar_length
         self.bar_length = 0.01
@@ -385,21 +385,25 @@ class GraspFrontal(Goal):
 
             reference_frame = 'base_link'
 
-
         grasping_difference = max(0.001, 0.098 - (self.object_size.y/2))
 
         root_P_box_point = PointStamped()
         root_P_box_point.header.frame_id = self.root_str
         root_P_box_point.point = self.object_pose.pose.position
 
-        # Root -> Base link for hand_palm_link offset
-        offset_P_goal_point = self.transform_msg(reference_frame, root_P_box_point)
-        offset_P_goal_point.point.x = offset_P_goal_point.point.x - grasping_difference
+        # Root -> Reference frame for hand_palm_link offset
+        offset_tip_goal_point = self.transform_msg(reference_frame, root_P_box_point)
+        offset_tip_goal_point.point.x = offset_tip_goal_point.point.x - grasping_difference
 
         # object axis horizontal/vertical
         self.goal_frontal_axis = Vector3Stamped()
         self.goal_frontal_axis.header.frame_id = reference_frame
         self.goal_frontal_axis.vector.x = 1
+
+        # align z tip axis with object axis
+        self.tip_frontal_axis = Vector3Stamped()
+        self.tip_frontal_axis.header.frame_id = self.tip_str
+        self.tip_frontal_axis.vector.z = 1
 
         # tip_axis
         self.tip_vertical_axis = Vector3Stamped()
@@ -408,8 +412,7 @@ class GraspFrontal(Goal):
 
         # bar_center
         # root -> tip tranfsormation
-        tip_P_goal_point = self.transform_msg(self.tip, offset_P_goal_point)
-        self.bar_center_point = tip_P_goal_point
+        self.bar_center_point = self.transform_msg(self.tip, offset_tip_goal_point)
 
         # bar_axis
         self.bar_axis = Vector3Stamped()
@@ -418,11 +421,6 @@ class GraspFrontal(Goal):
 
         # bar length
         self.bar_length = 0.00001
-
-        # align z tip axis with object axis
-        self.tip_frontal_axis = Vector3Stamped()
-        self.tip_frontal_axis.header.frame_id = self.tip_str
-        self.tip_frontal_axis.vector.z = 1
 
     def make_constraints(self):
 
@@ -583,13 +581,15 @@ class Retracting(Goal):
         return super().__str__()
 
 
-class PreparePlacing(Goal):
+class AlignHeight(Goal):
     def __init__(self,
                  target_pose: PoseStamped,
                  object_height: float,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_palm_link'):
         super().__init__()
+
+        # TODO: Instead of moving hand: Move torso to fit the hand height
 
         # root link
         self.root = self.world.get_link_name(root_link, None)
@@ -600,27 +600,27 @@ class PreparePlacing(Goal):
         self.tip_str = str(self.tip)
 
         self.object_height = object_height
-
-
-        # CartesianPosition
-        self.goal_point = PointStamped()
-        self.goal_point.header.frame_id = target_pose.header.frame_id
-        self.goal_point.point.x = target_pose.pose.position.x
-        self.goal_point.point.y = target_pose.pose.position.y
-        self.goal_point.point.z = target_pose.pose.position.z
+        self.goal_pose = target_pose
 
 
     def make_constraints(self):
 
-        root_P_goal_point = self.transform_msg(self.tip_str, self.goal_point)
-        root_P_goal_point.point.x += (self.object_height / 2)
-        root_P_goal_point.point.y = 0
-        root_P_goal_point.point.z = 0
+        # CartesianPosition
+        goal_point = PointStamped()
+        goal_point.header.frame_id = self.goal_pose.header.frame_id
+        goal_point.point.x = self.goal_pose.pose.position.x
+        goal_point.point.y = self.goal_pose.pose.position.y
+        goal_point.point.z = self.goal_pose.pose.position.z
+
+        tip_goal_point = self.transform_msg(self.tip_str, goal_point)
+        tip_goal_point.point.x += (self.object_height / 2)
+        tip_goal_point.point.y = 0
+        tip_goal_point.point.z = 0
 
         # Align height
         self.add_constraints_of_goal(CartesianPositionStraight(root_link=self.root_str,
                                                                tip_link=self.tip_str,
-                                                               goal_point=root_P_goal_point))
+                                                               goal_point=tip_goal_point))
 
         # Align vertical
         goal_vertical_axis = Vector3Stamped()
@@ -673,7 +673,7 @@ class PlaceObject(Goal):
         self.tip_vertical_axis.header.frame_id = self.tip_str
         self.tip_vertical_axis.vector.x = 1
 
-        self.goal_floor_position = target_pose
+        self.goal_floor_pose = target_pose
         self.object_height = object_height
 
 
@@ -681,9 +681,9 @@ class PlaceObject(Goal):
 
         goal_point = PointStamped()
         goal_point.header.frame_id = self.root_str
-        goal_point.point.x = self.goal_floor_position.pose.position.x
-        goal_point.point.y = self.goal_floor_position.pose.position.y
-        goal_point.point.z = self.goal_floor_position.pose.position.z + (self.object_height / 2)
+        goal_point.point.x = self.goal_floor_pose.pose.position.x
+        goal_point.point.y = self.goal_floor_pose.pose.position.y
+        goal_point.point.z = self.goal_floor_pose.pose.position.z + (self.object_height / 2)
 
         # Align towards object
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
