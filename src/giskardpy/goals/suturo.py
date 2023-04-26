@@ -364,7 +364,7 @@ class GraspFrontal(Goal):
         self.object_pose = object_pose
 
         # Frame/grasp difference
-        frame_difference = 0.085
+        frame_difference = 0.08
         #object_axis_size = 2 * frame_difference
 
         if isinstance(object_geometry, BoxGeometry):
@@ -388,9 +388,7 @@ class GraspFrontal(Goal):
         if (self.object_size.y/2) > frame_difference:
             grasping_difference = 0.01
         else:
-            grasping_difference = frame_difference
-
-        #grasping_difference = max(0.001, 0.098 - (self.object_size.y/2))
+            grasping_difference = frame_difference - (self.object_size.y / 2)
 
         root_P_box_point = PointStamped()
         root_P_box_point.header.frame_id = self.root_str
@@ -416,7 +414,6 @@ class GraspFrontal(Goal):
         self.tip_vertical_axis.vector.x = 1
 
         # bar_center
-        # root -> tip tranfsormation
         self.bar_center_point = self.transform_msg(self.tip, offset_tip_goal_point)
 
         # bar_axis
