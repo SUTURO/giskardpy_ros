@@ -385,7 +385,7 @@ class GraspFrontal(Goal):
 
             reference_frame = 'base_link'
 
-        if (self.object_size.y/2) > frame_difference:
+        if (self.object_size.y/2) >= frame_difference:
             grasping_difference = 0.01
         else:
             grasping_difference = frame_difference - (self.object_size.y / 2)
