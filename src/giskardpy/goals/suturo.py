@@ -370,7 +370,7 @@ class GraspFrontal(Goal):
         if isinstance(object_geometry, BoxGeometry):
             self.object_size = Vector3(x=object_geometry.width, y=object_geometry.depth, z=object_geometry.height)
 
-            reference_frame = 'base_link' # object_name
+            reference_frame = object_name
 
             '''grasp_axis = self.set_grasp_axis(self.object_size, maximum=False)
 
