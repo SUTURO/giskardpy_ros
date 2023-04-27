@@ -974,8 +974,6 @@ class GiskardWrapper:
                            offset=offset,
                            frontal_grasping=frontal_grasping)
 
-
-
     def place_object(self,
                      object_name: str,
                      goal_pose: PoseStamped,
@@ -1013,9 +1011,11 @@ class GiskardWrapper:
                            tip_link=tip_link)
 
     def prepare_placing(self,
-                        object_pose: PoseStamped):
-        self.set_json_goal(constraint_type='PreparePlacing',
-                           target_pose=object_pose)
+                        object_pose: PoseStamped,
+                        height: float):
+        self.set_json_goal(constraint_type='AlignHeight',
+                           goal_pose=object_pose,
+                           object_height=height)
 
     def set_pointing(self,
                      goal_pose: PoseStamped,

@@ -133,5 +133,6 @@ class SuturoWorldSynchroniser(GiskardBehavior):
     @profile
     def update(self):
         if prolog_exists:
-            self.poll()
+            #self.poll()
+            pass
         return Status.SUCCESS
