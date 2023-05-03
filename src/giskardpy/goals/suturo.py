@@ -168,7 +168,7 @@ class GraspObject(Goal):
                  object_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link',
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  offset: Optional[float] = 0.01,
                  frontal_grasping=True):
         """
@@ -263,7 +263,7 @@ class GraspAbove(Goal):
                  object_size: Optional[Vector3] = None,
                  object_geometry: Optional[LinkGeometry] = None,
                  root_link: Optional[str] = 'odom',
-                 tip_link: Optional[str] = 'hand_palm_link',
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  offset: Optional[float] = 0.01):
         super().__init__()
 
@@ -377,7 +377,7 @@ class GraspFrontal(Goal):
                  object_size: Optional[Vector3] = None,
                  object_geometry: Optional[LinkGeometry] = None,
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link',
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  offset: Optional[float] = 0.01):
         """
         Move to a given position where a box can be grasped.
@@ -503,7 +503,7 @@ class LiftObject(Goal):
                  object_name: str,
                  lifting: float = 0.02,
                  root_link: str = 'map',
-                 tip_link: str = 'hand_palm_link',
+                 tip_link: str = 'hand_gripper_tool_frame',
                  weight=WEIGHT_ABOVE_CA):
         super().__init__()
 
@@ -580,7 +580,7 @@ class Retracting(Goal):
         goal_point = PointStamped()
         goal_point.header.frame_id = self.tip_str
 
-        if self.tip_str == 'hand_palm_link':
+        if self.tip_str == 'hand_gripper_tool_frame':
             goal_point.point.z -= self.distance
 
         elif self.tip_str == 'base_link':
@@ -597,7 +597,7 @@ class Retracting(Goal):
         goal_vertical_axis.vector.z = 1
 
         tip_vertical_axis = Vector3Stamped()
-        tip_vertical_axis.header.frame_id = 'hand_palm_link'
+        tip_vertical_axis.header.frame_id = 'hand_gripper_tool_frame'
         tip_vertical_axis.vector.x = 1
 
         '''     self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
@@ -615,7 +615,7 @@ class AlignHeight(Goal):
                  goal_pose: PoseStamped,
                  object_height: float,
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link',
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  frontal_grasping=True):
         super().__init__()
 
@@ -686,7 +686,7 @@ class PlaceObject(Goal):
                  target_pose: PoseStamped,
                  object_height: float,
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link'):
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame'):
         super().__init__()
 
         # root link
