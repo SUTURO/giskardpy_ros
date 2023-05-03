@@ -4,7 +4,7 @@ from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
 
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA
+from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
@@ -109,6 +109,8 @@ class TestRotationGoal(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
+class TestForceSensorGoal(ForceSensorGoal):
+    pass
 
 class MoveGripper(Goal):
     def __init__(self,
@@ -300,7 +302,7 @@ class GraspAbove(Goal):
 
         # Root -> Reference frame for hand_palm_link offset
         offset_tip_goal_point = self.transform_msg(reference_frame, root_goal_point)
-        offset_tip_goal_point.point.z = offset_tip_goal_point.point.z + grasping_difference
+        #offset_tip_goal_point.point.z = offset_tip_goal_point.point.z + grasping_difference
 
         bar_tolerance = 0.1
 
@@ -426,7 +428,7 @@ class GraspFrontal(Goal):
 
         # Root -> Reference frame for hand_palm_link offset
         offset_tip_goal_point = self.transform_msg(reference_frame, root_goal_point)
-        offset_tip_goal_point.point.x = offset_tip_goal_point.point.x - grasping_difference
+        #offset_tip_goal_point.point.x = offset_tip_goal_point.point.x - grasping_difference
 
         # tip_axis
         self.tip_vertical_axis = Vector3Stamped()
@@ -645,7 +647,7 @@ class AlignHeight(Goal):
         frame_difference = 0.08
 
         tip_goal_point = self.transform_msg(self.tip_str, goal_point)
-        tip_goal_point.point.x += self.object_height + frame_difference
+        tip_goal_point.point.x += self.object_height #+ frame_difference
         tip_goal_point.point.y = 0
         tip_goal_point.point.z = 0
 
