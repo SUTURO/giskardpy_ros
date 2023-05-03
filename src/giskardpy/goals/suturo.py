@@ -13,6 +13,49 @@ from suturo_manipulation.gripper import Gripper
 
 from giskardpy import casadi_wrapper as w
 
+class ObjectGoal(Goal):
+    def __init__(self):
+        super().__init__()
+
+    def get_object_by_name(self, object_name):
+        try:
+            loginfo('trying to get objects with name')
+
+            object_link = self.world.get_link(object_name)
+            object_geometry: LinkGeometry = object_link.collisions[0]
+
+            # Get object
+            object_pose = self.world.compute_fk_pose('map', object_name)
+
+            loginfo(f'Object_pose by name: {object_pose}')
+
+            # Declare instance of geometry
+            if isinstance(object_geometry, BoxGeometry):
+                object_type = 'box'
+                object_geometry: BoxGeometry = object_geometry
+                object_size = Vector3(object_geometry.width, object_geometry.depth, object_geometry.height)
+
+            elif isinstance(object_geometry, CylinderGeometry):
+                object_type = 'cylinder'
+                object_geometry: CylinderGeometry = object_geometry
+                object_size = None  # [object_geometry.height, object_geometry.radius]
+
+            elif isinstance(object_geometry, SphereGeometry):
+                object_type = 'sphere'
+                object_geometry: SphereGeometry = object_geometry
+                object_size = None  # [object_geometry.radius]
+
+            else:
+                raise Exception('Not supported geometry')
+
+            loginfo(f'Got geometry: {object_type}')
+
+            return object_pose, object_size, object_geometry
+
+        except:
+            loginfo('Could not get geometry from name')
+
+
 
 class TestGoal(Goal):
     def __init__(self,
@@ -109,8 +152,10 @@ class TestRotationGoal(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
+
 class TestForceSensorGoal(ForceSensorGoal):
     pass
+
 
 class MoveGripper(Goal):
     def __init__(self,
@@ -162,7 +207,7 @@ class SetPointing(Goal):
         return super().__str__()
 
 
-class GraspObject(Goal):
+class GraspObject(ObjectGoal):
     def __init__(self,
                  object_name: str,
                  object_pose: Optional[PoseStamped] = None,
@@ -216,44 +261,6 @@ class GraspObject(Goal):
 
     def __str__(self) -> str:
         return super().__str__()
-
-    def get_object_by_name(self, object_name):
-        try:
-            loginfo('trying to get objects with name')
-
-            object_link = self.world.get_link(object_name)
-            object_geometry: LinkGeometry = object_link.collisions[0]
-
-            # Get object
-            object_pose = self.world.compute_fk_pose('map', object_name)
-
-            loginfo(f'Object_pose by name: {object_pose}')
-
-            # Declare instance of geometry
-            if isinstance(object_geometry, BoxGeometry):
-                object_type = 'box'
-                object_geometry: BoxGeometry = object_geometry
-                object_size = Vector3(object_geometry.width, object_geometry.depth, object_geometry.height)
-
-            elif isinstance(object_geometry, CylinderGeometry):
-                object_type = 'cylinder'
-                object_geometry: CylinderGeometry = object_geometry
-                object_size = None  # [object_geometry.height, object_geometry.radius]
-
-            elif isinstance(object_geometry, SphereGeometry):
-                object_type = 'sphere'
-                object_geometry: SphereGeometry = object_geometry
-                object_size = None  # [object_geometry.radius]
-
-            else:
-                raise Exception('Not supported geometry')
-
-            loginfo(f'Got geometry: {object_type}')
-
-            return object_pose, object_size, object_geometry
-
-        except:
-            loginfo('Could not get geometry from name')
 
 
 class GraspAbove(Goal):
@@ -408,13 +415,8 @@ class GraspFrontal(Goal):
         root_goal_point.header.frame_id = self.root_str
         root_goal_point.point = self.object_pose.pose.position
 
-        # Frame/grasp difference
-        frame_difference = 0.08
-
         if isinstance(object_geometry, BoxGeometry):
             self.object_size = Vector3(x=object_geometry.width, y=object_geometry.depth, z=object_geometry.height)
-
-            self.object_pose.pose.position.x -= (self.object_size.x / 2)
 
             reference_frame = object_name
 
@@ -424,19 +426,13 @@ class GraspFrontal(Goal):
 
             reference_frame = 'base_link'
 
-        grasping_difference = max(0.01, (frame_difference - (self.object_size.x / 2)))
-
-        # Root -> Reference frame for hand_palm_link offset
-        offset_tip_goal_point = self.transform_msg(reference_frame, root_goal_point)
-        #offset_tip_goal_point.point.x = offset_tip_goal_point.point.x - grasping_difference
-
         # tip_axis
         self.tip_vertical_axis = Vector3Stamped()
         self.tip_vertical_axis.header.frame_id = self.tip_str
         self.tip_vertical_axis.vector.x = 1
 
         # bar_center
-        self.bar_center_point = self.transform_msg(self.tip, offset_tip_goal_point)
+        self.bar_center_point = self.transform_msg(self.tip, root_goal_point)
 
         # bar_axis
         self.bar_axis = Vector3Stamped()
@@ -610,19 +606,15 @@ class Retracting(Goal):
         return super().__str__()
 
 
-class AlignHeight(Goal):
+class AlignHeight(ObjectGoal):
     def __init__(self,
-                 goal_pose: PoseStamped,
-                 object_height: float,
-                 root_link: Optional[str] = 'map',
+                 object_name,
+                 object_pose: Optional[PoseStamped] = None,
+                 object_height: float = None,
+                 root_link: Optional[str] = 'base_link',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  frontal_grasping=True):
         super().__init__()
-
-        # TODO: Instead of moving hand: Move torso to fit the hand height
-
-        #root_link = 'odom'
-        root_link = 'base_link'
 
         # root link
         self.root = self.world.get_link_name(root_link, None)
@@ -632,22 +624,27 @@ class AlignHeight(Goal):
         self.tip = self.world.get_link_name(tip_link, None)
         self.tip_str = str(self.tip)
 
+        # Get object geometry from name
+        if object_pose is None:
+            object_pose, self.object_size, _ = self.get_object_by_name(object_name)
+
+            object_height = self.object_size.z
+
+        self.object_pose = object_pose
         self.object_height = object_height
-        self.goal_pose = goal_pose
+
         self.frontal_grasping = frontal_grasping
 
     def make_constraints(self):
         # CartesianPosition
         goal_point = PointStamped()
-        goal_point.header.frame_id = self.goal_pose.header.frame_id
-        goal_point.point.x = self.goal_pose.pose.position.x
-        goal_point.point.y = self.goal_pose.pose.position.y
-        goal_point.point.z = self.goal_pose.pose.position.z
-
-        frame_difference = 0.08
+        goal_point.header.frame_id = self.object_pose.header.frame_id
+        goal_point.point.x = self.object_pose.pose.position.x
+        goal_point.point.y = self.object_pose.pose.position.y
+        goal_point.point.z = self.object_pose.pose.position.z
 
         tip_goal_point = self.transform_msg(self.tip_str, goal_point)
-        tip_goal_point.point.x += self.object_height #+ frame_difference
+        tip_goal_point.point.x += self.object_height
         tip_goal_point.point.y = 0
         tip_goal_point.point.z = 0
 
@@ -655,7 +652,6 @@ class AlignHeight(Goal):
         self.add_constraints_of_goal(CartesianPositionStraight(root_link=self.root_str,
                                                                tip_link=self.tip_str,
                                                                goal_point=tip_goal_point))
-
 
         # Align vertical
         goal_vertical_axis = Vector3Stamped()
@@ -680,11 +676,11 @@ class AlignHeight(Goal):
         return super().__str__()
 
 
-class PlaceObject(Goal):
+class PlaceObject(ObjectGoal):
     def __init__(self,
                  object_name: str,
                  target_pose: PoseStamped,
-                 object_height: float,
+                 object_height: float = None,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame'):
         super().__init__()
@@ -714,6 +710,13 @@ class PlaceObject(Goal):
         self.tip_vertical_axis.vector.x = 1
 
         self.goal_floor_pose = target_pose
+
+        # Get object geometry from name
+        if object_height is None:
+            _, self.object_size, _ = self.get_object_by_name(object_name)
+
+            object_height = self.object_size.z
+
         self.object_height = object_height
 
     def make_constraints(self):
