@@ -1011,9 +1011,11 @@ class GiskardWrapper:
                            tip_link=tip_link)
 
     def prepare_placing(self,
+                        object_name: str,
                         object_pose: PoseStamped,
                         height: float):
         self.set_json_goal(constraint_type='AlignHeight',
+                           object_name=object_name,
                            goal_pose=object_pose,
                            object_height=height)
 
