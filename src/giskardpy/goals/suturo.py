@@ -4,14 +4,48 @@ from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
 
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
+from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, NonMotionGoal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
+from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
+from giskardpy.tree.garden import TreeManager
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
 
-from giskardpy import casadi_wrapper as w
+from giskardpy import casadi_wrapper as w, identifier
+
+
+class ForceSensorGoal(Goal):
+    """
+    Inherit from this goal, if the goal should use the Force Sensor.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+
+        tree: TreeManager = self.god_map.get_data(identifier.tree_manager)
+
+        tree.render()
+
+        tree.insert_node(MonitorForceSensor('Monitor_Force'), 'monitor execution', 3)
+
+        tree.render()
+
+        tree.remove_node('Monitor Force')
+
+        tree.render()
+
+        return
+
+
+
+    def make_constraints(self):
+        print('here')
+
+    def __str__(self) -> str:
+        return super().__str__()
 
 class ObjectGoal(Goal):
     def __init__(self):
@@ -54,7 +88,6 @@ class ObjectGoal(Goal):
 
         except:
             loginfo('Could not get geometry from name')
-
 
 
 class TestGoal(Goal):
@@ -154,7 +187,16 @@ class TestRotationGoal(Goal):
 
 
 class TestForceSensorGoal(ForceSensorGoal):
-    pass
+    def __init__(self,
+                 **kwargs):
+        super().__init__()
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self):
+        return super().__str__()
+
 
 
 class MoveGripper(Goal):
@@ -609,7 +651,7 @@ class Retracting(Goal):
 class AlignHeight(ObjectGoal):
     def __init__(self,
                  object_name,
-                 object_pose: Optional[PoseStamped] = None,
+                 goal_pose: Optional[PoseStamped] = None,
                  object_height: float = None,
                  root_link: Optional[str] = 'base_link',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
@@ -625,12 +667,12 @@ class AlignHeight(ObjectGoal):
         self.tip_str = str(self.tip)
 
         # Get object geometry from name
-        if object_pose is None:
-            object_pose, self.object_size, _ = self.get_object_by_name(object_name)
+        if goal_pose is None:
+            goal_pose, self.object_size, _ = self.get_object_by_name(object_name)
 
             object_height = self.object_size.z
 
-        self.object_pose = object_pose
+        self.object_pose = goal_pose
         self.object_height = object_height
 
         self.frontal_grasping = frontal_grasping
@@ -641,10 +683,10 @@ class AlignHeight(ObjectGoal):
         goal_point.header.frame_id = self.object_pose.header.frame_id
         goal_point.point.x = self.object_pose.pose.position.x
         goal_point.point.y = self.object_pose.pose.position.y
-        goal_point.point.z = self.object_pose.pose.position.z
+        goal_point.point.z = self.object_pose.pose.position.z + self.object_height
 
         tip_goal_point = self.transform_msg(self.tip_str, goal_point)
-        tip_goal_point.point.x += self.object_height
+        tip_goal_point.header.frame_id = self.tip_str
         tip_goal_point.point.y = 0
         tip_goal_point.point.z = 0
 
