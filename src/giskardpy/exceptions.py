@@ -147,6 +147,9 @@ class ExecutionSucceededPrematurely(ExecutionException):
     pass
 
 
+class MonitorForceException(ExecutionException):
+    pass
+
 # -----------------------------------------------------------------------------------------------------------------------
 class ImplementationException(GiskardException):
     pass

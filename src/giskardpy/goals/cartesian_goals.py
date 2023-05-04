@@ -62,6 +62,10 @@ class CartesianPosition(Goal):
             root_link2_T_root_link = self.get_fk_evaluated(self.root_link2, self.root_link)
             r_P_c = root_link2_T_root_link.dot(r_P_c)
         # self.add_debug_expr('trans', w.norm(r_P_c))
+        #weight = self.weight*self.traj_time_in_seconds()
+        #v = w.Vector3([0,0,1])
+        #v.scale(weight/1000)
+        #self.add_debug_expr('weight', v)
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
                                         reference_velocity=self.reference_velocity,

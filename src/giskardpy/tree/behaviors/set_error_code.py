@@ -119,6 +119,9 @@ class SetErrorCode(GiskardBehavior):
             elif isinstance(exception, FollowJointTrajectory_GOAL_TOLERANCE_VIOLATED):
                 error_code = MoveResult.FollowJointTrajectory_GOAL_TOLERANCE_VIOLATED
 
+            elif isinstance(exception, MonitorForceException):
+                error_code = MoveResult.ForceMonitor_OBJECT_PLACED
+
         elif isinstance(exception, ImplementationException):
             print(exception)
             error_code = MoveResult.ERROR

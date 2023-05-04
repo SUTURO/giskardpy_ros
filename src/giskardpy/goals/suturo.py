@@ -27,13 +27,7 @@ class ForceSensorGoal(Goal):
 
         tree: TreeManager = self.god_map.get_data(identifier.tree_manager)
 
-        tree.render()
-
-        tree.insert_node(MonitorForceSensor('Monitor_Force'), 'monitor execution', 3)
-
-        tree.render()
-
-        tree.remove_node('Monitor Force')
+        tree.insert_node(MonitorForceSensor('Monitor_Force'), 'monitor execution', 2)
 
         tree.render()
 
@@ -42,7 +36,7 @@ class ForceSensorGoal(Goal):
 
 
     def make_constraints(self):
-        print('here')
+        pass
 
     def __str__(self) -> str:
         return super().__str__()
