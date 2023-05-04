@@ -781,3 +781,20 @@ class PlaceObject(ObjectGoal):
 
     def __str__(self) -> str:
         return super().__str__()
+
+
+class PlaceNeatly(ForceSensorGoal):
+    def __init__(self,
+                 target_pose: PoseStamped):
+        super().__init__()
+
+        self.add_constraints_of_goal(PlaceObject(object_name='',
+                                                 target_pose=target_pose,
+                                                 object_height=0.0))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
