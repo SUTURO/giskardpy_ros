@@ -27,7 +27,6 @@ class MonitorForceSensor(GiskardBehavior):
         # self.force_derivative_threshold = 50
         # self.force_derivative_threshold = 50
 
-
         self.wrench_compensated_force_data_x = []
         self.wrench_compensated_force_data_y = []
         self.wrench_compensated_force_data_z = []
@@ -98,6 +97,8 @@ class MonitorForceSensor(GiskardBehavior):
     @catch_and_raise_to_blackboard
     @profile
     def update(self):
+
+        print('running')
 
         if self.cancel_condition:
 
