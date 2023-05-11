@@ -462,13 +462,19 @@ class GraspFrontal(Goal):
 
             reference_frame = 'base_link'
 
+        grasp_offset = min(0.07, self.object_size.x/2)
+
         # tip_axis
         self.tip_vertical_axis = Vector3Stamped()
         self.tip_vertical_axis.header.frame_id = self.tip_str
         self.tip_vertical_axis.vector.x = 1
 
+
         # bar_center
-        self.bar_center_point = self.transform_msg(self.tip, root_goal_point)
+        self.bar_center_point = self.transform_msg(reference_frame, root_goal_point)
+        self.bar_center_point.point.x += grasp_offset
+
+
 
         # bar_axis
         self.bar_axis = Vector3Stamped()
@@ -667,7 +673,7 @@ class AlignHeight(ObjectGoal):
             object_height = self.object_size.z
 
         self.object_pose = goal_pose
-        self.object_height = object_height
+        self.object_height = object_height * 0.66
 
         self.frontal_grasping = frontal_grasping
 
