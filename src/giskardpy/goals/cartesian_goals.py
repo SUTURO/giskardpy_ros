@@ -19,7 +19,7 @@ class CartesianPosition(Goal):
                  tip_group: Optional[str] = None,
                  max_velocity: Optional[float] = None,
                  reference_velocity: Optional[float] = None,
-                 weight: float = WEIGHT_ABOVE_CA, root_link2: str = None):
+                 weight: float = WEIGHT_ABOVE_CA, root_link2: str = None, suffix: str = ''):
         """
         See CartesianPose.
         """
