@@ -55,6 +55,9 @@ class Goal(ABC):
         """
         return str(self.__class__.__name__)
 
+    def distance_to_goal(self) -> w.Expression:
+        pass
+
     def add_collision_check(self, link_a: PrefixName, link_b: PrefixName, distance: float):
         """
         Tell Giskard to check this collision, even if it got disabled through other means such as allow_all_collisions.

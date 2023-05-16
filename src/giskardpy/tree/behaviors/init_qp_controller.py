@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Dict
+from typing import Dict, List
 
 from py_trees import Status
 
@@ -43,12 +43,16 @@ class InitQPController(GiskardBehavior):
         constraints = {}
         vel_constraints = {}
         debug_expressions = {}
-        goals: Dict[str, Goal] = self.god_map.get_data(identifier.goals)
+
+        #goals: Dict[str, Goal] = self.god_map.get_data(identifier.goals)
+        goals: List[Dict[str, Goal]] = self.god_map.get_data(identifier.goals)
+
         for goal_name, goal in list(goals.items()):
             try:
                 _constraints, _vel_constraints, _debug_expressions = goal.get_constraints()
             except Exception as e:
                 raise ConstraintInitalizationException(str(e))
+            goal.distance_to_goal()
             constraints.update(_constraints)
             vel_constraints.update(_vel_constraints)
             debug_expressions.update(_debug_expressions)

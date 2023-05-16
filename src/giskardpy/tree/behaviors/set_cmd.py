@@ -87,11 +87,15 @@ class SetCmd(GetGoal):
         if self.get_blackboard_exception() is not None:
             return Status.SUCCESS
         try:
-            move_cmd = self.goal.cmd_seq.pop(0)  # type: MoveCmd
+            #move_cmd = self.goal.cmd_seq.pop(0)  # type: MoveCmd
+            move_cmd = self.goal.cmd_seq  # type: [MoveCmd]
+
             self.get_god_map().set_data(identifier.next_move_goal, move_cmd)
             cmd_id = self.get_god_map().get_data(identifier.cmd_id) + 1
             self.get_god_map().set_data(identifier.cmd_id, cmd_id)
             logging.loginfo('Planning move commands #{}/{}.'.format(cmd_id + 1, self.number_of_move_cmds))
+
+            self.goal.cmd_seq = []
         except IndexError:
             return Status.FAILURE
 

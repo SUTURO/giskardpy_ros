@@ -102,11 +102,14 @@ class MonitorForceSensor(GiskardBehavior):
 
         if self.cancel_condition:
 
-            tree = self.tree
-            tree.remove_node(self.name)
-
             print('goal canceled')
 
-            raise MonitorForceException
+            #raise MonitorForceException
 
-        return Status.SUCCESS
+        return Status.RUNNING
+
+'''    def terminate(self, new_status):
+
+        tree = self.tree
+        tree.remove_node(self.name)'''
+
