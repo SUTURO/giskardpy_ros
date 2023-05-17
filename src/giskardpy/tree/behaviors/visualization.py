@@ -3,7 +3,7 @@ import rospy
 from visualization_msgs.msg import Marker, MarkerArray
 
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
-from giskardpy.utils.utils import catch_and_raise_to_blackboard
+from giskardpy.utils.decorators import catch_and_raise_to_blackboard, record_time
 
 
 class VisualizationBehavior(GiskardBehavior):
@@ -20,13 +20,14 @@ class VisualizationBehavior(GiskardBehavior):
         return super().setup(timeout)
 
     @catch_and_raise_to_blackboard
+    @record_time
     @profile
     def update(self):
         markers = []
         time_stamp = rospy.Time()
         links = self.world.link_names_with_collisions
         for i, link_name in enumerate(links):
-            for j, marker in enumerate(self.world._links[link_name].collision_visualization_markers().markers):
+            for j, marker in enumerate(self.world.links[link_name].collision_visualization_markers().markers):
                 marker.header.frame_id = self.tf_root
                 marker.action = Marker.ADD
                 link_id_key = f'{link_name}_{j}'

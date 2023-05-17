@@ -6,6 +6,7 @@ from giskardpy.exceptions import *
 from giskardpy.goals.goal import NonMotionGoal
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
+from giskardpy.utils.decorators import record_time
 
 
 class SetErrorCode(GiskardBehavior):
@@ -17,6 +18,7 @@ class SetErrorCode(GiskardBehavior):
         self.context = context
         super().__init__(name)
 
+    @record_time
     @profile
     def update(self):
         e = self.get_blackboard_exception()
@@ -28,7 +30,7 @@ class SetErrorCode(GiskardBehavior):
         result.error_codes[cmd_id] = error_code
         result.error_messages[cmd_id] = error_message
         trajectory = self.god_map.get_data(identifier.trajectory)
-        joints = [self.world._joints[joint_name] for joint_name in self.world.movable_joints]
+        joints = [self.world.joints[joint_name] for joint_name in self.world.movable_joint_names]
         sample_period = self.god_map.get_data(identifier.sample_period)
         result.trajectory = trajectory.to_msg(sample_period=sample_period, start_time=0, joints=joints)
         if error_code == MoveResult.PREEMPTED:

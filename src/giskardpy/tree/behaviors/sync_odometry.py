@@ -9,16 +9,17 @@ from rospy import ROSException
 
 from giskardpy.data_types import JointStates
 from giskardpy.model.joints import OmniDrive
+from giskardpy.my_types import PrefixName
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
 from giskardpy.utils.math import rpy_from_quaternion
-from giskardpy.utils.utils import catch_and_raise_to_blackboard
+from giskardpy.utils.decorators import catch_and_raise_to_blackboard, record_time
 
 
 class SyncOdometry(GiskardBehavior):
 
     @profile
-    def __init__(self, odometry_topic: str, joint_name: str):
+    def __init__(self, odometry_topic: str, joint_name: PrefixName):
         self.odometry_topic = odometry_topic
         super().__init__(str(self))
         self.joint_name = joint_name
@@ -29,6 +30,7 @@ class SyncOdometry(GiskardBehavior):
         return f'{super().__str__()} ({self.odometry_topic})'
 
     @catch_and_raise_to_blackboard
+    @record_time
     @profile
     def setup(self, timeout=0.0):
         msg: Optional[Odometry] = None
@@ -43,7 +45,7 @@ class SyncOdometry(GiskardBehavior):
                 self.lock.put(msg)
             except ROSException as e:
                 logging.logwarn(f'Waiting for topic \'{self.odometry_topic}\' to appear.')
-        self.joint: OmniDrive = self.world._joints[self.joint_name]
+        self.joint: OmniDrive = self.world.joints[self.joint_name]
         if odom:
             self.odometry_sub = rospy.Subscriber(self.odometry_topic, Odometry, self.cb, queue_size=1)
         else:
@@ -59,30 +61,12 @@ class SyncOdometry(GiskardBehavior):
         self.lock.put(data)
 
     @catch_and_raise_to_blackboard
+    @record_time
     @profile
     def update(self):
         try:
             odometry: Odometry = self.lock.get()
-            pose = odometry.pose.pose
-            roll, pitch, yaw = rpy_from_quaternion(pose.orientation.x,
-                                                   pose.orientation.y,
-                                                   pose.orientation.z,
-                                                   pose.orientation.w)
-            self.last_msg = JointStates()
-            self.world.state[self.joint.x_name].position = pose.position.x
-            self.world.state[self.joint.y_name].position = pose.position.y
-            try:
-                self.world.state[self.joint.z_name].position = pose.position.z
-                self.world.state[self.joint.roll_name].position = roll
-                self.world.state[self.joint.pitch_name].position = pitch
-            except:
-                pass
-            self.world.state[self.joint.yaw_name].position = yaw
-            # q = quaternion_from_rpy(roll, pitch, 0)
-            # self.world.state[joint.qx_name].position = q[0]
-            # self.world.state[joint.qy_name].position = q[1]
-            # self.world.state[joint.qz_name].position = q[2]
-            # self.world.state[joint.qw_name].position = q[3]
+            self.joint.update_transform(odometry.pose.pose)
 
         except Empty:
             pass

@@ -6,8 +6,9 @@ from sensor_msgs.msg import JointState
 
 import giskardpy.utils.tfwrapper as tf
 from giskardpy.data_types import JointStates
-from giskardpy.model.world import SubWorldTree
+from giskardpy.model.world import WorldBranch
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
+from giskardpy.utils.decorators import record_time
 
 
 class SyncConfiguration2(GiskardBehavior):
@@ -16,6 +17,7 @@ class SyncConfiguration2(GiskardBehavior):
     Gets replace with a kinematic sim plugin during a parallel universe.
     """
 
+    @record_time
     @profile
     def __init__(self, name, group_name, joint_state_topic='joint_states', tf_root_link_name=None):
         """
@@ -26,13 +28,14 @@ class SyncConfiguration2(GiskardBehavior):
         self.map_frame = tf.get_tf_root()
         self.joint_state_topic = joint_state_topic
         self.group_name = group_name
-        self.group = self.world.groups[self.group_name]  # type: SubWorldTree
+        self.group = self.world.groups[self.group_name]  # type: WorldBranch
         if tf_root_link_name is None:
             self.tf_root_link_name = self.group.root_link_name
         else:
             self.tf_root_link_name = tf_root_link_name
         self.lock = Queue(maxsize=1)
 
+    @record_time
     @profile
     def setup(self, timeout=0.0):
         self.joint_state_sub = rospy.Subscriber(self.joint_state_topic, JointState, self.cb, queue_size=1)
@@ -50,6 +53,7 @@ class SyncConfiguration2(GiskardBehavior):
         self.last_time = rospy.get_rostime()
         super().initialise()
 
+    @record_time
     @profile
     def update(self):
         try:

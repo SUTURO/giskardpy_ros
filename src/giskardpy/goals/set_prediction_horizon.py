@@ -1,11 +1,13 @@
+from typing import Union
+
 from giskardpy import identifier
+from giskardpy.configs.data_types import SupportedQPSolver
 from giskardpy.goals.goal import Goal, NonMotionGoal
 from giskardpy.utils import logging
 
 
 class SetPredictionHorizon(Goal):
-    def __init__(self,
-                 prediction_horizon: int):
+    def __init__(self, prediction_horizon: int):
         """
         Will overwrite the prediction horizon for a single goal.
         Setting it to 1 will turn of acceleration and jerk limits.
@@ -15,26 +17,20 @@ class SetPredictionHorizon(Goal):
         self.new_prediction_horizon = prediction_horizon
 
     def make_constraints(self):
-        self.prediction_horizon = self.new_prediction_horizon
-        if 5 > self.prediction_horizon > 1:
+        if 5 > self.new_prediction_horizon > 1:
             logging.logwarn('Prediction horizon should be 1 or greater equal 5.')
-        if self.prediction_horizon == 1:
-            if 'acceleration' in self.god_map.get_data(identifier.joint_weights):
-                del self.god_map.get_data(identifier.joint_weights)['acceleration']
-            if 'acceleration' in self.god_map.get_data(identifier.joint_limits):
-                del self.god_map.get_data(identifier.joint_limits)['acceleration']
-        if self.prediction_horizon <= 2:
-            if 'jerk' in self.god_map.get_data(identifier.joint_weights):
-                del self.god_map.get_data(identifier.joint_weights)['jerk']
-            if 'jerk' in self.god_map.get_data(identifier.joint_limits):
-                del self.god_map.get_data(identifier.joint_limits)['jerk']
-        if self.prediction_horizon <= 3:
-            if 'jerk' in self.god_map.get_data(identifier.joint_weights):
-                del self.god_map.get_data(identifier.joint_weights)['snap']
-            if 'jerk' in self.god_map.get_data(identifier.joint_limits):
-                del self.god_map.get_data(identifier.joint_limits)['snap']
-        self.god_map.set_data(identifier.prediction_horizon, self.prediction_horizon)
-        self.world.apply_default_limits_and_weights()
+        self.god_map.set_data(identifier.prediction_horizon, self.new_prediction_horizon)
+
+    def __str__(self) -> str:
+        return str(self.__class__.__name__)
+
+
+class SetQPSolver(NonMotionGoal):
+
+    def __init__(self, qp_solver_id: Union[SupportedQPSolver, int]):
+        super().__init__()
+        qp_solver_id = SupportedQPSolver(qp_solver_id)
+        self.god_map.set_data(identifier.qp_solver_name, qp_solver_id)
 
     def __str__(self) -> str:
         return str(self.__class__.__name__)

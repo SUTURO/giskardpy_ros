@@ -12,6 +12,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 import giskardpy.casadi_wrapper as w
 import giskardpy.identifier as identifier
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
+from giskardpy.utils.decorators import record_time
 from giskardpy.utils.tfwrapper import normalize_quaternion_msg, np_to_kdl, point_to_kdl, kdl_to_point, \
     quaternion_to_kdl, transform_to_kdl, kdl_to_transform_stamped
 
@@ -32,6 +33,7 @@ class DebugMarkerPublisher(GiskardBehavior):
         self.tf_pub = rospy.Publisher(tf_topic, TFMessage, queue_size=10)
         self.marker_pub = rospy.Publisher('~visualization_marker_array', MarkerArray, queue_size=10)
 
+    @record_time
     def setup(self, timeout):
         self.clear_markers()
 
@@ -42,7 +44,8 @@ class DebugMarkerPublisher(GiskardBehavior):
 
     def to_vectors_markers(self, width: float = 0.05) -> List[Marker]:
         ms = []
-        for i, (name, value) in enumerate(self.debugs_evaluated.items()):
+        color_counter = 0
+        for name, value in self.debugs_evaluated.items():
             expr = self.debugs[name]
             if not hasattr(expr, 'reference_frame'):
                 continue
@@ -132,22 +135,24 @@ class DebugMarkerPublisher(GiskardBehavior):
                     m.points.append(Point(map_P_p1[0][0], map_P_p1[1][0], map_P_p1[2][0]))
                     m.points.append(Point(map_P_p2[0][0], map_P_p2[1][0], map_P_p2[2][0]))
                     m.type = m.ARROW
-                    m.color = self.colors[i]
+                    m.color = self.colors[color_counter]
                     m.scale.x = width / 2
                     m.scale.y = width
                     m.scale.z = 0
+                    color_counter += 1
                 elif isinstance(expr, w.Point3):
                     ref_P_d = value
                     map_P_d = np.dot(map_T_ref, ref_P_d)
-                    m.pose.position.x = map_P_d[0][0]
-                    m.pose.position.y = map_P_d[1][0]
-                    m.pose.position.z = map_P_d[2][0]
+                    m.pose.position.x = map_P_d[0]
+                    m.pose.position.y = map_P_d[1]
+                    m.pose.position.z = map_P_d[2]
                     m.pose.orientation.w = 1
                     m.type = m.SPHERE
-                    m.color = self.colors[i]
+                    m.color = self.colors[color_counter]
                     m.scale.x = width
                     m.scale.y = width
                     m.scale.z = width
+                    color_counter += 1
                 ms.append(m)
         return ms
 
@@ -158,6 +163,7 @@ class DebugMarkerPublisher(GiskardBehavior):
         msg.markers.append(marker)
         self.marker_pub.publish(msg)
 
+    @record_time
     @profile
     def update(self):
         with self.get_god_map() as god_map:

@@ -9,7 +9,7 @@ from giskardpy.exceptions import ExecutionException, FollowJointTrajectory_INVAL
     FollowJointTrajectory_INVALID_GOAL, FollowJointTrajectory_OLD_HEADER_TIMESTAMP, \
     FollowJointTrajectory_PATH_TOLERANCE_VIOLATED, FollowJointTrajectory_GOAL_TOLERANCE_VIOLATED, \
     ExecutionTimeoutException, ExecutionSucceededPrematurely, ExecutionPreemptedException
-from giskardpy.model.joints import OneDofJoint, MimicJoint, OmniDrive
+from giskardpy.model.joints import OneDofJoint, OmniDrive
 from giskardpy.my_types import PrefixName
 
 try:
@@ -27,8 +27,8 @@ import giskardpy.identifier as identifier
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
 from giskardpy.utils.logging import loginfo
-from giskardpy.utils.utils import raise_to_blackboard, \
-    catch_and_raise_to_blackboard
+from giskardpy.utils.utils import raise_to_blackboard
+from giskardpy.utils.decorators import catch_and_raise_to_blackboard, record_time
 
 
 class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
@@ -44,6 +44,7 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
         supported_action_types = [control_msgs.msg.FollowJointTrajectoryAction]
         supported_state_types = [control_msgs.msg.JointTrajectoryControllerState]
 
+    @record_time
     @profile
     def __init__(self, action_namespace: str, state_topic: str, group_name: str,
                  goal_time_tolerance: float = 1, fill_velocity_values: bool = True):
@@ -68,8 +69,8 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
                     if action_msg_type not in self.supported_action_types:
                         raise TypeError()
                 except Exception as e:
-                    raise TypeError('Action server of type \'{}\' is not supported. '
-                                    'Must be one of: {}'.format(action_msg_type, self.supported_action_types))
+                    raise TypeError(f'Action server of type \'{action_msg_type}\' is not supported. '
+                                    f'Must be one of: {self.supported_action_types}')
             except ROSTopicException as e:
                 logging.logwarn('Couldn\'t connect to {}. Is it running?'.format(self.action_namespace))
                 rospy.sleep(1)
@@ -86,30 +87,31 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
                 if status_msg_type is None:
                     raise ROSTopicException()
                 if status_msg_type not in self.supported_state_types:
-                    raise TypeError('State topic of type \'{}\' is not supported. '
-                                    'Must be one of: {}'.format(status_msg_type, self.supported_state_types))
+                    raise TypeError(f'State topic of type \'{status_msg_type}\' is not supported. '
+                                    f'Must be one of: {self.supported_state_types}')
                 msg = rospy.wait_for_message(state_topic, status_msg_type, timeout=2.0)
                 if isinstance(msg, JointState):
                     controlled_joint_names = msg.name
                 elif isinstance(msg, control_msgs.msg.JointTrajectoryControllerState) \
                         or isinstance(msg, pr2_controllers_msgs.msg.JointTrajectoryControllerState):
                     controlled_joint_names = msg.joint_names
-            except ROSException as e:
+            except (ROSException, ROSTopicException) as e:
                 logging.logwarn(f'Couldn\'t connect to {state_topic}. Is it running?')
                 rospy.sleep(1)
         controlled_joint_names = [PrefixName(j, self.group_name) for j in controlled_joint_names]
         if len(controlled_joint_names) == 0:
             raise ValueError(f'\'{state_topic}\' has no joints')
 
-        for joint in self.world._joints.values():
-            if isinstance(joint, OneDofJoint) and not isinstance(joint, MimicJoint):
+        for joint in self.world.joints.values():
+            if isinstance(joint, OneDofJoint):
                 if joint.free_variable.name in controlled_joint_names:
                     self.controlled_joints.append(joint)
                     controlled_joint_names.remove(joint.free_variable.name)
             elif isinstance(joint, OmniDrive):
-                if set(controlled_joint_names) == set(joint.position_variable_names):
+                degrees_of_freedom = {joint.x.name, joint.y.name, joint.yaw.name}
+                if set(controlled_joint_names) == degrees_of_freedom:
                     self.controlled_joints.append(joint)
-                    for position_variable in joint.position_variable_names:
+                    for position_variable in degrees_of_freedom:
                         controlled_joint_names.remove(position_variable)
         if len(controlled_joint_names) > 0:
             raise ValueError(f'{state_topic} provides the following joints '
@@ -123,6 +125,7 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
     def __str__(self):
         return f'{super().__str__()} ({self.action_namespace})'
 
+    @record_time
     @profile
     def initialise(self):
         super().initialise()
@@ -144,6 +147,7 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
         self.cancel_tries = 0
 
     @catch_and_raise_to_blackboard
+    @record_time
     @profile
     def update(self):
         """
@@ -154,7 +158,7 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
         overriding this shit because of the fucking prints
         """
         current_time = rospy.get_rostime()
-        self.logger.debug("{0}.update()".format(self.__class__.__name__))
+        # self.logger.debug("{0}.update()".format(self.__class__.__name__))
         if not self.action_client:
             self.feedback_message = "no action client, did you call setup() on your tree?"
             return py_trees.Status.INVALID
@@ -228,8 +232,8 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
         Args:
             new_status (:class:`~py_trees.common.Status`): the behaviour is transitioning to this new status
         """
-        self.logger.debug("%s.terminate(%s)" % (self.__class__.__name__, "%s->%s" % (
-        self.status, new_status) if self.status != new_status else "%s" % new_status))
+        # self.logger.debug("%s.terminate(%s)" % (self.__class__.__name__, "%s->%s" % (
+        # self.status, new_status) if self.status != new_status else "%s" % new_status))
         if self.action_client is not None and self.sent_goal:
             motion_state = self.action_client.get_state()
             if ((motion_state == GoalStatus.PENDING) or (motion_state == GoalStatus.ACTIVE) or
