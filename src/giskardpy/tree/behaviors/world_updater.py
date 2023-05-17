@@ -14,16 +14,18 @@ from visualization_msgs.msg import MarkerArray, Marker
 import giskardpy.casadi_wrapper as w
 from giskard_msgs.srv import UpdateWorld, UpdateWorldResponse, UpdateWorldRequest, GetGroupNamesResponse, \
     GetGroupNamesRequest, RegisterGroupRequest, RegisterGroupResponse, \
-    GetGroupInfoResponse, GetGroupInfoRequest, DyeGroupResponse, GetGroupNames, GetGroupInfo, RegisterGroup, DyeGroup
+    GetGroupInfoResponse, GetGroupInfoRequest, DyeGroupResponse, GetGroupNames, GetGroupInfo, RegisterGroup, DyeGroup, \
+    DyeGroupRequest
 from giskardpy.data_types import JointStates
 from giskardpy.exceptions import CorruptShapeException, UnknownGroupException, \
     UnsupportedOptionException, DuplicateNameException, UnknownLinkException
-from giskardpy.model.world import SubWorldTree
+from giskardpy.model.world import WorldBranch
 from giskardpy.my_types import PrefixName
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.tree.behaviors.sync_configuration import SyncConfiguration
 from giskardpy.tree.behaviors.sync_tf_frames import SyncTfFrames
 from giskardpy.utils import logging
+from giskardpy.utils.decorators import record_time
 from giskardpy.utils.tfwrapper import transform_pose, msg_to_homogeneous_matrix
 
 
@@ -77,6 +79,7 @@ class WorldUpdater(GiskardBehavior):
         self.update_ticked = Queue(maxsize=1)
         self.timer_state = self.READY
 
+    @record_time
     @profile
     def setup(self, timeout: float = 5.0):
         self.marker_publisher = rospy.Publisher('~visualization_marker_array', MarkerArray, queue_size=1)
@@ -88,18 +91,21 @@ class WorldUpdater(GiskardBehavior):
         # self.dump_state_srv = rospy.Service('~dump_state', Trigger, self.dump_state_cb)
         return super(WorldUpdater, self).setup(timeout)
 
-    def dye_group(self, req):
+    def dye_group(self, req: DyeGroupRequest):
         res = DyeGroupResponse()
         try:
             self.world.dye_group(req.group_name, req.color)
             res.error_codes = DyeGroupResponse.SUCCESS
+            for link_name in self.world.groups[req.group_name].links:
+                self.world.links[link_name].reset_cache()
+            logging.loginfo(f'dyed group \'{req.group_name}\' to r:{req.color.r} g:{req.color.g} b:{req.color.b} a:{req.color.a}')
         except UnknownGroupException:
             res.error_codes = DyeGroupResponse.GROUP_NOT_FOUND_ERROR
         return res
 
     @profile
     def register_groups_cb(self, req: RegisterGroupRequest) -> RegisterGroupResponse:
-        link_name = self.world.get_link_name(req.root_link_name, req.parent_group_name)
+        link_name = self.world.search_for_link_name(req.root_link_name, req.parent_group_name)
         self.world.register_group(req.group_name, link_name)
         res = RegisterGroupResponse()
         res.error_codes = res.SUCCESS
@@ -117,7 +123,7 @@ class WorldUpdater(GiskardBehavior):
         res = GetGroupInfoResponse()
         res.error_codes = GetGroupInfoResponse.SUCCESS
         try:
-            group = self.world.groups[req.group_name]  # type: SubWorldTree
+            group = self.world.groups[req.group_name]  # type: WorldBranch
             res.controlled_joints = [str(j.short_name) for j in group.controlled_joints]
             res.links = list(sorted(str(x.short_name) for x in group.link_names_as_set))
             res.child_groups = list(sorted(str(x) for x in group.groups.keys()))
@@ -126,17 +132,18 @@ class WorldUpdater(GiskardBehavior):
             # if node_name in tree.tree_nodes:
             #     res.joint_state_topic = tree.tree_nodes[node_name].node.joint_state_topic
             res.root_link_pose.pose = group.base_pose
-            res.root_link_pose.header.frame_id = self.world.root_link_name
+            res.root_link_pose.header.frame_id = str(self.world.root_link_name)
             for key, value in group.state.items():
                 res.joint_state.name.append(str(key))
                 res.joint_state.position.append(value.position)
                 res.joint_state.velocity.append(value.velocity)
         except KeyError as e:
-            logging.logerr('no object with the name {} was found'.format(req.group_name))
+            logging.logerr(f'no object with the name {req.group_name} was found')
             res.error_codes = GetGroupInfoResponse.GROUP_NOT_FOUND_ERROR
 
         return res
 
+    @record_time
     @profile
     def update(self):
         try:
@@ -199,14 +206,14 @@ class WorldUpdater(GiskardBehavior):
     @profile
     def add_object(self, req: UpdateWorldRequest):
         # assumes that parent has god map lock
-        req.parent_link = self.world.get_link_name(req.parent_link, req.parent_link_group)
+        req.parent_link = self.world.search_for_link_name(req.parent_link, req.parent_link_group)
         world_body = req.body
         if req.pose.header.frame_id == '':
             raise TransformException('Frame_id in pose is not set.')
         try:
             global_pose = transform_pose(target_frame=self.world.root_link_name, pose=req.pose, timeout=0.5)
         except:
-            req.pose.header.frame_id = self.world.get_link_name(req.pose.header.frame_id)
+            req.pose.header.frame_id = self.world.search_for_link_name(req.pose.header.frame_id)
             global_pose = self.world.transform_msg(self.world.root_link_name, req.pose)
 
         global_pose = self.world.transform_pose(req.parent_link, global_pose).pose
@@ -243,18 +250,19 @@ class WorldUpdater(GiskardBehavior):
             raise UnknownGroupException(f'Can\'t update pose of unknown group: \'{req.group_name}\'')
         group = self.world.groups[req.group_name]
         joint_name = group.root_link.parent_joint_name
-        pose = self.world.transform_pose(self.world._joints[joint_name].parent_link_name, req.pose).pose
-        pose = w.TransMatrix(pose)
-        self.world.update_joint_parent_T_child(joint_name, pose)
-        # self.collision_scene.remove_black_list_entries(set(group.link_names_with_collisions))
-        # self.collision_scene.update_collision_blacklist(
-        #     link_combinations=set(product(group.link_names_with_collisions,
-        #                                   self.world.link_names_with_collisions)))
+        pose = self.world.transform_pose(self.world.joints[joint_name].parent_link_name, req.pose).pose
+        # pose = w.TransMatrix(pose)
+        self.world.joints[joint_name].update_transform(pose)
+        # self.world.update_joint_parent_T_child(joint_name, pose)
+        self.collision_scene.remove_black_list_entries(set(group.link_names_with_collisions))
+        self.collision_scene.update_collision_blacklist(
+            link_combinations=set(product(group.link_names_with_collisions,
+                                          self.world.link_names_with_collisions)))
 
     @profile
     def update_parent_link(self, req: UpdateWorldRequest):
         # assumes that parent has god map lock
-        req.parent_link = self.world.get_link_name(link_name=req.parent_link, group_name=req.parent_link_group)
+        req.parent_link = self.world.search_for_link_name(link_name=req.parent_link, group_name=req.parent_link_group)
         if req.group_name not in self.world.groups:
             raise UnknownGroupException(f'Can\'t attach to unknown group: \'{req.group_name}\'')
         group = self.world.groups[req.group_name]
@@ -275,10 +283,11 @@ class WorldUpdater(GiskardBehavior):
         if name not in self.world.groups:
             raise UnknownGroupException(f'Can not remove unknown group: {name}.')
         self.collision_scene.remove_black_list_entries(set(self.world.groups[name].link_names_with_collisions))
-        old_free_variables = [x.name for x in self.world.groups[name].free_variables]
         self.world.delete_group(name)
-        for free_variable in old_free_variables:
-            del self.world.state[free_variable]
+        self.world.cleanup_unused_free_variable()
+        # old_free_variables = [x.name for x in self.world.groups[name].free_variables]
+        # for free_variable in old_free_variables:
+        #     del self.world.state[free_variable]
         self._remove_plugins_of_group(name)
         logging.loginfo(f'Deleted \'{name}\'.')
 
@@ -297,7 +306,7 @@ class WorldUpdater(GiskardBehavior):
             self._remove_plugins_of_group(group_name)
         self.added_plugin_names = defaultdict(list)
         # copy only state of joints that didn't get deleted
-        remaining_free_variables = [x.name for x in self.world.free_variables]
+        remaining_free_variables = list(self.world.free_variables.keys())
         self.world.state = JointStates({k: v for k, v in tmp_state.items() if k in remaining_free_variables})
         self.world.notify_state_change()
         self.clear_markers()

@@ -11,9 +11,11 @@ from geometry_msgs.msg import Pose, Point, Vector3, PoseStamped, PointStamped, V
 
 from giskardpy import casadi_wrapper as w
 from giskardpy.data_types import KeyDefaultDict
+from giskardpy.utils.singleton import SingletonMeta
 
 
-def set_default_in_override_block(block_identifier, god_map):
+def set_default_in_override_block(block_identifier):
+    god_map = GodMap()
     default_value = god_map.get_data(block_identifier[:-1] + ['default'])
     override = god_map.get_data(block_identifier)
     d = defaultdict(lambda: default_value)
@@ -180,26 +182,28 @@ def get_data(identifier: Sequence[Union[str, int, Sequence[Union[str, int]]]], d
     return result, shortcut
 
 
-class GodMap(object):
+class GodMap(metaclass=SingletonMeta):
     """
     Data structure used by tree to exchange information.
     """
 
+    _data: dict
+    key_to_expr: dict
+    expr_to_key: dict
+    last_expr_values: dict
+    shortcuts: dict
+
     def __init__(self):
-        self._data = {}
+        self.clear()
         self.expr_separator = '_'
+        self.lock = RLock()
+
+    def clear(self):
+        self._data = {}
         self.key_to_expr = {}
         self.expr_to_key = {}
         self.last_expr_values = {}
         self.shortcuts = {}
-        self.lock = RLock()
-
-    def __copy__(self):
-        god_map_copy = GodMap()
-        god_map_copy._data = copy(self._data)
-        god_map_copy.key_to_expr = copy(self.key_to_expr)
-        god_map_copy.expr_to_key = copy(self.expr_to_key)
-        return god_map_copy
 
     def __enter__(self):
         self.lock.acquire()
@@ -245,7 +249,7 @@ class GodMap(object):
     def clear_cache(self):
         self.shortcuts = {}
 
-    def to_symbol(self, identifier):
+    def to_symbol(self, identifier) -> w.Symbol:
         """
         All registered identifiers will be included in self.get_symbol_map().
         :type identifier: list
@@ -384,21 +388,19 @@ class GodMap(object):
             z=self.to_symbol(identifier + ['z']),
         )
 
-    def get_values(self, symbols):
+    def get_values(self, symbols) -> np.ndarray:
         """
         :return: a dict which maps all registered expressions to their values or 0 if there is no number entry
-        :rtype: list
         """
         # its a trap, this function only looks slow with lineprofiler
         with self.lock:
             return self.unsafe_get_values(symbols)
 
-    def unsafe_get_values(self, symbols):
+    def unsafe_get_values(self, symbols) -> np.ndarray:
         """
         :return: a dict which maps all registered expressions to their values or 0 if there is no number entry
-        :rtype: list
         """
-        return [self.unsafe_get_data(self.expr_to_key[expr]) for expr in symbols]
+        return np.array([self.unsafe_get_data(self.expr_to_key[expr]) for expr in symbols], dtype=float)
 
     def evaluate_expr(self, expr: w.Expression):
         if isinstance(expr, (int, float)):
@@ -406,9 +408,9 @@ class GodMap(object):
         f = expr.compile()
         if len(f.str_params) == 0:
             return expr.evaluate()
-        result = f.call2(self.get_values(f.str_params))
+        result = f.fast_call(self.get_values(f.str_params))
         if len(result) == 1:
-            return result[0][0]
+            return result[0]
         else:
             return result
 

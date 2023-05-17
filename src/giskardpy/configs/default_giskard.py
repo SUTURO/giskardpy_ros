@@ -1,6 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple, Type, Any
 
 import numpy as np
 import rospy
@@ -17,10 +17,10 @@ from giskardpy.configs.data_types import CollisionCheckerLib, GeneralConfig, \
 from giskardpy.exceptions import GiskardException
 from giskardpy.goals.goal import Goal
 from giskardpy.god_map import GodMap
-from giskardpy.model.joints import Joint, FixedJoint, OmniDrive, DiffDrive
+from giskardpy.model.joints import Joint, FixedJoint, OmniDrive, DiffDrive, OmniDrivePR22, TFJoint
 from giskardpy.model.utils import robot_name_from_urdf_string
 from giskardpy.model.world import WorldTree
-from giskardpy.my_types import my_string, PrefixName, Derivatives
+from giskardpy.my_types import my_string, PrefixName, Derivatives, derivative_map
 from giskardpy.tree.garden import OpenLoop, ClosedLoop, StandAlone
 from giskardpy.utils import logging
 from giskardpy.utils.time_collector import TimeCollector
@@ -28,7 +28,11 @@ from giskardpy.utils.utils import resolve_ros_iris, get_all_classes_in_package
 
 
 class Giskard:
-    def __init__(self):
+    def __init__(self, root_link_name: Optional[str] = None):
+        if root_link_name is not None:
+            self._root_link_name = PrefixName.from_string(root_link_name, set_none_if_no_slash=True)
+        else:
+            self._root_link_name = PrefixName(tf.get_tf_root(), None)
         self._collision_checker: CollisionCheckerLib = CollisionCheckerLib.bpb
         self._general_config: GeneralConfig = GeneralConfig()
         self._qp_solver_config: QPSolverConfig = QPSolverConfig()
@@ -36,13 +40,17 @@ class Giskard:
         self._collision_avoidance_configs: Dict[str, CollisionAvoidanceConfig] = defaultdict(CollisionAvoidanceConfig)
         self._god_map = GodMap()
         self._god_map.set_data(identifier.giskard, self)
-        self._god_map.set_data(identifier.timer_collector, TimeCollector(self._god_map))
-        self._controlled_joints = []
-        self._root_link_name = None
+        self._god_map.set_data(identifier.joints_to_add, [])
+        self._god_map.set_data(identifier.debug_expr_needed, False)
+        self._god_map.set_data(identifier.hack, 0)
         blackboard = Blackboard
         blackboard.god_map = self._god_map
+        self.world = WorldTree(self._root_link_name)
+        self._controlled_joints = []
         self._backup = {}
         self.goal_package_paths = ['giskardpy.goals']
+        self.set_default_joint_limits()
+        self.set_default_weights()
 
     def add_goal_package_name(self, package_name: str):
         new_goals = get_all_classes_in_package(package_name, Goal)
@@ -50,12 +58,6 @@ class Giskard:
             raise GiskardException(f'No classes of type \'Goal\' found in {package_name}')
         logging.loginfo(f'Made goal classes {new_goals} available Giskard.')
         self.goal_package_paths.append(package_name)
-
-    def set_root_link_name(self, link_name: str):
-        """
-        Set the name of the root link of the world. Only required in standalone mode.
-        """
-        self._root_link_name = link_name
 
     def _get_collision_avoidance_config(self, group_name: Optional[str] = None):
         if group_name is None:
@@ -65,7 +67,8 @@ class Giskard:
     def add_robot_urdf(self,
                        urdf: str,
                        group_name: str,
-                       joint_state_topics: List[str] = ('/joint_states',)):
+                       joint_state_topics: List[str] = ('/joint_states',),
+                       add_drive_joint_to_group: bool = True):
         """
         Add a robot urdf to the world.
         :param urdf: robot urdf as string, not the path
@@ -79,8 +82,8 @@ class Giskard:
         if group_name is None:
             group_name = robot_name_from_urdf_string(urdf)
             assert group_name not in self.group_names
-            self.group_names.append(group_name)
-        robot = RobotInterfaceConfig(urdf, name=group_name)
+        self.group_names.append(group_name)
+        robot = RobotInterfaceConfig(urdf, name=group_name, add_drive_joint_to_group=add_drive_joint_to_group)
         self.robot_interface_configs.append(robot)
         js_kwargs = [{'group_name': group_name, 'joint_state_topic': topic} for topic in joint_state_topics]
         self.hardware_config.joint_state_topics_kwargs.extend(js_kwargs)
@@ -88,7 +91,8 @@ class Giskard:
     def add_robot_from_parameter_server(self,
                                         parameter_name: str = 'robot_description',
                                         joint_state_topics: List[str] = ('/joint_states',),
-                                        group_name: Optional[str] = None):
+                                        group_name: Optional[str] = None,
+                                        add_drive_joint_to_group: bool = True):
         """
         Add a robot urdf from parameter server to Giskard.
         :param parameter_name:
@@ -97,7 +101,8 @@ class Giskard:
         :param group_name: How to call the robot. If nothing is specified it will get the name it has in the urdf
         """
         urdf = rospy.get_param(parameter_name)
-        self.add_robot_urdf(urdf, group_name=group_name, joint_state_topics=joint_state_topics)
+        self.add_robot_urdf(urdf, group_name=group_name, joint_state_topics=joint_state_topics,
+                            add_drive_joint_to_group=add_drive_joint_to_group)
 
     def configure_MaxTrajectoryLength(self, enabled: bool = True, length: float = 30):
         self.behavior_tree_config.plugin_config['MaxTrajectoryLength']['enabled'] = enabled
@@ -112,6 +117,33 @@ class Giskard:
         self.behavior_tree_config.plugin_config['VisualizationBehavior']['enabled'] = enabled
         self.behavior_tree_config.plugin_config['VisualizationBehavior']['in_planning_loop'] = in_planning_loop
 
+    def configure_PublishDebugExpressions(self, publish_lb: bool = False, publish_ub: bool = False,
+                                          publish_lbA: bool = False, publish_ubA: bool = False,
+                                          publish_bE: bool = False, publish_Ax: bool = False,
+                                          publish_Ex: bool = False, publish_xdot: bool = False,
+                                          publish_weights: bool = False, publish_g: bool = False,
+                                          publish_debug: bool = False, enabled_base: bool = False):
+        enabled = publish_lb or publish_ub or publish_lbA or publish_ubA or publish_bE or publish_Ax or publish_Ex \
+                  or publish_xdot or publish_weights or publish_debug
+        if enabled:
+            self._god_map.set_data(identifier.debug_expr_needed, True)
+        self.behavior_tree_config.plugin_config['PublishDebugExpressions']['enabled'] = enabled
+        self.behavior_tree_config.plugin_config['PublishDebugExpressions']['enabled_base'] = enabled_base
+        publish_flags = {
+            'publish_lb': publish_lb,
+            'publish_ub': publish_ub,
+            'publish_lbA': publish_lbA,
+            'publish_ubA': publish_ubA,
+            'publish_weights': publish_weights,
+            'publish_g': publish_g,
+            'publish_bE': publish_bE,
+            'publish_Ax': publish_Ax,
+            'publish_Ex': publish_Ex,
+            'publish_xdot': publish_xdot,
+            'publish_debug': publish_debug,
+        }
+        self.behavior_tree_config.plugin_config['PublishDebugExpressions'].update(publish_flags)
+
     def configure_CollisionMarker(self, enabled: bool = True, in_planning_loop: bool = False):
         """
         :param enabled: whether Giskard should publish collision markers during planning
@@ -121,14 +153,20 @@ class Giskard:
         self.behavior_tree_config.plugin_config['CollisionMarker']['enabled'] = enabled
         self.behavior_tree_config.plugin_config['CollisionMarker']['in_planning_loop'] = in_planning_loop
 
-    def configure_PlotTrajectory(self, enabled: bool = False, normalize_position: bool = False):
+    def configure_PlotTrajectory(self, enabled: bool = False, normalize_position: bool = False, wait: bool = False):
         self.behavior_tree_config.plugin_config['PlotTrajectory']['enabled'] = enabled
+        self.behavior_tree_config.plugin_config['PlotTrajectory']['wait'] = wait
         self.behavior_tree_config.plugin_config['PlotTrajectory']['normalize_position'] = normalize_position
 
-    def configure_PlotDebugExpressions(self, enabled: bool = False):
+    def configure_PlotDebugExpressions(self, enabled: bool = False, wait: bool = False):
+        if enabled:
+            self._god_map.set_data(identifier.debug_expr_needed, True)
         self.behavior_tree_config.plugin_config['PlotDebugExpressions']['enabled'] = enabled
+        self.behavior_tree_config.plugin_config['PlotDebugExpressions']['wait'] = wait
 
     def configure_DebugMarkerPublisher(self, enabled: bool = False):
+        if enabled:
+            self._god_map.set_data(identifier.debug_expr_needed, True)
         self.behavior_tree_config.plugin_config['PlotDebugTF']['enabled'] = enabled
 
     def register_controlled_joints(self, joint_names: List[str], group_name: Optional[str] = None):
@@ -152,10 +190,11 @@ class Giskard:
     def disable_tf_publishing(self):
         self.behavior_tree_config.plugin_config['TFPublisher']['enabled'] = False
 
-    def publish_all_tf(self):
+    def publish_all_tf(self, include_prefix: bool = True):
         self.behavior_tree_config.plugin_config['TFPublisher']['mode'] = TfPublishingModes.all
+        self.behavior_tree_config.plugin_config['TFPublisher']['include_prefix'] = include_prefix
 
-    def _add_joint(self, joint: Joint):
+    def _add_joint(self, joint: Tuple[Type, Dict[str, Any]]):
         joints = self._god_map.get_data(identifier.joints_to_add, default=[])
         joints.append(joint)
 
@@ -173,11 +212,27 @@ class Giskard:
         parent_link = PrefixName.from_string(parent_link, set_none_if_no_slash=True)
         child_link = PrefixName.from_string(child_link, set_none_if_no_slash=True)
         joint_name = PrefixName(f'{parent_link}_{child_link}_fixed_joint', None)
-        joint = FixedJoint(name=joint_name,
-                           parent_link_name=parent_link,
-                           child_link_name=child_link,
-                           parent_T_child=homogenous_transform)
+        joint = (FixedJoint, {'name': joint_name,
+                              'parent_link_name': parent_link,
+                              'child_link_name': child_link,
+                              'parent_T_child': homogenous_transform})
         self._add_joint(joint)
+
+    def _add_tf_joint(self, parent_link: my_string, child_link: my_string):
+        """
+        Add a fixed joint to Giskard's world. Can be used to connect a non-mobile robot to the world frame.
+        :param parent_link:
+        :param child_link:
+        :param homogenous_transform: a 4x4 transformation matrix.
+        """
+        parent_link = PrefixName.from_string(parent_link, set_none_if_no_slash=True)
+        child_link = PrefixName.from_string(child_link, set_none_if_no_slash=True)
+        joint_name = PrefixName(f'{parent_link}_{child_link}_fixed_joint', None)
+        joint = (TFJoint, {'name': joint_name,
+                           'parent_link_name': parent_link,
+                           'child_link_name': child_link})
+        self._add_joint(joint)
+        return joint_name
 
     def add_sync_tf_frame(self, parent_link: str, child_link: str):
         """
@@ -187,8 +242,8 @@ class Giskard:
         """
         if not tf.wait_for_transform(parent_link, child_link, rospy.Time(), rospy.Duration(1)):
             raise LookupException(f'Cannot get transform of {parent_link}<-{child_link}')
-        self.add_fixed_joint(parent_link=parent_link, child_link=child_link)
-        self.behavior_tree_config.add_sync_tf_frame(parent_link, child_link)
+        joint_name = self._add_tf_joint(parent_link=parent_link, child_link=child_link)
+        self.behavior_tree_config.add_sync_tf_frame(joint_name)
 
     def _add_odometry_topic(self, odometry_topic: str, joint_name: str):
         self.hardware_config.odometry_node_kwargs.append({'odometry_topic': odometry_topic,
@@ -215,20 +270,16 @@ class Giskard:
                                                                                'fill_velocity_values': fill_velocity_values})
 
     def add_omni_drive_joint(self,
+                             name: str,
                              parent_link_name: str,
                              child_link_name: str,
                              robot_group_name: Optional[str] = None,
-                             name: Optional[str] = 'brumbrum',
                              odometry_topic: Optional[str] = None,
-                             translation_velocity_limit: Optional[float] = 0.2,
-                             rotation_velocity_limit: Optional[float] = 0.2,
-                             translation_acceleration_limit: Optional[float] = None,
-                             rotation_acceleration_limit: Optional[float] = None,
-                             translation_jerk_limit: Optional[float] = 5,
-                             rotation_jerk_limit: Optional[float] = 10,
-                             odom_x_name: Optional[str] = 'odom_x',
-                             odom_y_name: Optional[str] = 'odom_y',
-                             odom_yaw_name: Optional[str] = 'odom_yaw'):
+                             translation_limits: Optional[derivative_map] = None,
+                             rotation_limits: Optional[derivative_map] = None,
+                             x_name: Optional[PrefixName] = None,
+                             y_name: Optional[PrefixName] = None,
+                             yaw_vel_name: Optional[PrefixName] = None):
         """
         Use this to connect a robot urdf of a mobile robot to the world if it has an omni-directional drive.
         :param parent_link_name:
@@ -236,35 +287,28 @@ class Giskard:
         :param robot_group_name: set if there are multiple robots
         :param name: Name of the new link. Has to be unique and may be required in other functions.
         :param odometry_topic: where the odometry gets published
-        :param translation_velocity_limit: in m/s
-        :param rotation_velocity_limit: in rad/s
-        :param translation_acceleration_limit: in m/s**2
-        :param rotation_acceleration_limit: in rad/s**2
-        :param translation_jerk_limit: in m/s**3
-        :param rotation_jerk_limit: in rad/s**3
-        :param odom_x_name: how the degree of freedom along the x-axis is called
-        :param odom_y_name: how the degree of freedom along the y-axis is called
-        :param odom_yaw_name: how the degree of freedom about the z-axis is called
+        :param translation_limit: in m/s**3
+        :param rotation_limit: in rad/s**3
         """
         if robot_group_name is None:
             robot_group_name = self.get_default_group_name()
-        brumbrum_joint = OmniDrive(parent_link_name=parent_link_name,
-                                   child_link_name=PrefixName(child_link_name, robot_group_name),
-                                   name=name,
-                                   group_name=robot_group_name,
-                                   odom_x_name=odom_x_name,
-                                   odom_y_name=odom_y_name,
-                                   odom_yaw_name=odom_yaw_name,
-                                   translation_velocity_limit=translation_velocity_limit,
-                                   rotation_velocity_limit=rotation_velocity_limit,
-                                   translation_acceleration_limit=translation_acceleration_limit,
-                                   rotation_acceleration_limit=rotation_acceleration_limit,
-                                   translation_jerk_limit=translation_jerk_limit,
-                                   rotation_jerk_limit=rotation_jerk_limit)
+        joint_name = PrefixName(name, robot_group_name)
+        parent_link_name = PrefixName(parent_link_name, None)
+        child_link_name = PrefixName(child_link_name, robot_group_name)
+        brumbrum_joint = (OmniDrive, {'parent_link_name': parent_link_name,
+                                      'child_link_name': child_link_name,
+                                      'name': joint_name,
+                                      'translation_limits': translation_limits,
+                                      'rotation_limits': rotation_limits})
+        if x_name is not None:
+            brumbrum_joint[1]['x_name'] = x_name
+        if y_name is not None:
+            brumbrum_joint[1]['y_name'] = y_name
+        if yaw_vel_name is not None:
+            brumbrum_joint[1]['yaw_name'] = yaw_vel_name
         self._add_joint(brumbrum_joint)
         if odometry_topic is not None:
-            self._add_odometry_topic(odometry_topic=odometry_topic,
-                                     joint_name=brumbrum_joint.name)
+            self._add_odometry_topic(odometry_topic=odometry_topic, joint_name=joint_name)
 
     def get_default_group_name(self):
         """
@@ -275,42 +319,30 @@ class Giskard:
         return self.group_names[0]
 
     def add_diff_drive_joint(self,
+                             name: str,
                              parent_link_name: str,
                              child_link_name: str,
                              robot_group_name: Optional[str] = None,
-                             name: Optional[str] = 'brumbrum',
                              odometry_topic: Optional[str] = None,
-                             translation_velocity_limit: Optional[float] = 0.2,
-                             rotation_velocity_limit: Optional[float] = 0.2,
-                             translation_acceleration_limit: Optional[float] = None,
-                             rotation_acceleration_limit: Optional[float] = None,
-                             translation_jerk_limit: Optional[float] = 5,
-                             rotation_jerk_limit: Optional[float] = 10,
-                             odom_x_name: Optional[str] = 'odom_x',
-                             odom_y_name: Optional[str] = 'odom_y',
-                             odom_yaw_name: Optional[str] = 'odom_yaw'):
+                             translation_limits: Optional[derivative_map] = None,
+                             rotation_limits: Optional[derivative_map] = None):
         """
         Same as add_omni_drive_joint, but for a differential drive.
         """
         if robot_group_name is None:
             robot_group_name = self.get_default_group_name()
-        brumbrum_joint = DiffDrive(parent_link_name=parent_link_name,
-                                   child_link_name=PrefixName(child_link_name, robot_group_name),
-                                   name=name,
-                                   group_name=robot_group_name,
-                                   odom_x_name=odom_x_name,
-                                   odom_y_name=odom_y_name,
-                                   odom_yaw_name=odom_yaw_name,
-                                   translation_velocity_limit=translation_velocity_limit,
-                                   rotation_velocity_limit=rotation_velocity_limit,
-                                   translation_acceleration_limit=translation_acceleration_limit,
-                                   rotation_acceleration_limit=rotation_acceleration_limit,
-                                   translation_jerk_limit=translation_jerk_limit,
-                                   rotation_jerk_limit=rotation_jerk_limit)
+        joint_name = PrefixName(name, robot_group_name)
+        parent_link_name = PrefixName(parent_link_name, None)
+        child_link_name = PrefixName(child_link_name, robot_group_name)
+        brumbrum_joint = (DiffDrive, {'parent_link_name': parent_link_name,
+                                      'child_link_name': child_link_name,
+                                      'name': joint_name,
+                                      'translation_limits': translation_limits,
+                                      'rotation_limits': rotation_limits})
         self._add_joint(brumbrum_joint)
         if odometry_topic is not None:
             self._add_odometry_topic(odometry_topic=odometry_topic,
-                                     joint_name=brumbrum_joint.name)
+                                     joint_name=joint_name)
 
     def set_maximum_derivative(self, new_value: Derivatives = Derivatives.jerk):
         """
@@ -370,56 +402,35 @@ class Giskard:
         """
         Initialize the behavior tree and world. You usually don't need to call this.
         """
-        self._qp_solver_check()
         if len(self.robot_interface_configs) == 0:
             self.add_robot_from_parameter_server()
         self._create_parameter_backup()
-        if self._root_link_name is None:
-            self._root_link_name = tf.get_tf_root()
-        world = WorldTree(self._root_link_name, self._god_map)
-        world.delete_all_but_robots()
-        world.register_controlled_joints(self._controlled_joints)
+        self.world.delete_all_but_robots()
+        self.world.register_controlled_joints(self._controlled_joints)
 
-        collision_scene = self._create_collision_checker(world)
+        collision_scene = self._create_collision_checker(self.world)
         self._god_map.set_data(identifier.collision_checker, self._collision_checker)
         self._god_map.set_data(identifier.collision_scene, collision_scene)
         if self._general_config.control_mode == ControlModes.open_loop:
-            self._tree = OpenLoop(self._god_map)
+            self._tree = OpenLoop()
         elif self._general_config.control_mode == ControlModes.close_loop:
-            self._tree = ClosedLoop(self._god_map)
+            self._tree = ClosedLoop()
         elif self._general_config.control_mode == ControlModes.stand_alone:
-            self._tree = StandAlone(self._god_map)
+            self._tree = StandAlone()
         else:
             raise KeyError(f'Robot interface mode \'{self._general_config.control_mode}\' is not supported.')
 
         self._controlled_joints_sanity_check()
 
-    def _qp_solver_check(self):
-        try:
-            if self._qp_solver_config.qp_solver == SupportedQPSolver.gurobi:
-                from giskardpy.qp.qp_solver_gurobi import QPSolverGurobi
-            elif self._qp_solver_config.qp_solver == SupportedQPSolver.cplex:
-                from giskardpy.qp.qp_solver_cplex import QPSolverCplex
-            elif self._qp_solver_config.qp_solver not in SupportedQPSolver:
-                raise KeyError(f'Solver \'{self._qp_solver_config.qp_solver}\' not supported.')
-        except Exception as e:
-            logging.logwarn(e)
-            logging.logwarn('Defaulting back to qpoases.')
-            self._qp_solver_config.qp_solver = SupportedQPSolver.qp_oases
-
     def _controlled_joints_sanity_check(self):
         world = self._god_map.get_data(identifier.world)
-        non_controlled_joints = set(world.movable_joints).difference(set(world.controlled_joints))
+        non_controlled_joints = set(world.movable_joint_names).difference(set(world.controlled_joints))
         if len(world.controlled_joints) == 0:
             raise GiskardException('No joints are flagged as controlled.')
         logging.loginfo(f'The following joints are non-fixed according to the urdf, '
                         f'but not flagged as controlled: {non_controlled_joints}.')
         if len(self.hardware_config.send_trajectory_to_cmd_vel_kwargs) == 0:
             logging.loginfo('No cmd_vel topic has been registered.')
-
-    @property
-    def world(self) -> WorldTree:
-        return self._god_map.get_data(identifier.world)
 
     def live(self):
         """
@@ -435,7 +446,7 @@ class Giskard:
         :param b: 0-1
         :param a: 0-1
         """
-        self._general_config.default_link_color = ColorRGBA(r, g, b, a)
+        self.world.default_link_color = ColorRGBA(r, g, b, a)
 
     def set_control_mode(self, mode: ControlModes):
         self._general_config.control_mode = mode
@@ -641,8 +652,9 @@ class Giskard:
 
     def set_default_joint_limits(self,
                                  velocity_limit: float = 1,
-                                 acceleration_limit: Optional[float] = 1e3,
-                                 jerk_limit: Optional[float] = 30):
+                                 acceleration_limit: Optional[float] = float('inf'),
+                                 jerk_limit: Optional[float] = 30,
+                                 snap_limit: Optional[float] = 500):
         """
         The default values will be set automatically, even if this function is not called.
         :param velocity_limit: in m/s or rad/s
@@ -650,14 +662,11 @@ class Giskard:
         :param jerk_limit: in m/s**3 or rad/s**3
         """
         if jerk_limit is not None and acceleration_limit is None:
-            raise AttributeError('If jerk limits are set, acceleration limits also have to be set/')
-        self._general_config.joint_limits = {
-            Derivatives.velocity: defaultdict(lambda: velocity_limit)
-        }
-        if acceleration_limit is not None:
-            self._general_config.joint_limits[Derivatives.acceleration] = defaultdict(lambda: acceleration_limit)
-        if jerk_limit is not None:
-            self._general_config.joint_limits[Derivatives.jerk] = defaultdict(lambda: jerk_limit)
+            raise AttributeError('If jerk limits are set, acceleration limits also have to be set.')
+        self._general_config.joint_limits = {Derivatives.velocity: defaultdict(lambda: velocity_limit),
+                                             Derivatives.acceleration: defaultdict(lambda: acceleration_limit),
+                                             Derivatives.jerk: defaultdict(lambda: jerk_limit),
+                                             Derivatives.snap: defaultdict(lambda: snap_limit)}
 
     def overwrite_joint_velocity_limits(self, joint_name, velocity_limit: float, group_name: Optional[str] = None):
         if group_name is None:
@@ -679,21 +688,18 @@ class Giskard:
         self._general_config.joint_limits[Derivatives.jerk][joint_name] = jerk_limit
 
     def set_default_weights(self,
-                            velocity_weight: float = 0.001,
-                            acceleration_weight: Optional[float] = None,
-                            jerk_weight: Optional[float] = 0.001):
+                            velocity_weight: float = 0.01,
+                            acceleration_weight: float = 0,
+                            jerk_weight: float = 0.01,
+                            snap_weight: float = 0):
         """
         The default values are set automatically, even if this function is not called.
         A typical goal has a weight of 1, so the values in here should be sufficiently below that.
         """
-        self._qp_solver_config.joint_weights = {
-            Derivatives.velocity: defaultdict(lambda: velocity_weight)
-        }
-        if jerk_weight is not None:
-            self._qp_solver_config.joint_weights[Derivatives.acceleration] = defaultdict(lambda: acceleration_weight)
-            self._qp_solver_config.joint_weights[Derivatives.jerk] = defaultdict(lambda: jerk_weight)
-        elif acceleration_weight is not None:
-            self._qp_solver_config.joint_weights[Derivatives.acceleration] = defaultdict(lambda: acceleration_weight)
+        self._qp_solver_config.joint_weights = {Derivatives.velocity: defaultdict(lambda: velocity_weight),
+                                                Derivatives.acceleration: defaultdict(lambda: acceleration_weight),
+                                                Derivatives.jerk: defaultdict(lambda: jerk_weight),
+                                                Derivatives.snap: defaultdict(lambda: snap_weight)}
 
     def overwrite_joint_velocity_weight(self,
                                         joint_name: str,

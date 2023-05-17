@@ -8,7 +8,7 @@ from giskardpy.exceptions import MonitorForceException
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.tree.garden import TreeManager
 from giskardpy.utils import logging
-from giskardpy.utils.utils import catch_and_raise_to_blackboard
+from giskardpy.utils.decorators import catch_and_raise_to_blackboard
 
 import numpy as np
 
