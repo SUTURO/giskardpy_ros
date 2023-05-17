@@ -8,6 +8,7 @@ from giskardpy.goals.cartesian_goals import CartesianPositionStraight, Cartesian
     CartesianPose
 from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, NonMotionGoal
 from giskardpy.goals.grasp_bar import GraspBar
+from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
@@ -909,6 +910,26 @@ class SequenceGoal(Goal):
     def __init__(self):
 
         super().__init__()
+
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+
+class Tilting(Goal):
+    def __init__(self,
+                 object_name=''):
+        super().__init__()
+
+        g = -2.0
+        name = 'wrist_roll_joint'
+
+        """self.add_constraints_of_goal(JointPosition(goal=g,
+                                                   joint_name=name,
+                                                   ))"""
 
     def make_constraints(self):
         pass
