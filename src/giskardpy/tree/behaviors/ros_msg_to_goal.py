@@ -43,27 +43,26 @@ class RosMsgToGoal(GetGoal):
     @profile
     def update(self):
         loginfo('Parsing goal message.')
-        move_seq = self.god_map.get_data(identifier.next_move_goal)  # type: [MoveCmd]
-        if not move_seq:
+        move_cmd = self.god_map.get_data(identifier.next_move_goal)  # type: MoveCmd
+        if not move_cmd:
             return Status.FAILURE
         self.get_god_map().set_data(identifier.goals, {})
-        for move_cmd in move_seq:
-            try:
-                self.parse_constraints(move_cmd)
-            except AttributeError:
-                raise_to_blackboard(InvalidGoalException('Couldn\'t transform goal'))
-                traceback.print_exc()
-                return Status.SUCCESS
-            except Exception as e:
-                raise_to_blackboard(e)
-                # traceback.print_exc()
-                return Status.SUCCESS
-            if self.god_map.get_data(identifier.collision_checker) != CollisionCheckerLib.none:
+        try:
+            self.parse_constraints(move_cmd)
+        except AttributeError:
+            raise_to_blackboard(InvalidGoalException('Couldn\'t transform goal'))
+            traceback.print_exc()
+            return Status.SUCCESS
+        except Exception as e:
+            raise_to_blackboard(e)
+            # traceback.print_exc()
+            return Status.SUCCESS
+        if self.god_map.get_data(identifier.collision_checker) != CollisionCheckerLib.none:
 
-                try:
-                    self.parse_collision_entries(move_cmd.collisions)
-                except ConstraintInitalizationException:
-                    loginfo('Got ConstraintInitializationError')
+            try:
+                self.parse_collision_entries(move_cmd.collisions)
+            except ConstraintInitalizationException:
+                loginfo('Got ConstraintInitializationError')
 
         loginfo('Done parsing goal message.')
         return Status.SUCCESS

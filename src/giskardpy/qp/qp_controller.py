@@ -430,10 +430,7 @@ class EqualityBounds(ProblemDataPart):
         self.evaluated = True
 
     def equality_constraint_bounds(self) -> Dict[str, cas.Expression]:
-        return {f'{c.name}': cas.limit(c.bound,
-                                       -c.velocity_limit * self.dt * c.control_horizon,
-                                       c.velocity_limit * self.dt * c.control_horizon)
-                for c in self.equality_constraints}
+        return {f'{c.name}': c.capped_error(self.dt) for c in self.equality_constraints}
 
     def last_derivative_values(self, derivative: Derivatives) -> Dict[str, cas.symbol_expr_float]:
         last_values = {}

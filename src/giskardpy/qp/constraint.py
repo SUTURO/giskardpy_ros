@@ -107,6 +107,11 @@ class EqualityConstraint:
         weight_normalized = self.quadratic_weight * (1 / (self.velocity_limit)) ** 2
         return weight_normalized * self.control_horizon
 
+    def capped_error(self, dt) -> w.Expression:
+
+        return w.limit(self.bound, -self.velocity_limit * dt * self.control_horizon,
+                       self.velocity_limit * dt * self.control_horizon)
+
 
 class DerivativeInequalityConstraint:
 

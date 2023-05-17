@@ -68,6 +68,9 @@ class CartesianPosition(Goal):
         #v = w.Vector3([0,0,1])
         #v.scale(weight/1000)
         #self.add_debug_expr('weight', v)
+
+        self.add_debug_expr('ca', r_P_g)
+
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
                                         reference_velocity=self.reference_velocity,
