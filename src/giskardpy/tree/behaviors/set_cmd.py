@@ -91,6 +91,10 @@ class SetCmd(GetGoal):
             return Status.SUCCESS
         try:
             move_cmd = self.goal.cmd_seq.pop(0)  # type: MoveCmd
+
+            #if move_cmd.constraints[0].type == 'AvoidJointLimits':
+            #    move_cmd.constraints = move_cmd.constraints[1:]
+
             #move_cmd = self.goal.cmd_seq  # type: [MoveCmd]
 
             self.get_god_map().set_data(identifier.next_move_goal, move_cmd)

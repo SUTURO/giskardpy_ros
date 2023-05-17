@@ -927,9 +927,9 @@ class Tilting(Goal):
         g = -2.0
         name = 'wrist_roll_joint'
 
-        """self.add_constraints_of_goal(JointPosition(goal=g,
+        self.add_constraints_of_goal(JointPosition(goal=g,
                                                    joint_name=name,
-                                                   ))"""
+                                                   ))
 
     def make_constraints(self):
         pass
