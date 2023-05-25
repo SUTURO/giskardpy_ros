@@ -551,7 +551,7 @@ class GraspFrontal(Goal):
 
             reference_frame = 'base_link'
 
-        grasp_offset = min(0.07, self.object_size.x / 2)
+        grasp_offset = min(0.07, self.object_size.x)
 
         # tip_axis
         self.tip_vertical_axis = Vector3Stamped()
@@ -560,7 +560,7 @@ class GraspFrontal(Goal):
 
         # bar_center
         self.bar_center_point = self.transform_msg(reference_frame, root_goal_point)
-        self.bar_center_point.point.x += grasp_offset
+        self.bar_center_point.point.x -= grasp_offset
 
         # bar_axis
         self.bar_axis = Vector3Stamped()

@@ -102,7 +102,6 @@ class SetCmd(GetGoal):
             self.get_god_map().set_data(identifier.cmd_id, cmd_id)
             logging.loginfo('Planning move commands #{}/{}.'.format(cmd_id + 1, self.number_of_move_cmds))
 
-            self.goal.cmd_seq = []
         except IndexError:
             return Status.FAILURE
 
