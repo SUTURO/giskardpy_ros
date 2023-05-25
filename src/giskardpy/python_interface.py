@@ -979,7 +979,7 @@ class GiskardWrapper:
                      goal_pose: PoseStamped,
                      object_height: float,
                      root_link: Optional[str] = 'map',
-                     tip_link: Optional[str] = 'hand_palm_link'):
+                     tip_link: Optional[str] = 'hand_gripper_tool_frame'):
 
         self.set_json_goal(constraint_type='PlaceObject',
                            object_name=object_name,
