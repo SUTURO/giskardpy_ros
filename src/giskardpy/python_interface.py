@@ -478,6 +478,7 @@ class GiskardWrapper:
         """
         constraint = Constraint()
         constraint.type = constraint_type
+        # TODO parse recursively
         for k, v in kwargs.copy().items():
             if v is None:
                 del kwargs[k]

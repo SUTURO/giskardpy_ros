@@ -6,7 +6,6 @@ from giskardpy import identifier
 from giskardpy.data_types import JointStates
 from giskardpy.exceptions import MonitorForceException
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
-from giskardpy.tree.garden import TreeManager
 from giskardpy.utils import logging
 from giskardpy.utils.decorators import catch_and_raise_to_blackboard
 

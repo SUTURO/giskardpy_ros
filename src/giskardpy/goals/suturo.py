@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped
@@ -12,7 +12,7 @@ from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
-from giskardpy.tree.garden import TreeManager
+#from giskardpy.tree.garden import TreeManager
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
 
@@ -27,7 +27,7 @@ class ForceSensorGoal(Goal):
     def __init__(self):
         super().__init__()
 
-        tree: TreeManager = self.god_map.get_data(identifier.tree_manager)
+        '''tree: TreeManager = self.god_map.get_data(identifier.tree_manager)
 
         t = tree.get_node('Monitor_Force')
 
@@ -35,7 +35,7 @@ class ForceSensorGoal(Goal):
 
         tree.insert_node(MonitorForceSensor('Monitor_Force'), 'monitor execution', 2)
 
-        tree.render()
+        tree.render()'''
 
         return
 
@@ -230,10 +230,8 @@ class TestSequenceGoal(Goal):
 
 class SequenceGoal(Goal):
     def __init__(self,
-                 object_name='',
-                 object_pose_1: PoseStamped = None,
-                 object_pose_2: PoseStamped = None,
-                 **kwargs):
+                 goal_type_seq: List[Goal],
+                 kwargs_seq: List):
         super().__init__()
         root_link = 'map'
         tip_link = 'hand_palm_link'
@@ -242,7 +240,7 @@ class SequenceGoal(Goal):
         self.root_str = str(root_link)
         self.tip_str = str(tip_link)
 
-        self.object_name = object_name
+        '''self.object_name = object_name
         self.weight = WEIGHT_ABOVE_CA
 
         object_point_1 = PointStamped()
@@ -278,6 +276,8 @@ class SequenceGoal(Goal):
                                                  tip_link=self.tip_str,
                                                  goal_normal=goal_norm,
                                                  tip_normal=tip_norm))
+
+        '''
 
     def make_constraints(self):
         pass
@@ -356,7 +356,7 @@ class GraspObject(ObjectGoal):
                  object_name: str,
                  object_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
-                 root_link: Optional[str] = 'map',
+                 root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  frontal_grasping=True):
         """
@@ -526,7 +526,7 @@ class GraspFrontal(Goal):
                  object_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
                  object_geometry: Optional[LinkGeometry] = None,
-                 root_link: Optional[str] = 'map',
+                 root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight=WEIGHT_ABOVE_CA):
         """
@@ -581,8 +581,8 @@ class GraspFrontal(Goal):
         # bar_center
         self.bar_center_point = self.transform_msg(reference_frame, root_goal_point)
 
-        self.bar_center_point.point.x += grasp_offset  # Grasp general
-        #self.bar_center_point.point.x -= grasp_offset  # Grasp door handle
+        #self.bar_center_point.point.x += grasp_offset  # Grasp general
+        self.bar_center_point.point.x -= grasp_offset  # Grasp door handle
 
         # bar_axis
         self.bar_axis = Vector3Stamped()
@@ -603,7 +603,7 @@ class GraspFrontal(Goal):
 
         # align z tip axis with object axis
         self.tip_frontal_axis = Vector3Stamped()
-        self.tip_frontal_axis.header.frame_id = self.tip_str
+        self.tip_frontal_axis.header.frame_id = 'hand_palm_link'
         self.tip_frontal_axis.vector.z = 1
 
         self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
@@ -616,7 +616,7 @@ class GraspFrontal(Goal):
 
         # Align frontal
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
-                                                 tip_link=self.tip_str,
+                                                 tip_link='hand_palm_link',
                                                  goal_normal=self.goal_frontal_axis,
                                                  tip_normal=self.tip_frontal_axis,
                                                  weight=self.weight))
