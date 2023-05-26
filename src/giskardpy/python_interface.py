@@ -972,7 +972,6 @@ class GiskardWrapper:
                            object_size=object_size,
                            root_link=root_link,
                            tip_link=tip_link,
-                           offset=offset,
                            frontal_grasping=frontal_grasping)
 
     def place_object(self,
