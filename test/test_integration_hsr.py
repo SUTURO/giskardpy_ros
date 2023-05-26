@@ -12,6 +12,7 @@ from tf.transformations import quaternion_from_matrix, quaternion_about_axis, ro
 import giskardpy.utils.tfwrapper as tf
 from giskardpy.configs.hsr import HSR_StandAlone, HSR_Mujoco
 from giskardpy.model.utils import make_world_body_box
+from giskardpy.my_types import Derivatives
 from giskardpy.python_interface import GiskardWrapper
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
@@ -214,6 +215,12 @@ class TestJointGoals:
         compare_poses(base_T_torso2.pose, base_T_torso.pose)
 
     def test_mimic_joints4(self, zero_pose: HSRTestWrapper):
+        ll, ul = zero_pose.world.get_joint_velocity_limits('hsrb/arm_lift_joint')
+        assert ll == -0.2
+        assert ul == 0.2
+        ll, ul = zero_pose.world.get_joint_velocity_limits('hsrb/torso_lift_joint')
+        assert ll == -0.1
+        assert ul == 0.1
         joint_goal = {'torso_lift_joint': 0.25}
         zero_pose.set_joint_goal(joint_goal, check=False)
         zero_pose.allow_all_collisions()
@@ -319,7 +326,7 @@ class TestCartGoals:
         r_goal = PoseStamped()
         r_goal.header.frame_id = zero_pose.tip
         r_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi, [0, 0, 1]))
-        zero_pose.set_cart_goal(r_goal, zero_pose.tip, root_link='arm_roll_link')
+        zero_pose.set_cart_goal(r_goal, zero_pose.tip)
         zero_pose.allow_all_collisions()
         zero_pose.plan_and_execute()
 
