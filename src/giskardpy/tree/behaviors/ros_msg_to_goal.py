@@ -13,13 +13,16 @@ from giskard_msgs.msg import MoveCmd, CollisionEntry
 from giskardpy.configs.data_types import CollisionCheckerLib
 from giskardpy.exceptions import UnknownConstraintException, InvalidGoalException, \
     ConstraintInitalizationException, GiskardException
+from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.collision_avoidance import SelfCollisionAvoidance, ExternalCollisionAvoidance
 from giskardpy.goals.goal import Goal
+from giskardpy.goals.suturo import SequenceGoal
 from giskardpy.my_types import PrefixName
 from giskardpy.tree.behaviors.get_goal import GetGoal
 from giskardpy.utils.logging import loginfo
 from giskardpy.utils.utils import convert_dictionary_to_ros_message, get_all_classes_in_package, raise_to_blackboard
 from giskardpy.utils.decorators import catch_and_raise_to_blackboard, record_time
+
 
 
 class RosMsgToGoal(GetGoal):
@@ -91,6 +94,9 @@ class RosMsgToGoal(GetGoal):
             try:
                 parsed_json = json.loads(constraint.parameter_value_pair)
                 params = self.replace_jsons_with_ros_messages(parsed_json)
+                if issubclass(C, SequenceGoal):  # 'goal_type_seq' in params
+                    # TODO: Check if issubclass works
+                    params['goal_type_seq'] = [self.allowed_constraint_types[x] for x in params['goal_type_seq']]
                 c: Goal = C(**params)
                 c._save_self_on_god_map()
             except Exception as e:
@@ -104,6 +110,7 @@ class RosMsgToGoal(GetGoal):
                 raise e
 
     def replace_jsons_with_ros_messages(self, d):
+        # TODO parse recursively
         for key, value in d.items():
             if isinstance(value, dict) and 'message_type' in value:
                 d[key] = convert_dictionary_to_ros_message(value)

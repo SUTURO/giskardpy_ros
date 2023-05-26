@@ -228,7 +228,7 @@ class TestCartGoals:
         pose.header.frame_id = kitchen_setup.default_root
         pose.pose.orientation.w = 1
         kitchen_setup.add_box(name=box1_name,
-                              size=(1,1,1),
+                              size=(1, 1, 1),
                               pose=pose,
                               parent_link='hand_palm_link',
                               parent_link_group='hsrb')
@@ -248,6 +248,31 @@ class TestCartGoals:
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi, [0, 0, 1]))
         zero_pose.set_cart_goal(base_goal, 'base_footprint')
         zero_pose.allow_all_collisions()
+        zero_pose.plan_and_execute()
+
+    def test_seq(self, zero_pose: HSRTestWrapper):
+        map_T_odom = PoseStamped()
+        map_T_odom.header.frame_id = 'map'
+        map_T_odom.pose.position.x = 1
+        map_T_odom.pose.position.y = 1
+        map_T_odom.pose.orientation = Quaternion(*quaternion_about_axis(np.pi / 3, [0, 0, 1]))
+        '''zero_pose.set_json_goal('SequenceGoal',
+                                goal_type_seq=['CartesianPose'],
+                                kwargs_seq=[{'root_link': 'map',
+                                             'tip_link': 'base_footprint',
+                                             'goal_pose': map_T_odom}])'''
+        '''zero_pose.set_json_goal('SequenceGoal',
+                                goals={'JointPositionPrismatic':
+                                           {'joint_name': 'torso_lift_joint',
+                                            'goal': 0.3}})'''
+
+        '''zero_pose.set_json_goal('SequenceGoal',
+                                goal_type_seq=['JointPositionPrismatic'],
+                                kwargs_seq=[{'joint_name': 'torso_lift_joint',
+                                             'goal': 0.3}])'''
+
+        zero_pose.prepare_placing(object_name='', object_pose=map_T_odom, height=0.2)
+
         zero_pose.plan_and_execute()
 
     def test_move_base_1m_forward(self, zero_pose: HSRTestWrapper):
@@ -375,7 +400,6 @@ class TestCollisionAvoidanceGoals:
         current_state = {k.short_name: v for k, v in current_state.items()}
         zero_pose.compare_joint_state(current_state, zero_pose.default_pose)
 
-
     def test_self_collision_avoidance(self, zero_pose: HSRTestWrapper):
         r_goal = PoseStamped()
         r_goal.header.frame_id = zero_pose.tip
@@ -457,10 +481,10 @@ class TestAddObject:
         pose.pose.orientation.w = 1
         pose.pose.position.x = 1
         zero_pose.add_box(name=box1_name,
-                              size=(1, 1, 1),
-                              pose=pose,
-                              parent_link='hand_palm_link',
-                              parent_link_group='hsrb4s')
+                          size=(1, 1, 1),
+                          pose=pose,
+                          parent_link='hand_palm_link',
+                          parent_link_group='hsrb4s')
 
         zero_pose.set_joint_goal({'arm_flex_joint': -0.7})
         zero_pose.plan_and_execute()
