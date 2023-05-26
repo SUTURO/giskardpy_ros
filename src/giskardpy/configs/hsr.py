@@ -1,8 +1,11 @@
 from typing import Optional
 
+import numpy as np
+from sympy import Derivative
+
 from giskardpy.configs.data_types import ControlModes, SupportedQPSolver
 from giskardpy.configs.default_giskard import Giskard
-from giskardpy.my_types import PrefixName
+from giskardpy.my_types import PrefixName, Derivatives
 
 
 class HSR_Base(Giskard):
@@ -11,6 +14,7 @@ class HSR_Base(Giskard):
         self.set_qp_solver(SupportedQPSolver.gurobi)
         # self.configure_PlotTrajectory(enabled=True, wait=True)
         self.load_moveit_self_collision_matrix('package://giskardpy/config/hsrb.srdf')
+        self.configure_PlotTrajectory(enabled=True, wait=True)
         self.configure_DebugMarkerPublisher(enabled=True)
         self.set_default_external_collision_avoidance(soft_threshold=0.05,
                                                       hard_threshold=0.0)
@@ -63,38 +67,6 @@ class HSR_Mujoco(HSR_Base):
                                                     hard_threshold=0.03)
 
 
-class HSR_Gazebo(HSR_Base):
-    def __init__(self):
-        self.add_robot_from_parameter_server(joint_state_topics=['/hsrb/joint_states'])
-        super().__init__()
-        self.add_sync_tf_frame('map', 'odom')
-        self.add_omni_drive_joint(parent_link_name='odom',
-                                  child_link_name='base_footprint',
-                                  name='brumbrum',
-                                  x_name=PrefixName('odom_x', self.get_default_group_name()),
-                                  y_name=PrefixName('odom_y', self.get_default_group_name()),
-                                  yaw_vel_name=PrefixName('odom_t', self.get_default_group_name()),
-                                  odometry_topic='/hsrb/odom')
-        self.add_follow_joint_trajectory_server(namespace='/hsrb/head_trajectory_controller/follow_joint_trajectory',
-                                                state_topic='/hsrb/head_trajectory_controller/state',
-                                                fill_velocity_values=True)
-        self.add_follow_joint_trajectory_server(namespace='/hsrb/omni_base_controller/follow_joint_trajectory',
-                                                state_topic='/hsrb/omni_base_controller/state',
-                                                fill_velocity_values=True)
-        self.add_follow_joint_trajectory_server(namespace='/hsrb/arm_trajectory_controller/follow_joint_trajectory',
-                                                state_topic='/hsrb/arm_trajectory_controller/state',
-                                                fill_velocity_values=True)
-
-        #self.add_follow_joint_trajectory_server(namespace='/hsrb/gripper_controller/follow_joint_trajectory',
-        #                                        state_topic='',
-        #                                        fill_velocity_values=True)
-
-        self.overwrite_external_collision_avoidance(joint_name='brumbrum',
-                                                    number_of_repeller=2,
-                                                    soft_threshold=0.1,
-                                                    hard_threshold=0.03)
-
-
 class HSR_Local(HSR_Base):
     def __init__(self):
         self.add_robot_from_parameter_server(joint_state_topics=['/hsrb/joint_states'])
@@ -106,7 +78,17 @@ class HSR_Local(HSR_Base):
                                   x_name=PrefixName('odom_x', self.get_default_group_name()),
                                   y_name=PrefixName('odom_y', self.get_default_group_name()),
                                   yaw_vel_name=PrefixName('odom_t', self.get_default_group_name()),
-                                  odometry_topic='/hsrb/odom')
+                                  odometry_topic='/hsrb/odom',
+                                  translation_limits={
+                                      Derivatives.velocity: 0.38,
+                                      Derivatives.acceleration: np.inf,
+                                      Derivatives.jerk: 15
+                                  },
+                                  rotation_limits={
+                                      Derivatives.velocity: 1,
+                                      Derivatives.acceleration: np.inf,
+                                      Derivatives.jerk: 25
+                                  })
         self.add_follow_joint_trajectory_server(namespace='/hsrb/head_trajectory_controller/follow_joint_trajectory',
                                                 state_topic='/hsrb/head_trajectory_controller/state',
                                                 fill_velocity_values=True)
