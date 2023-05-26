@@ -253,7 +253,8 @@ class Giskard:
                                            namespace: str,
                                            state_topic: str,
                                            group_name: Optional[str] = None,
-                                           fill_velocity_values: bool = False):
+                                           fill_velocity_values: bool = False,
+                                           path_tolerance: Dict[Derivatives, float] = None):
         """
         Connect Giskard to a follow joint trajectory server. It will automatically figure out which joints are offered
         and can be controlled.
@@ -267,7 +268,8 @@ class Giskard:
         self.hardware_config.follow_joint_trajectory_interfaces_kwargs.append({'action_namespace': namespace,
                                                                                'state_topic': state_topic,
                                                                                'group_name': group_name,
-                                                                               'fill_velocity_values': fill_velocity_values})
+                                                                               'fill_velocity_values': fill_velocity_values,
+                                                                               'path_tolerance': path_tolerance})
 
     def add_omni_drive_joint(self,
                              name: str,

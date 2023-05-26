@@ -14,7 +14,6 @@ class HSR_Base(Giskard):
         self.set_qp_solver(SupportedQPSolver.gurobi)
         # self.configure_PlotTrajectory(enabled=True, wait=True)
         self.load_moveit_self_collision_matrix('package://giskardpy/config/hsrb.srdf')
-        self.configure_PlotTrajectory(enabled=True, wait=True)
         self.configure_DebugMarkerPublisher(enabled=True)
         self.set_default_external_collision_avoidance(soft_threshold=0.05,
                                                       hard_threshold=0.0)
@@ -44,7 +43,8 @@ class HSR_Base(Giskard):
 
 class HSR_Mujoco(HSR_Base):
     def __init__(self):
-        self.add_robot_from_parameter_server(parameter_name='hsrb4s/robot_description', joint_state_topics=['hsrb4s/joint_states'])
+        self.add_robot_from_parameter_server(parameter_name='hsrb4s/robot_description',
+                                             joint_state_topics=['hsrb4s/joint_states'])
         super().__init__()
         self.add_sync_tf_frame('map', 'odom')
         self.add_omni_drive_joint(parent_link_name='odom',
@@ -94,7 +94,12 @@ class HSR_Local(HSR_Base):
                                                 fill_velocity_values=True)
         self.add_follow_joint_trajectory_server(namespace='/hsrb/omni_base_controller/follow_joint_trajectory',
                                                 state_topic='/hsrb/omni_base_controller/state',
-                                                fill_velocity_values=True)
+                                                fill_velocity_values=True,
+                                                path_tolerance={
+                                                    Derivatives.position: 1,
+                                                    Derivatives.velocity: 1,
+                                                    Derivatives.acceleration: 100,
+                                                })
         self.add_follow_joint_trajectory_server(namespace='/hsrb/arm_trajectory_controller/follow_joint_trajectory',
                                                 state_topic='/hsrb/arm_trajectory_controller/state',
                                                 fill_velocity_values=True)
