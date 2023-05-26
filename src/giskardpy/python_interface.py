@@ -484,9 +484,6 @@ class GiskardWrapper:
                 del kwargs[k]
             else:
                 kwargs[k] = self.parse_messages(v)
-
-            #if isinstance(v, Message):
-            #    kwargs[k] = convert_ros_message_to_dictionary(v)
         kwargs = replace_prefix_name_with_str(kwargs)
         constraint.parameter_value_pair = json.dumps(kwargs)
         self.cmd_seq[-1].constraints.append(constraint)
