@@ -581,8 +581,8 @@ class GraspFrontal(Goal):
         # bar_center
         self.bar_center_point = self.transform_msg(reference_frame, root_goal_point)
 
-        #self.bar_center_point.point.x += grasp_offset  # Grasp general
-        self.bar_center_point.point.x -= grasp_offset  # Grasp door handle
+        self.bar_center_point.point.x += grasp_offset  # Grasp general
+        #self.bar_center_point.point.x -= grasp_offset  # Grasp door handle
 
         # bar_axis
         self.bar_axis = Vector3Stamped()
@@ -781,8 +781,6 @@ class AlignHeight(ObjectGoal):
         self.object_pose = goal_pose
         self.object_height = object_height * 0.66
 
-        self.frontal_grasping = frontal_grasping
-
         # CartesianPosition
         goal_point = PointStamped()
         goal_point.header.frame_id = self.object_pose.header.frame_id
@@ -808,12 +806,14 @@ class AlignHeight(ObjectGoal):
         tip_vertical_axis = Vector3Stamped()
         tip_vertical_axis.header.frame_id = self.tip_str
 
-        if self.frontal_grasping:
+        '''if self.frontal_grasping:
             goal_vertical_axis.vector.z = 1
             tip_vertical_axis.vector.x = 1
         else:
             goal_vertical_axis.vector.z = -1
-            tip_vertical_axis.vector.z = 1
+            tip_vertical_axis.vector.z = 1'''
+        goal_vertical_axis.vector.z = 1
+        tip_vertical_axis.vector.x = 1
 
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
@@ -835,6 +835,7 @@ class PlaceObject(ObjectGoal):
                  object_height: float = None,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                 frontal=True,
                  weight=WEIGHT_ABOVE_CA):
         super().__init__()
 
@@ -852,7 +853,6 @@ class PlaceObject(ObjectGoal):
 
         self.tip_frontal_axis = Vector3Stamped()
         self.tip_frontal_axis.header.frame_id = self.tip_str
-        self.tip_frontal_axis.vector.z = 1
 
         self.goal_vertical_axis = Vector3Stamped()
         self.goal_vertical_axis.header.frame_id = self.root_str
@@ -860,7 +860,15 @@ class PlaceObject(ObjectGoal):
 
         self.tip_vertical_axis = Vector3Stamped()
         self.tip_vertical_axis.header.frame_id = self.tip_str
-        self.tip_vertical_axis.vector.x = 1
+
+        if frontal:
+            self.tip_frontal_axis.vector.z = 1
+            self.tip_vertical_axis.vector.x = 1
+        else:
+            self.tip_frontal_axis.vector.x = 1
+            self.tip_vertical_axis.vector.z = -1
+
+
 
         self.goal_floor_pose = target_pose
 

@@ -998,14 +998,16 @@ class GiskardWrapper:
                      goal_pose: PoseStamped,
                      object_height: float,
                      root_link: Optional[str] = 'map',
-                     tip_link: Optional[str] = 'hand_gripper_tool_frame'):
+                     tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                     frontal=True):
 
         self.set_json_goal(constraint_type='PlaceObject',
                            object_name=object_name,
                            target_pose=goal_pose,
                            object_height=object_height,
                            root_link=root_link,
-                           tip_link=tip_link)
+                           tip_link=tip_link,
+                           frontal=frontal)
 
     def lift_object(self,
                     object_name: str,
@@ -1032,11 +1034,15 @@ class GiskardWrapper:
     def prepare_placing(self,
                         object_name: str,
                         object_pose: PoseStamped,
-                        height: float):
+                        height: float,
+                        tip_link='hand_palm_link',
+                        frontal=True):
         self.set_json_goal(constraint_type='AlignHeight',
                            object_name=object_name,
                            goal_pose=object_pose,
-                           object_height=height)
+                           object_height=height,
+                           tip_link=tip_link,
+                           frontal_grasping=frontal)
 
     def set_pointing(self,
                      goal_pose: PoseStamped,
