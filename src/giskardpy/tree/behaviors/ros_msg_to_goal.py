@@ -94,8 +94,7 @@ class RosMsgToGoal(GetGoal):
             try:
                 parsed_json = json.loads(constraint.parameter_value_pair)
                 params = self.replace_jsons_with_ros_messages(parsed_json)
-                if issubclass(C, SequenceGoal):  # 'goal_type_seq' in params
-                    # TODO: Check if issubclass works
+                if issubclass(C, SequenceGoal):
                     params['goal_type_seq'] = [self.allowed_constraint_types[x] for x in params['goal_type_seq']]
                 c: Goal = C(**params)
                 c._save_self_on_god_map()
