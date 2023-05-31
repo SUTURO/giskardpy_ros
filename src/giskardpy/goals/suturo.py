@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import numpy as np
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped
@@ -231,7 +231,8 @@ class TestSequenceGoal(Goal):
 class SequenceGoal(Goal):
     def __init__(self,
                  goal_type_seq: List[Goal],
-                 kwargs_seq: List):
+                 kwargs_seq: List,
+                 test: Dict):
         super().__init__()
         root_link = 'map'
         tip_link = 'hand_palm_link'
@@ -239,6 +240,16 @@ class SequenceGoal(Goal):
         self.tip_link = self.world.search_for_link_name(tip_link)
         self.root_str = str(root_link)
         self.tip_str = str(tip_link)
+
+
+        g = 'sd'
+
+        s1 = {'s': 0.0}
+
+        s = {g: s1, }
+
+
+
 
         '''self.object_name = object_name
         self.weight = WEIGHT_ABOVE_CA
@@ -557,7 +568,7 @@ class GraspFrontal(Goal):
         self.weight = weight
 
         root_goal_point = PointStamped()
-        root_goal_point.header.frame_id = self.root_str
+        root_goal_point.header.frame_id = self.object_pose.header.frame_id
         root_goal_point.point = self.object_pose.pose.position
 
         if isinstance(object_geometry, BoxGeometry):

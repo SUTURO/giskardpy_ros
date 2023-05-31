@@ -1,7 +1,6 @@
 from typing import Optional
 
 import numpy as np
-from sympy import Derivative
 
 from giskardpy.configs.data_types import ControlModes, SupportedQPSolver
 from giskardpy.configs.default_giskard import Giskard
