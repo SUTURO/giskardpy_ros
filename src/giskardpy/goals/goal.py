@@ -693,3 +693,7 @@ class ForceSensorGoal(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
+    @staticmethod
+    def goal_cancel_condition() -> [w.Expression]:
+        pass
+

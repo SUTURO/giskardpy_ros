@@ -282,6 +282,16 @@ class TestForceSensorGoal(ForceSensorGoal):
     def __str__(self):
         return super().__str__()
 
+    @staticmethod
+    def goal_cancel_condition() -> [w.Expression]:
+        expression = []
+
+        cas = w.Expression(2.0 * 4.2)
+
+        expression.append(cas)
+
+        return expression
+
 
 class MoveGripper(Goal):
     def __init__(self,
@@ -850,7 +860,14 @@ class PlaceObject(ObjectGoal):
         self.root_str = str(self.root)
 
         # tip link
-        self.tip = self.world.search_for_link_name(tip_link)
+        try:
+            self.tip = self.world.search_for_link_name(tip_link)
+        except:
+            hand_palm_link = 'hand_palm_link'
+            self.tip = self.world.search_for_link_name(hand_palm_link)
+
+            logwarn(f'Could not find {tip_link}. Fallback to {hand_palm_link}')
+
         self.tip_str = str(self.tip)
 
         self.goal_frontal_axis = Vector3Stamped()
@@ -946,6 +963,16 @@ class PlaceNeatly(ForceSensorGoal):
 
     def __str__(self) -> str:
         return super().__str__()
+
+    @staticmethod
+    def goal_cancel_condition() -> [w.Expression]:
+        expression = []
+
+        cas = w.Expression(2.0 * 4.2)
+
+        expression.append(cas)
+
+        return expression
 
 
 class Tilting(Goal):

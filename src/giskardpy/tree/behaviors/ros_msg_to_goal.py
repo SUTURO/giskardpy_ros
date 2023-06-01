@@ -100,7 +100,8 @@ class RosMsgToGoal(GetGoal):
                     params['goal_type_seq'] = [self.allowed_constraint_types[x] for x in params['goal_type_seq']]
 
                 if issubclass(C, ForceSensorGoal):
-                    self.tree.insert_node(MonitorForceSensor('Monitor_Force'), 'monitor execution', 2)
+                    cond = C.goal_cancel_condition()
+                    self.tree.insert_node(MonitorForceSensor('Monitor_Force', cond), 'monitor execution', 2)
 
                 c: Goal = C(**params)
                 c._save_self_on_god_map()

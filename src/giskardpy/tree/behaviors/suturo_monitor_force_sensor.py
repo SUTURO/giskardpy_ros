@@ -16,13 +16,13 @@ import numpy as np
 class MonitorForceSensor(GiskardBehavior):
 
     @profile
-    def __init__(self, name):
+    def __init__(self, name, conditions):
         super().__init__(name)
         self.cancel_condition = False
         self.name = name
         self.wrench_compensated_subscriber = None
 
-        self.force_threshold = -3.0
+        self.force_threshold = -1.0
         self.torque_threshold = 0.5
         # self.force_derivative_threshold = 50
         # self.force_derivative_threshold = 50
@@ -34,6 +34,8 @@ class MonitorForceSensor(GiskardBehavior):
         self.wrench_compensated_torque_data_y = []
         self.wrench_compensated_torque_data_z = []
         self.wrench_compensated_latest_data = WrenchStamped()
+
+        self.conditions = conditions
 
         # True to print sensor data
         self.show_data = False
@@ -103,8 +105,8 @@ class MonitorForceSensor(GiskardBehavior):
         if self.cancel_condition:
             print('goal canceled')
 
-            return Status.SUCCESS
-            # raise MonitorForceException
+            #return Status.SUCCESS
+            raise MonitorForceException
 
         return Status.FAILURE
 
