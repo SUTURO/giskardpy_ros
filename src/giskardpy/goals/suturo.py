@@ -6,44 +6,19 @@ from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation, \
     CartesianPose
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, NonMotionGoal
+from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
-from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
-# from giskardpy.tree.garden import TreeManager
+#from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
+#from giskardpy.tree.garden import TreeManager
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
 
 from giskardpy import casadi_wrapper as w, identifier
 
 
-class ForceSensorGoal(Goal):
-    """
-    Inherit from this goal, if the goal should use the Force Sensor.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-        '''tree: TreeManager = self.god_map.get_data(identifier.tree_manager)
-
-        t = tree.get_node('Monitor_Force')
-
-        print(t)
-
-        tree.insert_node(MonitorForceSensor('Monitor_Force'), 'monitor execution', 2)
-
-        tree.render()'''
-
-        return
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        return super().__str__()
 
 
 class ObjectGoal(Goal):
@@ -765,7 +740,7 @@ class AlignHeight(ObjectGoal):
                  object_name,
                  goal_pose: Optional[PoseStamped] = None,
                  object_height: float = None,
-                 root_link: Optional[str] = 'odom',
+                 root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight=WEIGHT_ABOVE_CA,
                  frontal_grasping=True):
@@ -776,7 +751,14 @@ class AlignHeight(ObjectGoal):
         self.root_str = str(self.root)
 
         # tip link
-        self.tip = self.world.search_for_link_name(tip_link)
+        try:
+            self.tip = self.world.search_for_link_name(tip_link)
+        except:
+            hand_palm_link = 'hand_palm_link'
+            self.tip = self.world.search_for_link_name(hand_palm_link)
+
+            logwarn(f'Could not find {tip_link}. Fallback to {hand_palm_link}')
+
         self.tip_str = str(self.tip)
 
         self.weight = weight
@@ -788,58 +770,36 @@ class AlignHeight(ObjectGoal):
             object_height = self.object_size.z
 
         self.object_pose = goal_pose
-        self.object_height = object_height * 0.66
+        self.object_height = object_height
 
         # CartesianPosition
         goal_point = PointStamped()
         goal_point.header.frame_id = self.object_pose.header.frame_id
-        goal_point.point.x = self.object_pose.pose.position.x
-        goal_point.point.y = self.object_pose.pose.position.y
-        goal_point.point.z = self.object_pose.pose.position.z + (self.object_height / 2)
+        goal_point.point = self.object_pose.pose.position
 
-        tip_goal_point = self.transform_msg(self.tip_str, goal_point)
-        tip_goal_point.header.frame_id = self.tip_str
-        # tip_goal_point.point.y = 0
-        tip_goal_point.point.z = 0
+        base_link = self.world.search_for_link_name('base_link')
+        base_to_tip = self.world.compute_fk_pose(base_link, self.tip)
+
+        base_goal_point = self.transform_msg(base_link, goal_point)
+        base_goal_point.point.x = base_to_tip.pose.position.x
+        base_goal_point.point.z = base_goal_point.point.z + (self.object_height / 2)
 
         # Align height
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
-                                                       goal_point=tip_goal_point,
+                                                       goal_point=base_goal_point,
                                                        weight=self.weight))
 
-        # Align vertical
-        goal_vertical_axis = Vector3Stamped()
-        goal_vertical_axis.header.frame_id = self.root_str
-
-        tip_vertical_axis = Vector3Stamped()
-        tip_vertical_axis.header.frame_id = self.tip_str
-
-        '''if self.frontal_grasping:
-            goal_vertical_axis.vector.z = 1
-            tip_vertical_axis.vector.x = 1
-        else:
-            goal_vertical_axis.vector.z = -1
-            tip_vertical_axis.vector.z = 1'''
-        goal_vertical_axis.vector.z = 1
-        tip_vertical_axis.vector.x = 1
-
-        '''self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
-                                                 tip_link=self.tip_str,
-                                                 goal_normal=goal_vertical_axis,
-                                                 tip_normal=tip_vertical_axis,
-                                                 weight=self.weight))'''
-
-        orientation = QuaternionStamped()
-        orientation.header.frame_id = 'hand_palm_link'
-        orientation.quaternion.x = 0
-        orientation.quaternion.y = 0
-        orientation.quaternion.z = 0
-        orientation.quaternion.w = 1
+        hand_orientation = QuaternionStamped()
+        hand_orientation.header.frame_id = self.tip_str
+        hand_orientation.quaternion.x = 0
+        hand_orientation.quaternion.y = 0
+        hand_orientation.quaternion.z = 0
+        hand_orientation.quaternion.w = 1
 
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
-                                                          tip_link='hand_palm_link',
-                                                          goal_orientation=orientation))
+                                                          tip_link=self.tip_str,
+                                                          goal_orientation=hand_orientation))
 
     def make_constraints(self):
         pass
