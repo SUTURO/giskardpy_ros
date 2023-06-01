@@ -273,7 +273,8 @@ class TestForceSensorGoal(ForceSensorGoal):
                  **kwargs):
         super().__init__()
 
-        self.add_constraints_of_goal(PlaceNeatly(target_pose=object_pose))
+
+        self.add_constraints_of_goal(LiftObject(object_name=''))
 
     def make_constraints(self):
         pass
@@ -648,7 +649,15 @@ class LiftObject(Goal):
         self.root_str = str(self.root)
 
         # tip link
-        self.tip = self.world.search_for_link_name(tip_link, None)
+        # tip link
+        try:
+            self.tip = self.world.search_for_link_name(tip_link)
+        except:
+            hand_palm_link = 'hand_palm_link'
+            self.tip = self.world.search_for_link_name(hand_palm_link)
+
+            logwarn(f'Could not find {tip_link}. Fallback to {hand_palm_link}')
+
         self.tip_str = str(self.tip)
 
         self.lifting_distance = lifting
@@ -777,10 +786,12 @@ class AlignHeight(ObjectGoal):
         goal_point.header.frame_id = self.object_pose.header.frame_id
         goal_point.point = self.object_pose.pose.position
 
-        base_link = self.world.search_for_link_name('base_link')
-        base_to_tip = self.world.compute_fk_pose(base_link, self.tip)
+        self.base_link = self.world.search_for_link_name('base_link')
+        self.base_str = str(self.base_link)
 
-        base_goal_point = self.transform_msg(base_link, goal_point)
+        base_to_tip = self.world.compute_fk_pose(self.base_link, self.tip)
+
+        base_goal_point = self.transform_msg(self.base_link, goal_point)
         base_goal_point.point.x = base_to_tip.pose.position.x
         base_goal_point.point.z = base_goal_point.point.z + (self.object_height / 2)
 
@@ -800,6 +811,17 @@ class AlignHeight(ObjectGoal):
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.tip_str,
                                                           goal_orientation=hand_orientation))
+
+        base_orientation = QuaternionStamped()
+        base_orientation.header.frame_id = self.base_str
+        base_orientation.quaternion.x = 0
+        base_orientation.quaternion.y = 0
+        base_orientation.quaternion.z = 0
+        base_orientation.quaternion.w = 1
+
+        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
+                                                          tip_link=self.base_str,
+                                                          goal_orientation=base_orientation))
 
     def make_constraints(self):
         pass
