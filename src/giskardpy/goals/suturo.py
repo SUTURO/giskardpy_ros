@@ -591,6 +591,8 @@ class GraspFrontal(Goal):
         self.tip_frontal_axis.header.frame_id = self.tip_str
         self.tip_frontal_axis.vector.z = 1
 
+        hgtf = 'hand_gripper_tool_frame'
+
         self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
                                               tip_link=self.tip_str,
                                               tip_grasp_axis=self.tip_vertical_axis,
@@ -752,7 +754,7 @@ class AlignHeight(ObjectGoal):
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight=WEIGHT_ABOVE_CA,
-                 frontal_grasping=True):
+                 height_only=True):
         super().__init__()
 
         # root link
@@ -794,6 +796,8 @@ class AlignHeight(ObjectGoal):
         base_goal_point = self.transform_msg(self.base_link, goal_point)
         base_goal_point.point.x = base_to_tip.pose.position.x
         base_goal_point.point.z = base_goal_point.point.z + (self.object_height / 2)
+        if height_only:
+            base_goal_point.point.y = 0
 
         # Align height
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
