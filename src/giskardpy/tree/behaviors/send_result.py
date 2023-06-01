@@ -31,6 +31,14 @@ class SendResult(ActionServerBehavior):
                 return Status.SUCCESS
             else:
                 logging.loginfo('----------------Successfully executed goal.----------------')
+
+
+        try:
+            self.tree.remove_node('Monitor_Force')
+            logging.loginfo('Monitor force node removed')
+        except:
+            logging.loginfo('Monitor force node did not exist')
+
         self.get_as().send_result(result)
         return Status.SUCCESS
 

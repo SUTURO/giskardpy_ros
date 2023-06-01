@@ -102,8 +102,6 @@ class RosMsgToGoal(GetGoal):
                 if issubclass(C, ForceSensorGoal):
                     self.tree.insert_node(MonitorForceSensor('Monitor_Force'), 'monitor execution', 2)
 
-                self.tree.render()
-
                 c: Goal = C(**params)
                 c._save_self_on_god_map()
             except Exception as e:

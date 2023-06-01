@@ -678,6 +678,7 @@ class NonMotionGoal(Goal):
     def make_constraints(self):
         pass
 
+
 class ForceSensorGoal(Goal):
     """
     Inherit from this goal, if the goal should use the Force Sensor.
@@ -685,16 +686,6 @@ class ForceSensorGoal(Goal):
 
     def __init__(self):
         super().__init__()
-
-        #tree: TreeManager = self.god_map.get_data(identifier.tree_manager)
-
-        #t = tree.get_node('Monitor_Force')
-
-        #print(t)
-
-        #tree.insert_node(MonitorForceSensor('Monitor_Force'), 'monitor execution', 2)
-
-        #tree.render()
 
     def make_constraints(self):
         pass
