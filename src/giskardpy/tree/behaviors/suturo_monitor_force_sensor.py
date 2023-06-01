@@ -1,5 +1,6 @@
 import rospy
 from geometry_msgs.msg import WrenchStamped
+from giskard_msgs.msg import MoveResult
 from py_trees import Status
 
 from giskardpy import identifier
@@ -37,10 +38,16 @@ class MonitorForceSensor(GiskardBehavior):
         # True to print sensor data
         self.show_data = False
 
+        self.i = 0
+        self.remove_node = False
+
     @profile
     def setup(self, timeout):
         self.wrench_compensated_subscriber = rospy.Subscriber('/hsrb/wrist_wrench/compensated', WrenchStamped,
                                                               self.get_rospy_data)
+
+
+        print('running')
 
         return True
 
@@ -96,19 +103,41 @@ class MonitorForceSensor(GiskardBehavior):
     @catch_and_raise_to_blackboard
     @profile
     def update(self):
+        print(self.i)
 
-        print('running')
+        if self.i > 40:
+            self.cancel_condition = True
 
         if self.cancel_condition:
 
             print('goal canceled')
 
+            return Status.SUCCESS
             #raise MonitorForceException
+            #return Status.FAILURE
 
-        return Status.RUNNING
+        self.i += 1
 
-'''    def terminate(self, new_status):
+        return Status.FAILURE
 
-        tree = self.tree
-        tree.remove_node(self.name)'''
+    def terminate(self, new_status):
+        self.tree.render()
 
+        if self.cancel_condition:
+            tree = self.tree
+            tree.remove_node(self.name)
+
+
+    def any_goal_succeeded(self, result):
+        """
+        :type result: MoveResult
+        :rtype: bool
+        """
+        return MoveResult.SUCCESS in result.error_codes
+
+    def all_goals_succeeded(self, result):
+        """
+        :type result: MoveResult
+        :rtype: bool
+        """
+        return len([x for x in result.error_codes if x != MoveResult.SUCCESS]) == 0

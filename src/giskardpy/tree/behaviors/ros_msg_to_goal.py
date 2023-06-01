@@ -6,6 +6,7 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import List, Dict, Tuple
 
+import py_trees
 from py_trees import Status
 
 import giskardpy.identifier as identifier
