@@ -1,3 +1,5 @@
+from typing import Dict
+
 import rospy
 from control_msgs.msg import FollowJointTrajectoryActionGoal, JointTolerance
 from geometry_msgs.msg import WrenchStamped
@@ -21,15 +23,15 @@ import numpy as np
 class MonitorForceSensor(GiskardBehavior):
 
     @profile
-    def __init__(self, name, conditions):
+    def __init__(self, name, conditions, recovery):
         super().__init__(name)
         self.arm_trajectory_publisher = None
         self.cancel_condition = False
         self.name = name
         self.wrench_compensated_subscriber = None
 
-        self.force_threshold = -1.0
-        self.torque_threshold = 1.0
+        self.force_threshold = 0.0
+        self.torque_threshold = 0.15
         # self.force_derivative_threshold = 50
         # self.force_derivative_threshold = 50
 
@@ -44,6 +46,8 @@ class MonitorForceSensor(GiskardBehavior):
         self.conditions = conditions
 
         self.counter = 0
+
+        self.recovery = recovery
 
         # True to print sensor data
         self.show_data = False
@@ -108,10 +112,10 @@ class MonitorForceSensor(GiskardBehavior):
         force_cancel = force_axis < self.force_threshold
         torque_cancel = torque_axis > self.torque_threshold
 
-        if self.counter > 2:
-            self.cancel_condition = True
+        #if self.counter > 2:
+        #    self.cancel_condition = True
 
-        if force_cancel or torque_cancel:
+        if force_cancel and torque_cancel:
             print(f'force cancel: {force_cancel}')
             print(f'torque cancel: {torque_cancel}')
 
@@ -134,12 +138,10 @@ class MonitorForceSensor(GiskardBehavior):
     def update(self):
 
         if self.cancel_condition:
-            print('goal canceled')
+            rospy.loginfo('goal canceled')
 
-            self.recover()
-
-            #return Status.SUCCESS
-            raise MonitorForceException
+            return Status.SUCCESS
+            #raise MonitorForceException
 
         self.counter += 1
 
@@ -148,6 +150,7 @@ class MonitorForceSensor(GiskardBehavior):
     def terminate(self, new_status):
 
         if self.cancel_condition:
+            self.recover()
             tree = self.tree
             tree.remove_node(self.name)
 
@@ -156,10 +159,18 @@ class MonitorForceSensor(GiskardBehavior):
         joint_names = ['arm_lift_joint', 'arm_flex_joint',
                        'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint']
 
-        joint_positions = [self.world.state.get(self.world.search_for_joint_name(joint_name)).position
-                           for joint_name in joint_names]
+        joint_modify: Dict = self.recovery
 
-        joint_positions[0] += 0.01
+        joint_positions = []
+        for joint_name in joint_names:
+            join_state_position = self.world.state.get(self.world.search_for_joint_name(joint_name)).position
+
+            if joint_name in joint_modify:
+                mod = joint_modify.get(joint_name)
+            else:
+                mod = 0.0
+
+            joint_positions.append(join_state_position + mod)
 
         # fill ROS message
         traj = trajectory_msgs.msg.JointTrajectory()

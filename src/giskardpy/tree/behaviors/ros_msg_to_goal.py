@@ -102,7 +102,8 @@ class RosMsgToGoal(GetGoal):
                 # TODO: Find a better place to add the Monitor Force sensor node
                 if issubclass(C, ForceSensorGoal):
                     cond = C.goal_cancel_condition()
-                    self.tree.insert_node(MonitorForceSensor('Monitor_Force', cond), 'monitor execution', 2)
+                    recover = C.recovery()
+                    self.tree.insert_node(MonitorForceSensor('Monitor_Force', cond, recover), 'monitor execution', 2)
 
                 c: Goal = C(**params)
                 c._save_self_on_god_map()

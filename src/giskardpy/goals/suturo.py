@@ -287,6 +287,13 @@ class TestForceSensorGoal(ForceSensorGoal):
 
         return expression
 
+    @staticmethod
+    def recovery() -> Dict:
+        joint_states = {'arm_lift_joint': 0.01}
+
+        return joint_states
+
+
 
 class MoveGripper(Goal):
     def __init__(self,
@@ -847,8 +854,12 @@ class PlaceObject(ObjectGoal):
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  frontal=True,
-                 weight=WEIGHT_ABOVE_CA):
+                 weight=WEIGHT_ABOVE_CA,
+                 velocity: Optional[float] = None):
         super().__init__()
+
+        if velocity is None:
+            velocity = 0.2
 
         # root link
         self.root = self.world.search_for_link_name(root_link)
@@ -933,7 +944,8 @@ class PlaceObject(ObjectGoal):
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=goal_point,
-                                                       weight=self.weight))
+                                                       weight=self.weight,
+                                                       reference_velocity=velocity))
 
     def make_constraints(self):
         pass
@@ -948,10 +960,13 @@ class PlaceNeatly(ForceSensorGoal):
                  weight=WEIGHT_ABOVE_CA):
         super().__init__()
 
+        velocity = 0.05
+
         self.add_constraints_of_goal(PlaceObject(object_name='',
                                                  target_pose=target_pose,
                                                  object_height=0.0,
-                                                 weight=weight))
+                                                 weight=weight,
+                                                 velocity=velocity))
 
     def make_constraints(self):
         pass
@@ -968,6 +983,12 @@ class PlaceNeatly(ForceSensorGoal):
         expression.append(cas)
 
         return expression
+
+    @staticmethod
+    def recovery() -> Dict:
+        joint_states = {'arm_lift_joint': 0.03}
+
+        return joint_states
 
 
 class Tilting(Goal):

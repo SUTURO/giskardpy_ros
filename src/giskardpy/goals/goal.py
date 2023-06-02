@@ -694,6 +694,12 @@ class ForceSensorGoal(Goal):
         return super().__str__()
 
     @staticmethod
+    @abc.abstractmethod
     def goal_cancel_condition() -> [w.Expression]:
         pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def recovery() -> Dict:
+        return {}
 
