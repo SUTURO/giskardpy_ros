@@ -99,6 +99,7 @@ class RosMsgToGoal(GetGoal):
                 if issubclass(C, SequenceGoal):
                     params['goal_type_seq'] = [self.allowed_constraint_types[x] for x in params['goal_type_seq']]
 
+                # TODO: Find a better place to add the Monitor Force sensor node
                 if issubclass(C, ForceSensorGoal):
                     cond = C.goal_cancel_condition()
                     self.tree.insert_node(MonitorForceSensor('Monitor_Force', cond), 'monitor execution', 2)

@@ -32,7 +32,7 @@ class SendResult(ActionServerBehavior):
             else:
                 logging.loginfo('----------------Successfully executed goal.----------------')
 
-
+        # TODO: find a better place to remove the monitor force node
         try:
             self.tree.remove_node('Monitor_Force')
             logging.loginfo('Monitor force node removed')

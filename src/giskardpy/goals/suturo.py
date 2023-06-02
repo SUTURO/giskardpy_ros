@@ -1,7 +1,10 @@
 from typing import Optional, List, Dict
 
 import numpy as np
+import rospy
+from control_msgs.msg import FollowJointTrajectoryActionGoal
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped
+from trajectory_msgs.msg import JointTrajectoryPoint
 
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation, \
@@ -66,7 +69,6 @@ class ObjectGoal(Goal):
 
 class TestGoal(Goal):
     def __init__(self,
-                 goal_name: str,
                  object_name: Optional[str] = '',
                  object_pose_1: Optional[PoseStamped] = None,
                  object_pose_2: Optional[PoseStamped] = None,
@@ -74,7 +76,6 @@ class TestGoal(Goal):
                  lift_first: Optional[bool] = True):
         super().__init__()
 
-        self.goal_name = goal_name
         self.object_name = object_name
         self.object_pose_1 = object_pose_1
         self.object_pose_2 = object_pose_2
@@ -83,12 +84,6 @@ class TestGoal(Goal):
 
         print('Test Goal')
 
-        goal = globals()[self.goal_name](object_name=self.object_name,
-                                         object_pose_1=self.object_pose_1,
-                                         object_pose_2=self.object_pose_2,
-                                         grasp_object=self.grasp_object,
-                                         lift_first=self.lift_first)
-        self.add_constraints_of_goal(goal)
 
     def make_constraints(self):
         pass
@@ -219,7 +214,7 @@ class SequenceGoal(Goal):
 
         s1 = {'s': 0.0}
 
-        s = {g: s1, }
+        s = {g: s1}
 
         '''self.object_name = object_name
         self.weight = WEIGHT_ABOVE_CA
@@ -273,8 +268,8 @@ class TestForceSensorGoal(ForceSensorGoal):
                  **kwargs):
         super().__init__()
 
-
-        self.add_constraints_of_goal(LiftObject(object_name=''))
+        #self.add_constraints_of_goal(LiftObject(object_name=''))
+        self.add_constraints_of_goal(Retracting(object_name=''))
 
     def make_constraints(self):
         pass
