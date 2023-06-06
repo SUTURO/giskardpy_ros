@@ -1,12 +1,9 @@
 from typing import Dict
 
-import rospy
 from control_msgs.msg import FollowJointTrajectoryActionGoal, JointTolerance
 from geometry_msgs.msg import WrenchStamped
-from giskard_msgs.msg import MoveResult
 from py_trees import Status
 
-from giskardpy import identifier
 from giskardpy.data_types import JointStates
 from giskardpy.exceptions import MonitorForceException
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
@@ -16,7 +13,7 @@ from giskardpy.utils.decorators import catch_and_raise_to_blackboard
 import controller_manager_msgs.srv
 import rospy
 import trajectory_msgs.msg
-
+from giskardpy import casadi_wrapper as w
 import numpy as np
 
 
@@ -30,11 +27,6 @@ class MonitorForceSensor(GiskardBehavior):
         self.name = name
         self.wrench_compensated_subscriber = None
 
-        self.force_threshold = 0.0
-        self.torque_threshold = 0.15
-        # self.force_derivative_threshold = 50
-        # self.force_derivative_threshold = 50
-
         self.wrench_compensated_force_data_x = []
         self.wrench_compensated_force_data_y = []
         self.wrench_compensated_force_data_z = []
@@ -43,6 +35,10 @@ class MonitorForceSensor(GiskardBehavior):
         self.wrench_compensated_torque_data_z = []
         self.wrench_compensated_latest_data = WrenchStamped()
 
+        # self.force_threshold = 0.0
+        # self.torque_threshold = 0.15
+        # self.force_derivative_threshold = 50
+        # self.force_derivative_threshold = 50
         self.conditions = conditions
 
         self.counter = 0
@@ -102,22 +98,34 @@ class MonitorForceSensor(GiskardBehavior):
         place with frontal grasping: force: -x, torque: y
         """
 
+        conds = self.conditions
+
+        whole_data = {'x_force': self.wrench_compensated_force_data_x,
+                      'y_force': self.wrench_compensated_force_data_y,
+                      'z_force': self.wrench_compensated_force_data_z,
+                      'x_torque': self.wrench_compensated_torque_data_x,
+                      'y_torque': self.wrench_compensated_torque_data_y,
+                      'z_torque': self.wrench_compensated_torque_data_z}
+
         # TODO: improve math (e.g. work with derivative or moving average)
 
-        # force_average_x = np.mean(self.wrench_compensated_force_data_x)
-
-        force_axis = self.wrench_compensated_latest_data.wrench.force.x
-        torque_axis = self.wrench_compensated_latest_data.wrench.force.y
-
-        force_cancel = force_axis < self.force_threshold
-        torque_cancel = torque_axis > self.torque_threshold
-
-        #if self.counter > 2:
+        # if self.counter > 2:
         #    self.cancel_condition = True
 
-        if force_cancel and torque_cancel:
-            print(f'force cancel: {force_cancel}')
-            print(f'torque cancel: {torque_cancel}')
+        evals = []
+        for condition in conds:
+            sensor_axis, operator, value = condition
+
+            current_data = whole_data[sensor_axis][-1]
+
+            evaluated_condition = eval(f'{current_data} {operator} {value}')
+
+            evals.append(evaluated_condition)
+
+        if any(evals):
+
+            logging.loginfo(f'conditions: {conds}')
+            logging.loginfo(f'evaluated: {evals}')
 
             self.cancel_condition = True
 
@@ -141,7 +149,7 @@ class MonitorForceSensor(GiskardBehavior):
             rospy.loginfo('goal canceled')
 
             return Status.SUCCESS
-            #raise MonitorForceException
+            # raise MonitorForceException
 
         self.counter += 1
 

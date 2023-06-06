@@ -7,21 +7,16 @@ from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 from giskardpy.goals.align_planes import AlignPlanes
-from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation, \
-    CartesianPose
+from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation
 from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
-#from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
-#from giskardpy.tree.garden import TreeManager
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
 
-from giskardpy import casadi_wrapper as w, identifier
-
-
+from giskardpy import casadi_wrapper as w
 
 
 class ObjectGoal(Goal):
@@ -83,7 +78,6 @@ class TestGoal(Goal):
         self.lift_first = lift_first
 
         print('Test Goal')
-
 
     def make_constraints(self):
         pass
@@ -268,7 +262,7 @@ class TestForceSensorGoal(ForceSensorGoal):
                  **kwargs):
         super().__init__()
 
-        #self.add_constraints_of_goal(LiftObject(object_name=''))
+        # self.add_constraints_of_goal(LiftObject(object_name=''))
         self.add_constraints_of_goal(Retracting(object_name=''))
 
     def make_constraints(self):
@@ -277,22 +271,19 @@ class TestForceSensorGoal(ForceSensorGoal):
     def __str__(self):
         return super().__str__()
 
-    @staticmethod
-    def goal_cancel_condition() -> [w.Expression]:
-        expression = []
+    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
 
-        cas = w.Expression(2.0 * 4.2)
+        x_force_threshold = w.Expression(0.0)
+        x_force_condition = ['x_force', '<=', x_force_threshold]
 
-        expression.append(cas)
+        expression = [x_force_condition]
 
         return expression
 
-    @staticmethod
-    def recovery() -> Dict:
+    def recovery(self) -> Dict:
         joint_states = {'arm_lift_joint': 0.01}
 
         return joint_states
-
 
 
 class MoveGripper(Goal):
@@ -350,9 +341,9 @@ class GraspObject(ObjectGoal):
                  object_name: str,
                  object_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
+                 frontal_grasping: Optional[bool] = True,
                  root_link: Optional[str] = 'odom',
-                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 frontal_grasping=True):
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame'):
         """
         Determine the grasping perspective of the object
         """
@@ -406,7 +397,8 @@ class GraspAbove(Goal):
                  object_size: Optional[Vector3] = None,
                  object_geometry: Optional[LinkGeometry] = None,
                  root_link: Optional[str] = 'odom',
-                 tip_link: Optional[str] = 'hand_gripper_tool_frame'):
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                 weight: Optional[float] = WEIGHT_ABOVE_CA):
         super().__init__()
 
         # root link
@@ -495,17 +487,20 @@ class GraspAbove(Goal):
 
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
-                                                       goal_point=self.bar_center_point))
+                                                       goal_point=self.bar_center_point,
+                                                       weight=weight))
 
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.bar_axis,
-                                                 tip_normal=self.tip_vertical_axis))
+                                                 tip_normal=self.tip_vertical_axis,
+                                                 weight=weight))
 
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_frontal_axis,
-                                                 tip_normal=self.tip_frontal_axis))
+                                                 tip_normal=self.tip_frontal_axis,
+                                                 weight=weight))
 
     def make_constraints(self):
         pass
@@ -522,7 +517,7 @@ class GraspFrontal(Goal):
                  object_geometry: Optional[LinkGeometry] = None,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight=WEIGHT_ABOVE_CA):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA):
         """
         Move to a given position where a box can be grasped.
 
@@ -655,7 +650,7 @@ class LiftObject(Goal):
                  lifting: float = 0.02,
                  root_link: str = 'map',
                  tip_link: str = 'hand_gripper_tool_frame',
-                 weight=WEIGHT_ABOVE_CA):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA):
         super().__init__()
 
         # root link
@@ -719,7 +714,7 @@ class Retracting(Goal):
                  distance: Optional[float] = 0.2,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'base_link',
-                 weight=WEIGHT_ABOVE_CA):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA):
         super().__init__()
 
         # root link
@@ -760,13 +755,13 @@ class Retracting(Goal):
 
 class AlignHeight(ObjectGoal):
     def __init__(self,
-                 object_name,
+                 object_name: str,
                  goal_pose: Optional[PoseStamped] = None,
                  object_height: float = None,
+                 height_only: Optional[bool] = True,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight=WEIGHT_ABOVE_CA,
-                 height_only=True):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA):
         super().__init__()
 
         # root link
@@ -851,15 +846,17 @@ class PlaceObject(ObjectGoal):
                  object_name: str,
                  target_pose: PoseStamped,
                  object_height: float = None,
+                 frontal: Optional[bool] = True,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 frontal=True,
-                 weight=WEIGHT_ABOVE_CA,
+                 weight: Optional[float] = None,
                  velocity: Optional[float] = None):
         super().__init__()
 
         if velocity is None:
             velocity = 0.2
+        if weight is None:
+            weight = WEIGHT_ABOVE_CA
 
         # root link
         self.root = self.world.search_for_link_name(root_link)
@@ -975,14 +972,16 @@ class PlaceNeatly(ForceSensorGoal):
         return super().__str__()
 
     @staticmethod
-    def goal_cancel_condition() -> [w.Expression]:
-        expression = []
+    def goal_cancel_condition() -> [(str, str, w.Expression)]:
+        x_force_threshold = w.Expression(0.0)
+        x_force_condition = ['x_force', '<=', x_force_threshold]
 
-        cas = w.Expression(2.0 * 4.2)
+        y_torque_threshold = w.Expression(0.15)
+        y_torque_condition = ['y_torque', '>=', y_torque_threshold]
 
-        expression.append(cas)
+        expressions = [x_force_condition, y_torque_condition]
 
-        return expression
+        return expressions
 
     @staticmethod
     def recovery() -> Dict:
@@ -1008,8 +1007,7 @@ class Tilting(Goal):
             tilt_angle = abs(tilt_angle)
 
         self.add_constraints_of_goal(JointPosition(goal=tilt_angle,
-                                                   joint_name=tip_link
-                                                   ))
+                                                   joint_name=tip_link))
 
     def make_constraints(self):
         pass

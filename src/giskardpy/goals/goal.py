@@ -16,6 +16,7 @@ from giskardpy.model.joints import OneDofJoint
 from giskardpy.model.world import WorldTree
 from giskardpy.my_types import my_string, transformable_message, PrefixName, Derivatives
 from giskardpy.qp.constraint import InequalityConstraint, EqualityConstraint, DerivativeInequalityConstraint
+from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
 
 WEIGHT_MAX = Constraint_msg.WEIGHT_MAX
 WEIGHT_ABOVE_CA = Constraint_msg.WEIGHT_ABOVE_CA
@@ -687,19 +688,23 @@ class ForceSensorGoal(Goal):
     def __init__(self):
         super().__init__()
 
+        cond = self.goal_cancel_condition()
+        recover = self.recovery()
+
+        tree = self.god_map.get_data(identifier=identifier.tree_manager)
+        tree.insert_node(MonitorForceSensor('Monitor_Force', cond, recover), 'monitor execution', 2)
+
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
         return super().__str__()
 
-    @staticmethod
     @abc.abstractmethod
-    def goal_cancel_condition() -> [w.Expression]:
+    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
         pass
 
-    @staticmethod
     @abc.abstractmethod
-    def recovery() -> Dict:
+    def recovery(self) -> Dict:
         return {}
 
