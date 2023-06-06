@@ -13,10 +13,11 @@ from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
+from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
 
-from giskardpy import casadi_wrapper as w
+from giskardpy import casadi_wrapper as w, identifier
 
 
 class ObjectGoal(Goal):
@@ -199,23 +200,42 @@ class SequenceGoal(Goal):
                  **kwargs):
         super().__init__()
 
-        s = 'sd'
+        self.goal_finished = [False] * len(goal_type_seq)
 
         for goal, args in zip(goal_type_seq, kwargs_seq):
-            print()
+            suffix = goal_type_seq.index(goal)
 
-            g = goal(args)
+            g = goal(**args)
 
             self.add_constraints_of_goal(g)
 
-
-        '''self.add_constraints_of_goal(LiftObject(object_name=''))
-
-        self.add_constraints_of_goal(Retracting(object_name=''))'''
-
     def make_constraints(self):
 
-        constraints = self._equality_constraints
+        s = self.god_map.to_symbol(self._get_identifier() + ['asdf', tuple()])
+
+    def asdf(self):
+
+        constraints: Dict[str, EqualityConstraint] = self._equality_constraints
+
+        for name, eq_constraint in constraints.items():
+
+            weight = eq_constraint.quadratic_weight
+
+            sample = self.god_map.get_data(identifier=identifier.sample_period)
+
+            compiled_error = eq_constraint.capped_error(sample).compile()
+
+            compiled_error.fast_call(self.god_map.get_values(compiled_error.str_params))
+
+
+        #if distance < 0.03:
+        #    self.goal_1_running = 0
+
+        distance_to_goal = 0
+
+        print(distance_to_goal)
+
+        return distance_to_goal
 
     def __str__(self) -> str:
         return super().__str__()
@@ -617,11 +637,12 @@ class LiftObject(Goal):
                  weight: Optional[float] = WEIGHT_ABOVE_CA):
         super().__init__()
 
+        self.object_name = object_name
+
         # root link
-        self.root = self.world.search_for_link_name(root_link, None)
+        self.root = self.world.search_for_link_name(root_link)
         self.root_str = str(self.root)
 
-        # tip link
         # tip link
         try:
             self.tip = self.world.search_for_link_name(tip_link)
@@ -669,7 +690,8 @@ class LiftObject(Goal):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}{self.object_name}/{self.root_str}/{self.tip_str}'
 
 
 class Retracting(Goal):
