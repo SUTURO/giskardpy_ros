@@ -21,7 +21,8 @@ class GraspBar(Goal):
                  tip_group: Optional[str] = None,
                  reference_linear_velocity: float = 0.1,
                  reference_angular_velocity: float = 0.5,
-                 weight: float = WEIGHT_ABOVE_CA):
+                 weight: float = WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         """
         Like a CartesianPose but with more freedom.
         tip_link is allowed to be at any point along bar_axis, that is without bar_center +/- bar_length.
@@ -57,10 +58,11 @@ class GraspBar(Goal):
         self.reference_linear_velocity = reference_linear_velocity
         self.reference_angular_velocity = reference_angular_velocity
         self.weight = weight
+        self.suffix = suffix
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.root}/{self.tip}'
+        return f'{s}/{self.root}/{self.tip}{self.suffix}'
 
     def make_constraints(self):
         root_V_bar_axis = w.Vector3(self.bar_axis)

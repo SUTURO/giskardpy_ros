@@ -196,46 +196,73 @@ class SequenceGoal(Goal):
     def __init__(self,
                  goal_type_seq: List[Goal],
                  kwargs_seq: List[Dict],
-                 #test: Dict,
+                 # test: Dict,
                  **kwargs):
         super().__init__()
 
-        self.goal_finished = [False] * len(goal_type_seq)
+        self.goal_type_seq = goal_type_seq
+        self.kwargs_seq = kwargs_seq
 
-        for goal, args in zip(goal_type_seq, kwargs_seq):
-            suffix = goal_type_seq.index(goal)
+        self.current_goal = 0
 
+        self.goal_number = 0
+
+        for goal, args in zip(self.goal_type_seq, kwargs_seq):
+
+            args['suffix'] = self.goal_number
             g = goal(**args)
 
             self.add_constraints_of_goal(g)
 
+            self.goal_number += 1
+
+
     def make_constraints(self):
-
-        s = self.god_map.to_symbol(self._get_identifier() + ['asdf', tuple()])
-
-    def asdf(self):
 
         constraints: Dict[str, EqualityConstraint] = self._equality_constraints
 
-        for name, eq_constraint in constraints.items():
+        eq_constraint_waves = [f'_suffix:{x}' for x in range(self.goal_number)]
 
+        values = constraints.items()
+        for index, suffix_text in enumerate(eq_constraint_waves):
+
+            ordered_eq_constraints = [x[1] for x in values if suffix_text in x[0]]
+
+            for const in ordered_eq_constraints:
+                s = self.god_map.to_symbol(self._get_identifier() + ['asdf', (index, const.name)])
+
+                expr = w.Expression(s)
+
+                const.quadratic_weight = const.quadratic_weight * expr
+
+        print()
+
+    def asdf(self, goal_number, goal_name):
+
+        if goal_number != self.current_goal:
+            return 0
+
+        constraint: EqualityConstraint = self._equality_constraints.get(goal_name)
+
+        sample = self.god_map.get_data(identifier=identifier.sample_period)
+
+        compiled = constraint.capped_error(sample).compile()
+        f = compiled.fast_call(self.god_map.get_values(compiled.str_params))
+
+        print(f'{f} on following: {goal_name}')
+
+        '''constraints: Dict[str, EqualityConstraint] = self._equality_constraints
+
+        for name, eq_constraint in constraints.items():
             weight = eq_constraint.quadratic_weight
 
             sample = self.god_map.get_data(identifier=identifier.sample_period)
 
             compiled_error = eq_constraint.capped_error(sample).compile()
 
-            compiled_error.fast_call(self.god_map.get_values(compiled_error.str_params))
+            compiled_error.fast_call(self.god_map.get_values(compiled_error.str_params))'''
 
-
-        #if distance < 0.03:
-        #    self.goal_1_running = 0
-
-        distance_to_goal = 0
-
-        print(distance_to_goal)
-
-        return distance_to_goal
+        return 1
 
     def __str__(self) -> str:
         return super().__str__()
@@ -327,11 +354,13 @@ class GraspObject(ObjectGoal):
                  object_size: Optional[Vector3] = None,
                  frontal_grasping: Optional[bool] = True,
                  root_link: Optional[str] = 'odom',
-                 tip_link: Optional[str] = 'hand_gripper_tool_frame'):
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                 suffix: str = ''):
         """
         Determine the grasping perspective of the object
         """
         super().__init__()
+        self.suffix = suffix
         self.object_name = object_name
         self.object_geometry = None
         self.root_link = root_link
@@ -358,20 +387,23 @@ class GraspObject(ObjectGoal):
                                                       object_size=self.object_size,
                                                       object_geometry=self.object_geometry,
                                                       root_link=self.root_link,
-                                                      tip_link=self.tip_link))
+                                                      tip_link=self.tip_link,
+                                                      suffix=suffix))
         else:
             self.add_constraints_of_goal(GraspAbove(object_name=self.object_name,
                                                     object_pose=self.object_pose,
                                                     object_size=self.object_size,
                                                     object_geometry=self.object_geometry,
                                                     root_link=self.root_link,
-                                                    tip_link=self.tip_link))
+                                                    tip_link=self.tip_link,
+                                                    suffix=suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
 
 class GraspAbove(Goal):
@@ -382,8 +414,11 @@ class GraspAbove(Goal):
                  object_geometry: Optional[LinkGeometry] = None,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         super().__init__()
+
+        self.suffix = suffix
 
         # root link
         self.root = self.world.search_for_link_name(root_link, None)
@@ -472,25 +507,29 @@ class GraspAbove(Goal):
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=self.bar_center_point,
-                                                       weight=weight))
+                                                       weight=weight,
+                                                       suffix=suffix))
 
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.bar_axis,
                                                  tip_normal=self.tip_vertical_axis,
-                                                 weight=weight))
+                                                 weight=weight,
+                                                 suffix=suffix))
 
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_frontal_axis,
                                                  tip_normal=self.tip_frontal_axis,
-                                                 weight=weight))
+                                                 weight=weight,
+                                                 suffix=suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
 
 class GraspFrontal(Goal):
@@ -501,7 +540,8 @@ class GraspFrontal(Goal):
                  object_geometry: Optional[LinkGeometry] = None,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         """
         Move to a given position where a box can be grasped.
 
@@ -512,6 +552,9 @@ class GraspFrontal(Goal):
 
         """
         super().__init__()
+
+        self.suffix = suffix
+
         self.object_name_str = str(object_name)
 
         # root link
@@ -590,20 +633,23 @@ class GraspFrontal(Goal):
                                               bar_center=self.bar_center_point,
                                               bar_axis=self.bar_axis,
                                               bar_length=self.bar_length,
-                                              weight=self.weight))
+                                              weight=self.weight,
+                                              suffix=suffix))
 
         # Align frontal
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_frontal_axis,
                                                  tip_normal=self.tip_frontal_axis,
-                                                 weight=self.weight))
+                                                 weight=self.weight,
+                                                 suffix=suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
     def set_grasp_axis(self, axes: Vector3,
                        maximum: Optional[bool] = False):
@@ -634,9 +680,11 @@ class LiftObject(Goal):
                  lifting: float = 0.02,
                  root_link: str = 'map',
                  tip_link: str = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         super().__init__()
 
+        self.suffix = suffix
         self.object_name = object_name
 
         # root link
@@ -679,19 +727,21 @@ class LiftObject(Goal):
                                                  tip_link=self.tip_str,
                                                  goal_normal=goal_vertical_axis,
                                                  tip_normal=tip_vertical_axis,
-                                                 weight=self.weight))
+                                                 weight=self.weight,
+                                                 suffix=suffix))
 
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=goal_point,
-                                                       weight=self.weight))
+                                                       weight=self.weight,
+                                                       suffix=suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
         s = super().__str__()
-        return f'{s}{self.object_name}/{self.root_str}/{self.tip_str}'
+        return f'{s}{self.object_name}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
 
 
 class Retracting(Goal):
@@ -700,9 +750,11 @@ class Retracting(Goal):
                  distance: Optional[float] = 0.2,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'base_link',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         super().__init__()
 
+        self.suffix = suffix
         # root link
         self.root = self.world.search_for_link_name(root_link, None).short_name
         self.root_str = str(self.root)
@@ -730,13 +782,15 @@ class Retracting(Goal):
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=goal_point,
-                                                       weight=self.weight))
+                                                       weight=self.weight,
+                                                       suffix=suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
 
 class AlignHeight(ObjectGoal):
@@ -747,8 +801,11 @@ class AlignHeight(ObjectGoal):
                  height_only: Optional[bool] = True,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         super().__init__()
+
+        self.suffix = suffix
 
         # root link
         self.root = self.world.search_for_link_name(root_link)
@@ -796,7 +853,8 @@ class AlignHeight(ObjectGoal):
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=base_goal_point,
-                                                       weight=self.weight))
+                                                       weight=self.weight,
+                                                       suffix=suffix))
 
         hand_orientation = QuaternionStamped()
         hand_orientation.header.frame_id = self.tip_str
@@ -807,7 +865,8 @@ class AlignHeight(ObjectGoal):
 
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.tip_str,
-                                                          goal_orientation=hand_orientation))
+                                                          goal_orientation=hand_orientation,
+                                                          suffix=suffix))
 
         base_orientation = QuaternionStamped()
         base_orientation.header.frame_id = self.base_str
@@ -818,13 +877,15 @@ class AlignHeight(ObjectGoal):
 
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.base_str,
-                                                          goal_orientation=base_orientation))
+                                                          goal_orientation=base_orientation,
+                                                          suffix=suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
 
 class PlaceObject(ObjectGoal):
@@ -836,9 +897,11 @@ class PlaceObject(ObjectGoal):
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight: Optional[float] = None,
-                 velocity: Optional[float] = None):
+                 velocity: Optional[float] = None,
+                 suffix: str = ''):
         super().__init__()
 
+        self.suffix = suffix
         if velocity is None:
             velocity = 0.2
         if weight is None:
@@ -907,58 +970,66 @@ class PlaceObject(ObjectGoal):
 
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link='base_link',
-                                                          goal_orientation=orientation_base))
+                                                          goal_orientation=orientation_base,
+                                                          suffix=suffix))
 
         # Align with destination
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_frontal_axis,
                                                  tip_normal=self.tip_frontal_axis,
-                                                 weight=self.weight))
+                                                 weight=self.weight,
+                                                 suffix=suffix))
 
         # Align vertical
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_vertical_axis,
                                                  tip_normal=self.tip_vertical_axis,
-                                                 weight=self.weight))
+                                                 weight=self.weight,
+                                                 suffix=suffix))
 
         # Move to Position
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=goal_point,
                                                        weight=self.weight,
-                                                       reference_velocity=velocity))
+                                                       reference_velocity=velocity,
+                                                       suffix=suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
 
 class PlaceNeatly(ForceSensorGoal):
     def __init__(self,
                  target_pose: PoseStamped,
-                 weight=WEIGHT_ABOVE_CA):
+                 weight=WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         super().__init__()
 
+        self.suffix = suffix
         velocity = 0.05
 
         self.add_constraints_of_goal(PlaceObject(object_name='',
                                                  target_pose=target_pose,
                                                  object_height=0.0,
                                                  weight=weight,
-                                                 velocity=velocity))
+                                                 velocity=velocity,
+                                                 suffix=suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
-    @staticmethod
-    def goal_cancel_condition() -> [(str, str, w.Expression)]:
+    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
         x_force_threshold = w.Expression(0.0)
         x_force_condition = ['x_force', '<=', x_force_threshold]
 
@@ -979,9 +1050,11 @@ class PlaceNeatly(ForceSensorGoal):
 class Tilting(Goal):
     def __init__(self,
                  direction: Optional[str] = None,
-                 tilt_angle: Optional[float] = None):
+                 tilt_angle: Optional[float] = None,
+                 suffix: str = ''):
         super().__init__()
 
+        self.suffix = suffix
         tip_link = 'wrist_roll_joint'
 
         max_angle = -2.0
@@ -999,4 +1072,5 @@ class Tilting(Goal):
         pass
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'

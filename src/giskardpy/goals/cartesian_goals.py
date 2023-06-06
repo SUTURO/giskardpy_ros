@@ -21,7 +21,8 @@ class CartesianPosition(Goal):
                  tip_group: Optional[str] = None,
                  max_velocity: Optional[float] = None,
                  reference_velocity: Optional[float] = None,
-                 weight: float = WEIGHT_ABOVE_CA, root_link2: str = None, suffix: str = ''):
+                 weight: float = WEIGHT_ABOVE_CA, root_link2: str = None,
+                 suffix: str = ''):
         """
         See CartesianPose.
         """
@@ -47,6 +48,7 @@ class CartesianPosition(Goal):
         self.reference_velocity = reference_velocity
         self.max_velocity = max_velocity
         self.weight = weight
+        self.suffix = suffix
         if self.max_velocity is not None:
             self.add_constraints_of_goal(TranslationVelocityLimit(root_link=root_link,
                                                                   root_group=root_group,
@@ -69,7 +71,7 @@ class CartesianPosition(Goal):
         #v.scale(weight/1000)
         #self.add_debug_expr('weight', v)
 
-        self.add_debug_expr('ca', r_P_g)
+        # self.add_debug_expr('ca', r_P_g)
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
@@ -78,7 +80,7 @@ class CartesianPosition(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.root_link}/{self.tip_link}'
+        return f'{s}/{self.root_link}/{self.tip_link}_suffix:{self.suffix}'
 
     def distance_to_goal(self) -> w.Expression:
         goal = w.Expression(w.Point3(self.goal_point))
@@ -99,7 +101,8 @@ class CartesianOrientation(Goal):
                  reference_velocity: Optional[float] = None,
                  max_velocity: Optional[float] = None,
                  weight: float = WEIGHT_ABOVE_CA,
-                 root_link2: str = None):
+                 root_link2: str = None,
+                 suffix: str = ''):
         """
         See CartesianPose.
         """
@@ -126,6 +129,7 @@ class CartesianOrientation(Goal):
         self.reference_velocity = reference_velocity
         self.max_velocity = max_velocity
         self.weight = weight
+        self.suffix = suffix
         # if self.max_velocity is not None:
         #     self.add_constraints_of_goal(RotationVelocityLimit(root_link=root_link,
         #                                                        tip_link=tip_link,
@@ -154,7 +158,7 @@ class CartesianOrientation(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.root_link}/{self.tip_link}'
+        return f'{s}/{self.root_link}/{self.tip_link}_suffix:{self.suffix}'
 
     def distance_to_goal(self) -> w.Expression:
         goal = w.RotationMatrix(self.goal_orientation)
@@ -173,7 +177,8 @@ class CartesianPositionStraight(Goal):
                  tip_group: Optional[str] = None,
                  reference_velocity: Optional[float] = None,
                  max_velocity: Optional[float] = None,
-                 weight: float = WEIGHT_ABOVE_CA):
+                 weight: float = WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         """
         Same as CartesianPosition, but tries to move the tip_link in a straight line to the goal_point.
         """
@@ -188,6 +193,7 @@ class CartesianPositionStraight(Goal):
         self.root_link = self.world.search_for_link_name(root_link, root_group)
         self.tip_link = self.world.search_for_link_name(tip_link, tip_group)
         self.goal_point = self.transform_msg(self.root_link, goal_point)
+        self.suffix = suffix
 
     def make_constraints(self):
         root_P_goal = w.Point3(self.goal_point)
@@ -237,7 +243,7 @@ class CartesianPositionStraight(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.root_link}/{self.tip_link}'
+        return f'{s}/{self.root_link}/{self.tip_link}_suffix:{self.suffix}'
 
 
 class CartesianPose(Goal):
@@ -248,7 +254,8 @@ class CartesianPose(Goal):
                  max_angular_velocity: Optional[float] = None,
                  reference_linear_velocity: Optional[float] = None,
                  reference_angular_velocity: Optional[float] = None,
-                 weight=WEIGHT_ABOVE_CA, root_link2: Optional[str] = None):
+                 weight=WEIGHT_ABOVE_CA, root_link2: Optional[str] = None,
+                 suffix: str = ''):
         """
         This goal will use the kinematic chain between root and tip link to move tip link into the goal pose.
         The max velocities enforce a strict limit, but require a lot of additional constraints, thus making the
@@ -268,6 +275,7 @@ class CartesianPose(Goal):
         """
         self.root_link = root_link
         self.tip_link = tip_link
+        self.suffix = suffix
         super().__init__()
         goal_point = PointStamped()
         goal_point.header = goal_pose.header
@@ -299,7 +307,7 @@ class CartesianPose(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.root_link}/{self.tip_link}'
+        return f'{s}/{self.root_link}/{self.tip_link}_suffix:{self.suffix}'
 
 
 class DiffDriveBaseGoal(Goal):
@@ -493,12 +501,14 @@ class CartesianPoseStraight(Goal):
                  max_angular_velocity: Optional[float] = None,
                  reference_linear_velocity: Optional[float] = None,
                  reference_angular_velocity: Optional[float] = None,
-                 weight: float = WEIGHT_ABOVE_CA):
+                 weight: float = WEIGHT_ABOVE_CA,
+                 suffix: str = ''):
         """
         See CartesianPose. In contrast to it, this goal will try to move tip_link in a straight line.
         """
         self.root_link = root_link
         self.tip_link = tip_link
+        self.suffix = suffix
         super().__init__()
         goal_point = PointStamped()
         goal_point.header = goal_pose.header
@@ -528,7 +538,7 @@ class CartesianPoseStraight(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.root_link}/{self.tip_link}'
+        return f'{s}/{self.root_link}/{self.tip_link}_suffix:{self.suffix}'
 
 
 class TranslationVelocityLimit(Goal):

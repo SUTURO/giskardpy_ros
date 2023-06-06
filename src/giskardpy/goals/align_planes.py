@@ -18,6 +18,7 @@ class AlignPlanes(Goal):
                  tip_group: Optional[str] = None,
                  max_angular_velocity: float = 0.5,
                  weight: float = WEIGHT_ABOVE_CA,
+                 suffix: str = '',
                  **kwargs):
         """
         This goal will use the kinematic chain between tip and root to align tip_normal with goal_normal.
@@ -38,6 +39,7 @@ class AlignPlanes(Goal):
         self.tip = self.world.search_for_link_name(tip_link, tip_group)
         self.max_velocity = max_angular_velocity
         self.weight = weight
+        self.suffix = suffix
 
         self.tip_V_tip_normal = self.transform_msg(self.tip, tip_normal)
         self.tip_V_tip_normal.vector = tf.normalize(self.tip_V_tip_normal.vector)
@@ -50,7 +52,8 @@ class AlignPlanes(Goal):
         return f'{s}/{self.root}/{self.tip}' \
                f'_X:{self.tip_V_tip_normal.vector.x}' \
                f'_Y:{self.tip_V_tip_normal.vector.y}' \
-               f'_Z:{self.tip_V_tip_normal.vector.z}'
+               f'_Z:{self.tip_V_tip_normal.vector.z}' \
+               f'_suffix:{self.suffix}'
 
     def make_constraints(self):
         tip_V_tip_normal = w.Vector3(self.tip_V_tip_normal)
@@ -59,8 +62,8 @@ class AlignPlanes(Goal):
         root_V_root_normal = w.Vector3(self.root_V_root_normal)
         root_V_tip_normal.vis_frame = self.world.get_link_name('hand_palm_link')
         root_V_root_normal.vis_frame = self.world.get_link_name('hand_palm_link')
-        self.add_debug_expr('root_V_tip_normal', root_V_tip_normal)
-        self.add_debug_expr('root_V_root_normal', root_V_root_normal)
+        #self.add_debug_expr('root_V_tip_normal', root_V_tip_normal)
+        #self.add_debug_expr('root_V_root_normal', root_V_root_normal)
         self.add_vector_goal_constraints(frame_V_current=root_V_tip_normal,
                                          frame_V_goal=root_V_root_normal,
                                          reference_velocity=self.max_velocity,
