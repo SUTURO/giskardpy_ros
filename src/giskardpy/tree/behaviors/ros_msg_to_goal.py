@@ -16,15 +16,13 @@ from giskardpy.exceptions import UnknownConstraintException, InvalidGoalExceptio
     ConstraintInitalizationException, GiskardException
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.collision_avoidance import SelfCollisionAvoidance, ExternalCollisionAvoidance
-from giskardpy.goals.goal import Goal, ForceSensorGoal
+from giskardpy.goals.goal import Goal
 from giskardpy.goals.suturo import SequenceGoal
 from giskardpy.my_types import PrefixName
 from giskardpy.tree.behaviors.get_goal import GetGoal
-from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
 from giskardpy.utils.logging import loginfo
 from giskardpy.utils.utils import convert_dictionary_to_ros_message, get_all_classes_in_package, raise_to_blackboard
 from giskardpy.utils.decorators import catch_and_raise_to_blackboard, record_time
-
 
 
 class RosMsgToGoal(GetGoal):
@@ -98,12 +96,6 @@ class RosMsgToGoal(GetGoal):
                 params = self.replace_jsons_with_ros_messages(parsed_json)
                 if issubclass(C, SequenceGoal):
                     params['goal_type_seq'] = [self.allowed_constraint_types[x] for x in params['goal_type_seq']]
-
-                # TODO: Find a better place to add the Monitor Force sensor node
-                if issubclass(C, ForceSensorGoal):
-                    cond = C.goal_cancel_condition()
-                    recover = C.recovery()
-                    self.tree.insert_node(MonitorForceSensor('Monitor_Force', cond, recover), 'monitor execution', 2)
 
                 c: Goal = C(**params)
                 c._save_self_on_god_map()
