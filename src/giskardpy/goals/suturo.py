@@ -194,63 +194,28 @@ class TestSequenceGoal(Goal):
 class SequenceGoal(Goal):
     def __init__(self,
                  goal_type_seq: List[Goal],
-                 kwargs_seq: List,
-                 test: Dict):
+                 kwargs_seq: List[Dict],
+                 #test: Dict,
+                 **kwargs):
         super().__init__()
-        root_link = 'map'
-        tip_link = 'hand_palm_link'
-        self.root_link = self.world.search_for_link_name(root_link)
-        self.tip_link = self.world.search_for_link_name(tip_link)
-        self.root_str = str(root_link)
-        self.tip_str = str(tip_link)
 
-        g = 'sd'
+        s = 'sd'
 
-        s1 = {'s': 0.0}
+        for goal, args in zip(goal_type_seq, kwargs_seq):
+            print()
 
-        s = {g: s1}
+            g = goal(args)
 
-        '''self.object_name = object_name
-        self.weight = WEIGHT_ABOVE_CA
-
-        object_point_1 = PointStamped()
-        object_point_1.header = object_pose_1.header
-        object_point_1.point = object_pose_1.pose.position
-        self.goal_point_1 = object_point_1
-
-        object_point_2 = PointStamped()
-        object_point_2.header = object_pose_2.header
-        object_point_2.point = object_pose_2.pose.position
-        self.goal_point_2 = object_point_2
+            self.add_constraints_of_goal(g)
 
 
-        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
-                                                       tip_link=self.tip_str,
-                                                       goal_point=self.goal_point_1,
-                                                       weight=self.weight))
+        '''self.add_constraints_of_goal(LiftObject(object_name=''))
 
-
-        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
-                                                       tip_link='hand_gripper_tool_frame',
-                                                       goal_point=self.goal_point_2,
-                                                       weight=self.weight))
-
-        goal_norm = Vector3Stamped()
-        goal_norm.vector.z = 1
-
-        tip_norm = Vector3Stamped()
-        tip_norm.header.frame_id = self.tip_str
-        tip_norm.vector.x = 1
-
-        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
-                                                 tip_link=self.tip_str,
-                                                 goal_normal=goal_norm,
-                                                 tip_normal=tip_norm))
-
-        '''
+        self.add_constraints_of_goal(Retracting(object_name=''))'''
 
     def make_constraints(self):
-        pass
+
+        constraints = self._equality_constraints
 
     def __str__(self) -> str:
         return super().__str__()
@@ -272,7 +237,6 @@ class TestForceSensorGoal(ForceSensorGoal):
         return super().__str__()
 
     def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
-
         x_force_threshold = w.Expression(0.0)
         x_force_condition = ['x_force', '<=', x_force_threshold]
 

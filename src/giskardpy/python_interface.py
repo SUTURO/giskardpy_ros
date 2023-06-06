@@ -1056,17 +1056,7 @@ class GiskardWrapper:
 
     def test_goal(self,
                   goal_name: str,
-                  object_pose_1: Optional[PoseStamped] = None,
-                  object_pose_2: Optional[PoseStamped] = None,
-                  object_name: Optional[str] = '',
-                  grasp_object: Optional[bool] = True,
-                  lift_first=True):
-
-
+                  **kwargs):
 
         self.set_json_goal(constraint_type=goal_name,
-                           object_pose_1=object_pose_1,
-                           object_pose_2=object_pose_2,
-                           object_name=object_name,
-                           grasp_object=grasp_object,
-                           lift_first=lift_first)
+                           **kwargs)
