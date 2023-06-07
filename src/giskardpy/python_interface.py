@@ -1012,24 +1012,28 @@ class GiskardWrapper:
     def lift_object(self,
                     object_name: str,
                     lifting: Optional[float] = 0.02,
-                    tip_link: Optional[str] = 'hand_palm_link'):
+                    tip_link: Optional[str] = 'hand_palm_link',
+                    tip_start: PointStamped = None):
 
         self.set_json_goal(constraint_type='LiftObject',
                            object_name=object_name,
                            lifting=lifting,
-                           tip_link=tip_link)
+                           tip_link=tip_link,
+                           tip_starting_position=tip_start)
 
     def retract(self,
                 object_name: str,
                 distance: Optional[float] = 0.1,
                 root_link: Optional[str] = 'map',
-                tip_link: Optional[str] = 'base_link'):
+                tip_link: Optional[str] = 'base_link',
+                tip_start: PointStamped = None):
 
         self.set_json_goal(constraint_type='Retracting',
                            object_name=object_name,
                            distance=distance,
                            root_link=root_link,
-                           tip_link=tip_link)
+                           tip_link=tip_link,
+                           tip_starting_position=tip_start)
 
     def prepare_placing(self,
                         object_name: str,

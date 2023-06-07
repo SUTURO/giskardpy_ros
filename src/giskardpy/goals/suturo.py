@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Optional, List, Dict
 
 import numpy as np
@@ -8,7 +9,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
+from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal, NonMotionGoal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.goals.pointing import Pointing
@@ -204,40 +205,65 @@ class SequenceGoal(Goal):
         self.kwargs_seq = kwargs_seq
 
         self.current_goal = 0
+        self.eq_weights = []
 
-        self.goal_number = 0
+        self.current_endpoint = None
+
+        goal_number = 0
 
         for goal, args in zip(self.goal_type_seq, kwargs_seq):
 
-            args['suffix'] = self.goal_number
-            g = goal(**args)
+            params = deepcopy(args)
+            params['tip_starting_position'] = self.current_endpoint
+            params['suffix'] = goal_number
+
+            g: Goal = goal(**params)
+
+            mod = deepcopy(g.endpoint_modifier())
 
             self.add_constraints_of_goal(g)
 
-            self.goal_number += 1
+            goal_number += 1
+
+            if self.current_endpoint is None:
+                self.current_endpoint = mod
+                continue
+
+            for tip_link, tip_endpoint in mod.items():
+                if tip_link in self.current_endpoint.keys():
+                    point = self.current_endpoint[tip_link]
+                    point.point.x += tip_endpoint.point.x
+                    point.point.y += tip_endpoint.point.y
+                    point.point.z += tip_endpoint.point.z
+                else:
+                    self.current_endpoint[tip_link] = tip_endpoint
+
+        print()
 
 
     def make_constraints(self):
 
         constraints: Dict[str, EqualityConstraint] = self._equality_constraints
 
-        eq_constraint_waves = [f'_suffix:{x}' for x in range(self.goal_number)]
+        eq_constraint_suffix = [f'_suffix:{x}' for x in range(len(self.goal_type_seq))]
 
         values = constraints.items()
-        for index, suffix_text in enumerate(eq_constraint_waves):
+        for goal_number, suffix_text in enumerate(eq_constraint_suffix):
 
             ordered_eq_constraints = [x[1] for x in values if suffix_text in x[0]]
 
-            for const in ordered_eq_constraints:
-                s = self.god_map.to_symbol(self._get_identifier() + ['asdf', (index, const.name)])
+            eq_constraint_weights = [1] * len(ordered_eq_constraints)
+            self.eq_weights.append(eq_constraint_weights)
+
+            for eq_number, const in enumerate(ordered_eq_constraints):
+                s = self.god_map.to_symbol(self._get_identifier() + ['asdf', (goal_number, eq_number, const.name)])
 
                 expr = w.Expression(s)
-
                 const.quadratic_weight = const.quadratic_weight * expr
 
         print()
 
-    def asdf(self, goal_number, goal_name):
+    def asdf(self, goal_number, eq_number, goal_name):
 
         if goal_number != self.current_goal:
             return 0
@@ -249,18 +275,19 @@ class SequenceGoal(Goal):
         compiled = constraint.capped_error(sample).compile()
         f = compiled.fast_call(self.god_map.get_values(compiled.str_params))
 
-        print(f'{f} on following: {goal_name}')
+        if abs(f) < 0.001:
+            self.eq_weights[goal_number][eq_number] = 0
+        else:
+            self.eq_weights[goal_number][eq_number] = 1
 
-        '''constraints: Dict[str, EqualityConstraint] = self._equality_constraints
+        if not any(self.eq_weights[goal_number]):
+            self.current_goal += 1
 
-        for name, eq_constraint in constraints.items():
-            weight = eq_constraint.quadratic_weight
+            print('next goal')
 
-            sample = self.god_map.get_data(identifier=identifier.sample_period)
+            return 0
 
-            compiled_error = eq_constraint.capped_error(sample).compile()
-
-            compiled_error.fast_call(self.god_map.get_values(compiled_error.str_params))'''
+        print(f'{f} running on {goal_number} {eq_number}')
 
         return 1
 
@@ -681,8 +708,15 @@ class LiftObject(Goal):
                  root_link: str = 'map',
                  tip_link: str = 'hand_gripper_tool_frame',
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 suffix: str = ''):
+                 reference_velocity: Optional[float] = None,
+                 suffix: str = '',
+                 tip_starting_position: Dict[str, PointStamped] = None):
         super().__init__()
+        if reference_velocity is None:
+            reference_velocity = 0.2
+
+        if tip_starting_position is None:
+            tip_starting_position = {}
 
         self.suffix = suffix
         self.object_name = object_name
@@ -703,16 +737,17 @@ class LiftObject(Goal):
         self.tip_str = str(self.tip)
 
         self.lifting_distance = lifting
+        self.weight = weight
 
-        if isinstance(weight, float):
-            self.weight = weight
-        else:
-            self.weight = weight()
+        self.reference_velocity = reference_velocity
+        self.tip_starting_position = tip_starting_position
 
         # Lifting
         goal_point = PointStamped()
         goal_point.header.frame_id = self.tip_str
         goal_point.point.x += self.lifting_distance
+
+        self.goal_point = deepcopy(goal_point)
 
         # Align vertical
         goal_vertical_axis = Vector3Stamped()
@@ -730,18 +765,48 @@ class LiftObject(Goal):
                                                  weight=self.weight,
                                                  suffix=suffix))
 
-        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
+
+
+
+        '''self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
-                                                       goal_point=goal_point,
+                                                       goal_point=self.goal_point,
                                                        weight=self.weight,
-                                                       suffix=suffix))
+                                                       suffix=suffix))'''
 
     def make_constraints(self):
-        pass
+
+        r_P_c = self.get_fk(self.root, self.tip).to_position()
+
+        goal_transformed = self.transform_msg(self.root, self.goal_point)
+
+        for tip_name, starting_position in self.tip_starting_position.items():
+            new_start_tip = self.world.search_for_link_name(tip_name)
+
+            goal_transformed = self.transform_msg(new_start_tip, self.goal_point)
+            # transformed_position = self.transform_msg(self.root, self.tip_starting_position)
+
+            goal_transformed.point.x = goal_transformed.point.x + starting_position.point.x
+            goal_transformed.point.y = goal_transformed.point.y + starting_position.point.y
+            goal_transformed.point.z = goal_transformed.point.z + starting_position.point.z
+
+            goal_transformed = self.transform_msg(self.root, goal_transformed)
+
+        r_P_g = w.Point3(goal_transformed)
+
+        self.add_point_goal_constraints(frame_P_goal=r_P_g,
+                                        frame_P_current=r_P_c,
+                                        reference_velocity=self.reference_velocity,
+                                        weight=self.weight)
 
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}{self.object_name}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
+
+    def endpoint_modifier(self):
+        goal_points = {self.tip.short_name: self.goal_point}
+
+        return goal_points
 
 
 class Retracting(Goal):
@@ -751,46 +816,84 @@ class Retracting(Goal):
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'base_link',
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 suffix: str = ''):
+                 suffix: str = '',
+                 reference_velocity: Optional[float] = None,
+                 tip_starting_position: Dict[str, PointStamped] = None):
         super().__init__()
+
+        if reference_velocity is None:
+            reference_velocity = 0.2
+
+        if tip_starting_position is None:
+            tip_starting_position = {}
 
         self.suffix = suffix
         # root link
-        self.root = self.world.search_for_link_name(root_link, None).short_name
-        self.root_str = str(self.root)
+        self.root = self.world.search_for_link_name(root_link)
+        self.root_str = str(self.root.short_name)
 
         # tip link
-        self.tip = self.world.search_for_link_name(tip_link, None).short_name
-        self.tip_str = str(self.tip)
+        self.tip = self.world.search_for_link_name(tip_link)
+        self.tip_str = str(self.tip.short_name)
 
+        self.weight = weight
         self.distance = distance
 
-        if isinstance(weight, float):
-            self.weight = weight
-        else:
-            self.weight = weight()
+        self.reference_velocity = reference_velocity
+        self.tip_starting_position = tip_starting_position
 
         goal_point = PointStamped()
         goal_point.header.frame_id = self.tip_str
 
-        if self.tip_str == 'hand_gripper_tool_frame':
+        hand_frames = ['hand_gripper_tool_frame', 'hand_palm_link']
+        base_frames = ['base_link']
+
+        if self.tip_str in hand_frames:
             goal_point.point.z -= self.distance
 
-        elif self.tip_str == 'base_link':
+        elif self.tip_str in base_frames:
             goal_point.point.x -= self.distance
 
-        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
-                                                       tip_link=self.tip_str,
-                                                       goal_point=goal_point,
-                                                       weight=self.weight,
-                                                       suffix=suffix))
+        self.goal_point = goal_point
+
+        print()
+
 
     def make_constraints(self):
-        pass
+
+        r_P_c = self.get_fk(self.root, self.tip).to_position()
+
+        goal_transformed = self.transform_msg(self.root, self.goal_point)
+
+        for tip_name, starting_position in self.tip_starting_position.items():
+            new_start_tip = self.world.search_for_link_name(tip_name)
+
+            goal_transformed = self.transform_msg(new_start_tip, self.goal_point)
+            # transformed_position = self.transform_msg(self.root, self.tip_starting_position)
+
+            goal_transformed.point.x = goal_transformed.point.x + starting_position.point.x
+            goal_transformed.point.y = goal_transformed.point.y + starting_position.point.y
+            goal_transformed.point.z = goal_transformed.point.z + starting_position.point.z
+
+            goal_transformed = self.transform_msg(self.root, goal_transformed)
+
+        r_P_g = w.Point3(goal_transformed)
+
+        self.add_point_goal_constraints(frame_P_goal=r_P_g,
+                                        frame_P_current=r_P_c,
+                                        reference_velocity=self.reference_velocity,
+                                        weight=self.weight)
+
 
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
+
+    def endpoint_modifier(self):
+        goal_points = {self.tip.short_name: self.goal_point}
+
+        return goal_points
+
 
 
 class AlignHeight(ObjectGoal):
