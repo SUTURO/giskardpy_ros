@@ -504,9 +504,6 @@ class GiskardWrapper:
 
         return val
 
-
-
-
     def _set_collision_entries(self, collisions: List[CollisionEntry]):
         """
         Adds collision entries to the current goal
@@ -973,6 +970,7 @@ class GiskardWrapper:
     def move_gripper(self,
                      open_gripper=True,
                      joint_position=1.0):
+
         self.set_json_goal(constraint_type='MoveGripper',
                            open_gripper=open_gripper,
                            joint_position=joint_position)
@@ -983,8 +981,8 @@ class GiskardWrapper:
                      object_size: Optional[Vector3] = None,
                      root_link: Optional[str] = 'map',
                      tip_link: Optional[str] = 'hand_palm_link',
-                     offset: float = 0.01,
                      frontal_grasping=True):
+
         self.set_json_goal(constraint_type='GraspObject',
                            object_name=object_name,
                            object_pose=object_pose,
@@ -1026,37 +1024,30 @@ class GiskardWrapper:
                 distance: Optional[float] = 0.1,
                 root_link: Optional[str] = 'map',
                 tip_link: Optional[str] = 'base_link',
-                tip_start: PointStamped = None):
+                tip_start: PointStamped = None,
+                velocity: Optional[float] = 0.2):
 
         self.set_json_goal(constraint_type='Retracting',
                            object_name=object_name,
                            distance=distance,
                            root_link=root_link,
                            tip_link=tip_link,
+                           velocity=velocity,
                            tip_starting_position=tip_start)
 
-    def prepare_placing(self,
-                        object_name: str,
-                        object_pose: PoseStamped,
-                        height: float,
-                        tip_link='hand_palm_link',
-                        frontal=True):
+    def align_height(self,
+                     object_name: str,
+                     object_pose: PoseStamped,
+                     height: float,
+                     tip_link='hand_palm_link',
+                     height_only=True):
+
         self.set_json_goal(constraint_type='AlignHeight',
                            object_name=object_name,
                            goal_pose=object_pose,
                            object_height=height,
                            tip_link=tip_link,
-                           frontal_grasping=frontal)
-
-    def set_pointing(self,
-                     goal_pose: PoseStamped,
-                     root_link: str = 'map',
-                     tip_link: str = 'hand_palm_link'):
-
-        self.set_json_goal(constraint_type='SetPointing',
-                           goal_pose=goal_pose,
-                           root_link=root_link,
-                           tip_link=tip_link)
+                           height_only=height_only)
 
     def test_goal(self,
                   goal_name: str,
