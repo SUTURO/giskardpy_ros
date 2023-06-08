@@ -1,4 +1,5 @@
 from copy import deepcopy
+from functools import wraps
 from typing import Optional, List, Dict
 
 import numpy as np
@@ -14,6 +15,36 @@ from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, Cyl
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
+
+def sequencable(function):
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        # key = cPickle.dumps((args, kwargs))
+        # key = pickle.dumps((args, sorted(kwargs.items()), -1))
+        self = args[0]
+        goal_transformed = self.transform_msg(self.root, self.goal_point)
+
+        for tip_name, starting_position in self.tip_starting_position.items():
+            new_start_tip = self.world.search_for_link_name(tip_name)
+
+            goal_transformed = self.transform_msg(new_start_tip, self.goal_point)
+            # transformed_position = self.transform_msg(self.root, self.tip_starting_position)
+
+            goal_transformed.point.x = goal_transformed.point.x + starting_position.point.x
+            goal_transformed.point.y = goal_transformed.point.y + starting_position.point.y
+            goal_transformed.point.z = goal_transformed.point.z + starting_position.point.z
+
+            goal_transformed = self.transform_msg(self.root, goal_transformed)
+
+        self.transformed_goal = goal_transformed
+
+
+        result = function(*args, **kwargs)
+
+        return result
+
+    return wrapper
 
 class ObjectGoal(Goal):
     def __init__(self):
@@ -577,6 +608,7 @@ class LiftObject(Goal):
         self.velocity = velocity
         self.suffix = suffix
 
+        self.transformed_goal = None
         self.tip_starting_position = tip_starting_position
 
         # Lifting
@@ -602,25 +634,12 @@ class LiftObject(Goal):
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
+    @sequencable
     def make_constraints(self):
         # CartesianPosition + starting_offset
 
-        goal_transformed = self.transform_msg(self.root, self.goal_point)
-
-        for tip_name, starting_position in self.tip_starting_position.items():
-            new_start_tip = self.world.search_for_link_name(tip_name)
-
-            goal_transformed = self.transform_msg(new_start_tip, self.goal_point)
-            # transformed_position = self.transform_msg(self.root, self.tip_starting_position)
-
-            goal_transformed.point.x = goal_transformed.point.x + starting_position.point.x
-            goal_transformed.point.y = goal_transformed.point.y + starting_position.point.y
-            goal_transformed.point.z = goal_transformed.point.z + starting_position.point.z
-
-            goal_transformed = self.transform_msg(self.root, goal_transformed)
-
         r_P_c = self.get_fk(self.root, self.tip).to_position()
-        r_P_g = w.Point3(goal_transformed)
+        r_P_g = w.Point3(self.transformed_goal)
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
