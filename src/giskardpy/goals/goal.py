@@ -56,7 +56,7 @@ class Goal(ABC):
         """
         return str(self.__class__.__name__)
 
-    def endpoint_modifier(self) -> Dict:
+    def endpoint_modifier(self, current_endpoints) -> Dict:
         pass
 
     def add_collision_check(self, link_a: PrefixName, link_b: PrefixName, distance: float):

@@ -150,16 +150,7 @@ class SequenceGoal(Goal):
 
             goal_summary.append(goal)
 
-            goal_modifier = deepcopy(goal.endpoint_modifier())
-
-            for tip_link, tip_next_endpoint in goal_modifier.items():
-                if tip_link in self.current_endpoints.keys():
-                    tip_current_endpoint = self.current_endpoints[tip_link]
-                    tip_current_endpoint.point.x += tip_next_endpoint.point.x
-                    tip_current_endpoint.point.y += tip_next_endpoint.point.y
-                    tip_current_endpoint.point.z += tip_next_endpoint.point.z
-                else:
-                    self.current_endpoints[tip_link] = tip_next_endpoint
+            self.current_endpoints = deepcopy(goal.endpoint_modifier(self.current_endpoints))
 
         print()
 
@@ -650,10 +641,18 @@ class LiftObject(Goal):
         s = super().__str__()
         return f'{s}{self.object_name}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
 
-    def endpoint_modifier(self):
-        goal_points = {self.tip.short_name: self.goal_point}
+    def endpoint_modifier(self, current):
+        if self.tip.short_name in current:
+            tip_point = deepcopy(current[self.tip.short_name])
+            tip_point.point.x += self.goal_point.point.x
+            tip_point.point.y += self.goal_point.point.y
+            tip_point.point.z += self.goal_point.point.z
 
-        return goal_points
+            current[self.tip.short_name] = tip_point
+        else:
+            current[self.tip.short_name] = self.goal_point
+
+        return current
 
 
 class Retracting(Goal):
@@ -729,10 +728,19 @@ class Retracting(Goal):
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
 
-    def endpoint_modifier(self):
-        goal_points = {self.tip.short_name: self.goal_point}
+    def endpoint_modifier(self, current):
 
-        return goal_points
+        if self.tip.short_name in current:
+            tip_point = deepcopy(current[self.tip.short_name])
+            tip_point.point.x += self.goal_point.point.x
+            tip_point.point.y += self.goal_point.point.y
+            tip_point.point.z += self.goal_point.point.z
+
+            current[self.tip.short_name] = tip_point
+        else:
+            current[self.tip.short_name] = self.goal_point
+
+        return current
 
 
 class AlignHeight(ObjectGoal):
@@ -741,12 +749,15 @@ class AlignHeight(ObjectGoal):
                  goal_pose: Optional[PoseStamped] = None,
                  object_height: Optional[float] = 0.0,
                  height_only: Optional[bool] = True,
+                 tip_starting_position: Dict[str, PointStamped] = None,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.2,
                  suffix: Optional[str] = ''):
         super().__init__()
+
+        self.tip_starting_position = {}
 
         # root link
         self.root = self.world.search_for_link_name(root_link)
@@ -824,10 +835,10 @@ class AlignHeight(ObjectGoal):
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
 
-    def endpoint_modifier(self) -> Dict:
-        goal_points = {self.tip.short_name: self.goal_point}
+    def endpoint_modifier(self, current) -> Dict:
+        result = {self.tip.short_name: self.goal_point}
 
-        return goal_points
+        return result
 
 
 class PlaceObject(ObjectGoal):
