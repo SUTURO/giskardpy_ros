@@ -2,14 +2,12 @@ from copy import deepcopy
 from typing import Optional, List, Dict
 
 import numpy as np
-import rospy
-from control_msgs.msg import FollowJointTrajectoryActionGoal
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped
-from trajectory_msgs.msg import JointTrajectoryPoint
 
+from giskardpy import casadi_wrapper as w, identifier
 from giskardpy.goals.align_planes import AlignPlanes
-from giskardpy.goals.cartesian_goals import CartesianPositionStraight, CartesianPosition, CartesianOrientation
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal, NonMotionGoal
+from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
+from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.goals.pointing import Pointing
@@ -17,8 +15,6 @@ from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, Cyl
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
-
-from giskardpy import casadi_wrapper as w, identifier
 
 
 class ObjectGoal(Goal):
@@ -197,39 +193,37 @@ class SequenceGoal(Goal):
     def __init__(self,
                  goal_type_seq: List[Goal],
                  kwargs_seq: List[Dict],
-                 # test: Dict,
+                 # sequence_goals: Dict,
                  **kwargs):
         super().__init__()
 
         self.goal_type_seq = goal_type_seq
         self.kwargs_seq = kwargs_seq
+        # self.sequence_goals = sequence_goals
 
         self.current_goal = 0
         self.eq_weights = []
 
-        self.current_endpoint = None
+        self.current_endpoint = {}
 
-        goal_number = 0
+        goal_summary = []
 
-        for goal, args in zip(self.goal_type_seq, kwargs_seq):
+        # with dict:
+        # for index, (goal, args) in enumerate(sequence_goals.items()):
+        for index, (goal, args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
 
             params = deepcopy(args)
-            params['tip_starting_position'] = self.current_endpoint
-            params['suffix'] = goal_number
+            params['tip_starting_position'] = deepcopy(self.current_endpoint)
+            params['suffix'] = index
 
-            g: Goal = goal(**params)
+            goal: Goal = goal(**params)
+            self.add_constraints_of_goal(goal)
 
-            mod = deepcopy(g.endpoint_modifier())
+            goal_summary.append(goal)
 
-            self.add_constraints_of_goal(g)
+            goal_modifier = deepcopy(goal.endpoint_modifier())
 
-            goal_number += 1
-
-            if self.current_endpoint is None:
-                self.current_endpoint = mod
-                continue
-
-            for tip_link, tip_endpoint in mod.items():
+            for tip_link, tip_endpoint in goal_modifier.items():
                 if tip_link in self.current_endpoint.keys():
                     point = self.current_endpoint[tip_link]
                     point.point.x += tip_endpoint.point.x
@@ -286,8 +280,6 @@ class SequenceGoal(Goal):
             print('next goal')
 
             return 0
-
-        print(f'{f} running on {goal_number} {eq_number}')
 
         return 1
 
@@ -895,7 +887,6 @@ class Retracting(Goal):
         return goal_points
 
 
-
 class AlignHeight(ObjectGoal):
     def __init__(self,
                  object_name: str,
@@ -1143,8 +1134,7 @@ class PlaceNeatly(ForceSensorGoal):
 
         return expressions
 
-    @staticmethod
-    def recovery() -> Dict:
+    def recovery(self) -> Dict:
         joint_states = {'arm_lift_joint': 0.03}
 
         return joint_states
