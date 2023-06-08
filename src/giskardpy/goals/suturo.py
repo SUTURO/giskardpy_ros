@@ -12,6 +12,7 @@ from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.goals.pointing import Pointing
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
+from giskardpy.my_types import Derivatives
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from suturo_manipulation.gripper import Gripper
@@ -84,109 +85,33 @@ class TestGoal(Goal):
         return super().__str__()
 
 
-class TestSequenceGoal(Goal):
+class TestForceSensorGoal(ForceSensorGoal):
     def __init__(self,
-                 object_name='',
-                 object_pose_1: PoseStamped = None,
-                 object_pose_2: PoseStamped = None,
-                 lift_first=True,
+                 object_pose: PoseStamped = None,
                  **kwargs):
         super().__init__()
 
-        root_link = 'map'
-        tip_link = 'hand_palm_link'
-        self.root_link = self.world.search_for_link_name(root_link)
-        self.tip_link = self.world.search_for_link_name(tip_link)
-        self.root_str = str(root_link)
-        self.tip_str = str(tip_link)
-
-        self.object_name = object_name
-        self.weight = WEIGHT_ABOVE_CA
-
-        object_point_1 = PointStamped()
-        object_point_1.header = object_pose_1.header
-        object_point_1.point = object_pose_1.pose.position
-        self.goal_point_1 = object_point_1
-
-        object_point_2 = PointStamped()
-        object_point_2.header = object_pose_2.header
-        object_point_2.point = object_pose_2.pose.position
-        self.goal_point_2 = object_point_2
-
-        self.reference_velocity = 0.05
-
-        self.goal_1_running = 1
-
-        # first_goal_weight = self.weight*self.traj_time_in_seconds()
-        # v = w.Vector3([0,0,1])
-        # v.scale(weight/1000)
-        # self.add_debug_expr('weight', v)
-        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
-                                                       tip_link=self.tip_str,
-                                                       goal_point=self.goal_point_1,
-                                                       weight=self.weight))
-        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
-                                                       tip_link='hand_gripper_tool_frame',
-                                                       goal_point=self.goal_point_2,
-                                                       weight=self.weight))
-
-        print('working TestSequenceGoal')
-
-        r_P_g = w.Point3(self.goal_point_1)
-        r_P_c = self.get_fk(self.root_link, self.tip_link).to_position()
-        s = self.god_map.to_symbol(self._get_identifier() + ['asdf', tuple()])
-
-        v_current = w.Expression(r_P_c)
-        v_goal = w.Expression(r_P_g)
-
-        # If the distance between current and goal position is small: set weight to 0
-        weight_one = s * w.Expression(self.weight * (w.euclidean_distance(v_current, v_goal) / 10))
-
-        # If the weight of first goal reached 0, Increase this goals weight
-        weight_two = w.Expression(WEIGHT_ABOVE_CA * (0 ** s))
-
-        # self.add_debug_expr('trans', w.norm(r_P_c))
-        # weight = self.weight*self.traj_time_in_seconds()
-
-        goal_norm = Vector3Stamped()
-        goal_norm.vector.z = 1
-
-        tip_norm = Vector3Stamped()
-        tip_norm.header.frame_id = self.tip_str
-        tip_norm.vector.x = 1
-
-        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
-                                                 tip_link=self.tip_str,
-                                                 goal_normal=goal_norm,
-                                                 tip_normal=tip_norm))
-
-        # self._equality_constraints['asd']
-
-        # self.add_constraints_of_goal(LiftObject(object_name=self.object_name, weight=self.changing_weight))
-
-        # self.add_constraints_of_goal(Retracting(object_name=self.object_name, weight=self.changing_weight))
-
-    def asdf(self):
-        goal_1 = np.array((self.goal_point_1.point.x, self.goal_point_1.point.y, self.goal_point_1.point.z))
-
-        current = self.world.compute_fk_np(self.root_link, self.tip_link)
-
-        c_position = np.array((current[0][-1], current[1][-1], current[2][-1]))
-
-        distance = np.linalg.norm(goal_1 - c_position)
-
-        if distance < 0.03:
-            self.goal_1_running = 0
-
-        print(distance)
-
-        return self.goal_1_running
+        # self.add_constraints_of_goal(LiftObject(object_name=''))
+        self.add_constraints_of_goal(Retracting(object_name=''))
 
     def make_constraints(self):
         pass
 
-    def __str__(self) -> str:
+    def __str__(self):
         return super().__str__()
+
+    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+        x_force_threshold = w.Expression(0.0)
+        x_force_condition = ['x_force', '<=', x_force_threshold]
+
+        expression = [x_force_condition]
+
+        return expression
+
+    def recovery(self) -> Dict:
+        joint_states = {'arm_lift_joint': 0.01}
+
+        return joint_states
 
 
 class SequenceGoal(Goal):
@@ -204,7 +129,7 @@ class SequenceGoal(Goal):
         self.current_goal = 0
         self.eq_weights = []
 
-        self.current_endpoint = {}
+        self.current_endpoints = {}
 
         goal_summary = []
 
@@ -213,7 +138,7 @@ class SequenceGoal(Goal):
         for index, (goal, args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
 
             params = deepcopy(args)
-            params['tip_starting_position'] = deepcopy(self.current_endpoint)
+            params['tip_starting_position'] = deepcopy(self.current_endpoints)
             params['suffix'] = index
 
             goal: Goal = goal(**params)
@@ -223,17 +148,16 @@ class SequenceGoal(Goal):
 
             goal_modifier = deepcopy(goal.endpoint_modifier())
 
-            for tip_link, tip_endpoint in goal_modifier.items():
-                if tip_link in self.current_endpoint.keys():
-                    point = self.current_endpoint[tip_link]
-                    point.point.x += tip_endpoint.point.x
-                    point.point.y += tip_endpoint.point.y
-                    point.point.z += tip_endpoint.point.z
+            for tip_link, tip_next_endpoint in goal_modifier.items():
+                if tip_link in self.current_endpoints.keys():
+                    tip_current_endpoint = self.current_endpoints[tip_link]
+                    tip_current_endpoint.point.x += tip_next_endpoint.point.x
+                    tip_current_endpoint.point.y += tip_next_endpoint.point.y
+                    tip_current_endpoint.point.z += tip_next_endpoint.point.z
                 else:
-                    self.current_endpoint[tip_link] = tip_endpoint
+                    self.current_endpoints[tip_link] = tip_next_endpoint
 
         print()
-
 
     def make_constraints(self):
 
@@ -285,35 +209,6 @@ class SequenceGoal(Goal):
 
     def __str__(self) -> str:
         return super().__str__()
-
-
-class TestForceSensorGoal(ForceSensorGoal):
-    def __init__(self,
-                 object_pose: PoseStamped = None,
-                 **kwargs):
-        super().__init__()
-
-        # self.add_constraints_of_goal(LiftObject(object_name=''))
-        self.add_constraints_of_goal(Retracting(object_name=''))
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self):
-        return super().__str__()
-
-    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
-        x_force_threshold = w.Expression(0.0)
-        x_force_condition = ['x_force', '<=', x_force_threshold]
-
-        expression = [x_force_condition]
-
-        return expression
-
-    def recovery(self) -> Dict:
-        joint_states = {'arm_lift_joint': 0.01}
-
-        return joint_states
 
 
 class MoveGripper(Goal):
@@ -374,17 +269,21 @@ class GraspObject(ObjectGoal):
                  frontal_grasping: Optional[bool] = True,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 suffix: str = ''):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 velocity: Optional[float] = 0.2,
+                 suffix: Optional[str] = ''):
         """
         Determine the grasping perspective of the object
         """
         super().__init__()
-        self.suffix = suffix
         self.object_name = object_name
-        self.object_geometry = None
+        self.frontal_grasping = frontal_grasping
         self.root_link = root_link
         self.tip_link = tip_link
-        self.frontal_grasping = frontal_grasping
+
+        self.weight = weight
+        self.velocity = velocity
+        self.suffix = suffix
 
         # Get object geometry from name
         if object_pose is None:
@@ -407,7 +306,7 @@ class GraspObject(ObjectGoal):
                                                       object_geometry=self.object_geometry,
                                                       root_link=self.root_link,
                                                       tip_link=self.tip_link,
-                                                      suffix=suffix))
+                                                      suffix=self.suffix))
         else:
             self.add_constraints_of_goal(GraspAbove(object_name=self.object_name,
                                                     object_pose=self.object_pose,
@@ -415,7 +314,7 @@ class GraspObject(ObjectGoal):
                                                     object_geometry=self.object_geometry,
                                                     root_link=self.root_link,
                                                     tip_link=self.tip_link,
-                                                    suffix=suffix))
+                                                    suffix=self.suffix))
 
     def make_constraints(self):
         pass
@@ -434,10 +333,9 @@ class GraspAbove(Goal):
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 suffix: str = ''):
+                 velocity: Optional[float] = 0.2,
+                 suffix: Optional[str] = ''):
         super().__init__()
-
-        self.suffix = suffix
 
         # root link
         self.root = self.world.search_for_link_name(root_link, None)
@@ -450,6 +348,10 @@ class GraspAbove(Goal):
         # Grasp at the upper edge of the object
         object_pose.pose.position.z += object_size.z / 2
         self.object_pose = object_pose
+
+        self.weight = weight
+        self.velocity = velocity
+        self.suffix = suffix
 
         root_goal_point = PointStamped()
         root_goal_point.header.frame_id = self.object_pose.header.frame_id
@@ -560,7 +462,8 @@ class GraspFrontal(Goal):
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 suffix: str = ''):
+                 velocity: Optional[float] = 0.2,
+                 suffix: Optional[str] = ''):
         """
         Move to a given position where a box can be grasped.
 
@@ -571,8 +474,6 @@ class GraspFrontal(Goal):
 
         """
         super().__init__()
-
-        self.suffix = suffix
 
         self.object_name_str = str(object_name)
 
@@ -592,7 +493,10 @@ class GraspFrontal(Goal):
         object_pose.pose.position.z = object_pose.pose.position.z - 0.01
         self.object_pose = object_pose
 
+
         self.weight = weight
+        self.velocity = velocity
+        self.suffix = suffix
 
         root_goal_point = PointStamped()
         root_goal_point.header.frame_id = self.object_pose.header.frame_id
@@ -643,8 +547,6 @@ class GraspFrontal(Goal):
         self.tip_frontal_axis = Vector3Stamped()
         self.tip_frontal_axis.header.frame_id = self.tip_str
         self.tip_frontal_axis.vector.z = 1
-
-        hgtf = 'hand_gripper_tool_frame'
 
         self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
                                               tip_link=self.tip_str,
@@ -697,20 +599,17 @@ class LiftObject(Goal):
     def __init__(self,
                  object_name: str,
                  lifting: float = 0.02,
-                 root_link: str = 'map',
-                 tip_link: str = 'hand_gripper_tool_frame',
+                 tip_starting_position: Dict[str, PointStamped] = None,
+                 root_link: Optional[str] = 'map',
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 reference_velocity: Optional[float] = None,
-                 suffix: str = '',
-                 tip_starting_position: Dict[str, PointStamped] = None):
+                 velocity: Optional[float] = 0.2,
+                 suffix: Optional[str] = ''):
         super().__init__()
-        if reference_velocity is None:
-            reference_velocity = 0.2
 
         if tip_starting_position is None:
             tip_starting_position = {}
 
-        self.suffix = suffix
         self.object_name = object_name
 
         # root link
@@ -729,9 +628,11 @@ class LiftObject(Goal):
         self.tip_str = str(self.tip)
 
         self.lifting_distance = lifting
-        self.weight = weight
 
-        self.reference_velocity = reference_velocity
+        self.weight = weight
+        self.velocity = velocity
+        self.suffix = suffix
+
         self.tip_starting_position = tip_starting_position
 
         # Lifting
@@ -757,16 +658,8 @@ class LiftObject(Goal):
                                                  weight=self.weight,
                                                  suffix=suffix))
 
-
-
-
-        '''self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
-                                                       tip_link=self.tip_str,
-                                                       goal_point=self.goal_point,
-                                                       weight=self.weight,
-                                                       suffix=suffix))'''
-
     def make_constraints(self):
+        # CartesianPosition + starting_offset
 
         r_P_c = self.get_fk(self.root, self.tip).to_position()
 
@@ -788,7 +681,7 @@ class LiftObject(Goal):
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
-                                        reference_velocity=self.reference_velocity,
+                                        reference_velocity=self.velocity,
                                         weight=self.weight)
 
     def __str__(self) -> str:
@@ -805,21 +698,17 @@ class Retracting(Goal):
     def __init__(self,
                  object_name: str,
                  distance: Optional[float] = 0.2,
+                 tip_starting_position: Dict[str, PointStamped] = None,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'base_link',
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 suffix: str = '',
-                 reference_velocity: Optional[float] = None,
-                 tip_starting_position: Dict[str, PointStamped] = None):
+                 velocity: Optional[float] = 0.2,
+                 suffix: Optional[str] = ''):
         super().__init__()
-
-        if reference_velocity is None:
-            reference_velocity = 0.2
 
         if tip_starting_position is None:
             tip_starting_position = {}
 
-        self.suffix = suffix
         # root link
         self.root = self.world.search_for_link_name(root_link)
         self.root_str = str(self.root.short_name)
@@ -828,17 +717,18 @@ class Retracting(Goal):
         self.tip = self.world.search_for_link_name(tip_link)
         self.tip_str = str(self.tip.short_name)
 
-        self.weight = weight
         self.distance = distance
-
-        self.reference_velocity = reference_velocity
         self.tip_starting_position = tip_starting_position
 
-        goal_point = PointStamped()
-        goal_point.header.frame_id = self.tip_str
+        self.weight = weight
+        self.velocity = velocity
+        self.suffix = suffix
 
         hand_frames = ['hand_gripper_tool_frame', 'hand_palm_link']
         base_frames = ['base_link']
+
+        goal_point = PointStamped()
+        goal_point.header.frame_id = self.tip_str
 
         if self.tip_str in hand_frames:
             goal_point.point.z -= self.distance
@@ -873,7 +763,7 @@ class Retracting(Goal):
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
-                                        reference_velocity=self.reference_velocity,
+                                        reference_velocity=self.velocity,
                                         weight=self.weight)
 
 
@@ -891,15 +781,14 @@ class AlignHeight(ObjectGoal):
     def __init__(self,
                  object_name: str,
                  goal_pose: Optional[PoseStamped] = None,
-                 object_height: float = None,
+                 object_height: Optional[float] = 0.0,
                  height_only: Optional[bool] = True,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 suffix: str = ''):
+                 velocity: Optional[float] = 0.2,
+                 suffix: Optional[str] = ''):
         super().__init__()
-
-        self.suffix = suffix
 
         # root link
         self.root = self.world.search_for_link_name(root_link)
@@ -914,18 +803,18 @@ class AlignHeight(ObjectGoal):
 
             logwarn(f'Could not find {tip_link}. Fallback to {hand_palm_link}')
 
-        self.tip_str = str(self.tip)
-
-        self.weight = weight
-
         # Get object geometry from name
         if goal_pose is None:
             goal_pose, self.object_size, _ = self.get_object_by_name(object_name)
 
             object_height = self.object_size.z
 
+        self.tip_str = str(self.tip)
         self.object_pose = goal_pose
         self.object_height = object_height
+        self.weight = weight
+        self.velocity = velocity
+        self.suffix = suffix
 
         # CartesianPosition
         goal_point = PointStamped()
@@ -948,7 +837,7 @@ class AlignHeight(ObjectGoal):
                                                        tip_link=self.tip_str,
                                                        goal_point=base_goal_point,
                                                        weight=self.weight,
-                                                       suffix=suffix))
+                                                       suffix=self.suffix))
 
         hand_orientation = QuaternionStamped()
         hand_orientation.header.frame_id = self.tip_str
@@ -960,7 +849,7 @@ class AlignHeight(ObjectGoal):
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.tip_str,
                                                           goal_orientation=hand_orientation,
-                                                          suffix=suffix))
+                                                          suffix=self.suffix))
 
         base_orientation = QuaternionStamped()
         base_orientation.header.frame_id = self.base_str
@@ -972,7 +861,7 @@ class AlignHeight(ObjectGoal):
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.base_str,
                                                           goal_orientation=base_orientation,
-                                                          suffix=suffix))
+                                                          suffix=self.suffix))
 
     def make_constraints(self):
         pass
@@ -986,20 +875,14 @@ class PlaceObject(ObjectGoal):
     def __init__(self,
                  object_name: str,
                  target_pose: PoseStamped,
-                 object_height: float = None,
+                 object_height: Optional[float] = None,
                  frontal: Optional[bool] = True,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = None,
-                 velocity: Optional[float] = None,
-                 suffix: str = ''):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 velocity: Optional[float] = 0.2,
+                 suffix: Optional[str] = ''):
         super().__init__()
-
-        self.suffix = suffix
-        if velocity is None:
-            velocity = 0.2
-        if weight is None:
-            weight = WEIGHT_ABOVE_CA
 
         # root link
         self.root = self.world.search_for_link_name(root_link)
@@ -1015,6 +898,12 @@ class PlaceObject(ObjectGoal):
             logwarn(f'Could not find {tip_link}. Fallback to {hand_palm_link}')
 
         self.tip_str = str(self.tip)
+
+        self.goal_floor_pose = target_pose
+
+        self.weight = weight
+        self.velocity = velocity
+        self.suffix = suffix
 
         self.goal_frontal_axis = Vector3Stamped()
         self.goal_frontal_axis.header.frame_id = 'base_link'
@@ -1037,15 +926,13 @@ class PlaceObject(ObjectGoal):
             self.tip_frontal_axis.vector.x = 1
             self.tip_vertical_axis.vector.z = -1
 
-        self.goal_floor_pose = target_pose
-
-        self.weight = weight
-
         # Get object geometry from name
         if object_height is None:
-            _, self.object_size, _ = self.get_object_by_name(object_name)
-
-            object_height = self.object_size.z
+            try:
+                _, self.object_size, _ = self.get_object_by_name(object_name)
+                object_height = self.object_size.z
+            except:
+                object_height = 0.0
 
         self.object_height = object_height
 
@@ -1102,19 +989,21 @@ class PlaceObject(ObjectGoal):
 class PlaceNeatly(ForceSensorGoal):
     def __init__(self,
                  target_pose: PoseStamped,
-                 weight=WEIGHT_ABOVE_CA,
-                 suffix: str = ''):
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 velocity: Optional[float] = 0.05,
+                 suffix: Optional[str] = ''):
         super().__init__()
 
+        self.target_pose = target_pose
+        self.weight = weight
+        self.velocity = velocity
         self.suffix = suffix
-        velocity = 0.05
 
         self.add_constraints_of_goal(PlaceObject(object_name='',
-                                                 target_pose=target_pose,
-                                                 object_height=0.0,
-                                                 weight=weight,
-                                                 velocity=velocity,
-                                                 suffix=suffix))
+                                                 target_pose=self.target_pose,
+                                                 weight=self.weight,
+                                                 velocity=self.velocity,
+                                                 suffix=self.suffix))
 
     def make_constraints(self):
         pass
@@ -1144,7 +1033,7 @@ class Tilting(Goal):
     def __init__(self,
                  direction: Optional[str] = None,
                  tilt_angle: Optional[float] = None,
-                 suffix: str = ''):
+                 suffix: Optional[str] = ''):
         super().__init__()
 
         self.suffix = suffix
