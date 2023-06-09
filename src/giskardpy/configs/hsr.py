@@ -71,6 +71,7 @@ class HSR_Local(HSR_Base):
         self.add_robot_from_parameter_server(joint_state_topics=['/hsrb/joint_states'])
         super().__init__()
         self.add_sync_tf_frame('map', 'odom')
+        #self.configure_PlotTrajectory(enabled=True, wait=True)
         self.add_omni_drive_joint(parent_link_name='odom',
                                   child_link_name='base_footprint',
                                   name='brumbrum',
