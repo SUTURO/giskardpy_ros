@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Optional, List, Dict
 
 import numpy as np
-from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
+from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion, Pose
 
 from giskardpy import casadi_wrapper as w, identifier
 from giskardpy.goals.align_planes import AlignPlanes
@@ -14,30 +14,44 @@ from giskardpy.goals.joint_goals import JointPosition
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
+from giskardpy.utils.math import inverse_frame
 from suturo_manipulation.gripper import Gripper
 
 def sequencable(function):
 
     @wraps(function)
-    def wrapper(*args, **kwargs):
+    def wrapper(self: Goal, *args, **kwargs):
         # key = cPickle.dumps((args, kwargs))
         # key = pickle.dumps((args, sorted(kwargs.items()), -1))
-        self = args[0]
-        goal_transformed = self.transform_msg(self.root, self.goal_point)
+        tip_P_goal = self.transform_msg(self.tip, self.goal_point)
+        root_T_tip = self.get_fk(self.root, self.tip)
 
-        for tip_name, starting_position in self.tip_starting_position.items():
+        for tip_name, old_tip_T_future_tip in self.tip_starting_position.items():
             new_start_tip = self.world.search_for_link_name(tip_name)
 
-            goal_transformed = self.transform_msg(new_start_tip, self.goal_point)
+            # root_P_goal = self.transform_msg(new_start_tip, self.goal_point)
             # transformed_position = self.transform_msg(self.root, self.tip_starting_position)
 
-            goal_transformed.point.x = goal_transformed.point.x + starting_position.point.x
-            goal_transformed.point.y = goal_transformed.point.y + starting_position.point.y
-            goal_transformed.point.z = goal_transformed.point.z + starting_position.point.z
 
-            goal_transformed = self.transform_msg(self.root, goal_transformed)
 
-        self.transformed_goal = goal_transformed
+            # old_tip_T_future_tip = w.TransMatrix()
+            # future_tip_T_old_tip = old_tip_T_future_tip.inverse()
+            # tip_P_goal = w.TransMatrix()
+
+            # future_tip_P_goal = future_tip_T_old_tip.dot(old_tip_P_goal)
+            # root_T_future_tip = root_T_old_tip.dot(old_tip_T_future_tip)
+            # root_P_goal = root_T_future_tip.dot(tip_P_goal)
+
+
+
+
+            # root_P_goal.point.x = root_P_goal.point.x + starting_position.point.x
+            # root_P_goal.point.y = root_P_goal.point.y + starting_position.point.y
+            # root_P_goal.point.z = root_P_goal.point.z + starting_position.point.z
+            #
+            # root_P_goal = self.transform_msg(self.root, root_P_goal)
+        root_P_goal = root_T_tip.dot(tip_P_goal)
+        self.transformed_goal = root_P_goal
 
 
         result = function(*args, **kwargs)
@@ -135,7 +149,7 @@ class SequenceGoal(Goal):
 
         self.current_endpoints = {}
 
-        goal_summary = []
+        self.goal_summary = []
 
         # with dict:
         # for index, (goal, args) in enumerate(sequence_goals.items()):
@@ -148,11 +162,10 @@ class SequenceGoal(Goal):
             goal: Goal = goal(**params)
             self.add_constraints_of_goal(goal)
 
-            goal_summary.append(goal)
+            self.goal_summary.append(goal)
 
             self.current_endpoints = deepcopy(goal.endpoint_modifier(self.current_endpoints))
 
-        print()
 
     def make_constraints(self):
 
@@ -195,6 +208,8 @@ class SequenceGoal(Goal):
 
         if not any(self.eq_weights[goal_number]):
             self.current_goal += 1
+
+            self.goal_summary[self.current_goal].update_params()
 
             print('next goal')
 
@@ -265,6 +280,7 @@ class GraspObject(ObjectGoal):
         else:
             self.object_pose = object_pose
             self.object_size = object_size
+            self.object_geometry = None
 
             logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
 
@@ -625,7 +641,7 @@ class LiftObject(Goal):
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
-    @sequencable
+    #@sequencable
     def make_constraints(self):
         # CartesianPosition + starting_offset
 
@@ -688,35 +704,34 @@ class Retracting(Goal):
         hand_frames = ['hand_gripper_tool_frame', 'hand_palm_link']
         base_frames = ['base_link']
 
-        goal_point = PointStamped()
-        goal_point.header.frame_id = self.tip_str
+        tip_P_goal = PointStamped()
+        tip_P_goal.header.frame_id = self.tip_str
 
-        if self.tip_str in hand_frames:
-            goal_point.point.z -= self.distance
+        if self.tip.short_name in hand_frames:
+            tip_P_goal.point.z -= self.distance
 
-        elif self.tip_str in base_frames:
-            goal_point.point.x -= self.distance
+        elif self.tip.short_name in base_frames:
+            tip_P_goal.point.x -= self.distance
 
-        self.goal_point = deepcopy(goal_point)
+        self.goal_point = deepcopy(tip_P_goal)
+        self.root_T_tip_start = self.world.compute_fk_np(self.root, self.tip)
 
+        self.start_tip_T_current_tip = PoseStamped #w.TransMatrix()
+
+        print()
 
     def make_constraints(self):
 
+        # TODO: Fix typing + cant convert start_tip_T_current_tip into transmatrix / Expression
+
+        start_tip_T_current_tip = self.get_parameter_as_symbolic_expression('start_tip_T_current_tip')
         goal_transformed = self.transform_msg(self.root, self.goal_point)
 
-        for tip_name, starting_position in self.tip_starting_position.items():
-            new_start_tip = self.world.search_for_link_name(tip_name)
+        root_T_tip = self.get_fk(self.root, self.tip)
 
-            goal_transformed = self.transform_msg(new_start_tip, self.goal_point)
-            # transformed_position = self.transform_msg(self.root, self.tip_starting_position)
+        root_T_tip = root_T_tip.dot(start_tip_T_current_tip)
 
-            goal_transformed.point.x = goal_transformed.point.x + starting_position.point.x
-            goal_transformed.point.y = goal_transformed.point.y + starting_position.point.y
-            goal_transformed.point.z = goal_transformed.point.z + starting_position.point.z
-
-            goal_transformed = self.transform_msg(self.root, goal_transformed)
-
-        r_P_c = self.get_fk(self.root, self.tip).to_position()
+        r_P_c = root_T_tip.to_position()
         r_P_g = w.Point3(goal_transformed)
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
@@ -724,21 +739,35 @@ class Retracting(Goal):
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
 
+    def update_params(self):
+        root_T_tip_current = self.world.compute_fk_np(self.root, self.tip)
+        self.start_tip_T_current_tip = np.dot(inverse_frame(self.root_T_tip_start), root_T_tip_current)
+
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
 
     def endpoint_modifier(self, current):
 
+        prev_tip_T_next_tip = w.TransMatrix.from_xyz_rpy(x=self.goal_point.point.x,
+                                                         y=self.goal_point.point.y,
+                                                         z=self.goal_point.point.z)
         if self.tip.short_name in current:
-            tip_point = deepcopy(current[self.tip.short_name])
-            tip_point.point.x += self.goal_point.point.x
-            tip_point.point.y += self.goal_point.point.y
-            tip_point.point.z += self.goal_point.point.z
+            # root_T_tip = root_T_tip.dot(old_tip_T_future_tip)
+            original_tip_T_prev_tip = deepcopy(current[self.tip.short_name])
+            # future_tip_P_goal.point.x += self.goal_point.point.x  # tip_P_goal
+            # future_tip_P_goal.point.y += self.goal_point.point.y
+            # future_tip_P_goal.point.z += self.goal_point.point.z
 
-            current[self.tip.short_name] = tip_point
+            # root_T_tip
+            # goal 1 end point -> old_tip_T_next_tip
+            # goal 2 end point -> old_tip_T_next_tip
+            # make constraints of goal 3 # root_T_next_tip2 = root_T_tip * old_tip_T_next_tip1 * old_tip_T_next_tip2
+
+
+            current[self.tip.short_name] = original_tip_T_prev_tip.dot(prev_tip_T_next_tip)
         else:
-            current[self.tip.short_name] = self.goal_point
+            current[self.tip.short_name] = prev_tip_T_next_tip
 
         return current
 
@@ -872,9 +901,11 @@ class PlaceObject(ObjectGoal):
         if object_height is None:
             try:
                 _, self.object_size, _ = self.get_object_by_name(object_name)
-                self.object_height = self.object_size.z
+                object_height = self.object_size.z
             except:
-                self.object_height = 0.0
+                object_height = 0.0
+
+        self.object_height = object_height
 
         target_pose.pose.position.z += (self.object_height / 2)
 
@@ -890,29 +921,37 @@ class PlaceObject(ObjectGoal):
         self.goal_frontal_axis.header.frame_id = self.base_str
         self.goal_frontal_axis.vector.x = 1
 
-        self.tip_frontal_axis = Vector3Stamped()
-        self.tip_frontal_axis.header.frame_id = self.tip_str
-
         self.goal_vertical_axis = Vector3Stamped()
         self.goal_vertical_axis.header.frame_id = self.root_str
         self.goal_vertical_axis.vector.z = 1
 
         if frontal:
-            tip_frontal_axis_vector = Vector3(x=1, y=0, z=1)
-        else:
-            tip_frontal_axis_vector = Vector3(x=1, y=0, z=-1)
+            tip_frontal_axis_vector = Vector3(x=0, y=0, z=1)
+            tip_vertical_axis_vector = Vector3(x=1, y=0, z=0)
 
-        self.tip_vertical_axis = Vector3Stamped(tip_frontal_axis_vector)
+        else:
+            tip_frontal_axis_vector = Vector3(x=1, y=0, z=0)
+            tip_vertical_axis_vector = Vector3(x=0, y=0, z=-1)
+
+        self.tip_vertical_axis = Vector3Stamped(vector=tip_vertical_axis_vector)
         self.tip_vertical_axis.header.frame_id = self.tip_str
+
+        self.tip_frontal_axis = Vector3Stamped(vector=tip_frontal_axis_vector)
+        self.tip_frontal_axis.header.frame_id = self.tip_str
 
         goal_point = PointStamped()
         goal_point.header.frame_id = self.goal_floor_pose.header.frame_id
         goal_point.point = self.goal_floor_pose.pose.position
 
-        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
+        zero_quaternion = Quaternion()
+        zero_quaternion.x = 0
+        zero_quaternion.y = 0
+        zero_quaternion.z = 0
+        zero_quaternion.w = 1
 
-        orientation_base = QuaternionStamped(zero_quaternion)
+        orientation_base = QuaternionStamped()
         orientation_base.header.frame_id = self.base_str
+        orientation_base.quaternion = zero_quaternion
 
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.base_str,
@@ -966,6 +1005,7 @@ class PlaceNeatly(ForceSensorGoal):
 
         self.add_constraints_of_goal(PlaceObject(object_name='',
                                                  target_pose=self.target_pose,
+                                                 root_link='base_link',
                                                  weight=self.weight,
                                                  velocity=self.velocity,
                                                  suffix=self.suffix))

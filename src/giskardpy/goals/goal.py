@@ -658,6 +658,9 @@ class Goal(ABC):
                                      name_suffix=f'{name}/q/vel',
                                      velocity_limit=max_velocity)
 
+    def update_params(self):
+        pass
+
 
 def _prepend_prefix(prefix, d):
     new_dict = OrderedDict()
