@@ -195,10 +195,7 @@ class SequenceGoal(Goal):
             return 0
 
         constraint: EqualityConstraint = self._equality_constraints.get(goal_name)
-
-        sample = self.god_map.get_data(identifier=identifier.sample_period)
-
-        compiled = constraint.capped_error(sample).compile()
+        compiled = constraint.capped_error(self.sample_period).compile()
         f = compiled.fast_call(self.god_map.get_values(compiled.str_params))
 
         if abs(f) < 0.001:
