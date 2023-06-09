@@ -263,11 +263,11 @@ class TestCartGoals:
         map_T_odom.pose.position.x = 1
         map_T_odom.pose.position.y = 1
         map_T_odom.pose.orientation = Quaternion(*quaternion_about_axis(np.pi / 3, [0, 0, 1]))
-        '''zero_pose.set_json_goal('SequenceGoal',
+        zero_pose.set_json_goal('SequenceGoal',
                                 goal_type_seq=['CartesianPose'],
                                 kwargs_seq=[{'root_link': 'map',
                                              'tip_link': 'base_footprint',
-                                             'goal_pose': map_T_odom}])'''
+                                             'goal_pose': map_T_odom}])
         '''zero_pose.set_json_goal('SequenceGoal',
                                 goals={'JointPositionPrismatic':
                                            {'joint_name': 'torso_lift_joint',
