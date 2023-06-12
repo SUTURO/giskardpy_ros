@@ -209,8 +209,8 @@ class GraspObject(ObjectGoal):
                  frontal_grasping: Optional[bool] = True,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.2,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         """
         Determine the grasping perspective of the object
@@ -273,8 +273,8 @@ class GraspAbove(Goal):
                  object_geometry: Optional[LinkGeometry] = None,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.2,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
@@ -398,8 +398,8 @@ class GraspFrontal(Goal):
                  object_geometry: Optional[LinkGeometry] = None,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.2,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         """
         Move to a given position where a box can be grasped.
@@ -537,8 +537,8 @@ class LiftObject(Goal):
                  lifting: float = 0.02,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.2,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
@@ -613,8 +613,8 @@ class Retracting(Goal):
                  distance: Optional[float] = 0.2,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'base_link',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.2,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
@@ -692,8 +692,8 @@ class AlignHeight(ObjectGoal):
                  height_only: Optional[bool] = True,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.2,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         """
         Align the tip link with the given goal_pose to prepare for further action (e.g. grasping or placing)
@@ -800,8 +800,8 @@ class PlaceObject(ObjectGoal):
                  frontal: Optional[bool] = True,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.2,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
@@ -915,8 +915,8 @@ class PlaceObject(ObjectGoal):
 class PlaceNeatly(ForceSensorGoal):
     def __init__(self,
                  target_pose: PoseStamped,
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  velocity: Optional[float] = 0.05,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
