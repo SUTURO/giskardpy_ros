@@ -107,13 +107,11 @@ class SequenceGoal(Goal):
         self.current_goal = 0
         self.eq_weights = []
 
-
         self.goal_summary = []
 
         # with dict:
         # for index, (goal, args) in enumerate(sequence_goals.items()):
         for index, (goal, args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
-
             params = deepcopy(args)
             params['suffix'] = index
 
@@ -247,6 +245,8 @@ class GraspObject(ObjectGoal):
                                                       object_geometry=self.object_geometry,
                                                       root_link=self.root_link,
                                                       tip_link=self.tip_link,
+                                                      velocity=self.velocity,
+                                                      weight=self.weight,
                                                       suffix=self.suffix))
         else:
             self.add_constraints_of_goal(GraspAbove(object_name=self.object_name,
@@ -255,6 +255,8 @@ class GraspObject(ObjectGoal):
                                                     object_geometry=self.object_geometry,
                                                     root_link=self.root_link,
                                                     tip_link=self.tip_link,
+                                                    velocity=self.velocity,
+                                                    weight=self.weight,
                                                     suffix=self.suffix))
 
     def make_constraints(self):
@@ -365,21 +367,24 @@ class GraspAbove(Goal):
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=self.bar_center_point,
-                                                       weight=weight,
+                                                       reference_velocity=self.velocity,
+                                                       weight=self.weight,
                                                        suffix=suffix))
 
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.bar_axis,
                                                  tip_normal=self.tip_vertical_axis,
-                                                 weight=weight,
+                                                 reference_velocity=self.velocity,
+                                                 weight=self.weight,
                                                  suffix=suffix))
 
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_frontal_axis,
                                                  tip_normal=self.tip_frontal_axis,
-                                                 weight=weight,
+                                                 reference_velocity=self.velocity,
+                                                 weight=self.weight,
                                                  suffix=suffix))
 
     def make_constraints(self):
@@ -498,6 +503,7 @@ class GraspFrontal(Goal):
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_frontal_axis,
                                                  tip_normal=self.tip_frontal_axis,
+                                                 reference_velocity=self.velocity,
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
@@ -585,10 +591,11 @@ class LiftObject(Goal):
                                                  tip_link=self.tip_str,
                                                  goal_normal=goal_vertical_axis,
                                                  tip_normal=tip_vertical_axis,
+                                                 reference_velocity=self.velocity,
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
-    #@sequencable
+    # @sequencable
     def make_constraints(self):
         # CartesianPosition + starting_offset
 
@@ -732,8 +739,8 @@ class AlignHeight(ObjectGoal):
         self.object_height = object_height
         self.root_str = str(self.root)
         self.tip_str = str(self.tip)
-        self.weight = weight
         self.velocity = velocity
+        self.weight = weight
         self.suffix = suffix
 
         # CartesianPosition
@@ -758,6 +765,7 @@ class AlignHeight(ObjectGoal):
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=base_goal_point,
+                                                       reference_velocity=self.velocity,
                                                        weight=self.weight,
                                                        suffix=self.suffix))
 
@@ -769,6 +777,7 @@ class AlignHeight(ObjectGoal):
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.tip_str,
                                                           goal_orientation=hand_orientation,
+                                                          weight=self.weight,
                                                           suffix=self.suffix))
 
         base_orientation = QuaternionStamped(quaternion=zero_quaternion)
@@ -777,6 +786,7 @@ class AlignHeight(ObjectGoal):
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.base_str,
                                                           goal_orientation=base_orientation,
+                                                          weight=self.weight,
                                                           suffix=self.suffix))
 
     def make_constraints(self):
@@ -878,6 +888,7 @@ class PlaceObject(ObjectGoal):
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.base_str,
                                                           goal_orientation=orientation_base,
+                                                          weight=self.weight,
                                                           suffix=self.suffix))
 
         # Align with destination
@@ -885,6 +896,7 @@ class PlaceObject(ObjectGoal):
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_frontal_axis,
                                                  tip_normal=self.tip_frontal_axis,
+                                                 reference_velocity=self.velocity,
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
@@ -893,6 +905,7 @@ class PlaceObject(ObjectGoal):
                                                  tip_link=self.tip_str,
                                                  goal_normal=self.goal_vertical_axis,
                                                  tip_normal=self.tip_vertical_axis,
+                                                 reference_velocity=self.velocity,
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
@@ -900,8 +913,8 @@ class PlaceObject(ObjectGoal):
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=goal_point,
+                                                       reference_velocity=self.velocity,
                                                        weight=self.weight,
-                                                       reference_velocity=velocity,
                                                        suffix=self.suffix))
 
     def make_constraints(self):
@@ -921,15 +934,15 @@ class PlaceNeatly(ForceSensorGoal):
         super().__init__()
 
         self.target_pose = target_pose
-        self.weight = weight
         self.velocity = velocity
+        self.weight = weight
         self.suffix = suffix
 
         self.add_constraints_of_goal(PlaceObject(object_name='',
                                                  target_pose=self.target_pose,
                                                  root_link='base_link',
-                                                 weight=self.weight,
                                                  velocity=self.velocity,
+                                                 weight=self.weight,
                                                  suffix=self.suffix))
 
     def make_constraints(self):
