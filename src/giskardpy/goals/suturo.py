@@ -672,7 +672,7 @@ class Retracting(Goal):
         r_P_c.reference_frame = self.root
 
         # FIXME: Works
-        r_P_c2 = self.get_fk(self.root, self.tip).to_position()
+        r_P_c = self.get_fk(self.root, self.tip).to_position()
 
         root_P_goal = self.transform_msg(self.root, self.goal_point)
         r_P_g = w.Point3(root_P_goal)
