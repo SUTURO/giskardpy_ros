@@ -995,6 +995,7 @@ class GiskardWrapper:
                      object_name: str,
                      goal_pose: PoseStamped,
                      object_height: float,
+                     radius: Optional[float] = 0.0,
                      root_link: Optional[str] = 'map',
                      tip_link: Optional[str] = 'hand_gripper_tool_frame',
                      frontal=True):
@@ -1003,6 +1004,7 @@ class GiskardWrapper:
                            object_name=object_name,
                            target_pose=goal_pose,
                            object_height=object_height,
+                           radius=radius,
                            root_link=root_link,
                            tip_link=tip_link,
                            frontal=frontal)

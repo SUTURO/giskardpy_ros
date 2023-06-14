@@ -110,7 +110,6 @@ class SequenceGoal(Goal):
 
         self.current_goal = 0
         self.eq_weights = []
-
         self.goal_summary = []
 
         # with dict:
@@ -138,39 +137,40 @@ class SequenceGoal(Goal):
             eq_constraint_weights = [1] * len(ordered_eq_constraints)
             self.eq_weights.append(eq_constraint_weights)
 
-            for eq_number, const in enumerate(ordered_eq_constraints):
-                s = self.god_map.to_symbol(self._get_identifier() + ['asdf', (goal_number, eq_number, const.name)])
+            for eq_number, constraint in enumerate(ordered_eq_constraints):
+
+                compiled = constraint.capped_error(self.sample_period).compile()
+                s = self.god_map.to_symbol(self._get_identifier() + ['asdf', (goal_number, eq_number, compiled)])
 
                 expr = w.Expression(s)
-                const.quadratic_weight = const.quadratic_weight * expr
+                constraint.quadratic_weight = constraint.quadratic_weight * expr
 
-    def asdf(self, goal_number, eq_number, goal_name):
+    def asdf(self, goal_number, eq_number, compiled_constraint):
 
         if goal_number != self.current_goal:
             return 0
 
-        # Can be moved into make constraints; are constants
-        constraint: EqualityConstraint = self._equality_constraints.get(goal_name)
-        compiled = constraint.capped_error(self.sample_period).compile()
+        eq_constraint_error = compiled_constraint.fast_call(self.god_map.get_values(compiled_constraint.str_params))
 
-        f = compiled.fast_call(self.god_map.get_values(compiled.str_params))
-
-        if abs(f) < 0.001:
+        if abs(eq_constraint_error) < 0.001:
             self.eq_weights[goal_number][eq_number] = 0
         else:
             self.eq_weights[goal_number][eq_number] = 1
 
-        if not any(self.eq_weights[goal_number]):
-            self.current_goal += 1
+        goal_not_finished = any(self.eq_weights[goal_number])
+        if goal_not_finished:
+            return 1
 
-            if self.current_goal < len(self.goal_summary):
-                self.goal_summary[self.current_goal].update_params()
+        self.current_goal += 1
 
-            print('next goal')
-
+        if self.current_goal >= len(self.goal_summary):
             return 0
 
-        return 1
+        self.goal_summary[self.current_goal].update_params()
+
+        loginfo('next goal')
+
+        return 0
 
     def __str__(self) -> str:
         return super().__str__()
@@ -831,6 +831,7 @@ class PlaceObject(ObjectGoal):
                  object_name: str,
                  target_pose: PoseStamped,
                  object_height: Optional[float] = None,
+                 radius: Optional[float] = 0.0,
                  frontal: Optional[bool] = False,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
@@ -862,10 +863,14 @@ class PlaceObject(ObjectGoal):
                 object_height = 0.0
 
         self.object_height = object_height
+        self.radius = radius
 
         target_pose.pose.position.z += (self.object_height / 2)
 
-        self.goal_floor_pose = target_pose
+        base_P_goal = self.transform_msg(self.base_link, target_pose)
+        base_P_goal.pose.position.x -= self.radius
+
+        self.goal_floor_pose = base_P_goal
         self.root_str = str(self.root)
         self.tip_str = str(self.tip)
         self.weight = weight
