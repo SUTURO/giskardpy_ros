@@ -22,6 +22,10 @@ from suturo_manipulation.gripper import Gripper
 
 class ObjectGoal(Goal):
     def __init__(self):
+        """
+        Inherit from this class if the goal tries to get the object by name form the tf frames
+        """
+
         super().__init__()
 
     def get_object_by_name(self, object_name):
@@ -159,7 +163,8 @@ class SequenceGoal(Goal):
         if not any(self.eq_weights[goal_number]):
             self.current_goal += 1
 
-            self.goal_summary[self.current_goal].update_params()
+            if self.current_goal < len(self.goal_summary):
+                self.goal_summary[self.current_goal].update_params()
 
             print('next goal')
 
@@ -641,14 +646,14 @@ class Retracting(Goal):
         hand_frames = ['hand_gripper_tool_frame', 'hand_palm_link']
         base_frames = ['base_link']
 
-        tip_P_goal = PointStamped()
+        tip_P_goal = PoseStamped()
         tip_P_goal.header.frame_id = self.tip_str
 
         if self.tip.short_name in hand_frames:
-            tip_P_goal.point.z -= self.distance
+            tip_P_goal.pose.position.z -= self.distance
 
         elif self.tip.short_name in base_frames:
-            tip_P_goal.point.x -= self.distance
+            tip_P_goal.pose.position.x -= self.distance
 
         self.goal_point = deepcopy(tip_P_goal)
         self.root_T_tip_start = self.world.compute_fk_np(self.root, self.tip)
@@ -657,30 +662,31 @@ class Retracting(Goal):
 
     def make_constraints(self):
 
-        start_tip_T_current_tip = self.get_parameter_as_symbolic_expression('start_tip_T_current_tip')
+        start_tip_T_current_tip = w.TransMatrix(self.get_parameter_as_symbolic_expression('start_tip_T_current_tip'))
 
-        root_T_tip = self.world.compute_fk_np(self.root, self.tip)
+        root_T_tip = self.get_fk(self.root, self.tip)
 
-        # root_T_tip = root_T_tip.dot(self.god_map.evaluate_expr(start_tip_T_current_tip))
+        r_P_c = root_T_tip.to_position()
 
-        # FIXME: Does not execute when using root_T_tip
+        r_calc = w.TransMatrix(self.god_map.evaluate_expr(root_T_tip))
 
-        root_P_tip = Point(x=root_T_tip[0, 3], y=root_T_tip[1, 3], z=root_T_tip[2, 3])
-        root_P_tip = translation_from_matrix(root_T_tip)
+        #r_P_c = self.get_fk(self.root, self.tip).to_position()
 
-        r_P_c = w.Point3(root_P_tip)
-        r_P_c.reference_frame = self.root
+        t_T_g = w.TransMatrix(self.goal_point)
+        root_T_goal = r_calc.dot(start_tip_T_current_tip).dot(t_T_g)
 
-        # FIXME: Works
-        r_P_c = self.get_fk(self.root, self.tip).to_position()
+        # root_P_goal = self.transform_msg(self.root, self.goal_point)
+        r_P_g = root_T_goal.to_position()
 
-        root_P_goal = self.transform_msg(self.root, self.goal_point)
-        r_P_g = w.Point3(root_P_goal)
+        self.add_debug_expr('retracting_goal', r_P_g)
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
+
+        r_R_g = root_T_goal.to_rotation()
+        #self.add_rotation_goal_constraints()
 
     def update_params(self):
         root_T_tip_current = self.world.compute_fk_np(self.root, self.tip)
@@ -807,7 +813,7 @@ class PlaceObject(ObjectGoal):
                  object_name: str,
                  target_pose: PoseStamped,
                  object_height: Optional[float] = None,
-                 frontal: Optional[bool] = True,
+                 frontal: Optional[bool] = False,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
