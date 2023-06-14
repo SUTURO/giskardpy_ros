@@ -294,8 +294,8 @@ class GraspAbove(Goal):
         object_pose.pose.position.z += object_size.z / 2
 
         self.object_pose = object_pose
-        self.root_str = str(self.root)
-        self.tip_str = str(self.tip)
+        self.root_str = self.root.short_name
+        self.tip_str = self.tip.short_name
         self.weight = weight
         self.velocity = velocity
         self.suffix = suffix
@@ -425,7 +425,7 @@ class GraspFrontal(Goal):
 
         # root link
         self.root = self.world.search_for_link_name(root_link)
-        self.root_str = str(self.root)
+        self.root_str = self.root.short_name
 
         # tip link
         try:
@@ -433,7 +433,7 @@ class GraspFrontal(Goal):
         except:
             self.tip = self.world.search_for_link_name('hand_palm_link')
 
-        self.tip_str = str(self.tip)
+        self.tip_str = self.tip.short_name
 
         # Grasp slightly below the center of the object
         object_pose.pose.position.z = object_pose.pose.position.z - 0.01
@@ -493,7 +493,6 @@ class GraspFrontal(Goal):
         self.tip_frontal_axis.header.frame_id = self.tip_str
         self.tip_frontal_axis.vector.z = 1
 
-
         # Align frontal
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
@@ -529,7 +528,7 @@ class GraspFrontal(Goal):
                                                        suffix=self.suffix))
 
         self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = str(self.base_link)
+        self.base_str = self.base_link.short_name
         zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
 
         base_orientation = QuaternionStamped(quaternion=zero_quaternion)
@@ -597,8 +596,8 @@ class LiftObject(Goal):
             logwarn(f'Could not find {tip_link}. Fallback to {hand_palm_link}')
 
         self.lifting_distance = lifting
-        self.root_str = str(self.root)
-        self.tip_str = str(self.tip)
+        self.root_str = self.root.short_name
+        self.tip_str = self.tip.short_name
         self.weight = weight
         self.velocity = velocity
         self.suffix = suffix
@@ -690,8 +689,8 @@ class Retracting(Goal):
         self.tip = self.world.search_for_link_name(tip_link)
 
         self.distance = distance
-        self.root_str = str(self.root)
-        self.tip_str = str(self.tip)
+        self.root_str = self.root.short_name
+        self.tip_str = self.tip.short_name
         self.weight = weight
         self.velocity = velocity
         self.suffix = suffix
@@ -796,8 +795,8 @@ class AlignHeight(ObjectGoal):
 
         self.object_pose = goal_pose
         self.object_height = object_height
-        self.root_str = str(self.root)
-        self.tip_str = str(self.tip)
+        self.root_str = self.root.short_name
+        self.tip_str = self.tip.short_name
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
@@ -809,7 +808,7 @@ class AlignHeight(ObjectGoal):
         goal_point.point = goal_pose.pose.position
 
         self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = str(self.base_link)
+        self.base_str = self.base_link.short_name
 
         base_to_tip = self.world.compute_fk_pose(self.base_link, self.tip)
 
@@ -902,12 +901,12 @@ class PlaceObject(ObjectGoal):
         base_P_goal.pose.position.x -= self.radius
 
         self.goal_floor_pose = base_P_goal
-        self.root_str = str(self.root)
-        self.tip_str = str(self.tip)
+        self.root_str = self.root.short_name
+        self.tip_str = self.tip.short_name
         self.weight = weight
         self.velocity = velocity
         self.suffix = suffix
-        self.base_str = str(self.base_link)
+        self.base_str = self.base_link.short_name
 
         self.goal_frontal_axis = Vector3Stamped()
         self.goal_frontal_axis.header.frame_id = self.base_str
@@ -935,15 +934,10 @@ class PlaceObject(ObjectGoal):
         goal_point.header.frame_id = self.goal_floor_pose.header.frame_id
         goal_point.point = self.goal_floor_pose.pose.position
 
-        zero_quaternion = Quaternion()
-        zero_quaternion.x = 0
-        zero_quaternion.y = 0
-        zero_quaternion.z = 0
-        zero_quaternion.w = 1
+        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
 
-        orientation_base = QuaternionStamped()
+        orientation_base = QuaternionStamped(quaternion=zero_quaternion)
         orientation_base.header.frame_id = self.base_str
-        orientation_base.quaternion = zero_quaternion
 
         self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
                                                           tip_link=self.base_str,
