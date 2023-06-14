@@ -319,11 +319,8 @@ class GraspAbove(Goal):
         # Frame/grasp difference
         frame_difference = 0.08
 
-        grasping_difference = max(0.01, (frame_difference - (self.object_size.z / 2)))
-
         # Root -> Reference frame for hand_palm_link offset
         offset_tip_goal_point = self.transform_msg(reference_frame, root_goal_point)
-        # offset_tip_goal_point.point.z = offset_tip_goal_point.point.z + grasping_difference
 
         bar_tolerance = 0.1
 
@@ -421,7 +418,7 @@ class GraspFrontal(Goal):
         """
         super().__init__()
 
-        self.object_name_str = str(object_name)
+        self.object_name = object_name
 
         # root link
         self.root = self.world.search_for_link_name(root_link)
@@ -431,7 +428,10 @@ class GraspFrontal(Goal):
         try:
             self.tip = self.world.search_for_link_name(tip_link)
         except:
-            self.tip = self.world.search_for_link_name('hand_palm_link')
+            hand_palm_link = 'hand_palm_link'
+            self.tip = self.world.search_for_link_name(hand_palm_link)
+
+            logwarn(f'Could not find {tip_link}. Fallback to {hand_palm_link}')
 
         self.tip_str = self.tip.short_name
 
@@ -458,8 +458,6 @@ class GraspFrontal(Goal):
 
             reference_frame = 'base_link'
 
-        grasp_offset = min(0.07, self.object_size.x / 2)
-
         # tip_axis
         self.tip_vertical_axis = Vector3Stamped()
         self.tip_vertical_axis.header.frame_id = self.tip_str
@@ -468,9 +466,6 @@ class GraspFrontal(Goal):
         # bar_center
         self.bar_center_point = self.transform_msg(reference_frame, root_goal_point)
 
-        # self.bar_center_point.point.x += grasp_offset  # Grasp general
-        # self.bar_center_point.point.x -= grasp_offset  # Grasp door handle
-
         # bar_axis
         self.bar_axis = Vector3Stamped()
         self.bar_axis.header.frame_id = self.root_str
@@ -478,9 +473,6 @@ class GraspFrontal(Goal):
         # Temporary solution to not be bothered with vertical grasping
         # self.bar_axis.vector = self.set_grasp_axis(self.object_size, maximum=True)
         self.bar_axis.vector.z = 1
-
-        # bar length
-        self.bar_length = 0.0001
 
         # Align Planes
         # object axis horizontal/vertical
@@ -502,15 +494,6 @@ class GraspFrontal(Goal):
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
-        '''self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
-                                              tip_link=self.tip_str,
-                                              tip_grasp_axis=self.tip_vertical_axis,
-                                              bar_center=self.bar_center_point,
-                                              bar_axis=self.bar_axis,
-                                              bar_length=self.bar_length,
-                                              weight=self.weight,
-                                              suffix=self.suffix))'''
-
         # Align vertical
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
@@ -520,6 +503,7 @@ class GraspFrontal(Goal):
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
+        # Target Position
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
                                                        goal_point=self.bar_center_point,
@@ -527,6 +511,7 @@ class GraspFrontal(Goal):
                                                        weight=self.weight,
                                                        suffix=self.suffix))
 
+        # Do not rotate base
         self.base_link = self.world.search_for_link_name('base_link')
         self.base_str = self.base_link.short_name
         zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
