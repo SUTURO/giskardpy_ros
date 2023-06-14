@@ -605,20 +605,18 @@ class LiftObject(Goal):
 
     # @sequencable
     def make_constraints(self):
-        # CartesianPosition + starting_offset
-
         start_tip_T_current_tip = w.TransMatrix(self.get_parameter_as_symbolic_expression('start_tip_T_current_tip'))
 
         root_T_tip = self.get_fk(self.root, self.tip)
 
         r_P_c = root_T_tip.to_position()
 
-        r_calc = w.TransMatrix(self.god_map.evaluate_expr(root_T_tip))
+        r_T_tip_eval = w.TransMatrix(self.god_map.evaluate_expr(root_T_tip))
 
         # r_P_c = self.get_fk(self.root, self.tip).to_position()
 
         t_T_g = w.TransMatrix(self.goal_point)
-        root_T_goal = r_calc.dot(start_tip_T_current_tip).dot(t_T_g)
+        root_T_goal = r_T_tip_eval.dot(start_tip_T_current_tip).dot(t_T_g)
 
         # root_P_goal = self.transform_msg(self.root, self.goal_point)
         r_P_g = root_T_goal.to_position()
@@ -627,6 +625,16 @@ class LiftObject(Goal):
                                         frame_P_current=r_P_c,
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
+
+
+        '''c_R_r_eval = self.get_fk_evaluated(self.tip, self.root).to_rotation()
+
+        self.add_rotation_goal_constraints(frame_R_goal=r_R_g,
+                                           frame_R_current=r_R_c,
+                                           current_R_frame_eval=c_R_r_eval,
+                                           reference_velocity=,
+                                           )'''
+
 
     def __str__(self) -> str:
         s = super().__str__()
