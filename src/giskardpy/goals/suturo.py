@@ -138,7 +138,6 @@ class SequenceGoal(Goal):
             self.eq_weights.append(eq_constraint_weights)
 
             for eq_number, constraint in enumerate(ordered_eq_constraints):
-
                 compiled = constraint.capped_error(self.sample_period).compile()
                 s = self.god_map.to_symbol(self._get_identifier() + ['asdf', (goal_number, eq_number, compiled)])
 
@@ -494,14 +493,6 @@ class GraspFrontal(Goal):
         self.tip_frontal_axis.header.frame_id = self.tip_str
         self.tip_frontal_axis.vector.z = 1
 
-        self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
-                                              tip_link=self.tip_str,
-                                              tip_grasp_axis=self.tip_vertical_axis,
-                                              bar_center=self.bar_center_point,
-                                              bar_axis=self.bar_axis,
-                                              bar_length=self.bar_length,
-                                              weight=self.weight,
-                                              suffix=self.suffix))
 
         # Align frontal
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
@@ -511,6 +502,44 @@ class GraspFrontal(Goal):
                                                  reference_velocity=self.velocity,
                                                  weight=self.weight,
                                                  suffix=self.suffix))
+
+        '''self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
+                                              tip_link=self.tip_str,
+                                              tip_grasp_axis=self.tip_vertical_axis,
+                                              bar_center=self.bar_center_point,
+                                              bar_axis=self.bar_axis,
+                                              bar_length=self.bar_length,
+                                              weight=self.weight,
+                                              suffix=self.suffix))'''
+
+        # Align vertical
+        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
+                                                 tip_link=self.tip_str,
+                                                 goal_normal=self.tip_vertical_axis,
+                                                 tip_normal=self.bar_axis,
+                                                 reference_velocity=self.velocity,
+                                                 weight=self.weight,
+                                                 suffix=self.suffix))
+
+        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
+                                                       tip_link=self.tip_str,
+                                                       goal_point=self.bar_center_point,
+                                                       reference_velocity=self.velocity,
+                                                       weight=self.weight,
+                                                       suffix=self.suffix))
+
+        self.base_link = self.world.search_for_link_name('base_link')
+        self.base_str = str(self.base_link)
+        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
+
+        base_orientation = QuaternionStamped(quaternion=zero_quaternion)
+        base_orientation.header.frame_id = self.base_str
+
+        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
+                                                          tip_link=self.base_str,
+                                                          goal_orientation=base_orientation,
+                                                          weight=self.weight,
+                                                          suffix=self.suffix))
 
     def make_constraints(self):
         pass
@@ -626,7 +655,6 @@ class LiftObject(Goal):
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
 
-
         '''c_R_r_eval = self.get_fk_evaluated(self.tip, self.root).to_rotation()
 
         self.add_rotation_goal_constraints(frame_R_goal=r_R_g,
@@ -634,7 +662,6 @@ class LiftObject(Goal):
                                            current_R_frame_eval=c_R_r_eval,
                                            reference_velocity=,
                                            )'''
-
 
     def __str__(self) -> str:
         s = super().__str__()
@@ -696,7 +723,7 @@ class Retracting(Goal):
 
         r_calc = w.TransMatrix(self.god_map.evaluate_expr(root_T_tip))
 
-        #r_P_c = self.get_fk(self.root, self.tip).to_position()
+        # r_P_c = self.get_fk(self.root, self.tip).to_position()
 
         t_T_g = w.TransMatrix(self.goal_point)
         root_T_goal = r_calc.dot(start_tip_T_current_tip).dot(t_T_g)
@@ -712,7 +739,7 @@ class Retracting(Goal):
                                         weight=self.weight)
 
         r_R_g = root_T_goal.to_rotation()
-        #self.add_rotation_goal_constraints()
+        # self.add_rotation_goal_constraints()
 
     def update_params(self):
         root_T_tip_current = self.world.compute_fk_np(self.root, self.tip)
@@ -774,6 +801,7 @@ class AlignHeight(ObjectGoal):
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
+        self.reference_str = self.root_str
 
         # CartesianPosition
         goal_point = PointStamped()
@@ -827,11 +855,6 @@ class AlignHeight(ObjectGoal):
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
-
-    def endpoint_modifier(self, current) -> Dict:
-        result = {self.tip.short_name: self.goal_point}
-
-        return result
 
 
 class PlaceObject(ObjectGoal):
