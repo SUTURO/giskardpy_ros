@@ -577,9 +577,9 @@ class LiftObject(Goal):
         self.transformed_goal = None
 
         # Lifting
-        goal_point = PointStamped()
+        goal_point = PoseStamped()
         goal_point.header.frame_id = self.tip_str
-        goal_point.point.x += self.lifting_distance
+        goal_point.pose.position.x += self.lifting_distance
 
         self.goal_point = deepcopy(goal_point)
 
@@ -600,14 +600,28 @@ class LiftObject(Goal):
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
+        self.root_T_tip_start = self.world.compute_fk_np(self.root, self.tip)
+        self.start_tip_T_current_tip = np.eye(4)
+
     # @sequencable
     def make_constraints(self):
         # CartesianPosition + starting_offset
 
-        root_P_goal = self.transform_msg(self.root, self.goal_point)
+        start_tip_T_current_tip = w.TransMatrix(self.get_parameter_as_symbolic_expression('start_tip_T_current_tip'))
 
-        r_P_c = self.get_fk(self.root, self.tip).to_position()
-        r_P_g = w.Point3(root_P_goal)
+        root_T_tip = self.get_fk(self.root, self.tip)
+
+        r_P_c = root_T_tip.to_position()
+
+        r_calc = w.TransMatrix(self.god_map.evaluate_expr(root_T_tip))
+
+        # r_P_c = self.get_fk(self.root, self.tip).to_position()
+
+        t_T_g = w.TransMatrix(self.goal_point)
+        root_T_goal = r_calc.dot(start_tip_T_current_tip).dot(t_T_g)
+
+        # root_P_goal = self.transform_msg(self.root, self.goal_point)
+        r_P_g = root_T_goal.to_position()
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
@@ -617,6 +631,10 @@ class LiftObject(Goal):
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}{self.object_name}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
+
+    def update_params(self):
+        root_T_tip_current = self.world.compute_fk_np(self.root, self.tip)
+        self.start_tip_T_current_tip = np.dot(inverse_frame(self.root_T_tip_start), root_T_tip_current)
 
 
 class Retracting(Goal):
