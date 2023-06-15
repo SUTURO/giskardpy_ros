@@ -66,6 +66,8 @@ class ObjectGoal(Goal):
         except:
             loginfo('Could not get geometry from name')
 
+            return None
+
     def try_to_get_link(self,
                         expected: str,
                         fallback: str):
@@ -458,12 +460,20 @@ class GraspFrontal(ObjectGoal):
         self.velocity = velocity
         self.suffix = suffix
 
-        reference_frame, self.object_size = self.try_to_get_size_from_geometry(name=object_name,
-                                                                               geometry=object_geometry,
-                                                                               frame_fallback='base_link',
-                                                                               size_fallback=object_size)
+        object_in_world = self.get_object_by_name(self.object_name) is not None
 
-        grasp_offset = min(0.04, self.object_size.x / 2)
+        if object_in_world:
+            reference_frame, self.object_size = self.try_to_get_size_from_geometry(name=object_name,
+                                                                                   geometry=object_geometry,
+                                                                                   frame_fallback='base_link',
+                                                                                   size_fallback=object_size)
+            grasp_offset = -0.04
+
+        else:
+            self.object_size = Vector3(x=object_size.x, y=object_size.y, z=object_size.z)
+            reference_frame = 'base_link'
+
+            grasp_offset = max(min(0.08, self.object_size.x / 2), 0.05)
 
         # Grasp slightly below the center of the object
         self.object_pose.pose.position.z = self.object_pose.pose.position.z - 0.01
@@ -574,7 +584,7 @@ class LiftObject(ObjectGoal):
     def __init__(self,
                  object_name: str,
                  lifting: float = 0.02,
-                 root_link: Optional[str] = 'map',
+                 root_link: Optional[str] = 'base_link',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
@@ -737,7 +747,7 @@ class AlignHeight(ObjectGoal):
                  goal_pose: Optional[PoseStamped] = None,
                  object_height: Optional[float] = 0.0,
                  height_only: Optional[bool] = True,
-                 from_above=False,
+                 from_above: Optional[bool] = False,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
@@ -789,11 +799,12 @@ class AlignHeight(ObjectGoal):
 
         base_to_tip = self.world.compute_fk_pose(self.base_link, self.tip_link)
 
+        offset = 0.02
         base_goal_point = self.transform_msg(self.base_link, goal_point)
         base_goal_point.point.x = base_to_tip.pose.position.x
-        base_goal_point.point.z = base_goal_point.point.z + (self.object_height / 2)
-        if height_only:
-            base_goal_point.point.y = 0
+        base_goal_point.point.z = base_goal_point.point.z + (self.object_height / 2) + offset
+        #if height_only:
+            #base_goal_point.point.y = 0
         if from_above:
             base_goal_point.point.z += 0.3
 
@@ -876,7 +887,8 @@ class PlaceObject(ObjectGoal):
         self.velocity = velocity
         self.suffix = suffix
 
-        target_pose.pose.position.z += (self.object_height / 2)
+        z_offset = 0.02
+        target_pose.pose.position.z += (self.object_height / 2) + z_offset
 
         self.base_P_goal = self.transform_msg(self.base_link, target_pose)
         self.base_P_goal.pose.position.x -= self.radius
@@ -897,7 +909,7 @@ class PlaceObject(ObjectGoal):
             tip_frontal_axis_vector = Vector3(x=1, y=0, z=0)
             tip_vertical_axis_vector = Vector3(x=0, y=0, z=-1)
 
-            self.base_P_goal.pose.position.z += 0.3
+            self.base_P_goal.pose.position.z += 0.2
 
         self.tip_vertical_axis = Vector3Stamped(vector=tip_vertical_axis_vector)
         self.tip_vertical_axis.header.frame_id = self.tip_str
