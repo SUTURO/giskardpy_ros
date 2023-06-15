@@ -805,8 +805,9 @@ class AlignHeight(ObjectGoal):
         base_goal_point.point.z = base_goal_point.point.z + (self.object_height / 2) + offset
         #if height_only:
             #base_goal_point.point.y = 0
+
         if from_above:
-            base_goal_point.point.z += 0.3
+            base_goal_point.point.z += 0.05
 
         self.goal_point = self.transform_msg(self.tip_link, base_goal_point)
 
@@ -822,14 +823,28 @@ class AlignHeight(ObjectGoal):
 
         zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
 
-        hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
-        hand_orientation.header.frame_id = self.tip_str
+        if from_above:
+            base_V_g = Vector3Stamped()
+            base_V_g.header.frame_id = 'base_link'
+            base_V_g.vector.z = -1
 
-        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
-                                                          tip_link=self.tip_str,
-                                                          goal_orientation=hand_orientation,
-                                                          weight=self.weight,
-                                                          suffix=self.suffix))
+            tip_V_g = Vector3Stamped()
+            tip_V_g.header.frame_id = self.tip_str
+            tip_V_g.vector.z = 1
+
+            self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
+                                                     tip_link=self.tip_str,
+                                                     goal_normal=base_V_g,
+                                                     tip_normal=tip_V_g))
+        else:
+            hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
+            hand_orientation.header.frame_id = self.tip_str
+
+            self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
+                                                              tip_link=self.tip_str,
+                                                              goal_orientation=hand_orientation,
+                                                              weight=self.weight,
+                                                              suffix=self.suffix))
 
         base_orientation = QuaternionStamped(quaternion=zero_quaternion)
         base_orientation.header.frame_id = self.base_str
@@ -909,7 +924,7 @@ class PlaceObject(ObjectGoal):
             tip_frontal_axis_vector = Vector3(x=1, y=0, z=0)
             tip_vertical_axis_vector = Vector3(x=0, y=0, z=-1)
 
-            self.base_P_goal.pose.position.z += 0.2
+            self.base_P_goal.pose.position.z += 0.05
 
         self.tip_vertical_axis = Vector3Stamped(vector=tip_vertical_axis_vector)
         self.tip_vertical_axis.header.frame_id = self.tip_str
