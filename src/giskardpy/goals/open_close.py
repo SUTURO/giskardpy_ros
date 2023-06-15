@@ -29,13 +29,10 @@ class Open(Goal):
         """
         super().__init__()
 
-        tip_link = 'hand_palm_link'
-        print(tip_link)
-        print(environment_link)
-        print(tip_group)
-        print(environment_group)
-        print(goal_joint_state)
-        print(weight)
+        try:
+            tip_link = self.world.search_for_link_name('hand_gripper_tool_frame')
+        except:
+            tip_link = self.world.search_for_link_name('hand_palm_link')
 
         self.weight = weight
         self.tip_link = self.world.search_for_link_name(tip_link, tip_group)
