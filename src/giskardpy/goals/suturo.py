@@ -592,18 +592,13 @@ class LiftObject(ObjectGoal):
         super().__init__()
 
         self.object_name = object_name
-
-        # root link
-        self.root_link = self.world.search_for_link_name(root_link)
-
-        # tip link
-        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
-
         self.lifting_distance = lifting
+        self.root_link = self.world.search_for_link_name(root_link)
+        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
         self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
-        self.weight = weight
         self.velocity = velocity
+        self.weight = weight
         self.suffix = suffix
 
         # Lifting
@@ -678,17 +673,14 @@ class Retracting(ObjectGoal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        # root link
-        self.root_link = self.world.search_for_link_name(root_link)
-
-        # tip link
-        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
-
+        self.object_name = object_name
         self.distance = distance
+        self.root_link = self.world.search_for_link_name(root_link)
+        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
         self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
-        self.weight = weight
         self.velocity = velocity
+        self.weight = weight
         self.suffix = suffix
 
         hand_frames = ['hand_gripper_tool_frame', 'hand_palm_link']
@@ -768,34 +760,32 @@ class AlignHeight(ObjectGoal):
 
         super().__init__()
 
-        # root link
-        self.root_link = self.world.search_for_link_name(root_link)
+        self.object_name = object_name
 
-        # tip link
-        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
-
-        # Get object geometry from name
+        # Get object from name
         if goal_pose is None:
-            goal_pose, object_size, _ = self.get_object_by_name(object_name)
+            goal_pose, object_size, _ = self.get_object_by_name(self.object_name)
 
             object_height = object_size.z
 
         self.object_pose = goal_pose
         self.object_height = object_height
+        self.root_link = self.world.search_for_link_name(root_link)
+        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
         self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
+
         self.reference_str = self.root_str
+        self.base_link = self.world.search_for_link_name('base_link')
+        self.base_str = self.base_link.short_name
 
         # CartesianPosition
         goal_point = PointStamped()
         goal_point.header.frame_id = goal_pose.header.frame_id
         goal_point.point = goal_pose.pose.position
-
-        self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = self.base_link.short_name
 
         base_to_tip = self.world.compute_fk_pose(self.base_link, self.tip_link)
 
@@ -824,8 +814,9 @@ class AlignHeight(ObjectGoal):
         zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
 
         if from_above:
+            # Tip facing downwards
             base_V_g = Vector3Stamped()
-            base_V_g.header.frame_id = 'base_link'
+            base_V_g.header.frame_id = self.base_str
             base_V_g.vector.z = -1
 
             tip_V_g = Vector3Stamped()
@@ -837,6 +828,7 @@ class AlignHeight(ObjectGoal):
                                                      goal_normal=base_V_g,
                                                      tip_normal=tip_V_g))
         else:
+            # Tip facing frontal
             hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
             hand_orientation.header.frame_id = self.tip_str
 
@@ -877,35 +869,36 @@ class PlaceObject(ObjectGoal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        # root link
-        self.root_link = self.world.search_for_link_name(root_link)
-        self.root_str = self.root_link.short_name
-
-        # tip link
-        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
-        self.tip_str = self.tip_link.short_name
-
-        self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = self.base_link.short_name
+        self.object_name = object_name
+        self.target_pose = target_pose
 
         # Get object geometry from name
         if object_height is None:
             try:
-                _, self.object_size, _ = self.get_object_by_name(object_name)
+                _, self.object_size, _ = self.get_object_by_name(self.object_name)
                 object_height = self.object_size.z
             except:
                 object_height = 0.0
 
         self.object_height = object_height
         self.radius = radius
-        self.weight = weight
+        self.frontal_placing = frontal_placing
+        self.root_link = self.world.search_for_link_name(root_link)
+        self.root_str = self.root_link.short_name
+        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
+        self.tip_str = self.tip_link.short_name
         self.velocity = velocity
+        self.weight = weight
         self.suffix = suffix
 
-        z_offset = 0.02
-        target_pose.pose.position.z += (self.object_height / 2) + z_offset
+        self.base_link = self.world.search_for_link_name('base_link')
+        self.base_str = self.base_link.short_name
 
-        self.base_P_goal = self.transform_msg(self.base_link, target_pose)
+        # Calculation
+        z_offset = 0.02
+        self.target_pose.pose.position.z += (self.object_height / 2) + z_offset
+
+        self.base_P_goal = self.transform_msg(self.base_link, self.target_pose)
         self.base_P_goal.pose.position.x -= self.radius
 
         self.goal_frontal_axis = Vector3Stamped()
@@ -916,7 +909,7 @@ class PlaceObject(ObjectGoal):
         self.goal_vertical_axis.header.frame_id = self.root_str
         self.goal_vertical_axis.vector.z = 1
 
-        if frontal_placing:
+        if self.frontal_placing:
             tip_frontal_axis_vector = Vector3(x=0, y=0, z=1)
             tip_vertical_axis_vector = Vector3(x=1, y=0, z=0)
 
@@ -994,9 +987,12 @@ class PlaceNeatly(ForceSensorGoal):
         self.weight = weight
         self.suffix = suffix
 
+        self.base_link = self.world.search_for_link_name('base_link')
+        self.base_str = self.base_link.short_name
+
         self.add_constraints_of_goal(PlaceObject(object_name='',
                                                  target_pose=self.target_pose,
-                                                 root_link='base_link',
+                                                 root_link=self.base_str,
                                                  velocity=self.velocity,
                                                  weight=self.weight,
                                                  suffix=self.suffix))
@@ -1029,10 +1025,9 @@ class Tilting(Goal):
     def __init__(self,
                  direction: Optional[str] = None,
                  tilt_angle: Optional[float] = None,
+                 tip_link: Optional[str] = 'wrist_roll_joint',
                  suffix: Optional[str] = ''):
         super().__init__()
-
-        tip_link = 'wrist_roll_joint'
 
         max_angle = -2.0
 
@@ -1042,10 +1037,12 @@ class Tilting(Goal):
         if direction == 'right':
             tilt_angle = abs(tilt_angle)
 
+        self.tilt_angle = tilt_angle
+        self.tip_link = tip_link
         self.suffix = suffix
 
-        self.add_constraints_of_goal(JointPosition(goal=tilt_angle,
-                                                   joint_name=tip_link))
+        self.add_constraints_of_goal(JointPosition(goal=self.tilt_angle,
+                                                   joint_name=self.tip_link))
 
     def make_constraints(self):
         pass
