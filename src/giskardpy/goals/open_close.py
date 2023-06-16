@@ -30,9 +30,9 @@ class Open(Goal):
         super().__init__()
 
         try:
-            tip_link = self.world.search_for_link_name('hand_gripper_tool_frame')
+            tip_link = self.world.search_for_link_name('hand_gripper_tool_frame').short_name
         except:
-            tip_link = self.world.search_for_link_name('hand_palm_link')
+            tip_link = self.world.search_for_link_name('hand_palm_link').short_name
 
         self.weight = weight
         self.tip_link = self.world.search_for_link_name(tip_link, tip_group)
