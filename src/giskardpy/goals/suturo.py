@@ -425,19 +425,14 @@ class GraspFrontal(ObjectGoal):
         super().__init__()
 
         self.object_name = object_name
-
-        # root link
+        self.object_pose = object_pose
+        self.object_size = object_size
         self.root_link = self.world.search_for_link_name(root_link)
         self.root_str = self.root_link.short_name
-
-        # tip link
         self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
         self.tip_str = self.tip_link.short_name
-
-        self.object_pose = object_pose
-
-        self.weight = weight
         self.velocity = velocity
+        self.weight = weight
         self.suffix = suffix
 
         object_in_world = self.get_object_by_name(self.object_name) is not None
@@ -450,7 +445,6 @@ class GraspFrontal(ObjectGoal):
             grasp_offset = -0.04
 
         else:
-            self.object_size = Vector3(x=object_size.x, y=object_size.y, z=object_size.z)
             reference_frame = 'base_link'
 
             grasp_offset = max(min(0.08, self.object_size.x / 2), 0.05)
@@ -683,18 +677,15 @@ class Retracting(ObjectGoal):
     def make_constraints(self):
 
         start_tip_T_current_tip = w.TransMatrix(self.get_parameter_as_symbolic_expression('start_tip_T_current_tip'))
-
         root_T_tip = self.get_fk(self.root_link, self.tip_link)
 
-        r_P_c = root_T_tip.to_position()
-
-        r_calc = w.TransMatrix(self.god_map.evaluate_expr(root_T_tip))
-
         t_T_g = w.TransMatrix(self.goal_point)
-        root_T_goal = r_calc.dot(start_tip_T_current_tip).dot(t_T_g)
-        r_P_g = root_T_goal.to_position()
+        r_T_tip_eval = w.TransMatrix(self.god_map.evaluate_expr(root_T_tip))
 
-        self.add_debug_expr('retracting_goal', r_P_g)
+        root_T_goal = r_T_tip_eval.dot(start_tip_T_current_tip).dot(t_T_g)
+
+        r_P_g = root_T_goal.to_position()
+        r_P_c = root_T_tip.to_position()
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
