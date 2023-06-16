@@ -317,17 +317,16 @@ class GraspAbove(ObjectGoal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        # root link
-        self.root_link = self.world.search_for_link_name(root_link)
-        self.root_str = self.root_link.short_name
-
-        # tip link
-        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
-        self.tip_str = self.tip_link.short_name
+        self.object_name = object_name
         self.object_pose = object_pose
         self.object_size = object_size
-        self.weight = weight
+        self.object_geometry = object_geometry
+        self.root_link = self.world.search_for_link_name(root_link)
+        self.root_str = self.root_link.short_name
+        self.tip_link = self.try_to_get_link(tip_link, 'hand_palm_link')
+        self.tip_str = self.tip_link.short_name
         self.velocity = velocity
+        self.weight = weight
         self.suffix = suffix
 
         # Grasp at the upper edge of the object
@@ -337,28 +336,19 @@ class GraspAbove(ObjectGoal):
         root_goal_point.header.frame_id = self.object_pose.header.frame_id
         root_goal_point.point = self.object_pose.pose.position
 
-        reference_frame, self.object_size = self.try_to_get_size_from_geometry(name=object_name,
-                                                                               geometry=object_geometry,
-                                                                               frame_fallback='map',
+        reference_frame, self.object_size = self.try_to_get_size_from_geometry(name=self.object_name,
+                                                                               geometry=self.object_geometry,
+                                                                               frame_fallback='base_link',
                                                                                size_fallback=object_size)
-
-        # Frame/grasp difference
-        frame_difference = 0.08
 
         # Root -> Reference frame for hand_palm_link offset
         offset_tip_goal_point = self.transform_msg(reference_frame, root_goal_point)
 
-        bar_tolerance = 0.1
-
         if self.object_size.x >= self.object_size.y:
             tip_bar_vector = Vector3(x=1, y=0, z=0)
-            bar_length = self.object_size.x
-            print('using x')
 
         else:
             tip_bar_vector = Vector3(x=0, y=-1, z=0)
-            bar_length = self.object_size.y
-            print('using y')
 
         self.tip_vertical_axis = Vector3Stamped(vector=tip_bar_vector)
         self.tip_vertical_axis.header.frame_id = self.tip_str
@@ -370,9 +360,6 @@ class GraspAbove(ObjectGoal):
         # bar_center
         self.bar_center_point = self.transform_msg(self.tip_link, offset_tip_goal_point)
 
-        # bar_length
-        self.bar_length = bar_length * bar_tolerance
-
         # Align Planes
         # object axis horizontal/vertical
         self.goal_frontal_axis = Vector3Stamped()
@@ -383,13 +370,6 @@ class GraspAbove(ObjectGoal):
         self.tip_frontal_axis = Vector3Stamped()
         self.tip_frontal_axis.header.frame_id = self.tip_str
         self.tip_frontal_axis.vector.z = 1
-
-        '''self.add_constraints_of_goal(GraspBar(root_link=self.root_str,
-                                              tip_link=self.tip_str,
-                                              tip_grasp_axis=self.tip_vertical_axis,
-                                              bar_center=self.bar_center_point,
-                                              bar_axis=self.bar_axis,
-                                              bar_length=self.bar_length))'''
 
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
                                                        tip_link=self.tip_str,
