@@ -975,21 +975,21 @@ class GiskardWrapper:
                            open_gripper=open_gripper,
                            joint_position=joint_position)
 
-    def grasp_object(self,
-                     object_name: str,
-                     object_pose: Optional[PoseStamped] = None,
-                     object_size: Optional[Vector3] = None,
-                     root_link: Optional[str] = 'map',
-                     tip_link: Optional[str] = 'hand_palm_link',
-                     frontal_grasping=True):
+    def reaching(self,
+                 object_name: str,
+                 goal_pose: Optional[PoseStamped] = None,
+                 object_size: Optional[Vector3] = None,
+                 root_link: Optional[str] = 'map',
+                 tip_link: Optional[str] = 'hand_palm_link',
+                 from_above: Optional[bool] = False):
 
-        self.set_json_goal(constraint_type='GraspObject',
+        self.set_json_goal(constraint_type='Reaching',
                            object_name=object_name,
-                           object_pose=object_pose,
+                           goal_pose=goal_pose,
                            object_size=object_size,
                            root_link=root_link,
                            tip_link=tip_link,
-                           frontal_grasping=frontal_grasping)
+                           from_above=from_above)
 
     def place_object(self,
                      object_name: str,
@@ -998,35 +998,34 @@ class GiskardWrapper:
                      radius: Optional[float] = 0.0,
                      root_link: Optional[str] = 'map',
                      tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                     frontal=True):
+                     from_above: Optional[bool] = False):
 
         self.set_json_goal(constraint_type='PlaceObject',
                            object_name=object_name,
-                           target_pose=goal_pose,
+                           goal_pose=goal_pose,
                            object_height=object_height,
                            radius=radius,
                            root_link=root_link,
                            tip_link=tip_link,
-                           frontal=frontal)
+                           from_above=from_above)
 
     def lift_object(self,
                     object_name: str,
                     lifting: Optional[float] = 0.02,
-                    tip_link: Optional[str] = 'hand_palm_link',
-                    tip_start: PointStamped = None):
+                    root_link: Optional[str] = 'base_link',
+                    tip_link: Optional[str] = 'hand_palm_link'):
 
         self.set_json_goal(constraint_type='LiftObject',
                            object_name=object_name,
                            lifting=lifting,
-                           tip_link=tip_link,
-                           tip_starting_position=tip_start)
+                           root_link=root_link,
+                           tip_link=tip_link)
 
     def retract(self,
                 object_name: str,
                 distance: Optional[float] = 0.1,
                 root_link: Optional[str] = 'map',
                 tip_link: Optional[str] = 'base_link',
-                tip_start: PointStamped = None,
                 velocity: Optional[float] = 0.2):
 
         self.set_json_goal(constraint_type='Retracting',
@@ -1034,22 +1033,21 @@ class GiskardWrapper:
                            distance=distance,
                            root_link=root_link,
                            tip_link=tip_link,
-                           velocity=velocity,
-                           tip_starting_position=tip_start)
+                           velocity=velocity)
 
     def align_height(self,
                      object_name: str,
-                     object_pose: PoseStamped,
+                     goal_pose: PoseStamped,
                      height: float,
-                     tip_link='hand_palm_link',
-                     height_only=True):
+                     tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                     from_above: Optional[bool] = False):
 
         self.set_json_goal(constraint_type='AlignHeight',
                            object_name=object_name,
-                           goal_pose=object_pose,
+                           goal_pose=goal_pose,
                            object_height=height,
                            tip_link=tip_link,
-                           height_only=height_only)
+                           from_above=from_above)
 
     def sequence_goal(self,
                       goal_type_seq: List,
