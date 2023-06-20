@@ -248,7 +248,9 @@ class MoveGripper(Goal):
 
 class Reaching(ObjectGoal):
     def __init__(self,
+                 context,
                  object_name: str,
+                 object_shape = '',
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
                  from_above: Optional[bool] = False,
@@ -261,6 +263,7 @@ class Reaching(ObjectGoal):
         Determine the grasping perspective of the object
         """
         super().__init__()
+        self.context = context
         self.object_name = object_name
         self.from_above = from_above
         self.root_str = root_link
@@ -287,26 +290,63 @@ class Reaching(ObjectGoal):
         if self.object_size.z < 0.04:
             self.from_above = True
 
-        if self.from_above:
-            self.add_constraints_of_goal(GraspAbove(object_name=self.object_name,
-                                                    goal_pose=self.goal_pose,
-                                                    object_size=self.object_size,
-                                                    reference_frame_alignment=self.reference_frame,
-                                                    root_link=self.root_str,
-                                                    tip_link=self.tip_str,
-                                                    velocity=self.velocity,
-                                                    weight=self.weight,
-                                                    suffix=self.suffix))
-        else:
-            self.add_constraints_of_goal(GraspFrontal(object_name=self.object_name,
-                                                      goal_pose=self.goal_pose,
-                                                      object_size=self.object_size,
-                                                      reference_frame_alignment=self.reference_frame,
-                                                      root_link=self.root_str,
-                                                      tip_link=self.tip_str,
-                                                      velocity=self.velocity,
-                                                      weight=self.weight,
-                                                      suffix=self.suffix))
+        if context['action'] == 'grasping':
+            if context['object_shape'] == 'sphere' or context['object_shape'] == 'cylinder':
+                radius = self.object_size.x
+            else:
+                radius = 0.0
+
+            if self.from_above:
+                self.add_constraints_of_goal(GraspAbove(object_name=self.object_name,
+                                                        goal_pose=self.goal_pose,
+                                                        object_size=self.object_size,
+                                                        reference_frame_alignment=self.reference_frame,
+                                                        root_link=self.root_str,
+                                                        tip_link=self.tip_str,
+                                                        velocity=self.velocity,
+                                                        weight=self.weight,
+                                                        suffix=self.suffix))
+            else:
+                self.add_constraints_of_goal(GraspFrontal(object_name=self.object_name,
+                                                          goal_pose=self.goal_pose,
+                                                          object_size=self.object_size,
+                                                          reference_frame_alignment=self.reference_frame,
+                                                          root_link=self.root_str,
+                                                          tip_link=self.tip_str,
+                                                          velocity=self.velocity,
+                                                          weight=self.weight,
+                                                          suffix=self.suffix))
+        elif context['action'] == 'placing':
+            if context['object_shape'] == 'sphere' or context['object_shape'] == 'cylinder':
+                radius = self.object_size.x
+            else:
+                radius = 0.0
+
+            self.add_constraints_of_goal(PlaceObject(object_name=self.object_name,
+                                                     goal_pose=self.goal_pose,
+                                                     object_height=self.object_size.z,
+                                                     radius=radius,
+                                                     from_above=self.from_above,
+                                                     root_link=self.root_str,
+                                                     tip_link=self.tip_str,
+                                                     velocity=self.velocity,
+                                                     weight=self.weight,
+                                                     suffix=self.suffix))
+        elif context['action'] == 'pouring':
+
+            height = 0.0 # bowl_height / 2 + object_height/2
+            radius = 0.0 # bowl_radius/2 + object_radius/2
+
+            self.add_constraints_of_goal(PlaceObject(object_name=self.object_name,
+                                                     goal_pose=self.goal_pose,
+                                                     object_height=height,
+                                                     radius=radius,
+                                                     from_above=self.from_above,
+                                                     root_link=self.root_str,
+                                                     tip_link=self.tip_str,
+                                                     velocity=self.velocity,
+                                                     weight=self.weight,
+                                                     suffix=self.suffix))
 
     def make_constraints(self):
         pass
@@ -984,7 +1024,7 @@ class PlaceNeatly(ForceSensorGoal):
     def __init__(self,
                  goal_pose: PoseStamped,
                  from_above: Optional[bool] = False,
-                 velocity: Optional[float] = 0.05,
+                 velocity: Optional[float] = 0.025,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
 
