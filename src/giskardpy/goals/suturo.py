@@ -4,12 +4,13 @@ from typing import Optional, List, Dict
 import numpy as np
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion, Pose, \
     Point
+from manipulation_msgs.msg import TakePoseAction, TakePoseActionGoal
 
 from giskardpy import casadi_wrapper as w, identifier
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
 from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
-from giskardpy.goals.joint_goals import JointPosition
+from giskardpy.goals.joint_goals import JointPosition, JointPositionList
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
@@ -142,7 +143,7 @@ class TestForceSensorGoal(ForceSensorGoal):
 class SequenceGoal(Goal):
     def __init__(self,
                  goal_type_seq: List[Goal],
-                 kwargs_seq: List[Dict],
+                 context: List[Dict],
                  # sequence_goals: Dict,
                  **kwargs):
         super().__init__()
@@ -250,10 +251,9 @@ class Reaching(ObjectGoal):
     def __init__(self,
                  context,
                  object_name: str,
-                 object_shape = '',
+                 object_shape: str = '',
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
-                 from_above: Optional[bool] = False,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
@@ -265,12 +265,17 @@ class Reaching(ObjectGoal):
         super().__init__()
         self.context = context
         self.object_name = object_name
-        self.from_above = from_above
+        self.object_shape = object_shape
         self.root_str = root_link
         self.tip_str = tip_link
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
+
+        self.from_above = False
+
+        if 'from_above' in context:
+            self.from_above = context['from_above']
 
         # Get object geometry from name
         if goal_pose is None:
@@ -286,12 +291,8 @@ class Reaching(ObjectGoal):
 
             logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
 
-        # TODO: Add restriction: if goal_pose.z + grasping difference + object_size/2 > 0.79: frontal grasping = False
-        if self.object_size.z < 0.04:
-            self.from_above = True
-
         if context['action'] == 'grasping':
-            if context['object_shape'] == 'sphere' or context['object_shape'] == 'cylinder':
+            if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
             else:
                 radius = 0.0
@@ -317,7 +318,7 @@ class Reaching(ObjectGoal):
                                                           weight=self.weight,
                                                           suffix=self.suffix))
         elif context['action'] == 'placing':
-            if context['object_shape'] == 'sphere' or context['object_shape'] == 'cylinder':
+            if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
             else:
                 radius = 0.0
@@ -333,13 +334,15 @@ class Reaching(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
         elif context['action'] == 'pouring':
+            grasped_object_size = self.object_size
+            pour_object_size = self.convert_list_to_size(context['pour_object_size'])
 
-            height = 0.0 # bowl_height / 2 + object_height/2
-            radius = 0.0 # bowl_radius/2 + object_radius/2
+            new_height = (pour_object_size.z / 2) + (grasped_object_size.z / 2)
+            radius = (pour_object_size.x / 2) + (grasped_object_size.x / 2)
 
             self.add_constraints_of_goal(PlaceObject(object_name=self.object_name,
                                                      goal_pose=self.goal_pose,
-                                                     object_height=height,
+                                                     object_height=new_height,
                                                      radius=radius,
                                                      from_above=self.from_above,
                                                      root_link=self.root_str,
@@ -773,10 +776,10 @@ class Retracting(ObjectGoal):
 
 class AlignHeight(ObjectGoal):
     def __init__(self,
+                 context,
                  object_name: str,
                  goal_pose: Optional[PoseStamped] = None,
                  object_height: Optional[float] = 0.0,
-                 from_above: Optional[bool] = False,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
@@ -807,7 +810,6 @@ class AlignHeight(ObjectGoal):
 
         self.goal_pose = goal_pose
         self.object_height = object_height
-        self.from_above = from_above
         self.root_link = self.world.search_for_link_name(root_link)
         self.tip_link = self.try_to_get_link(expected=tip_link, fallback='hand_palm_link')
         self.root_str = self.root_link.short_name
@@ -815,6 +817,11 @@ class AlignHeight(ObjectGoal):
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
+
+        self.from_above = False
+
+        if 'from_above' in context:
+            self.from_above = context['from_above']
 
         self.reference_str = self.root_str
         self.base_link = self.world.search_for_link_name('base_link')
@@ -1020,19 +1027,22 @@ class PlaceObject(ObjectGoal):
         return f'{s}_suffix:{self.suffix}'
 
 
-class PlaceNeatly(ForceSensorGoal):
+class Placing(ForceSensorGoal):
     def __init__(self,
+                 context,
                  goal_pose: PoseStamped,
-                 from_above: Optional[bool] = False,
                  velocity: Optional[float] = 0.025,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
 
         self.goal_pose = goal_pose
-        self.from_above = from_above
+        self.from_above = False
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
+
+        if 'from_above' in context:
+            self.from_above = context['from_above']
 
         super().__init__()
 
@@ -1100,8 +1110,78 @@ class Tilting(Goal):
         self.tip_link = tip_link
         self.suffix = suffix
 
-        self.add_constraints_of_goal(JointPosition(goal=self.tilt_angle,
-                                                   joint_name=self.tip_link))
+        self.add_constraints_of_goal(JointPosition(joint_name=self.tip_link,
+                                                   goal=self.tilt_angle,
+                                                   max_velocity=100))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
+
+
+class TakePose(Goal):
+
+    def __init__(self,
+                 pose_keyword=None,
+                 joint_positions=None,
+                 suffix: Optional[str] = ''):
+        super().__init__()
+
+        if pose_keyword is None:
+            if joint_positions is None:
+                logwarn(f'No valid keyword or joint position given')
+                return
+
+            j = TakePoseActionGoal()
+
+            # Do stuff with given joint positions
+            head_pan_joint = joint_positions.head_pan_joint
+            head_tilt_joint = joint_positions.head_tilt_joint
+            arm_lift_joint = joint_positions.arm_lift_joint
+            arm_flex_joint = joint_positions.arm_flex_joint
+            arm_roll_joint = joint_positions.arm_roll_joint
+            wrist_flex_joint = joint_positions.wrist_flex_joint
+            wrist_roll_joint = joint_positions.wrist_roll_joint
+
+        else:
+            if pose_keyword == 'perceive':
+                head_pan_joint = -1.54
+                head_tilt_joint = 0.0
+                arm_lift_joint = -0.0
+                arm_flex_joint = -0.5
+                arm_roll_joint = -1.8
+                wrist_flex_joint = -1.57
+                wrist_roll_joint = 0.0
+
+            elif pose_keyword == 'park':
+                head_pan_joint = -1.54
+                head_tilt_joint = 0.0
+                arm_lift_joint = -0.0
+                arm_flex_joint = -0.5
+                arm_roll_joint = -1.8
+                wrist_flex_joint = -1.57
+                wrist_roll_joint = 0.0
+            else:
+                loginfo(f'{pose_keyword} is not a valid pose')
+                return
+
+        joint_states = {
+            u'head_pan_joint': head_pan_joint,
+            u'head_tilt_joint': head_tilt_joint,
+            u'arm_lift_joint': arm_lift_joint,
+            u'arm_flex_joint': arm_flex_joint,
+            u'arm_roll_joint': arm_roll_joint,
+            u'wrist_flex_joint': wrist_flex_joint,
+            u'wrist_roll_joint': wrist_roll_joint
+        }
+
+        self.goal_state = joint_states
+        self.suffix = suffix
+
+        self.add_constraints_of_goal(JointPositionList(goal_state=self.goal_state))
 
     def make_constraints(self):
         pass
