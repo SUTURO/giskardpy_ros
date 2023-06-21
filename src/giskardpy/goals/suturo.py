@@ -299,12 +299,19 @@ class Reaching(ObjectGoal):
             if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
             else:
-                radius = 0.0
 
-            self.add_constraints_of_goal(GraspObject(object_name=self.object_name,
-                                                     goal_pose=self.goal_pose,
+                object_in_world = self.get_object_by_name(self.object_name) is not None
+
+                if object_in_world:
+                    radius = -0.04
+
+                else:
+                    radius = max(min(0.08, self.object_size.x / 2), 0.05)
+
+            self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                      object_size=self.object_size,
                                                      reference_frame_alignment=self.reference_frame,
+                                                     frontal_offset=radius,
                                                      from_above=self.from_above,
                                                      root_link=self.root_str,
                                                      tip_link=self.tip_str,
@@ -318,8 +325,7 @@ class Reaching(ObjectGoal):
             else:
                 radius = 0.0
 
-            self.add_constraints_of_goal(PlaceObject(object_name=self.object_name,
-                                                     goal_pose=self.goal_pose,
+            self.add_constraints_of_goal(PlaceObject(goal_pose=self.goal_pose,
                                                      object_height=self.object_size.z,
                                                      radius=radius,
                                                      from_above=self.from_above,
@@ -335,8 +341,7 @@ class Reaching(ObjectGoal):
             new_height = (pour_object_size.z / 2) + (grasped_object_size.z / 2)
             radius = (pour_object_size.x / 2) + (grasped_object_size.x / 2)
 
-            self.add_constraints_of_goal(PlaceObject(object_name=self.object_name,
-                                                     goal_pose=self.goal_pose,
+            self.add_constraints_of_goal(PlaceObject(goal_pose=self.goal_pose,
                                                      object_height=new_height,
                                                      radius=radius,
                                                      from_above=self.from_above,
@@ -356,10 +361,10 @@ class Reaching(ObjectGoal):
 
 class GraspObject(ObjectGoal):
     def __init__(self,
-                 object_name: Optional[str] = None,
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
                  reference_frame_alignment: Optional[str] = 'base_link',
+                 frontal_offset: Optional[float] = 0.0,
                  from_above: Optional[bool] = False,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
@@ -368,10 +373,10 @@ class GraspObject(ObjectGoal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        self.object_name = object_name
         self.goal_pose = goal_pose
         self.object_size = object_size
         self.reference_frame = reference_frame_alignment
+        self.frontal_offset = frontal_offset
         self.from_above = from_above
         self.root_link = self.world.search_for_link_name(root_link)
         self.root_str = self.root_link.short_name
@@ -408,15 +413,7 @@ class GraspObject(ObjectGoal):
             # self.bar_axis.vector = self.set_grasp_axis(self.object_size, maximum=True)
             self.goal_vertical_axis.vector.z = 1
 
-            object_in_world = self.get_object_by_name(self.object_name) is not None
-
-            if object_in_world:
-                grasp_offset = -0.04
-
-            else:
-                grasp_offset = max(min(0.08, self.object_size.x / 2), 0.05)
-
-            self.goal_point.point.x += grasp_offset
+            self.goal_point.point.x += frontal_offset
             self.goal_point.point.z -= 0.01
 
         # tip_axis
@@ -501,8 +498,8 @@ class GraspObject(ObjectGoal):
 
 class LiftObject(ObjectGoal):
     def __init__(self,
-                 object_name: str,
-                 lifting: float = 0.02,
+                 object_name: Optional[str] = '',
+                 lifting: Optional[float] = 0.02,
                  root_link: Optional[str] = 'base_link',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
@@ -583,7 +580,7 @@ class LiftObject(ObjectGoal):
 
 class Retracting(ObjectGoal):
     def __init__(self,
-                 object_name: str,
+                 object_name: Optional[str] = '',
                  distance: Optional[float] = 0.2,
                  root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'base_link',
@@ -666,7 +663,7 @@ class Retracting(ObjectGoal):
 class AlignHeight(ObjectGoal):
     def __init__(self,
                  context,
-                 object_name: str,
+                 object_name: Optional[str] = '',
                  goal_pose: Optional[PoseStamped] = None,
                  object_height: Optional[float] = 0.0,
                  root_link: Optional[str] = 'map',
@@ -726,7 +723,7 @@ class AlignHeight(ObjectGoal):
         offset = 0.02
         base_goal_point = self.transform_msg(self.base_link, goal_point)
         base_goal_point.point.x = base_to_tip.pose.position.x
-        base_goal_point.point.z = base_goal_point.point.z + (self.object_height / 2) + offset
+        base_goal_point.point.z += (self.object_height / 2) + offset
 
         zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
 
@@ -800,9 +797,8 @@ class AlignHeight(ObjectGoal):
 
 class PlaceObject(ObjectGoal):
     def __init__(self,
-                 object_name: str,
                  goal_pose: PoseStamped,
-                 object_height: Optional[float] = None,
+                 object_height: Optional[float] = 0.0,
                  radius: Optional[float] = 0.0,
                  from_above: Optional[bool] = False,
                  root_link: Optional[str] = 'map',
@@ -812,17 +808,7 @@ class PlaceObject(ObjectGoal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        self.object_name = object_name
         self.goal_pose = goal_pose
-
-        # Get object geometry from name
-        if object_height is None:
-            try:
-                _, self.object_size = self.get_object_by_name(self.object_name)
-                object_height = self.object_size.z
-            except:
-                object_height = 0.0
-
         self.object_height = object_height
         self.radius = radius
         self.from_above = from_above
@@ -938,8 +924,7 @@ class Placing(ForceSensorGoal):
         self.base_link = self.world.search_for_link_name('base_link')
         self.base_str = self.base_link.short_name
 
-        self.add_constraints_of_goal(PlaceObject(object_name='',
-                                                 goal_pose=self.goal_pose,
+        self.add_constraints_of_goal(PlaceObject(goal_pose=self.goal_pose,
                                                  root_link=self.base_str,
                                                  from_above=self.from_above,
                                                  velocity=self.velocity,
@@ -994,6 +979,8 @@ class Tilting(Goal):
 
         if direction == 'right':
             tilt_angle = abs(tilt_angle)
+        else:
+            tilt_angle = abs(tilt_angle) * -1
 
         self.tilt_angle = tilt_angle
         self.tip_link = tip_link

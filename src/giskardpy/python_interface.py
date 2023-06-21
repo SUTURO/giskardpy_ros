@@ -992,7 +992,6 @@ class GiskardWrapper:
                            from_above=from_above)
 
     def place_object(self,
-                     object_name: str,
                      goal_pose: PoseStamped,
                      object_height: float,
                      radius: Optional[float] = 0.0,
@@ -1001,7 +1000,6 @@ class GiskardWrapper:
                      from_above: Optional[bool] = False):
 
         self.set_json_goal(constraint_type='PlaceObject',
-                           object_name=object_name,
                            goal_pose=goal_pose,
                            object_height=object_height,
                            radius=radius,
