@@ -142,14 +142,14 @@ class TestForceSensorGoal(ForceSensorGoal):
 
 class SequenceGoal(Goal):
     def __init__(self,
-                 goal_type_seq: List[Goal],
-                 context: List[Dict],
-                 motion_sequence: List[Dict],
+                 motion_sequence: Dict,
+                 goal_type_seq=None,
+                 kwargs_seq=None,
                  **kwargs):
         super().__init__()
 
-        #self.goal_type_seq = goal_type_seq
-        #self.kwargs_seq = kwargs_seq
+        self.goal_type_seq = goal_type_seq
+        self.kwargs_seq = kwargs_seq
         self.motion_sequence = motion_sequence
 
         self.current_goal = 0
@@ -158,16 +158,16 @@ class SequenceGoal(Goal):
 
         # with dict:
 
-        for motion in self.motion_sequence:
-            for index, (goal_name, goal_args) in enumerate(motion.items()):
-            # for index, (goal, args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
-                params = deepcopy(goal_args)
-                params['suffix'] = index
+        # for motion in self.motion_sequence:
+        # for index, (goal_name, goal_args) in enumerate(motion.items()):
+        for index, (goal, goal_args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
+            params = deepcopy(goal_args)
+            params['suffix'] = index
 
-                goal: Goal = goal(**params)
-                self.add_constraints_of_goal(goal)
+            goal: Goal = goal(**params)
+            self.add_constraints_of_goal(goal)
 
-                self.goal_summary.append(goal)
+            self.goal_summary.append(goal)
 
     def make_constraints(self):
 
@@ -571,6 +571,8 @@ class LiftObject(ObjectGoal):
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
 
+
+
         '''c_R_r_eval = self.get_fk_evaluated(self.tip_link, self.root_link).to_rotation()
 
         self.add_rotation_goal_constraints(frame_R_goal=r_R_g,
@@ -593,7 +595,7 @@ class Retracting(ObjectGoal):
                  object_name: Optional[str] = '',
                  distance: Optional[float] = 0.2,
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'base_link',
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
@@ -650,7 +652,17 @@ class Retracting(ObjectGoal):
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
 
-        r_R_g = root_T_goal.to_rotation()
+        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
+        hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
+        hand_orientation.header.frame_id = self.tip_str
+
+        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
+                                                          tip_link=self.tip_str,
+                                                          goal_orientation=hand_orientation,
+                                                          weight=self.weight,
+                                                          suffix=self.suffix))
+
+        '''r_R_g = root_T_goal.to_rotation()
         r_R_c = root_T_tip.to_rotation()
 
         c_R_r_eval = self.get_fk_evaluated(self.tip_link, self.root_link).to_rotation()
@@ -659,7 +671,7 @@ class Retracting(ObjectGoal):
                                            frame_R_goal=r_R_g,
                                            current_R_frame_eval=c_R_r_eval,
                                            reference_velocity=self.velocity,
-                                           weight=self.weight)
+                                           weight=self.weight)'''
 
     def update_params(self):
         root_T_tip_current = self.world.compute_fk_np(self.root_link, self.tip_link)

@@ -1050,12 +1050,10 @@ class GiskardWrapper:
                            tip_link=tip_link)
 
     def sequence_goal(self,
-                      goal_type_seq: List,
-                      kwargs_seq: List):
+                      motion_sequence):
 
         self.set_json_goal(constraint_type='SequenceGoal',
-                           goal_type_seq=goal_type_seq,
-                           kwargs_seq=kwargs_seq)
+                           motion_sequence=motion_sequence)
 
     def test_goal(self,
                   goal_name: str,
