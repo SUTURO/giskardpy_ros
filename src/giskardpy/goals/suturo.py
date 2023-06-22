@@ -4,7 +4,6 @@ from typing import Optional, List, Dict
 import numpy as np
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion, Pose, \
     Point
-from manipulation_msgs.msg import TakePoseAction, TakePoseActionGoal
 
 from giskardpy import casadi_wrapper as w, identifier
 from giskardpy.goals.align_planes import AlignPlanes
@@ -33,7 +32,6 @@ class ObjectGoal(Goal):
             object_link = self.world.get_link(object_name)
             object_geometry: LinkGeometry = object_link.collisions[0]
 
-            # Get object
             goal_pose = self.world.compute_fk_pose('map', object_name)
 
             loginfo(f'goal_pose by name: {goal_pose}')
@@ -58,12 +56,10 @@ class ObjectGoal(Goal):
                 raise Exception('Not supported geometry')
 
             loginfo(f'Got geometry: {object_type}')
-
             return goal_pose, object_size
 
         except:
             loginfo('Could not get geometry from name')
-
             return None
 
     def convert_list_to_size(self, size: List) -> Vector3:
@@ -84,10 +80,7 @@ class ObjectGoal(Goal):
             link = self.world.search_for_link_name(expected)
             return link
         except:
-            # link = self.world.search_for_link_name(fallback)
-
             logwarn(f'Could not find {expected}.')
-            return self.world.search_for_link_name('hand_palm_link')
             raise Exception  # TODO:  CouldFindLinkException
 
     def try_to_get_size_from_geometry(self,
@@ -102,7 +95,6 @@ class ObjectGoal(Goal):
             reference_frame = name
 
         else:
-            # Object not in giskard. Calculation will be less precise
             object_size = Vector3(x=size_fallback.x, y=size_fallback.y, z=size_fallback.z)
 
             reference_frame = frame_fallback
@@ -116,7 +108,6 @@ class TestForceSensorGoal(ForceSensorGoal):
                  **kwargs):
         super().__init__()
 
-        # self.add_constraints_of_goal(LiftObject(object_name=''))
         self.add_constraints_of_goal(Retracting(object_name=''))
 
     def make_constraints(self):
@@ -155,10 +146,6 @@ class SequenceGoal(Goal):
         self.eq_weights = []
         self.goal_summary = []
 
-        # with dict:
-
-        # for motion in self.motion_sequence:
-        # for index, (goal_name, goal_args) in enumerate(motion.items()):
         for index, (goal, goal_args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
             params = deepcopy(goal_args)
             params['suffix'] = index
@@ -829,90 +816,6 @@ class AlignHeight(ObjectGoal):
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
-
-
-'''class PlaceObject(ObjectGoal):
-    def __init__(self,
-                 goal_pose: PoseStamped,
-                 object_height: Optional[float] = 0.0,
-                 frontal_offset: Optional[float] = 0.0,
-                 from_above: Optional[bool] = False,
-                 root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 velocity: Optional[float] = 0.2,
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 suffix: Optional[str] = ''):
-        super().__init__()
-
-
-        # Calculation
-        z_offset = 0.02
-        self.goal_pose.pose.position.z += (self.object_height / 2) + z_offset
-
-        self.base_P_goal = self.transform_msg(self.base_link, self.goal_pose)
-        self.base_P_goal.pose.position.x -= self.frontal_offset
-
-        self.goal_frontal_axis = Vector3Stamped()
-        self.goal_frontal_axis.header.frame_id = self.base_str
-        self.goal_frontal_axis.vector.x = 1
-
-        self.goal_vertical_axis = Vector3Stamped()
-        self.goal_vertical_axis.header.frame_id = self.root_str
-        self.goal_vertical_axis.vector.z = 1
-
-        if self.from_above:
-            tip_frontal_axis_vector = Vector3(x=1, y=0, z=0)
-            tip_vertical_axis_vector = Vector3(x=0, y=0, z=-1)
-
-            self.base_P_goal.pose.position.z += 0.05
-        else:
-            tip_frontal_axis_vector = Vector3(x=0, y=0, z=1)
-            tip_vertical_axis_vector = Vector3(x=1, y=0, z=0)
-
-        self.tip_vertical_axis = Vector3Stamped(vector=tip_vertical_axis_vector)
-        self.tip_vertical_axis.header.frame_id = self.tip_str
-
-        self.tip_frontal_axis = Vector3Stamped(vector=tip_frontal_axis_vector)
-        self.tip_frontal_axis.header.frame_id = self.tip_str
-
-        goal_point = PointStamped()
-        goal_point.header.frame_id = self.base_P_goal.header.frame_id
-        goal_point.point = self.base_P_goal.pose.position
-
-        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
-
-        # Align with destination
-        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
-                                                 tip_link=self.tip_str,
-                                                 goal_normal=self.goal_frontal_axis,
-                                                 tip_normal=self.tip_frontal_axis,
-                                                 reference_velocity=self.velocity,
-                                                 weight=self.weight,
-                                                 suffix=self.suffix))
-
-        # Align vertical
-        self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
-                                                 tip_link=self.tip_str,
-                                                 goal_normal=self.goal_vertical_axis,
-                                                 tip_normal=self.tip_vertical_axis,
-                                                 reference_velocity=self.velocity,
-                                                 weight=self.weight,
-                                                 suffix=self.suffix))
-
-        # Move to Position
-        self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
-                                                       tip_link=self.tip_str,
-                                                       goal_point=goal_point,
-                                                       reference_velocity=self.velocity,
-                                                       weight=self.weight,
-                                                       suffix=self.suffix))
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        s = super().__str__()
-        return f'{s}_suffix:{self.suffix}'''
 
 
 class Placing(ForceSensorGoal):
