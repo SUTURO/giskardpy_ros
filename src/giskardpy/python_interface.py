@@ -1024,6 +1024,7 @@ class GiskardWrapper:
     def retract(self,
                 object_name: str,
                 distance: Optional[float] = 0.1,
+                reference_frame: Optional[str] = 'base_link',
                 root_link: Optional[str] = 'map',
                 tip_link: Optional[str] = 'base_link',
                 velocity: Optional[float] = 0.2):
@@ -1031,6 +1032,7 @@ class GiskardWrapper:
         self.set_json_goal(constraint_type='Retracting',
                            object_name=object_name,
                            distance=distance,
+                           reference_frame=reference_frame,
                            root_link=root_link,
                            tip_link=tip_link,
                            velocity=velocity)
@@ -1061,3 +1063,23 @@ class GiskardWrapper:
 
         self.set_json_goal(constraint_type=goal_name,
                            **kwargs)
+
+    def take_pose(self,
+                  pose_keyword: Optional[str] = None,
+                  head_pan_joint: Optional[float] = None,
+                  head_tilt_joint: Optional[float] = None,
+                  arm_lift_joint: Optional[float] = None,
+                  arm_flex_joint: Optional[float] = None,
+                  arm_roll_joint: Optional[float] = None,
+                  wrist_flex_joint: Optional[float] = None,
+                  wrist_roll_joint: Optional[float] = None):
+
+        self.set_json_goal(constraint_type='TakePose',
+                           pose_keyword=pose_keyword,
+                           head_pan_joint=head_pan_joint,
+                           head_tilt_joint=head_tilt_joint,
+                           arm_lift_joint=arm_lift_joint,
+                           arm_flex_joint=arm_flex_joint,
+                           arm_roll_joint=arm_roll_joint,
+                           wrist_flex_joint=wrist_flex_joint,
+                           wrist_roll_joint=wrist_roll_joint)

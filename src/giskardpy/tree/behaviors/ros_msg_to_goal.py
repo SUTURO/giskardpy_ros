@@ -99,7 +99,7 @@ class RosMsgToGoal(GetGoal):
                 parsed_json = json.loads(constraint.parameter_value_pair)
                 params = self.replace_jsons_with_ros_messages(parsed_json)
 
-                if 'SequenceGoal' in [x.type for x in cmd.constraints]:
+                if 'SequenceGoal' in [x.type for x in cmd.constraints] or 'TakePose' in [x.type for x in cmd.constraints]:
                     if constraint.type == 'AvoidJointLimits':
                         continue
 
