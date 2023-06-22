@@ -976,20 +976,22 @@ class GiskardWrapper:
                            joint_position=joint_position)
 
     def reaching(self,
+                 context,
                  object_name: str,
+                 object_shape: str,
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link',
-                 from_above: Optional[bool] = False):
+                 tip_link: Optional[str] = 'hand_palm_link'):
 
         self.set_json_goal(constraint_type='Reaching',
+                           context=context,
                            object_name=object_name,
+                           object_shape=object_shape,
                            goal_pose=goal_pose,
                            object_size=object_size,
                            root_link=root_link,
-                           tip_link=tip_link,
-                           from_above=from_above)
+                           tip_link=tip_link)
 
     def place_object(self,
                      goal_pose: PoseStamped,
@@ -1034,18 +1036,18 @@ class GiskardWrapper:
                            velocity=velocity)
 
     def align_height(self,
+                     context,
                      object_name: str,
                      goal_pose: PoseStamped,
                      height: float,
-                     tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                     from_above: Optional[bool] = False):
+                     tip_link: Optional[str] = 'hand_gripper_tool_frame'):
 
         self.set_json_goal(constraint_type='AlignHeight',
+                           context=context,
                            object_name=object_name,
                            goal_pose=goal_pose,
                            object_height=height,
-                           tip_link=tip_link,
-                           from_above=from_above)
+                           tip_link=tip_link)
 
     def sequence_goal(self,
                       goal_type_seq: List,

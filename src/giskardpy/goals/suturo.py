@@ -276,10 +276,15 @@ class Reaching(ObjectGoal):
         self.weight = weight
         self.suffix = suffix
 
+        self.action = context['action']
         self.from_above = False
+        self.vertical_align = False
 
         if 'from_above' in context:
             self.from_above = context['from_above']
+
+        if 'vertical_align' in context:
+            self.vertical_align = context['vertical_align']
 
         # Get object geometry from name
         if goal_pose is None:
@@ -295,7 +300,7 @@ class Reaching(ObjectGoal):
 
             logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
 
-        if context['action'] == 'grasping':
+        if self.action == 'grasping':
             if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
             else:
@@ -313,13 +318,14 @@ class Reaching(ObjectGoal):
                                                      reference_frame_alignment=self.reference_frame,
                                                      frontal_offset=radius,
                                                      from_above=self.from_above,
+                                                     vertical_align=self.vertical_align,
                                                      root_link=self.root_str,
                                                      tip_link=self.tip_str,
                                                      velocity=self.velocity,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
-        elif context['action'] == 'placing':
+        elif self.action == 'placing':
             if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
             else:
@@ -334,7 +340,7 @@ class Reaching(ObjectGoal):
                                                      velocity=self.velocity,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
-        elif context['action'] == 'pouring':
+        elif self.action == 'pouring':
             grasped_object_size = self.object_size
             pour_object_size = self.convert_list_to_size(context['pour_object_size'])
 
@@ -366,6 +372,7 @@ class GraspObject(ObjectGoal):
                  reference_frame_alignment: Optional[str] = 'base_link',
                  frontal_offset: Optional[float] = 0.0,
                  from_above: Optional[bool] = False,
+                 vertical_align: Optional[bool] = False,
                  root_link: Optional[str] = 'odom',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
@@ -378,6 +385,7 @@ class GraspObject(ObjectGoal):
         self.reference_frame = reference_frame_alignment
         self.frontal_offset = frontal_offset
         self.from_above = from_above
+        self.vertical_align = vertical_align
         self.root_link = self.world.search_for_link_name(root_link)
         self.root_str = self.root_link.short_name
         self.tip_link = self.try_to_get_link(expected=tip_link, fallback='hand_palm_link')
@@ -389,8 +397,14 @@ class GraspObject(ObjectGoal):
         self.goal_frontal_axis = Vector3Stamped()
         self.goal_frontal_axis.header.frame_id = self.reference_frame
 
+        self.tip_frontal_axis = Vector3Stamped()
+        self.tip_frontal_axis.header.frame_id = self.tip_str
+
         self.goal_vertical_axis = Vector3Stamped()
         self.goal_vertical_axis.header.frame_id = self.reference_frame
+
+        self.tip_vertical_axis = Vector3Stamped()
+        self.tip_vertical_axis.header.frame_id = self.tip_str
 
         root_goal_point = PointStamped()
         root_goal_point.header.frame_id = self.goal_pose.header.frame_id
@@ -400,30 +414,26 @@ class GraspObject(ObjectGoal):
 
         if self.from_above:
             # Grasp at the upper edge of the object
-            self.goal_pose.pose.position.z += self.object_size.z / 2
-
-            self.goal_frontal_axis.vector.z = -1
+            self.goal_point.point.z += self.object_size.z / 2
 
             self.goal_vertical_axis.vector.x = 1
-        else:
+            self.goal_frontal_axis.vector.z = -1
 
-            self.goal_frontal_axis.vector.x = 1
+        else:
 
             # Temporary solution to not be bothered with vertical grasping
             # self.bar_axis.vector = self.set_grasp_axis(self.object_size, maximum=True)
             self.goal_vertical_axis.vector.z = 1
+            self.goal_frontal_axis.vector.x = 1
 
             self.goal_point.point.x += frontal_offset
             self.goal_point.point.z -= 0.01
 
-        # tip_axis
-        self.tip_vertical_axis = Vector3Stamped()
-        self.tip_vertical_axis.header.frame_id = self.tip_str
-        self.tip_vertical_axis.vector.x = 1
+        if self.vertical_align:
+            self.tip_vertical_axis.vector.y = 1
+        else:
+            self.tip_vertical_axis.vector.x = 1
 
-        # align z tip axis with object axis
-        self.tip_frontal_axis = Vector3Stamped()
-        self.tip_frontal_axis.header.frame_id = self.tip_str
         self.tip_frontal_axis.vector.z = 1
 
         # Position
