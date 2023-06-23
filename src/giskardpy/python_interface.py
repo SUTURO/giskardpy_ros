@@ -1084,4 +1084,20 @@ class GiskardWrapper:
                            wrist_flex_joint=wrist_flex_joint,
                            wrist_roll_joint=wrist_roll_joint)
 
+    def mixing(self,
+               center: PointStamped,
+               radius: float,
+               scale: float,
+               mixing_time: Optional[float] = 100,
+               tip_link: Optional[str] = 'hand_palm_link',
+               velocity: Optional[float] = 0.2,
+               weight: Optional[float] = WEIGHT_ABOVE_CA):
 
+        self.set_json_goal(constraint_type='Mixing',
+                           center=center,
+                           radius=radius,
+                           scale=scale,
+                           mixing_time=mixing_time,
+                           tip_link=tip_link,
+                           velocity=velocity,
+                           weight=weight)

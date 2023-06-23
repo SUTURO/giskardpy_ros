@@ -226,7 +226,8 @@ class MoveGripper(Goal):
             self.g.set_gripper_joint_position(joint_position)
 
         else:
-            self.g.close_gripper_force(1)
+            self.g.set_gripper_joint_position(joint_position)
+            # self.g.close_gripper_force(1)
 
     def make_constraints(self):
         pass
