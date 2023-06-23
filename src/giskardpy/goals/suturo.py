@@ -1002,7 +1002,7 @@ class Mixing(Goal):
                  center: PointStamped,
                  radius: float,
                  scale: float,
-                 root_link: Optional[str] = 'odom',
+                 mixing_time: Optional[float] = 300,
                  tip_link: Optional[str] = 'hand_palm_link',
                  velocity: Optional[float] = 0.2,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
@@ -1012,14 +1012,26 @@ class Mixing(Goal):
         self.center = self.transform_msg(self.world.root_link_name, center)
         self.radius = radius
         self.scale = scale
-        self.tip_link_name = self.world.get_link_name(tip_link)
+        self.mixing_time = mixing_time
+        self.tip_link = self.world.search_for_link_name(tip_link)
         self.weight = weight
         self.suffix = suffix
 
+
+        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
+        hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
+        hand_orientation.header.frame_id = 'base_link'
+
+        self.add_constraints_of_goal(CartesianOrientation(root_link='map',
+                                                          tip_link='base_link',
+                                                          goal_orientation=hand_orientation,
+                                                          weight=self.weight,
+                                                          suffix=self.suffix))
+
     def make_constraints(self):
-        map_T_bf = self.get_fk(self.world.root_link_name, self.tip_link_name)
+        map_T_bf = self.get_fk(self.world.root_link_name, self.tip_link)
         t = self.traj_time_in_seconds() * self.scale
-        t = w.min(t, 30 * self.scale)
+        t = w.min(t, self.mixing_time * self.scale)
         x = w.cos(t) * self.radius
         y = w.sin(t) * self.radius
         map_P_center = w.Point3(self.center)
@@ -1028,8 +1040,8 @@ class Mixing(Goal):
         map_V_bf_to_center = map_T_center.dot(center_V_center_to_bf_goal)
         bf_V_y = w.Vector3((0, 1, 0))
         map_V_y = map_T_bf.dot(bf_V_y)
-        map_V_y.vis_frame = self.tip_link_name
-        map_V_bf_to_center.vis_frame = self.tip_link_name
+        map_V_y.vis_frame = self.tip_link
+        map_V_bf_to_center.vis_frame = self.tip_link
         map_V_y.scale(1)
         map_V_bf_to_center.scale(1)
 
