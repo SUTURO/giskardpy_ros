@@ -1002,21 +1002,23 @@ class Mixing(Goal):
                  center: PointStamped,
                  radius: float,
                  scale: float,
-                 mixing_time: Optional[float] = 300,
+                 mixing_time: Optional[float] = 100,
                  tip_link: Optional[str] = 'hand_palm_link',
                  velocity: Optional[float] = 0.2,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
+        self.god_map.set_data(identifier.MaxTrajectoryLength + ['length'], (mixing_time*scale)+1)
+
         self.center = self.transform_msg(self.world.root_link_name, center)
         self.radius = radius
         self.scale = scale
         self.mixing_time = mixing_time
         self.tip_link = self.world.search_for_link_name(tip_link)
+        self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
-
 
         zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
         hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
@@ -1051,7 +1053,7 @@ class Mixing(Goal):
         # self.add_debug_expr('map_P_bf_goal', map_P_bf_goal)
         self.add_point_goal_constraints(frame_P_current=map_P_bf,
                                         frame_P_goal=map_P_bf_goal,
-                                        reference_velocity=0.1,
+                                        reference_velocity=self.velocity,
                                         weight=self.weight,
                                         name='position')
 
