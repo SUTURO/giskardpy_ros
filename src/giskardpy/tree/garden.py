@@ -639,7 +639,7 @@ class StandAlone(TreeManager):
         planning_4.add_child(TimePlugin())
         if self.god_map.get_data(identifier.MaxTrajectoryLength_enabled):
             kwargs = self.god_map.get_data(identifier.MaxTrajectoryLength)
-            planning_4.add_child(MaxTrajectoryLength('traj length check', **kwargs))
+            planning_4.add_child(failure_is_success(MaxTrajectoryLength)('traj length check', **kwargs))
         return planning_4
 
     def grow_plan_postprocessing(self):

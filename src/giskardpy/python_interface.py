@@ -1083,3 +1083,5 @@ class GiskardWrapper:
                            arm_roll_joint=arm_roll_joint,
                            wrist_flex_joint=wrist_flex_joint,
                            wrist_roll_joint=wrist_roll_joint)
+
+
