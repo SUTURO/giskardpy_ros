@@ -460,19 +460,9 @@ class GraspObject(ObjectGoal):
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
-        # Do not rotate base
-        self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = self.base_link.short_name
-        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
-
-        base_orientation = QuaternionStamped(quaternion=zero_quaternion)
-        base_orientation.header.frame_id = self.base_str
-
-        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
-                                                          tip_link=self.base_str,
-                                                          goal_orientation=base_orientation,
-                                                          weight=self.weight,
-                                                          suffix=self.suffix))
+        self.add_constraints_of_goal(NonRotationGoal(tip_link='base_link',
+                                                     weight=self.weight,
+                                                     suffix=self.suffix))
 
     def make_constraints(self):
         pass
@@ -540,15 +530,9 @@ class LiftObject(ObjectGoal):
 
         self.goal_point = deepcopy(goal_point_tip)
 
-        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
-        hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
-        hand_orientation.header.frame_id = self.tip_str
-
-        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
-                                                          tip_link=self.tip_str,
-                                                          goal_orientation=hand_orientation,
-                                                          weight=self.weight,
-                                                          suffix=self.suffix))
+        self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
+                                                     weight=self.weight,
+                                                     suffix=self.suffix))
 
         self.root_T_tip_start = self.world.compute_fk_np(self.root_link, self.tip_link)
         self.start_tip_T_current_tip = np.eye(4)
@@ -635,15 +619,9 @@ class Retracting(ObjectGoal):
 
         self.start_tip_T_current_tip = np.eye(4)
 
-        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
-        hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
-        hand_orientation.header.frame_id = self.tip_str
-
-        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
-                                                          tip_link=self.tip_str,
-                                                          goal_orientation=hand_orientation,
-                                                          weight=self.weight,
-                                                          suffix=self.suffix))
+        self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
+                                                     weight=self.weight,
+                                                     suffix=self.suffix))
 
     def make_constraints(self):
 
@@ -748,8 +726,6 @@ class AlignHeight(ObjectGoal):
         base_goal_point.point.x = base_to_tip.pose.position.x
         base_goal_point.point.z += (self.object_height / 2) + offset
 
-        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
-
         if self.from_above:
             base_goal_point.point.z += 0.05
 
@@ -782,23 +758,13 @@ class AlignHeight(ObjectGoal):
 
         else:
             # Tip facing frontal
-            hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
-            hand_orientation.header.frame_id = self.tip_str
+            self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
+                                                         weight=self.weight,
+                                                         suffix=self.suffix))
 
-            self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
-                                                              tip_link=self.tip_str,
-                                                              goal_orientation=hand_orientation,
-                                                              weight=self.weight,
-                                                              suffix=self.suffix))
-
-        base_orientation = QuaternionStamped(quaternion=zero_quaternion)
-        base_orientation.header.frame_id = self.base_str
-
-        self.add_constraints_of_goal(CartesianOrientation(root_link=self.root_str,
-                                                          tip_link=self.base_str,
-                                                          goal_orientation=base_orientation,
-                                                          weight=self.weight,
-                                                          suffix=self.suffix))
+        self.add_constraints_of_goal(NonRotationGoal(tip_link=self.base_str,
+                                                     weight=self.weight,
+                                                     suffix=self.suffix))
 
         self.goal_point = self.transform_msg(self.tip_link, base_goal_point)
 
@@ -1020,15 +986,7 @@ class Mixing(Goal):
         self.weight = weight
         self.suffix = suffix
 
-        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
-        hand_orientation = QuaternionStamped(quaternion=zero_quaternion)
-        hand_orientation.header.frame_id = 'base_link'
-
-        self.add_constraints_of_goal(CartesianOrientation(root_link='map',
-                                                          tip_link='base_link',
-                                                          goal_orientation=hand_orientation,
-                                                          weight=self.weight,
-                                                          suffix=self.suffix))
+        self.add_constraints_of_goal(NonRotationGoal(tip_link='base_link'))
 
     def make_constraints(self):
         map_T_bf = self.get_fk(self.world.root_link_name, self.tip_link)
@@ -1050,7 +1008,7 @@ class Mixing(Goal):
         center_P_bf_goal = w.Point3((x, y, 0))
         map_P_bf_goal = map_T_center.dot(center_P_bf_goal)
         map_P_bf = map_T_bf.to_position()
-        # self.add_debug_expr('map_P_bf_goal', map_P_bf_goal)
+
         self.add_point_goal_constraints(frame_P_current=map_P_bf,
                                         frame_P_goal=map_P_bf_goal,
                                         reference_velocity=self.velocity,
@@ -1061,3 +1019,31 @@ class Mixing(Goal):
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
 
+
+class NonRotationGoal(Goal):
+    def __init__(self,
+                 tip_link: str,
+                 weight: float = WEIGHT_ABOVE_CA,
+                 suffix: Optional[str] = ''):
+        super().__init__()
+
+        self.tip_link = tip_link
+        self.weight = weight
+        self.suffix = suffix
+
+        zero_quaternion = Quaternion(x=0, y=0, z=0, w=1)
+        tip_orientation = QuaternionStamped(quaternion=zero_quaternion)
+        tip_orientation.header.frame_id = self.tip_link
+
+        self.add_constraints_of_goal(CartesianOrientation(root_link='map',
+                                                          tip_link=self.tip_link,
+                                                          goal_orientation=tip_orientation,
+                                                          weight=self.weight,
+                                                          suffix=self.suffix))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
