@@ -968,12 +968,10 @@ class GiskardWrapper:
         raise ServiceException(res.error_msg)
 
     def move_gripper(self,
-                     open_gripper=True,
-                     joint_position=1.0):
+                     open_gripper=True):
 
         self.set_json_goal(constraint_type='MoveGripper',
-                           open_gripper=open_gripper,
-                           joint_position=joint_position)
+                           open_gripper=open_gripper)
 
     def reaching(self,
                  context,
@@ -1089,8 +1087,9 @@ class GiskardWrapper:
                radius: float,
                scale: float,
                mixing_time: Optional[float] = 100,
+               root_link: Optional[str] = 'map',
                tip_link: Optional[str] = 'hand_palm_link',
-               velocity: Optional[float] = 0.2,
+               velocity: Optional[float] = 0.1,
                weight: Optional[float] = WEIGHT_ABOVE_CA):
 
         self.set_json_goal(constraint_type='Mixing',
@@ -1098,6 +1097,7 @@ class GiskardWrapper:
                            radius=radius,
                            scale=scale,
                            mixing_time=mixing_time,
+                           root_link=root_link,
                            tip_link=tip_link,
                            velocity=velocity,
                            weight=weight)

@@ -209,8 +209,7 @@ class SequenceGoal(Goal):
 
 class MoveGripper(Goal):
     def __init__(self,
-                 open_gripper=True,
-                 joint_position=1.0):
+                 open_gripper=True):
         """
         Open / CLose Gripper.
         Current implementation is not final and will be replaced with a follow joint trajectory connection.
@@ -219,15 +218,21 @@ class MoveGripper(Goal):
         """
 
         super().__init__()
-        self.g = Gripper(apply_force_action_server='/hsrb/gripper_controller/apply_force',
+        self.g = Gripper(apply_force_action_server='/hsrb/gripper_controller/grasp',
                          follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
 
         if open_gripper:
+            joint_position = 0.8
+        else:
+            joint_position = -0.8
+
+        if open_gripper:
+            #self.g.close_gripper_force(joint_position)
             self.g.set_gripper_joint_position(joint_position)
 
         else:
+            #self.g.close_gripper_force(joint_position)
             self.g.set_gripper_joint_position(joint_position)
-            # self.g.close_gripper_force(1)
 
     def make_constraints(self):
         pass
@@ -295,7 +300,8 @@ class Reaching(ObjectGoal):
                 object_in_world = self.get_object_by_name(self.object_name) is not None
 
                 if object_in_world:
-                    radius = -0.04
+                    radius = -0.04  # shelf
+                    radius = 0.02  # drawer
 
                 else:
                     radius = max(min(0.08, self.object_size.x / 2), 0.05)
@@ -969,9 +975,10 @@ class Mixing(Goal):
                  center: PointStamped,
                  radius: float,
                  scale: float,
-                 mixing_time: Optional[float] = 100,
-                 tip_link: Optional[str] = 'hand_palm_link',
-                 velocity: Optional[float] = 0.2,
+                 mixing_time: Optional[float] = 60,
+                 root_link: Optional[str] = 'map',
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                 velocity: Optional[float] = 0.1,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
@@ -982,6 +989,7 @@ class Mixing(Goal):
         self.radius = radius
         self.scale = scale
         self.mixing_time = mixing_time
+        self.root_link = self.world.search_for_link_name(root_link)
         self.tip_link = self.world.search_for_link_name(tip_link)
         self.velocity = velocity
         self.weight = weight
@@ -990,7 +998,7 @@ class Mixing(Goal):
         self.add_constraints_of_goal(NonRotationGoal(tip_link='base_link'))
 
     def make_constraints(self):
-        map_T_bf = self.get_fk(self.world.root_link_name, self.tip_link)
+        map_T_bf = self.get_fk(self.root_link, self.tip_link)
         t = self.traj_time_in_seconds() * self.scale
         t = w.min(t, self.mixing_time * self.scale)
         x = w.cos(t) * self.radius
@@ -1047,4 +1055,4 @@ class NonRotationGoal(Goal):
 
     def __str__(self) -> str:
         s = super().__str__()
-        return f'{s}_suffix:{self.suffix}'
+        return f'{s}{self.tip_link}_suffix:{self.suffix}'
