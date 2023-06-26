@@ -10,7 +10,8 @@ import giskardpy.utils.tfwrapper as tf
 from giskard_msgs.msg import Constraint as Constraint_msg
 from giskardpy import casadi_wrapper as w
 from giskardpy.casadi_wrapper import symbol_expr_float
-from giskardpy.exceptions import ConstraintInitalizationException, GiskardException, UnknownGroupException
+from giskardpy.exceptions import ConstraintInitalizationException, GiskardException, UnknownGroupException, \
+    UnknownLinkException
 from giskardpy.god_map import GodMap
 from giskardpy.model.joints import OneDofJoint
 from giskardpy.model.world import WorldTree
@@ -115,6 +116,8 @@ class Goal(ABC):
             try:
                 msg.header.frame_id = self.world.search_for_link_name(msg.header.frame_id)
             except UnknownGroupException:
+                pass
+            except UnknownLinkException:
                 pass
             return self.world.transform_msg(target_frame, msg)
         except KeyError:
