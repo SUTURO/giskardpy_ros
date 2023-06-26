@@ -208,32 +208,37 @@ class SequenceGoal(Goal):
 
 class MoveGripper(Goal):
     def __init__(self,
-                 open_gripper=True):
+                 gripper_state: str,
+                 suffix=''):
         """
         Open / CLose Gripper.
         Current implementation is not final and will be replaced with a follow joint trajectory connection.
 
-        :param open_gripper: True to open gripper; False to close gripper.
+        :param gripper_state: True to open gripper; False to close gripper.
         """
 
         super().__init__()
 
+        self.suffix = suffix
+
         self.g = SuturoGripper(apply_force_action_server='/hsrb/gripper_controller/grasp',
                                follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
 
-        self.open_gripper = open_gripper
-
-        if self.open_gripper:
-            self.joint_position = 0.8
-        else:
-            self.joint_position = -0.8
+        self.gripper_state = gripper_state
 
     def make_constraints(self):
+        if self.gripper_state == 'open':
+            self.g.close_gripper_force(0.8)
 
-        self.g.close_gripper_force(self.joint_position)
+        elif self.gripper_state == 'neutral':
+            self.g.set_gripper_joint_position(0.5)
+
+        else:
+            self.g.close_gripper_force(-0.8)
 
     def __str__(self) -> str:
-        return super().__str__()
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
 
 class Reaching(ObjectGoal):

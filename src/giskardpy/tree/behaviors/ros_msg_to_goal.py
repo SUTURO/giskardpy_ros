@@ -78,6 +78,9 @@ class RosMsgToGoal(GetGoal):
 
         for constraint in itertools.chain(cmd.constraints):
             try:
+                if constraint.type == 'AvoidJointLimits':
+                    continue
+
                 loginfo(f'Adding constraint of type: \'{constraint.type}\'')
                 C = self.allowed_constraint_types[constraint.type]
             except KeyError:
@@ -98,10 +101,6 @@ class RosMsgToGoal(GetGoal):
             try:
                 parsed_json = json.loads(constraint.parameter_value_pair)
                 params = self.replace_jsons_with_ros_messages(parsed_json)
-
-                if 'SequenceGoal' in [x.type for x in cmd.constraints] or 'TakePose' in [x.type for x in cmd.constraints]:
-                    if constraint.type == 'AvoidJointLimits':
-                        continue
 
                 if issubclass(C, SequenceGoal):
                     params['goal_type_seq'] = [self.allowed_constraint_types[x] for x in list(params['motion_sequence'].keys())]

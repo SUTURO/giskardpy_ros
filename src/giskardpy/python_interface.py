@@ -968,10 +968,10 @@ class GiskardWrapper:
         raise ServiceException(res.error_msg)
 
     def move_gripper(self,
-                     open_gripper=True):
+                     gripper_state: str):
 
         self.set_json_goal(constraint_type='MoveGripper',
-                           open_gripper=open_gripper)
+                           gripper_state=gripper_state)
 
     def reaching(self,
                  context,
