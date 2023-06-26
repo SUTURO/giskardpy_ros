@@ -141,18 +141,18 @@ class SequenceGoal(Goal):
         self.kwargs_seq = kwargs_seq
         self.motion_sequence = motion_sequence
 
-        self.current_goal = 0
+        self.current_goal_number = 0
         self.eq_weights = []
         self.goal_summary = []
 
-        for index, (goal, goal_args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
+        for index, (current_goal, goal_args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
             params = deepcopy(goal_args)
             params['suffix'] = index
 
-            goal: Goal = goal(**params)
-            self.add_constraints_of_goal(goal)
+            goal_instance: Goal = current_goal(**params)
+            self.add_constraints_of_goal(goal_instance)
 
-            self.goal_summary.append(goal)
+            self.goal_summary.append(goal_instance)
 
     def make_constraints(self):
 
@@ -177,7 +177,7 @@ class SequenceGoal(Goal):
 
     def asdf(self, goal_number, eq_number, compiled_constraint):
 
-        if goal_number != self.current_goal:
+        if goal_number != self.current_goal_number:
             return 0
 
         eq_constraint_error = compiled_constraint.fast_call(self.god_map.get_values(compiled_constraint.str_params))
@@ -191,12 +191,12 @@ class SequenceGoal(Goal):
         if goal_not_finished:
             return 1
 
-        self.current_goal += 1
+        self.current_goal_number += 1
 
-        if self.current_goal >= len(self.goal_summary):
+        if self.current_goal_number >= len(self.goal_summary):
             return 0
 
-        self.goal_summary[self.current_goal].update_params()
+        self.goal_summary[self.current_goal_number].update_params()
 
         loginfo('next goal')
 
