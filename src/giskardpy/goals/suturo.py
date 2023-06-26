@@ -2,8 +2,7 @@ from copy import deepcopy
 from typing import Optional, List, Dict
 
 import numpy as np
-from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion, Pose, \
-    Point
+from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
 
 from giskardpy import casadi_wrapper as w, identifier
 from giskardpy.goals.align_planes import AlignPlanes
@@ -14,7 +13,7 @@ from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, Cyl
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
-from suturo_manipulation.gripper import Gripper
+from suturo_manipulation.suturo_gripper import SuturoGripper
 
 
 class ObjectGoal(Goal):
@@ -218,24 +217,20 @@ class MoveGripper(Goal):
         """
 
         super().__init__()
-        self.g = Gripper(apply_force_action_server='/hsrb/gripper_controller/grasp',
-                         follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
 
-        if open_gripper:
-            joint_position = 0.8
+        self.g = SuturoGripper(apply_force_action_server='/hsrb/gripper_controller/grasp',
+                               follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
+
+        self.open_gripper = open_gripper
+
+        if self.open_gripper:
+            self.joint_position = 0.8
         else:
-            joint_position = -0.8
-
-        if open_gripper:
-            #self.g.close_gripper_force(joint_position)
-            self.g.set_gripper_joint_position(joint_position)
-
-        else:
-            #self.g.close_gripper_force(joint_position)
-            self.g.set_gripper_joint_position(joint_position)
+            self.joint_position = -0.8
 
     def make_constraints(self):
-        pass
+
+        self.g.close_gripper_force(self.joint_position)
 
     def __str__(self) -> str:
         return super().__str__()
@@ -983,7 +978,7 @@ class Mixing(Goal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        self.god_map.set_data(identifier.MaxTrajectoryLength + ['length'], (mixing_time*scale)+1)
+        self.god_map.set_data(identifier.MaxTrajectoryLength + ['length'], (mixing_time * scale) + 1)
 
         self.center = self.transform_msg(self.world.root_link_name, center)
         self.radius = radius
