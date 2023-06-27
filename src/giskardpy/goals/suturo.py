@@ -577,7 +577,7 @@ class Retracting(ObjectGoal):
                  distance: Optional[float] = 0.2,
                  reference_frame: Optional[str] = 'base_link',
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                 tip_link: Optional[str] = 'hand_palm_link',
                  velocity: Optional[float] = 0.2,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
@@ -950,7 +950,8 @@ class TakePose(Goal):
         self.goal_state = joint_states
         self.suffix = suffix
 
-        self.add_constraints_of_goal(JointPositionList(goal_state=self.goal_state))
+        self.add_constraints_of_goal(JointPositionList(goal_state=self.goal_state,
+                                                       suffix=self.suffix))
 
     def make_constraints(self):
         pass

@@ -79,10 +79,13 @@ class SuturoGripperHandler(GiskardBehavior):
         p.positions = [pos]
         p.velocities = [0]
         p.effort = [0.1]
-        p.time_from_start = rospy.Time(3)
+        p.time_from_start = rospy.Time(1)
         goal.trajectory.points = [p]
         self._gripper_controller.send_goal(goal)
 
     @profile
     def update(self):
         return Status.SUCCESS
+
+#    def terminate(self, new_status):
+#        self.tree.remove_node(self.name)

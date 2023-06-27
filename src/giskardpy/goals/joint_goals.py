@@ -81,7 +81,8 @@ class JointPositionContinuous(Goal):
                  group_name: str = None,
                  weight: float = WEIGHT_BELOW_CA,
                  max_velocity: float = 1,
-                 hard: bool = False):
+                 hard: bool = False,
+                 suffix: Optional[str] = ''):
         """
         Use JointPosition or JointPositionList instead.
         This goal will move a continuous joint to a goal position.
@@ -96,6 +97,7 @@ class JointPositionContinuous(Goal):
         self.weight = weight
         self.max_velocity = max_velocity
         self.hard = hard
+        self.suffix = suffix
         super().__init__()
         self.joint_name = self.world.search_for_joint_name(joint_name, group_name)
         if not self.world.is_joint_continuous(self.joint_name):
@@ -123,7 +125,7 @@ class JointPositionContinuous(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.joint_name}'
+        return f'{s}/{self.joint_name}_suffix:{self.suffix}'
 
 
 class JointPositionPrismatic(Goal):
@@ -133,7 +135,8 @@ class JointPositionPrismatic(Goal):
                  group_name: str = None,
                  weight: float = WEIGHT_BELOW_CA,
                  max_velocity: float = 1,
-                 hard: bool = False):
+                 hard: bool = False,
+                 suffix: Optional[str] = ''):
         """
         Use JointPosition or JointPositionList instead.
         Moves a prismatic joint to a goal position.
@@ -148,6 +151,7 @@ class JointPositionPrismatic(Goal):
         self.weight = weight
         self.max_velocity = max_velocity
         self.hard = hard
+        self.suffix = suffix
         super().__init__()
         self.joint_name = self.world.search_for_joint_name(joint_name, group_name)
         if not self.world.is_joint_prismatic(self.joint_name):
@@ -180,7 +184,7 @@ class JointPositionPrismatic(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.joint_name}'
+        return f'{s}/{self.joint_name}_suffix:{self.suffix}'
 
 
 class JointVelocityRevolute(Goal):
@@ -243,7 +247,8 @@ class JointPositionRevolute(Goal):
                  group_name: str = None,
                  weight: float = WEIGHT_BELOW_CA,
                  max_velocity: float = 1,
-                 hard: bool = False):
+                 hard: bool = False,
+                 suffix: Optional[str] = ''):
         """
         Use JointPosition or JointPositionList instead.
         Moves a revolute joint to a goal pose.
@@ -258,6 +263,7 @@ class JointPositionRevolute(Goal):
         self.weight = weight
         self.max_velocity = max_velocity
         self.hard = hard
+        self.suffix = suffix
         super().__init__()
         self.joint_name = self.world.search_for_joint_name(joint_name, group_name)
         if not self.world.is_joint_revolute(self.joint_name):
@@ -292,7 +298,7 @@ class JointPositionRevolute(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.joint_name}'
+        return f'{s}/{self.joint_name}_suffix:{self.suffix}'
 
 
 class ShakyJointPositionRevoluteOrPrismatic(Goal):
@@ -503,7 +509,8 @@ class JointPositionList(Goal):
                  group_name: Optional[str] = None,
                  weight: Optional[float] = None,
                  max_velocity: Optional[float] = None,
-                 hard: bool = False):
+                 hard: bool = False,
+                 suffix: Optional[str] = ''):
         """
         Calls JointPosition for a list of joints.
         :param goal_state: maps joint_name to goal position
@@ -514,12 +521,14 @@ class JointPositionList(Goal):
         """
         super().__init__()
         self.joint_names = list(goal_state.keys())
+        self.suffix = suffix
         if len(goal_state) == 0:
             raise ConstraintInitalizationException(f'Can\'t initialize {self} with no joints.')
         for joint_name, goal_position in goal_state.items():
             params = {'joint_name': joint_name,
                       'group_name': group_name,
-                      'goal': goal_position}
+                      'goal': goal_position,
+                      'suffix': suffix}
             if weight is not None:
                 params['weight'] = weight
             if max_velocity is not None:
@@ -532,7 +541,7 @@ class JointPositionList(Goal):
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.joint_names}'
+        return f'{s}/{self.joint_names}_suffix:{self.suffix}'
 
 
 class JointPosition(Goal):
@@ -542,7 +551,8 @@ class JointPosition(Goal):
                  group_name: Optional[str] = None,
                  weight: float = WEIGHT_BELOW_CA,
                  max_velocity: float = 100,
-                 hard: bool = False):
+                 hard: bool = False,
+                 suffix: Optional[str] = ''):
         """
         Moves joint_name to goal.
         :param joint_name:
@@ -552,6 +562,7 @@ class JointPosition(Goal):
         :param max_velocity: m/s for prismatic joints, rad/s for revolute or continuous joints, limited by urdf
         """
         super().__init__()
+        self.suffix = suffix
         self.joint_name = self.world.search_for_joint_name(joint_name, group_name)
         if self.world.is_joint_continuous(self.joint_name):
             C = JointPositionContinuous
@@ -566,11 +577,12 @@ class JointPosition(Goal):
                                        goal=goal,
                                        weight=weight,
                                        max_velocity=max_velocity,
-                                       hard=hard))
+                                       hard=hard,
+                                       suffix=self.suffix))
 
     def make_constraints(self):
         pass
 
     def __str__(self):
         s = super().__str__()
-        return f'{s}/{self.joint_name}'
+        return f'{s}/{self.joint_name}_suffix:{self.suffix}'
