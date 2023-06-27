@@ -1,11 +1,11 @@
 from time import time
-from typing import Dict
+from typing import Dict, Optional
 
 from py_trees import Behaviour, Blackboard
 
 import giskardpy.utils.tfwrapper as tf
 from giskardpy import identifier
-from giskardpy.configs.data_types import CollisionAvoidanceConfig
+from giskardpy.configs.data_types import CollisionAvoidanceGroupConfig
 from giskardpy.god_map import GodMap
 from giskardpy.model.world import WorldTree
 from giskardpy.utils.utils import has_blackboard_exception, get_blackboard_exception, clear_blackboard_exception
@@ -13,7 +13,9 @@ from giskardpy.utils.utils import has_blackboard_exception, get_blackboard_excep
 
 class GiskardBehavior(Behaviour):
 
-    def __init__(self, name):
+    def __init__(self, name: Optional[str] = None):
+        if name is None:
+            name = self.__str__()
         self.god_map = GodMap()
         self.world: WorldTree = self.get_god_map().unsafe_get_data(identifier.world)
         super().__init__(name)
@@ -21,12 +23,15 @@ class GiskardBehavior(Behaviour):
     def __str__(self):
         return f'{self.__class__.__name__}'
 
+    def __copy__(self):
+        return type(self)(self.name)
+
     @property
     def traj_time_in_sec(self):
         return self.god_map.unsafe_get_data(identifier.time) * self.god_map.unsafe_get_data(identifier.sample_period)
 
     @property
-    def collision_avoidance_configs(self) -> Dict[str, CollisionAvoidanceConfig]:
+    def collision_avoidance_configs(self) -> Dict[str, CollisionAvoidanceGroupConfig]:
         return self.god_map.unsafe_get_data(identifier.collision_avoidance_configs)
 
     def get_god_map(self):

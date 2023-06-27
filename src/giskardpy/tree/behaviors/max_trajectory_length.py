@@ -8,19 +8,19 @@ from giskardpy.utils.decorators import record_time
 
 class MaxTrajectoryLength(GiskardBehavior):
     @profile
-    def __init__(self, name, enabled, length):
+    def __init__(self, name, real_time=False):
         super().__init__(name)
-
-    def initialise(self):
-        self.length = self.god_map.get_data(identifier.MaxTrajectoryLength + ['length'])
+        self.real_time = real_time
 
     @record_time
     @profile
     def update(self):
         t = self.get_god_map().get_data(identifier.time)
-        sample_period = self.get_god_map().get_data(identifier.sample_period)
-        t = t * sample_period
-        if t > self.length:
-            raise PlanningException(f'Aborted because trajectory is longer than {self.length}')
+        length = self.god_map.get_data(identifier.max_trajectory_length)
+        if not self.real_time:
+            sample_period = self.get_god_map().get_data(identifier.sample_period)
+            t = t * sample_period
+        if t > length:
+            raise PlanningException(f'Aborted because trajectory is longer than {length}')
 
         return Status.RUNNING
