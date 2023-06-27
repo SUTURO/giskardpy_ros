@@ -52,6 +52,7 @@ from giskardpy.tree.behaviors.set_cmd import SetCmd
 from giskardpy.tree.behaviors.set_error_code import SetErrorCode
 from giskardpy.tree.behaviors.set_tracking_start_time import SetTrackingStartTime
 from giskardpy.tree.behaviors.setup_base_traj_constraints import SetDriveGoals
+from giskardpy.tree.behaviors.suturo_grippper_handler import SuturoGripperHandler
 from giskardpy.tree.behaviors.suturo_world_syncroniser import SuturoWorldSynchroniser
 from giskardpy.tree.behaviors.sync_configuration import SyncConfiguration
 from giskardpy.tree.behaviors.sync_odometry import SyncOdometry
@@ -678,6 +679,7 @@ class OpenLoop(StandAlone):
     def grow_Synchronize(self):
         sync = Sequence('Synchronize')
         sync.add_child(SuturoWorldSynchroniser('poll world'))
+        sync.add_child(SuturoGripperHandler('gripper_handler'))
         sync.add_child(WorldUpdater('update world'))
         sync.add_child(SyncTfFrames('sync tf frames',
                                     **self.god_map.unsafe_get_data(identifier.SyncTfFrames)))

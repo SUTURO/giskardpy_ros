@@ -127,3 +127,8 @@ hardware_config = giskard + ['hardware_config']
 
 # rnd stuff
 timer_collector = ['timer_collector']
+
+# gripper
+gripper_controller = ['gripper_controller']
+gripper_trajectory = ['gripper_trajectory']
+

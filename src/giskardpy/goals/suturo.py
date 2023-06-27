@@ -198,8 +198,6 @@ class SequenceGoal(Goal):
 
         self.goal_summary[self.current_goal_number].update_params()
 
-        loginfo('next goal')
-
         return 0
 
     def __str__(self) -> str:
@@ -221,20 +219,23 @@ class MoveGripper(Goal):
 
         self.suffix = suffix
 
-        self.g = SuturoGripper(apply_force_action_server='/hsrb/gripper_controller/grasp',
-                               follow_joint_trajectory_server='/hsrb/gripper_controller/follow_joint_trajectory')
-
         self.gripper_state = gripper_state
 
-    def make_constraints(self):
         if self.gripper_state == 'open':
-            self.g.close_gripper_force(0.8)
+            self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_controller)
+            self.gripper_function(0.8)
 
         elif self.gripper_state == 'neutral':
-            self.g.set_gripper_joint_position(0.5)
 
-        else:
-            self.g.close_gripper_force(-0.8)
+            self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_trajectory)
+            self.gripper_function(0.5)
+
+        elif self.gripper_state == 'close':
+            self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_controller)
+            self.gripper_function(-0.8)
+
+    def make_constraints(self):
+        pass
 
     def __str__(self) -> str:
         s = super().__str__()
@@ -561,14 +562,6 @@ class LiftObject(ObjectGoal):
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
 
-        '''c_R_r_eval = self.get_fk_evaluated(self.tip_link, self.root_link).to_rotation()
-
-        self.add_rotation_goal_constraints(frame_R_goal=r_R_g,
-                                           frame_R_current=r_R_c,
-                                           current_R_frame_eval=c_R_r_eval,
-                                           reference_velocity=,
-                                           )'''
-
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}{self.object_name}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
@@ -647,17 +640,6 @@ class Retracting(ObjectGoal):
                                         frame_P_current=r_P_c,
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
-
-        '''r_R_g = root_T_goal.to_rotation()
-        r_R_c = root_T_tip.to_rotation()
-
-        c_R_r_eval = self.get_fk_evaluated(self.tip_link, self.root_link).to_rotation()
-
-        self.add_rotation_goal_constraints(frame_R_current=r_R_c,
-                                           frame_R_goal=r_R_g,
-                                           current_R_frame_eval=c_R_r_eval,
-                                           reference_velocity=self.velocity,
-                                           weight=self.weight)'''
 
     def update_params(self):
         root_T_tip_current = self.world.compute_fk_np(self.root_link, self.tip_link)
@@ -939,6 +921,15 @@ class TakePose(Goal):
                 arm_roll_joint = -1.5
                 wrist_flex_joint = -1.5
                 wrist_roll_joint = 1.6
+
+            elif pose_keyword == 'pre_align_height':
+                head_pan_joint = 0.0
+                head_tilt_joint = 0.0
+                arm_lift_joint = 0.0
+                arm_flex_joint = 0.0
+                arm_roll_joint = 0.0
+                wrist_flex_joint = -1.5
+                wrist_roll_joint = 0.0
 
             else:
                 loginfo(f'{pose_keyword} is not a valid pose')
