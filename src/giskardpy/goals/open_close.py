@@ -3,11 +3,12 @@ from __future__ import division
 from typing import Optional
 
 from giskardpy.goals.cartesian_goals import CartesianPose
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
+from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA, ForceSensorGoal
 from giskardpy.goals.joint_goals import JointPosition
+from giskardpy import casadi_wrapper as w
 
 
-class Open(Goal):
+class Open(ForceSensorGoal):
     def __init__(self,
                  tip_link: str,
                  environment_link: str,
@@ -63,6 +64,18 @@ class Open(Goal):
 
     def __str__(self):
         return f'{super().__str__()}/{self.tip_link}/{self.handle_link}'
+
+    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+
+        z_force_threshold = w.Expression(0.0)
+        z_force_condition = ['z_force', '>=', z_force_threshold]
+
+        y_torque_threshold = w.Expression(0.0)
+        y_torque_condition = ['y_torque', '<=', y_torque_threshold]
+
+        expressions = [z_force_condition, y_torque_condition]
+
+        return expressions
 
 
 class Close(Goal):

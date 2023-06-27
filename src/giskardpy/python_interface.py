@@ -1082,6 +1082,17 @@ class GiskardWrapper:
                            wrist_flex_joint=wrist_flex_joint,
                            wrist_roll_joint=wrist_roll_joint)
 
+    def tilting(self,
+                tilt_direction: Optional[str] = None,
+                tilt_angle: Optional[float] = None,
+                tip_link: Optional[str] = 'wrist_roll_joint',
+                ):
+
+        self.set_json_goal(constraint_type='Tilting',
+                           tilt_direction=tilt_direction,
+                           tilt_angle=tilt_angle,
+                           tip_link=tip_link)
+
     def mixing(self,
                center: PointStamped,
                radius: float,
@@ -1100,4 +1111,20 @@ class GiskardWrapper:
                            root_link=root_link,
                            tip_link=tip_link,
                            velocity=velocity,
+                           weight=weight)
+
+    def open_environment(self,
+             tip_link: str,
+             environment_link: str,
+             tip_group: Optional[str] = None,
+             environment_group: Optional[str] = None,
+             goal_joint_state: Optional[float] = None,
+             weight: float = WEIGHT_ABOVE_CA):
+
+        self.set_json_goal(constraint_type='Open',
+                           tip_link=tip_link,
+                           environment_link=environment_link,
+                           tip_group=tip_group,
+                           environment_group=environment_group,
+                           goal_joint_state=goal_joint_state,
                            weight=weight)

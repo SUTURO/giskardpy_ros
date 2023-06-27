@@ -620,7 +620,7 @@ class Retracting(ObjectGoal):
 
         self.start_tip_T_current_tip = np.eye(4)
 
-        self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
+        self.add_constraints_of_goal(NonRotationGoal(tip_link='base_link',
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
@@ -642,9 +642,33 @@ class Retracting(ObjectGoal):
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
 
+        r_R_g = w.RotationMatrix(self.goal_point)
+        r_R_c = self.get_fk(self.root_link, self.tip_link).to_rotation()
+        c_R_r_eval = self.get_fk_evaluated(self.tip_link, self.root_link).to_rotation()
+        # self.add_debug_expr('trans', w.norm(r_P_c))
+        self.add_rotation_goal_constraints(frame_R_current=r_R_c,
+                                           frame_R_goal=r_R_g,
+                                           current_R_frame_eval=c_R_r_eval,
+                                           reference_velocity=self.velocity,
+                                           weight=self.weight)
+
+        #r_R_c = root_T_tip.to_rotation()
+        #r_R_g = root_T_goal.to_rotation()
+        #r_R_g.reference_frame = self.root_link
+        #self.r_R_c_eval = self.get_fk_evaluated(self.root_link, self.tip_link).to_rotation()
+
+        #self.add_rotation_goal_constraints(frame_R_current=r_R_c,
+        #                                   frame_R_goal=r_R_g,
+        #                                   current_R_frame_eval=self.r_R_c_eval,
+        #                                   reference_velocity=self.velocity,
+        #                                   weight=self.weight
+        #                                   )
+
+
     def update_params(self):
         root_T_tip_current = self.world.compute_fk_np(self.root_link, self.tip_link)
         self.start_tip_T_current_tip = np.dot(inverse_frame(self.root_T_tip_start), root_T_tip_current)
+        self.r_R_c_eval = self.get_fk_evaluated(self.root_link, self.tip_link).to_rotation()
 
     def __str__(self) -> str:
         s = super().__str__()
@@ -838,7 +862,7 @@ class Placing(ForceSensorGoal):
 
 class Tilting(Goal):
     def __init__(self,
-                 direction: Optional[str] = None,
+                 tilt_direction: Optional[str] = None,
                  tilt_angle: Optional[float] = None,
                  tip_link: Optional[str] = 'wrist_roll_joint',
                  suffix: Optional[str] = ''):
@@ -849,18 +873,24 @@ class Tilting(Goal):
         if tilt_angle is None:
             tilt_angle = max_angle
 
-        if direction == 'right':
+        if tilt_direction == 'right':
             tilt_angle = abs(tilt_angle)
         else:
             tilt_angle = abs(tilt_angle) * -1
 
-        self.tilt_angle = tilt_angle
+        self.wrist_state = tilt_angle
         self.tip_link = tip_link
         self.suffix = suffix
 
-        self.add_constraints_of_goal(JointPosition(joint_name=self.tip_link,
+        self.goal_state = {'wrist_roll_joint': self.wrist_state,
+                           'arm_roll_joint': 0.0}
+
+        self.add_constraints_of_goal(JointPositionList(goal_state=self.goal_state,
+                                                       suffix=self.suffix))
+
+        '''self.add_constraints_of_goal(JointPosition(joint_name=self.tip_link,
                                                    goal=self.tilt_angle,
-                                                   max_velocity=100))
+                                                   max_velocity=100))'''
 
     def make_constraints(self):
         pass
@@ -930,6 +960,15 @@ class TakePose(Goal):
                 arm_flex_joint = 0.0
                 arm_roll_joint = 0.0
                 wrist_flex_joint = -1.5
+                wrist_roll_joint = 0.0
+
+            elif pose_keyword == 'carry':
+                head_pan_joint = 0.0
+                head_tilt_joint = -0.65
+                arm_lift_joint = 0.0
+                arm_flex_joint = -0.43
+                arm_roll_joint = 0.0
+                wrist_flex_joint = -1.17
                 wrist_roll_joint = 0.0
 
             elif pose_keyword == 'test':
