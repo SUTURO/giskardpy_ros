@@ -768,14 +768,21 @@ class WorldTree(WorldTreeInterface):
         self._clear()
         joints_to_add: List[Joint] = self.god_map.unsafe_get_data(identifier.joints_to_add)
         for joint_class, kwargs in joints_to_add:
-            joint = joint_class(**kwargs)
-            self._add_joint_and_create_child(joint)
+            after_robot = kwargs.get('after_robot', False)
+            if not after_robot:
+                joint = joint_class(**kwargs)
+                self._add_joint_and_create_child(joint)
         robot_config: RobotInterfaceConfig
         for robot_config in self.god_map.unsafe_get_data(identifier.robot_interface_configs):
             self.add_urdf(robot_config.urdf,
                           group_name=robot_config.name,
                           actuated=True,
                           add_drive_joint_to_group=robot_config.add_drive_joint_to_group)
+        for joint_class, kwargs in joints_to_add:
+            after_robot = kwargs.get('after_robot', False)
+            if after_robot:
+                joint = joint_class(**kwargs)
+                self._add_joint_and_create_child(joint)
         self.fast_all_fks = None
         self.notify_model_change()
 

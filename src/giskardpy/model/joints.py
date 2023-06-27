@@ -172,11 +172,12 @@ class MovableJoint(Joint):
 
 class FixedJoint(Joint):
     def __init__(self, name: PrefixName, parent_link_name: PrefixName, child_link_name: PrefixName,
-                 parent_T_child: w.TransMatrix):
+                 parent_T_child: w.TransMatrix, after_robot: bool = False):
         self.name = name
         self.parent_link_name = parent_link_name
         self.child_link_name = child_link_name
         self.parent_T_child = w.TransMatrix(parent_T_child)
+        self.after_robot = after_robot
 
 
 class TFJoint(Joint):
