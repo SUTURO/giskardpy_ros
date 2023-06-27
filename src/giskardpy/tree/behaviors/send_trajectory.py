@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import control_msgs
 from rospy import ROSException
@@ -47,11 +47,13 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
 
     @record_time
     @profile
-    def __init__(self, action_namespace: str, state_topic: str, group_name: str,
-                 goal_time_tolerance: float = 1, fill_velocity_values: bool = True,
+    def __init__(self, action_namespace: str, group_name: str,
+                 goal_time_tolerance: float = 1, state_topic: Optional[str] = None, fill_velocity_values: bool = True,
                  path_tolerance: Dict[Derivatives, float] = None):
         self.group_name = group_name
-        self.action_namespace = action_namespace
+        self.namespace = action_namespace
+        self.action_namespace = action_namespace + '/follow_joint_trajectory'
+
         GiskardBehavior.__init__(self, str(self))
         self.min_deadline: rospy.Time
         self.max_deadline: rospy.Time
@@ -84,26 +86,31 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
         # loginfo(f'Waiting for state topic \'{state_topic}\' to appear.')
         msg = None
         controlled_joint_names = []
-        while not msg and not rospy.is_shutdown():
-            try:
-                status_msg_type, _, _ = rostopic.get_topic_class(state_topic)
-                if status_msg_type is None:
-                    raise ROSTopicException()
-                if status_msg_type not in self.supported_state_types:
-                    raise TypeError(f'State topic of type \'{status_msg_type}\' is not supported. '
-                                    f'Must be one of: {self.supported_state_types}')
-                msg = rospy.wait_for_message(state_topic, status_msg_type, timeout=2.0)
-                if isinstance(msg, JointState):
-                    controlled_joint_names = msg.name
-                elif isinstance(msg, control_msgs.msg.JointTrajectoryControllerState) \
-                        or isinstance(msg, pr2_controllers_msgs.msg.JointTrajectoryControllerState):
-                    controlled_joint_names = msg.joint_names
-            except (ROSException, ROSTopicException) as e:
-                logging.logwarn(f'Couldn\'t connect to {state_topic}. Is it running?')
-                rospy.sleep(1)
-        controlled_joint_names = [PrefixName(j, self.group_name) for j in controlled_joint_names]
-        if len(controlled_joint_names) == 0:
-            raise ValueError(f'\'{state_topic}\' has no joints')
+        if state_topic is not None:
+            while not msg and not rospy.is_shutdown():
+                try:
+                    status_msg_type, _, _ = rostopic.get_topic_class(state_topic)
+                    if status_msg_type is None:
+                        raise ROSTopicException()
+                    if status_msg_type not in self.supported_state_types:
+                        raise TypeError(f'State topic of type \'{status_msg_type}\' is not supported. '
+                                        f'Must be one of: {self.supported_state_types}')
+                    msg = rospy.wait_for_message(state_topic, status_msg_type, timeout=2.0)
+                    if isinstance(msg, JointState):
+                        controlled_joint_names = msg.name
+                    elif isinstance(msg, control_msgs.msg.JointTrajectoryControllerState) \
+                            or isinstance(msg, pr2_controllers_msgs.msg.JointTrajectoryControllerState):
+                        controlled_joint_names = msg.joint_names
+                except (ROSException, ROSTopicException) as e:
+                    logging.logwarn(f'Couldn\'t connect to {state_topic}. Is it running?')
+                    rospy.sleep(1)
+            controlled_joint_names = [PrefixName(j, self.group_name) for j in controlled_joint_names]
+            if len(controlled_joint_names) == 0:
+                raise ValueError(f'\'{state_topic}\' has no joints')
+        else:
+            controlled_joint_names = rospy.get_param(f'{self.namespace}/joints')
+            for i in range(len(controlled_joint_names)):
+                controlled_joint_names[i] = self.world.search_for_joint_name(controlled_joint_names[i])
 
         for joint in self.world.joints.values():
             if isinstance(joint, OneDofJoint):

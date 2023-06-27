@@ -356,7 +356,7 @@ class RobotInterfaceConfig(Config):
 
     def add_follow_joint_trajectory_server(self,
                                            namespace: str,
-                                           state_topic: str,
+                                           state_topic: Optional[str] = None,
                                            group_name: Optional[str] = None,
                                            fill_velocity_values: bool = False,
                                            path_tolerance: Dict[Derivatives, float] = None):

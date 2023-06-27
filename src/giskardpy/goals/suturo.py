@@ -13,7 +13,6 @@ from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, Cyl
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
-from suturo_manipulation.suturo_gripper import SuturoGripper
 
 
 class ObjectGoal(Goal):
@@ -343,13 +342,13 @@ class Reaching(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
         elif self.action == 'pouring':
-            grasped_object_size = self.object_size
-            pour_object_size = self.convert_list_to_size(context['pour_object_size'])
+            # grasped_object_size = self.object_size
+            #pour_object_size = self.convert_list_to_size(context['pour_object_size'])
 
-            new_height = (pour_object_size.z / 2) + (grasped_object_size.z / 2)
-            radius = (pour_object_size.x / 2) + (grasped_object_size.x / 2)
-
-            self.object_size.z += new_height
+            #new_height = (pour_object_size.z / 2) + (grasped_object_size.z / 2)
+            #radius = (pour_object_size.x / 2) + (grasped_object_size.x / 2)
+            radius = 0.0
+            #self.object_size.z += new_height
 
             self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                      object_size=self.object_size,
@@ -416,7 +415,9 @@ class GraspObject(ObjectGoal):
         root_goal_point.header.frame_id = self.goal_pose.header.frame_id
         root_goal_point.point = self.goal_pose.pose.position
 
-        self.goal_point = self.transform_msg(self.reference_frame, root_goal_point)
+        self.reference_link = self.world.search_for_link_name(self.reference_frame)
+
+        self.goal_point = self.transform_msg(self.reference_link, root_goal_point)
 
         if self.from_above:
             # Grasp at the upper edge of the object
@@ -931,6 +932,15 @@ class TakePose(Goal):
                 wrist_flex_joint = -1.5
                 wrist_roll_joint = 0.0
 
+            elif pose_keyword == 'test':
+                head_pan_joint = 0.0
+                head_tilt_joint = 0.0
+                arm_lift_joint = 0.38
+                arm_flex_joint = -1.44
+                arm_roll_joint = 0.0
+                wrist_flex_joint = -0.19
+                wrist_roll_joint = 0.0
+
             else:
                 loginfo(f'{pose_keyword} is not a valid pose')
                 return
@@ -975,7 +985,7 @@ class Mixing(Goal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        self.god_map.set_data(identifier.MaxTrajectoryLength + ['length'], (mixing_time * scale) + 1)
+        self.god_map.set_data(identifier.max_trajectory_length, (mixing_time * scale) + 1)
 
         self.center = self.transform_msg(self.world.root_link_name, center)
         self.radius = radius
@@ -991,7 +1001,7 @@ class Mixing(Goal):
 
     def make_constraints(self):
         map_T_bf = self.get_fk(self.root_link, self.tip_link)
-        t = self.traj_time_in_seconds() * self.scale
+        t = self.god_map.to_expr(identifier.time) * self.scale
         t = w.min(t, self.mixing_time * self.scale)
         x = w.cos(t) * self.radius
         y = w.sin(t) * self.radius
