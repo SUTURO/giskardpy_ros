@@ -71,15 +71,6 @@ class HSR_Local(HSR_Base):
         self.add_robot_from_parameter_server(joint_state_topics=['/hsrb/joint_states'])
         super().__init__()
         self.add_sync_tf_frame('map', 'odom')
-        self.add_fixed_joint(parent_link=PrefixName('hand_palm_link', self.get_default_group_name()),
-                             child_link=PrefixName('hand_gripper_tool_frame', self.get_default_group_name()),
-                             homogenous_transform=np.array(
-                                 [[1,0,0,0],
-                                  [0,1,0,0],
-                                  [0,0,1,0.08],
-                                  [0,0,0,1]]
-                             ),
-                             after_robot=True)
         #self.configure_PlotTrajectory(enabled=True, wait=True)
         self.add_omni_drive_joint(parent_link_name='odom',
                                   child_link_name='base_footprint',

@@ -199,7 +199,7 @@ class Giskard:
         joints.append(joint)
 
     def add_fixed_joint(self, parent_link: my_string, child_link: my_string,
-                        homogenous_transform: Optional[NDArray] = None, after_robot: bool = False):
+                        homogenous_transform: Optional[NDArray] = None):
         """
         Add a fixed joint to Giskard's world. Can be used to connect a non-mobile robot to the world frame.
         :param parent_link:
@@ -215,8 +215,7 @@ class Giskard:
         joint = (FixedJoint, {'name': joint_name,
                               'parent_link_name': parent_link,
                               'child_link_name': child_link,
-                              'parent_T_child': homogenous_transform,
-                              'after_robot': after_robot})
+                              'parent_T_child': homogenous_transform})
         self._add_joint(joint)
 
     def _add_tf_joint(self, parent_link: my_string, child_link: my_string):
