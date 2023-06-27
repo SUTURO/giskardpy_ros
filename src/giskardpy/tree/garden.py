@@ -52,7 +52,7 @@ from giskardpy.tree.behaviors.set_cmd import SetCmd
 from giskardpy.tree.behaviors.set_error_code import SetErrorCode
 from giskardpy.tree.behaviors.set_tracking_start_time import SetTrackingStartTime
 from giskardpy.tree.behaviors.setup_base_traj_constraints import SetDriveGoals
-from giskardpy.tree.behaviors.suturo_grippper_handler import SuturoGripperHandler
+from giskardpy.tree.behaviors.suturo_gripper_handler import SuturoGripperHandler
 from giskardpy.tree.behaviors.suturo_world_syncroniser import SuturoWorldSynchroniser
 from giskardpy.tree.behaviors.sync_configuration import SyncConfiguration
 from giskardpy.tree.behaviors.sync_odometry import SyncOdometry
