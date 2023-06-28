@@ -1008,14 +1008,14 @@ class GiskardWrapper:
                            from_above=from_above)
 
     def lift_object(self,
-                    object_name: str,
-                    lifting: Optional[float] = 0.02,
+                    context: str,
+                    distance: Optional[float] = 0.02,
                     root_link: Optional[str] = 'base_link',
                     tip_link: Optional[str] = 'hand_palm_link'):
 
-        self.set_json_goal(constraint_type='LiftObject',
-                           object_name=object_name,
-                           lifting=lifting,
+        self.set_json_goal(constraint_type='VerticalMotion',
+                           context=context,
+                           distance=distance,
                            root_link=root_link,
                            tip_link=tip_link)
 

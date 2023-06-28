@@ -286,12 +286,14 @@ class Reaching(ObjectGoal):
 
             self.reference_frame = self.object_name
 
+            object_in_world = True
+
         else:
             self.goal_pose = goal_pose
             self.object_size = object_size  # self.convert_list_to_size(object_size)
-
             self.reference_frame = 'base_link'
 
+            object_in_world = False
             logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
 
         if self.action == 'grasping':
@@ -299,7 +301,7 @@ class Reaching(ObjectGoal):
                 radius = self.object_size.x
             else:
 
-                object_in_world = self.get_object_by_name(self.object_name) is not None
+                # object_in_world = self.get_object_by_name(self.object_name) is not None
 
                 if object_in_world:
                     radius = -0.04  # shelf
@@ -586,7 +588,7 @@ class VerticalMotion(ObjectGoal):
         super().__init__()
 
         self.context = context
-        self.lifting_distance = distance
+        self.distance = distance
         self.root_link = self.world.search_for_link_name(root_link)
         self.tip_link = self.try_to_get_link(expected=tip_link)
         self.root_str = self.root_link.short_name
@@ -605,9 +607,9 @@ class VerticalMotion(ObjectGoal):
         goal_point_base = self.transform_msg(self.base_link, start_point_tip)
 
         if context['action'] == 'grasping':
-            goal_point_base.pose.position.z += self.lifting_distance
+            goal_point_base.pose.position.z += self.distance
         if context['action'] == 'placing':
-            goal_point_base.pose.position.z -= self.lifting_distance
+            goal_point_base.pose.position.z -= self.distance
 
         goal_point_tip = self.transform_msg(self.tip_link, goal_point_base)
 
