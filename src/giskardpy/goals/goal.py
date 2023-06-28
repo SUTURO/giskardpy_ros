@@ -17,6 +17,7 @@ from giskardpy.model.joints import OneDofJoint
 from giskardpy.model.world import WorldTree
 from giskardpy.my_types import my_string, transformable_message, PrefixName, Derivatives
 from giskardpy.qp.constraint import InequalityConstraint, EqualityConstraint, DerivativeInequalityConstraint
+from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
 
 WEIGHT_MAX = Constraint_msg.WEIGHT_MAX
 WEIGHT_ABOVE_CA = Constraint_msg.WEIGHT_ABOVE_CA
@@ -221,7 +222,6 @@ class Goal(ABC):
         self._inequality_constraints = OrderedDict()
         self._derivative_constraints = OrderedDict()
         self._debug_expressions = OrderedDict()
-        self.make_constraints()
         for sub_goal in self._sub_goals:
             sub_goal._save_self_on_god_map()
             equality_constraints, inequality_constraints, derivative_constraints, debug_expressions = \
@@ -231,6 +231,8 @@ class Goal(ABC):
             self._inequality_constraints.update(_prepend_prefix(self.__class__.__name__, inequality_constraints))
             self._derivative_constraints.update(_prepend_prefix(self.__class__.__name__, derivative_constraints))
             self._debug_expressions.update(_prepend_prefix(self.__class__.__name__, debug_expressions))
+
+        self.make_constraints()
         return self._equality_constraints, self._inequality_constraints, self._derivative_constraints, \
                self._debug_expressions
 
@@ -680,3 +682,31 @@ class NonMotionGoal(Goal):
 
     def make_constraints(self):
         pass
+
+class ForceSensorGoal(Goal):
+    """
+    Inherit from this goal, if the goal should use the Force Sensor.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        cond = self.goal_cancel_condition()
+        recover = self.recovery()
+
+        tree = self.god_map.get_data(identifier=identifier.tree_manager)
+        tree.insert_node(MonitorForceSensor('Monitor_Force', cond, recover), 'monitor execution', 2)
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+    @abc.abstractmethod
+    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+        pass
+
+    @abc.abstractmethod
+    def recovery(self) -> Dict:
+        return {}

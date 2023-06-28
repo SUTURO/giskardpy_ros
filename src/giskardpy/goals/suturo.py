@@ -14,6 +14,8 @@ from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
 
+import giskardpy.utils.tfwrapper as tf
+
 
 class ObjectGoal(Goal):
     def __init__(self):
@@ -503,7 +505,7 @@ class GraspObject(ObjectGoal):
         return grasp_vector
 
 
-class LiftObject(ObjectGoal):
+'''class LiftObject(ObjectGoal):
     def __init__(self,
                  object_name: Optional[str] = '',
                  lifting: Optional[float] = 0.02,
@@ -566,6 +568,78 @@ class LiftObject(ObjectGoal):
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}{self.object_name}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
+
+    def update_params(self):
+        root_T_tip_current = self.world.compute_fk_np(self.root_link, self.tip_link)
+        self.start_tip_T_current_tip = np.dot(inverse_frame(self.root_T_tip_start), root_T_tip_current)
+'''
+
+class VerticalMotion(ObjectGoal):
+    def __init__(self,
+                 context,
+                 distance: Optional[float] = 0.02,
+                 root_link: Optional[str] = 'base_link',
+                 tip_link: Optional[str] = 'hand_palm_link',
+                 velocity: Optional[float] = 0.2,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 suffix: Optional[str] = ''):
+        super().__init__()
+
+        self.context = context
+        self.lifting_distance = distance
+        self.root_link = self.world.search_for_link_name(root_link)
+        self.tip_link = self.try_to_get_link(expected=tip_link)
+        self.root_str = self.root_link.short_name
+        self.tip_str = self.tip_link.short_name
+        self.velocity = velocity
+        self.weight = weight
+        self.suffix = suffix
+
+        self.base_link = self.world.search_for_link_name('base_link')
+        self.base_str = self.base_link.short_name
+
+        # Lifting
+        start_point_tip = PoseStamped()
+        start_point_tip.header.frame_id = self.tip_str
+
+        goal_point_base = self.transform_msg(self.base_link, start_point_tip)
+
+        if context['action'] == 'grasping':
+            goal_point_base.pose.position.z += self.lifting_distance
+        if context['action'] == 'placing':
+            goal_point_base.pose.position.z -= self.lifting_distance
+
+        goal_point_tip = self.transform_msg(self.tip_link, goal_point_base)
+
+        self.goal_point = deepcopy(goal_point_tip)
+
+        self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
+                                                     weight=self.weight,
+                                                     suffix=self.suffix))
+
+        self.root_T_tip_start = self.world.compute_fk_np(self.root_link, self.tip_link)
+        self.start_tip_T_current_tip = np.eye(4)
+
+    def make_constraints(self):
+        start_tip_T_current_tip = w.TransMatrix(self.get_parameter_as_symbolic_expression('start_tip_T_current_tip'))
+        root_T_tip = self.get_fk(self.root_link, self.tip_link)
+
+        t_T_g = w.TransMatrix(self.goal_point)
+        r_T_tip_eval = w.TransMatrix(self.god_map.evaluate_expr(root_T_tip))
+
+        root_T_goal = r_T_tip_eval.dot(start_tip_T_current_tip).dot(t_T_g)
+
+        r_P_g = root_T_goal.to_position()
+        r_P_c = root_T_tip.to_position()
+
+        self.add_point_goal_constraints(frame_P_goal=r_P_g,
+                                        frame_P_current=r_P_c,
+                                        reference_velocity=self.velocity,
+                                        weight=self.weight)
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f'{s}{self.context["action"]}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
 
     def update_params(self):
         root_T_tip_current = self.world.compute_fk_np(self.root_link, self.tip_link)
@@ -642,7 +716,7 @@ class Retracting(ObjectGoal):
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
 
-        r_R_g = w.RotationMatrix(self.goal_point)
+        '''r_R_g = w.RotationMatrix(self.goal_point)
         r_R_c = self.get_fk(self.root_link, self.tip_link).to_rotation()
         c_R_r_eval = self.get_fk_evaluated(self.tip_link, self.root_link).to_rotation()
         # self.add_debug_expr('trans', w.norm(r_P_c))
@@ -650,7 +724,7 @@ class Retracting(ObjectGoal):
                                            frame_R_goal=r_R_g,
                                            current_R_frame_eval=c_R_r_eval,
                                            reference_velocity=self.velocity,
-                                           weight=self.weight)
+                                           weight=self.weight)'''
 
         #r_R_c = root_T_tip.to_rotation()
         #r_R_g = root_T_goal.to_rotation()
@@ -718,6 +792,8 @@ class AlignHeight(ObjectGoal):
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
+
+        # self.r_P_g = tf.lookup_pose('map', self.goal_pose)
 
         self.from_above = False
 
@@ -969,7 +1045,7 @@ class TakePose(Goal):
                 arm_flex_joint = -0.43
                 arm_roll_joint = 0.0
                 wrist_flex_joint = -1.17
-                wrist_roll_joint = 0.0
+                wrist_roll_joint = -1.62
 
             elif pose_keyword == 'test':
                 head_pan_joint = 0.0
