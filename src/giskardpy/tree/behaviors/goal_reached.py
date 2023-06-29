@@ -13,9 +13,9 @@ from giskardpy.utils.decorators import record_time
 
 class GoalReached(GiskardBehavior):
     @profile
-    def __init__(self, name, window_size: int = 21, joint_convergence_threshold: float = 0.01, real_time: bool = False):
+    def __init__(self, name, window_size: int = 21, real_time: bool = False):
         super().__init__(name)
-        self.joint_convergence_threshold = joint_convergence_threshold
+        self.joint_convergence_threshold = self.god_map.get_data(identifier.joint_convergence_threshold)
         self.window_size = window_size
         self.real_time = real_time
         self.sample_period = self.get_god_map().get_data(identifier.sample_period)

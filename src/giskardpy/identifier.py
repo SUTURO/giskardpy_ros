@@ -47,6 +47,7 @@ action_server_name = execution_config + ['action_server_name']
 control_mode = execution_config + ['control_mode']
 goal_package_paths = execution_config + ['goal_package_paths']
 max_trajectory_length = execution_config + ['max_trajectory_length']
+joint_convergence_threshold = execution_config + ['joint_convergence_threshold']
 endless_mode = execution_config + ['endless_mode']
 
 sample_period = execution_config + ['sample_period']

@@ -71,6 +71,7 @@ class ExecutionConfig(Config):
     max_derivative: Derivatives = Derivatives.jerk
     action_server_name: str = '~command'
     max_trajectory_length: float = 30
+    joint_convergence_threshold: float = 0.01
     qp_solver: SupportedQPSolver = None,
     retries_with_relaxed_constraints: int = 5,
     added_slack: float = 100,
@@ -103,6 +104,9 @@ class ExecutionConfig(Config):
 
     def set_max_trajectory_length(self, length: float = 30):
         self.max_trajectory_length = length
+
+    def set_joint_convergence_threshold(self, threshold: float = 0.01):
+        self.joint_convergence_threshold = threshold
 
     def set_control_mode(self, mode: ControlModes):
         self.control_mode = mode
