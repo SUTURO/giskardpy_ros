@@ -966,6 +966,7 @@ class OpenLoop(StandAlone):
                               publish_Ex: bool = False, publish_xdot: bool = False, publish_weights: bool = False,
                               publish_g: bool = False, publish_debug: bool = False, add_to_base: bool = False,
                               *args, **kwargs):
+        self.add_evaluate_debug_expressions()
         node = PublishDebugExpressions('qp data publisher',
                                        publish_lb=publish_lb,
                                        publish_ub=publish_ub,

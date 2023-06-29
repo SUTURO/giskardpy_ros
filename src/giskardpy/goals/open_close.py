@@ -1,6 +1,6 @@
 from __future__ import division
 
-from typing import Optional
+from typing import Optional, Dict
 
 from giskardpy.goals.cartesian_goals import CartesianPose
 from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA, ForceSensorGoal
@@ -8,7 +8,7 @@ from giskardpy.goals.joint_goals import JointPosition
 from giskardpy import casadi_wrapper as w
 
 
-class Open(ForceSensorGoal):
+class Open(Goal):
     def __init__(self,
                  tip_link: str,
                  environment_link: str,
@@ -76,6 +76,11 @@ class Open(ForceSensorGoal):
         expressions = [z_force_condition, y_torque_condition]
 
         return expressions
+
+    def recovery(self) -> Dict:
+        recover = {}
+
+        return recover
 
 
 class Close(Goal):

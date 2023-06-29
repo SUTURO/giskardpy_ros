@@ -64,6 +64,7 @@ class HSR_Base(Giskard):
 class HSR_Realtime(HSR_Base):
     def configure_execution(self):
         self.execution.set_control_mode(ControlModes.close_loop)
+        self.execution.set_joint_convergence_threshold(0.05)
 
     def configure_world(self, robot_description: str = 'robot_description'):
         super().configure_world('robot_description')
