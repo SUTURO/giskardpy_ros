@@ -13,6 +13,10 @@ class HSR_Base(Giskard):
     odom_link_name = 'odom'
     map_name = 'map'
 
+    def configure_execution(self):
+        # self.execution.set_qp_solver(SupportedQPSolver.gurobi)
+        pass
+
     def configure_world(self, robot_description: str = 'robot_description'):
         self.world.set_default_color(1, 1, 1, 1)
         self.world.set_default_limits({Derivatives.velocity: 1,
@@ -63,6 +67,7 @@ class HSR_Base(Giskard):
 
 class HSR_Realtime(HSR_Base):
     def configure_execution(self):
+        super().configure_execution()
         self.execution.set_control_mode(ControlModes.close_loop)
         self.execution.set_joint_convergence_threshold(0.05)
 
@@ -100,6 +105,7 @@ class HSR_Realtime(HSR_Base):
 class HSR_StandAlone(HSR_Base):
 
     def configure_execution(self):
+        super().configure_execution()
         self.execution.set_control_mode(ControlModes.stand_alone)
 
     def configure_behavior_tree(self):
@@ -123,6 +129,7 @@ class HSR_StandAlone(HSR_Base):
 
 class HSR_Local(HSR_Base):
     def configure_execution(self):
+        super().configure_execution()
         self.execution.set_control_mode(ControlModes.open_loop)
 
     def configure_world(self, robot_description: str = 'robot_description'):
@@ -142,6 +149,7 @@ class HSR_Local(HSR_Base):
         self.behavior_tree.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=True,
                                                               add_to_control_loop=False)
         # self.behavior_tree.add_debug_marker_publisher()
+        # self.behavior_tree.add_debug_trajectory_plotter()
         # self.behavior_tree.add_qp_data_publisher(publish_debug=True, add_to_base=True)
 
     def configure_robot_interface(self):

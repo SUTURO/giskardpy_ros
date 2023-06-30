@@ -717,7 +717,7 @@ class StandAlone(TreeManager):
         planning_4.add_child(LoopDetector('loop detector'))
         planning_4.add_child(GoalReached('goal reached'))
         planning_4.add_child(TimePlugin('increase time closed loop'))
-        planning_4.add_child(MaxTrajectoryLength('traj length check'))
+        # planning_4.add_child(MaxTrajectoryLength('traj length check'))
         return planning_4
 
     def grow_plan_postprocessing(self):
