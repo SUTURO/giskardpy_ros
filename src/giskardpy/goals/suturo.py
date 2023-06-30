@@ -1101,7 +1101,7 @@ class Mixing1(Goal):
                  # center: PointStamped,
                  # radius: float,
                  # scale: float,
-                 mixing_time: Optional[float] = 60,
+                 mixing_time: Optional[float] = 20,
                  root_link: Optional[str] = 'map',
                  scale: Optional[float] = 1.0,
                  #tip_link: Optional[str] = 'hand_gripper_tool_frame',
@@ -1112,48 +1112,71 @@ class Mixing1(Goal):
 
         # self.center = self.transform_msg(self.world.root_link_name, center)
         # self.radius = radius
-        self.scale = scale
         self.mixing_time = mixing_time
-        self.root_link = self.world.search_for_link_name(root_link)
-        #self.tip_link = self.world.search_for_link_name(tip_link)
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
 
-        wrist_roll_min = -1.7
-        wrist_roll_max = 3.5
-
-        self.target_recovery_looking_speed = 1
-        self.recovery_joint = self.world.search_for_joint_name('wrist_roll_joint')
+        self.target_speed = 1
+        self.wrist_roll_joint = self.world.search_for_joint_name('wrist_roll_joint')
+        self.arm_roll_joint = self.world.search_for_joint_name('arm_roll_joint')
+        self.wrist_flex_joint = self.world.search_for_joint_name('wrist_flex_joint')
 
 
     def make_constraints(self):
-        # time = self.traj_time_in_seconds() * self.mixing_time
-        mixing_time = 20
 
-        # t = self.god_map.to_expr(identifier.time) * self.scale
         time = self.traj_time_in_seconds()
-        joint_position = self.get_joint_position_symbol(self.recovery_joint)
-        lower_limit, upper_limit = self.world.get_joint_position_limits(self.recovery_joint)
+        wrist_roll_position = self.get_joint_position_symbol(self.wrist_roll_joint)
 
-        # time_for_full_range = joint_range / self.target_recovery_looking_speed
-        center_point = 0.0 # self.god_map.get_data(identifier.joint_states)['hsrb/wrist_roll_joint'].position #lower_limit + (upper_limit - lower_limit)/2
-        joint_range = 0.524 # w.min(w.abs(upper_limit - center_point), w.abs(lower_limit - center_point))
+        # Wrist roll joint
+        wrist_center_point = 0.0  # self.god_map.get_data(identifier.joint_states)['hsrb/wrist_roll_joint'].position #lower_limit + (upper_limit - lower_limit)/2
+        wrist_joint_range = 0.524  # w.min(w.abs(upper_limit - center_point), w.abs(lower_limit - center_point))
+        wrist_roll_goal = wrist_center_point + (w.sin(time * np.pi * 0.8) * wrist_joint_range)
 
-        target_search_joint_position = center_point + (w.cos(time * np.pi * 0.8) * joint_range)
+        self.add_debug_expr('wrist_roll_goal', wrist_roll_goal)
+        self.add_debug_expr('wrist_roll_current', wrist_roll_position)
 
-        self.add_debug_expr('rotation', target_search_joint_position)
-        self.add_debug_expr('joint_state', joint_position)
+        self.add_position_constraint(expr_current=wrist_roll_position,
+                                     expr_goal=wrist_roll_goal,
+                                     reference_velocity=self.target_speed,
+                                     weight=w.if_greater(time, self.mixing_time, 0, WEIGHT_ABOVE_CA),
+                                     name='wrist_roll')
 
-        self.add_position_constraint(expr_current=joint_position,
-                                     expr_goal=target_search_joint_position,
-                                     reference_velocity=self.target_recovery_looking_speed,
-                                     weight=w.if_greater(time, mixing_time, 0, WEIGHT_ABOVE_CA),
-                                     name='lost_target_recovery')
+        # Arm roll joint
+        arm_roll_position = self.get_joint_position_symbol(self.arm_roll_joint)
+
+        arm_roll_center_point = 0.0  # self.god_map.get_data(identifier.joint_states)['hsrb/wrist_roll_joint'].position #lower_limit + (upper_limit - lower_limit)/2
+        arm_roll_joint_range = 0.6  # w.min(w.abs(upper_limit - center_point), w.abs(lower_limit - center_point))
+        arm_roll_goal = arm_roll_center_point + (w.cos(time * np.pi * 0.8) * arm_roll_joint_range)
+
+        self.add_debug_expr('arm_roll_goal', arm_roll_goal)
+        self.add_debug_expr('arm_roll_position', arm_roll_position)
+
+        self.add_position_constraint(expr_current=arm_roll_position,
+                                     expr_goal=arm_roll_goal,
+                                     reference_velocity=self.target_speed,
+                                     weight=w.if_greater(time, self.mixing_time, 0, WEIGHT_ABOVE_CA),
+                                     name='arm_roll')
+
+        # Arm roll joint
+        wrist_flex_joint_position = self.get_joint_position_symbol(self.wrist_flex_joint)
+
+        wrist_flex_joint_center_point = -1.3  # self.god_map.get_data(identifier.joint_states)['hsrb/wrist_roll_joint'].position #lower_limit + (upper_limit - lower_limit)/2
+        wrist_flex_joint_range = 0.3  # w.min(w.abs(upper_limit - center_point), w.abs(lower_limit - center_point))
+        wrist_flex_joint_goal = wrist_flex_joint_center_point + (w.cos(time * np.pi * 0.8) * wrist_flex_joint_range)
+
+        self.add_debug_expr('wrist_flex_joint_goal', wrist_flex_joint_goal)
+        self.add_debug_expr('wrist_flex_joint_position', wrist_flex_joint_position)
+
+        self.add_position_constraint(expr_current=wrist_flex_joint_position,
+                                     expr_goal=wrist_flex_joint_goal,
+                                     reference_velocity=self.target_speed,
+                                     weight=w.if_greater(time, self.mixing_time, 0, WEIGHT_ABOVE_CA),
+                                     name='wrist_flex_roll')
+
 
     def __str__(self) -> str:
-        s = super().__str__()
-        return f'{s}'# n {self.tip_link}_suffix:{self.suffix}'
+        return super().__str__()
 
 
 class NonRotationGoal(Goal):
