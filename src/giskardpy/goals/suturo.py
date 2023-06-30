@@ -190,7 +190,7 @@ class SequenceGoal(Goal):
 
         eq_constraint_error = compiled_constraint.fast_call(self.god_map.get_values(compiled_constraint.str_params))
 
-        if abs(eq_constraint_error) < 0.001:
+        if abs(eq_constraint_error) < 0.0001:
             self.eq_weights[goal_number][eq_number] = 0
         else:
             self.eq_weights[goal_number][eq_number] = 1
