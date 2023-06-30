@@ -20,7 +20,7 @@ import giskardpy.utils.tfwrapper as tf
 class ObjectGoal(Goal):
     def __init__(self):
         """
-        Inherit from this class if the goal tries to get the object by name form the tf frames
+        Inherit from this class if the goal tries to get the object by name from the world
         """
 
         super().__init__()
@@ -133,9 +133,16 @@ class TestForceSensorGoal(ForceSensorGoal):
 class SequenceGoal(Goal):
     def __init__(self,
                  motion_sequence: Dict,
-                 goal_type_seq=None,
-                 kwargs_seq=None,
-                 **kwargs):
+                 goal_type_seq: List[Goal],
+                 kwargs_seq: List[Dict]):
+        f"""
+        Current solution to execute Goals in a sequence. The Goals will be executed one by one in the given order.
+
+        :param motion_sequence: Future Dictionary to structure the goals with 'goal_type_seq': kwargs_seq
+        :param goal_type_seq: List of Goals to execute. Send a List of goal names as strings, these will be parsed in ros_msg_to_goal
+        :param kwargs_seq: List of Goal arguments. Needs to be sent as: [first_goal_arguments, second_goal_arguments, ...]
+        """
+
         super().__init__()
 
         self.goal_type_seq = goal_type_seq
@@ -211,9 +218,9 @@ class MoveGripper(Goal):
                  suffix=''):
         """
         Open / CLose Gripper.
-        Current implementation is not final and will be replaced with a follow joint trajectory connection.
+        Current implementation is not final and might be replaced with a follow joint trajectory connection.
 
-        :param gripper_state: True to open gripper; False to close gripper.
+        :param gripper_state: keyword to state the gripper. Possible options: 'open', 'neutral', 'close'
         """
 
         super().__init__()
@@ -258,7 +265,18 @@ class Reaching(ObjectGoal):
         """
         Concludes Reaching type goals.
         Executes them depending on the given context action.
-        Examples: grasping, placing or pouring
+        Examples for context action: grasping, placing or pouring
+
+        :param context: Context of this goal. Contains information about action and the gripper alignment
+        :param object_name: Name of the object to use. Optional as long as goal_pose and object_size are filled instead
+        :param object_shape: Shape of the object to manipulate. Edit object size when having a sphere or cylinder
+        :param goal_pose: Goal pose for the object. Alternative if no object name is given.
+        :param object_size: Given object size. Alternative if no object name is given.
+        :param root_link: Current root Link
+        :param tip_link: Current tip link
+        :param velocity: Desired velocity of this goal
+        :param weight: weight of this goal
+        :param suffix: Only relevant for SequenceGoal interns
         """
         super().__init__()
         self.context = context
@@ -536,6 +554,10 @@ class VerticalMotion(ObjectGoal):
                  velocity: Optional[float] = 0.2,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
+        """
+        Move the tip link vertical according to the given context.
+        """
+
         super().__init__()
 
         self.context = context
@@ -666,29 +688,6 @@ class Retracting(ObjectGoal):
                                         frame_P_current=r_P_c,
                                         reference_velocity=self.velocity,
                                         weight=self.weight)
-
-        '''r_R_g = w.RotationMatrix(self.goal_point)
-        r_R_c = self.get_fk(self.root_link, self.tip_link).to_rotation()
-        c_R_r_eval = self.get_fk_evaluated(self.tip_link, self.root_link).to_rotation()
-        # self.add_debug_expr('trans', w.norm(r_P_c))
-        self.add_rotation_goal_constraints(frame_R_current=r_R_c,
-                                           frame_R_goal=r_R_g,
-                                           current_R_frame_eval=c_R_r_eval,
-                                           reference_velocity=self.velocity,
-                                           weight=self.weight)'''
-
-        #r_R_c = root_T_tip.to_rotation()
-        #r_R_g = root_T_goal.to_rotation()
-        #r_R_g.reference_frame = self.root_link
-        #self.r_R_c_eval = self.get_fk_evaluated(self.root_link, self.tip_link).to_rotation()
-
-        #self.add_rotation_goal_constraints(frame_R_current=r_R_c,
-        #                                   frame_R_goal=r_R_g,
-        #                                   current_R_frame_eval=self.r_R_c_eval,
-        #                                   reference_velocity=self.velocity,
-        #                                   weight=self.weight
-        #                                   )
-
 
     def update_params(self):
         root_T_tip_current = self.world.compute_fk_np(self.root_link, self.tip_link)
@@ -892,7 +891,7 @@ class Placing(ForceSensorGoal):
 
 class Tilting(Goal):
     def __init__(self,
-                 tilt_direction: Optional[str] = None,
+                 direction: Optional[str] = None,
                  tilt_angle: Optional[float] = None,
                  tip_link: Optional[str] = 'wrist_roll_joint',
                  suffix: Optional[str] = ''):
@@ -903,7 +902,7 @@ class Tilting(Goal):
         if tilt_angle is None:
             tilt_angle = max_angle
 
-        if tilt_direction == 'right':
+        if direction == 'right':
             tilt_angle = abs(tilt_angle)
         else:
             tilt_angle = abs(tilt_angle) * -1
@@ -1037,146 +1036,82 @@ class TakePose(Goal):
 
 
 class Mixing(Goal):
-
     def __init__(self,
-                 center: PointStamped,
-                 radius: float,
-                 scale: float,
-                 mixing_time: Optional[float] = 60,
-                 root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 velocity: Optional[float] = 0.1,
-                 weight: Optional[float] = WEIGHT_ABOVE_CA,
-                 suffix: Optional[str] = ''):
-        super().__init__()
-
-        self.god_map.set_data(identifier.max_trajectory_length, (mixing_time * scale) + 1)
-
-        self.center = self.transform_msg(self.world.root_link_name, center)
-        self.radius = radius
-        self.scale = scale
-        self.mixing_time = mixing_time
-        self.root_link = self.world.search_for_link_name(root_link)
-        self.tip_link = self.world.search_for_link_name(tip_link)
-        self.velocity = velocity
-        self.weight = weight
-        self.suffix = suffix
-
-        self.add_constraints_of_goal(NonRotationGoal(tip_link='base_link'))
-
-    def make_constraints(self):
-        map_T_bf = self.get_fk(self.root_link, self.tip_link)
-        t = self.god_map.to_expr(identifier.time) * self.scale
-        t = w.min(t, self.mixing_time * self.scale)
-        x = w.cos(t) * self.radius
-        y = w.sin(t) * self.radius
-        map_P_center = w.Point3(self.center)
-        map_T_center = w.TransMatrix.from_point_rotation_matrix(map_P_center)
-        center_V_center_to_bf_goal = w.Vector3((-x, -y, 0))
-        map_V_bf_to_center = map_T_center.dot(center_V_center_to_bf_goal)
-        bf_V_y = w.Vector3((0, 1, 0))
-        map_V_y = map_T_bf.dot(bf_V_y)
-        map_V_y.vis_frame = self.tip_link
-        map_V_bf_to_center.vis_frame = self.tip_link
-        map_V_y.scale(1)
-        map_V_bf_to_center.scale(1)
-
-        center_P_bf_goal = w.Point3((x, y, 0))
-        map_P_bf_goal = map_T_center.dot(center_P_bf_goal)
-        map_P_bf = map_T_bf.to_position()
-
-        self.add_point_goal_constraints(frame_P_current=map_P_bf,
-                                        frame_P_goal=map_P_bf_goal,
-                                        reference_velocity=self.velocity,
-                                        weight=self.weight,
-                                        name='position')
-
-    def __str__(self) -> str:
-        s = super().__str__()
-        return f'{s}_suffix:{self.suffix}'
-
-
-class Mixing1(Goal):
-    def __init__(self,
-                 # center: PointStamped,
-                 # radius: float,
-                 # scale: float,
                  mixing_time: Optional[float] = 20,
-                 root_link: Optional[str] = 'map',
-                 scale: Optional[float] = 1.0,
-                 #tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 velocity: Optional[float] = 0.1,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        # self.center = self.transform_msg(self.world.root_link_name, center)
-        # self.radius = radius
-        self.mixing_time = mixing_time
-        self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
 
-        self.target_speed = 1
-        self.wrist_roll_joint = self.world.search_for_joint_name('wrist_roll_joint')
-        self.arm_roll_joint = self.world.search_for_joint_name('arm_roll_joint')
-        self.wrist_flex_joint = self.world.search_for_joint_name('wrist_flex_joint')
+        target_speed = 1
 
+        self.add_constraints_of_goal(JointRotationGoal(joint_name='wrist_roll_joint',
+                                                       joint_center=0.0,
+                                                       joint_range=0.9,
+                                                       trajectory_length=mixing_time,
+                                                       target_speed=target_speed,
+                                                       suffix=suffix))
+
+        self.add_constraints_of_goal(JointRotationGoal(joint_name='wrist_flex_joint',
+                                                       joint_center=-1.3,
+                                                       joint_range=0.2,
+                                                       trajectory_length=mixing_time,
+                                                       target_speed=target_speed,
+                                                       suffix=suffix))
+
+        self.add_constraints_of_goal(JointRotationGoal(joint_name='arm_roll_joint',
+                                                       joint_center=0.0,
+                                                       joint_range=0.1,
+                                                       trajectory_length=mixing_time,
+                                                       target_speed=target_speed,
+                                                       suffix=suffix))
 
     def make_constraints(self):
-
-        time = self.traj_time_in_seconds()
-        wrist_roll_position = self.get_joint_position_symbol(self.wrist_roll_joint)
-
-        # Wrist roll joint
-        wrist_center_point = 0.0  # self.god_map.get_data(identifier.joint_states)['hsrb/wrist_roll_joint'].position #lower_limit + (upper_limit - lower_limit)/2
-        wrist_joint_range = 0.524  # w.min(w.abs(upper_limit - center_point), w.abs(lower_limit - center_point))
-        wrist_roll_goal = wrist_center_point + (w.sin(time * np.pi * 0.8) * wrist_joint_range)
-
-        self.add_debug_expr('wrist_roll_goal', wrist_roll_goal)
-        self.add_debug_expr('wrist_roll_current', wrist_roll_position)
-
-        self.add_position_constraint(expr_current=wrist_roll_position,
-                                     expr_goal=wrist_roll_goal,
-                                     reference_velocity=self.target_speed,
-                                     weight=w.if_greater(time, self.mixing_time, 0, WEIGHT_ABOVE_CA),
-                                     name='wrist_roll')
-
-        # Arm roll joint
-        arm_roll_position = self.get_joint_position_symbol(self.arm_roll_joint)
-
-        arm_roll_center_point = 0.0  # self.god_map.get_data(identifier.joint_states)['hsrb/wrist_roll_joint'].position #lower_limit + (upper_limit - lower_limit)/2
-        arm_roll_joint_range = 0.6  # w.min(w.abs(upper_limit - center_point), w.abs(lower_limit - center_point))
-        arm_roll_goal = arm_roll_center_point + (w.cos(time * np.pi * 0.8) * arm_roll_joint_range)
-
-        self.add_debug_expr('arm_roll_goal', arm_roll_goal)
-        self.add_debug_expr('arm_roll_position', arm_roll_position)
-
-        self.add_position_constraint(expr_current=arm_roll_position,
-                                     expr_goal=arm_roll_goal,
-                                     reference_velocity=self.target_speed,
-                                     weight=w.if_greater(time, self.mixing_time, 0, WEIGHT_ABOVE_CA),
-                                     name='arm_roll')
-
-        # Arm roll joint
-        wrist_flex_joint_position = self.get_joint_position_symbol(self.wrist_flex_joint)
-
-        wrist_flex_joint_center_point = -1.3  # self.god_map.get_data(identifier.joint_states)['hsrb/wrist_roll_joint'].position #lower_limit + (upper_limit - lower_limit)/2
-        wrist_flex_joint_range = 0.3  # w.min(w.abs(upper_limit - center_point), w.abs(lower_limit - center_point))
-        wrist_flex_joint_goal = wrist_flex_joint_center_point + (w.cos(time * np.pi * 0.8) * wrist_flex_joint_range)
-
-        self.add_debug_expr('wrist_flex_joint_goal', wrist_flex_joint_goal)
-        self.add_debug_expr('wrist_flex_joint_position', wrist_flex_joint_position)
-
-        self.add_position_constraint(expr_current=wrist_flex_joint_position,
-                                     expr_goal=wrist_flex_joint_goal,
-                                     reference_velocity=self.target_speed,
-                                     weight=w.if_greater(time, self.mixing_time, 0, WEIGHT_ABOVE_CA),
-                                     name='wrist_flex_roll')
-
+        pass
 
     def __str__(self) -> str:
         return super().__str__()
+
+
+class JointRotationGoal(Goal):
+    def __init__(self,
+                 joint_name: str,
+                 joint_center: float,
+                 joint_range: float,
+                 trajectory_length: Optional[float] = 20,
+                 target_speed: Optional[float] = 1,
+                 period_length: Optional[float] = 1.0,
+                 suffix: Optional[str] = ''
+                 ):
+        super().__init__()
+        self.joint = self.world.search_for_joint_name(joint_name)
+        self.target_speed = target_speed
+        self.trajectory_length = trajectory_length
+        self.joint_center = joint_center
+        self.joint_range = joint_range
+        self.period_length = period_length
+        self.suffix = suffix
+
+    def make_constraints(self):
+        time = self.traj_time_in_seconds()
+        joint_position = self.get_joint_position_symbol(self.joint)
+
+        joint_goal = self.joint_center + (w.cos(time * np.pi * self.period_length) * self.joint_range)
+
+        self.add_debug_expr(f'{self.joint.short_name}_goal', joint_goal)
+        self.add_debug_expr(f'{self.joint.short_name}_position', joint_position)
+
+        self.add_position_constraint(expr_current=joint_position,
+                                     expr_goal=joint_goal,
+                                     reference_velocity=self.target_speed,
+                                     weight=w.if_greater(time, self.trajectory_length, 0, WEIGHT_ABOVE_CA),
+                                     name=self.joint.short_name)
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f'{s}{self.joint.short_name}_suffix:{self.suffix}'
 
 
 class NonRotationGoal(Goal):

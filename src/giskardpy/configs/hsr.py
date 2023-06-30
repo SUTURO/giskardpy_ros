@@ -14,8 +14,7 @@ class HSR_Base(Giskard):
     map_name = 'map'
 
     def configure_execution(self):
-        # self.execution.set_qp_solver(SupportedQPSolver.gurobi)
-        pass
+        self.execution.set_qp_solver(SupportedQPSolver.qpSWIFT)
 
     def configure_world(self, robot_description: str = 'robot_description'):
         self.world.set_default_color(1, 1, 1, 1)
@@ -148,8 +147,8 @@ class HSR_Local(HSR_Base):
     def configure_behavior_tree(self):
         self.behavior_tree.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=True,
                                                               add_to_control_loop=False)
-        # self.behavior_tree.add_debug_marker_publisher()
-        # self.behavior_tree.add_debug_trajectory_plotter()
+        self.behavior_tree.add_debug_marker_publisher()
+        self.behavior_tree.add_debug_trajectory_plotter()
         # self.behavior_tree.add_qp_data_publisher(publish_debug=True, add_to_base=True)
 
     def configure_robot_interface(self):
