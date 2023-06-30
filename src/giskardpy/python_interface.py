@@ -1128,3 +1128,13 @@ class GiskardWrapper:
                            environment_group=environment_group,
                            goal_joint_state=goal_joint_state,
                            weight=weight)
+
+    def rotational_mixing(self,
+                          mixing_time,
+                          scale: Optional[float] = 1.0):
+
+        self.set_json_goal(constraint_type='Mixing1',
+                           mixing_time=mixing_time,
+                           scale=scale)
+
+

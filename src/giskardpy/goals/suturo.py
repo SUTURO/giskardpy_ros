@@ -81,7 +81,7 @@ class ObjectGoal(Goal):
             return link
         except:
             logwarn(f'Could not find {expected}.')
-            raise Exception  # TODO:  CouldFindLinkException
+            raise Exception  # TODO:  CouldNotFindLinkException
 
     def try_to_get_size_from_geometry(self,
                                       name: str,
@@ -310,7 +310,7 @@ class Reaching(ObjectGoal):
 
                 if object_in_world:
                     radius = -0.04  # shelf
-                    radius = 0.02  # drawer
+                    radius = - 0.02  # drawer
 
                 else:
                     radius = max(min(0.08, self.object_size.x / 2), 0.05)
@@ -371,6 +371,22 @@ class Reaching(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
+        elif self.action == 'door-opening':
+
+            radius = 0.01
+
+            self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
+                                                     object_size=self.object_size,
+                                                     reference_frame_alignment=self.reference_frame,
+                                                     frontal_offset=radius,
+                                                     from_above=self.from_above,
+                                                     vertical_align=self.vertical_align,
+                                                     root_link=self.root_str,
+                                                     tip_link=self.tip_str,
+                                                     velocity=self.velocity,
+                                                     weight=self.weight,
+                                                     suffix=self.suffix))
+
     def make_constraints(self):
         pass
 
@@ -395,7 +411,6 @@ class GraspObject(ObjectGoal):
         super().__init__()
 
         self.goal_pose = goal_pose
-        self.object_size = object_size
         self.reference_frame = reference_frame_alignment
         self.frontal_offset = frontal_offset
         self.from_above = from_above
@@ -1083,23 +1098,24 @@ class Mixing(Goal):
 
 class Mixing1(Goal):
     def __init__(self,
-                 center: PointStamped,
-                 radius: float,
-                 scale: float,
+                 # center: PointStamped,
+                 # radius: float,
+                 # scale: float,
                  mixing_time: Optional[float] = 60,
                  root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                 scale: Optional[float] = 1.0,
+                 #tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.1,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        self.center = self.transform_msg(self.world.root_link_name, center)
-        self.radius = radius
+        # self.center = self.transform_msg(self.world.root_link_name, center)
+        # self.radius = radius
         self.scale = scale
         self.mixing_time = mixing_time
         self.root_link = self.world.search_for_link_name(root_link)
-        self.tip_link = self.world.search_for_link_name(tip_link)
+        #self.tip_link = self.world.search_for_link_name(tip_link)
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
@@ -1107,17 +1123,37 @@ class Mixing1(Goal):
         wrist_roll_min = -1.7
         wrist_roll_max = 3.5
 
+        self.target_recovery_looking_speed = 1
+        self.recovery_joint = self.world.search_for_joint_name('wrist_roll_joint')
+
 
     def make_constraints(self):
-        t = self.god_map.to_expr(identifier.time)
+        # time = self.traj_time_in_seconds() * self.mixing_time
+        mixing_time = 20
 
-        joint_rotation = (w.sin(t) * 2.8) + 0.9
+        # t = self.god_map.to_expr(identifier.time) * self.scale
+        time = self.traj_time_in_seconds()
+        joint_position = self.get_joint_position_symbol(self.recovery_joint)
+        lower_limit, upper_limit = self.world.get_joint_position_limits(self.recovery_joint)
 
-        self.add_constraints_of_goal(JointPosition('wrist_roll_joint', joint_rotation))
+        # time_for_full_range = joint_range / self.target_recovery_looking_speed
+        center_point = 0.0 # self.god_map.get_data(identifier.joint_states)['hsrb/wrist_roll_joint'].position #lower_limit + (upper_limit - lower_limit)/2
+        joint_range = 0.524 # w.min(w.abs(upper_limit - center_point), w.abs(lower_limit - center_point))
+
+        target_search_joint_position = center_point + (w.cos(time * np.pi * 0.8) * joint_range)
+
+        self.add_debug_expr('rotation', target_search_joint_position)
+        self.add_debug_expr('joint_state', joint_position)
+
+        self.add_position_constraint(expr_current=joint_position,
+                                     expr_goal=target_search_joint_position,
+                                     reference_velocity=self.target_recovery_looking_speed,
+                                     weight=w.if_greater(time, mixing_time, 0, WEIGHT_ABOVE_CA),
+                                     name='lost_target_recovery')
 
     def __str__(self) -> str:
         s = super().__str__()
-        return f'{s}{self.tip_link}_suffix:{self.suffix}'
+        return f'{s}'# n {self.tip_link}_suffix:{self.suffix}'
 
 
 class NonRotationGoal(Goal):
