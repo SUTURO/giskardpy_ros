@@ -391,9 +391,16 @@ class Reaching(ObjectGoal):
 
         elif self.action == 'door-opening':
 
-            radius = 0.01
+            radius = 0.0#0.005
 
-            self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
+            base_P_goal = self.transform_msg(self.world.search_for_link_name('base_link'), self.goal_pose)
+
+            if 'left' in object_name:
+                base_P_goal.pose.position.y += 0.01
+            elif 'right' in object_name:
+                base_P_goal.pose.position.y -= 0.01
+
+            self.add_constraints_of_goal(GraspObject(goal_pose=base_P_goal,
                                                      object_size=self.object_size,
                                                      reference_frame_alignment=self.reference_frame,
                                                      frontal_offset=radius,
@@ -401,7 +408,7 @@ class Reaching(ObjectGoal):
                                                      vertical_align=self.vertical_align,
                                                      root_link=self.root_str,
                                                      tip_link=self.tip_str,
-                                                     velocity=self.velocity,
+                                                     velocity=self.velocity/2,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
