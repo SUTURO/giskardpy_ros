@@ -4,17 +4,16 @@ from typing import Optional, List, Dict
 import numpy as np
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
 
+import giskardpy.utils.tfwrapper as tf
 from giskardpy import casadi_wrapper as w, identifier
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
 from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
-from giskardpy.goals.joint_goals import JointPosition, JointPositionList
+from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
-
-import giskardpy.utils.tfwrapper as tf
 
 
 class ObjectGoal(Goal):
@@ -661,6 +660,9 @@ class Retracting(ObjectGoal):
 
         r_P_g = root_T_goal.to_position()
         r_P_c = root_T_tip.to_position()
+
+        # self.add_debug_expr('Goal', r_P_g)
+        # self.add_debug_expr('Current', r_P_c)
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,

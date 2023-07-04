@@ -69,9 +69,9 @@ class HSR_Realtime(HSR_Base):
     def configure_world(self, robot_description: str = 'robot_description'):
         super().configure_world('robot_description')
         self.world.set_default_color(1, 1, 1, 0.7)
-        #tool_frame = PrefixName('hand_gripper_tool_frame', self.get_default_group_name())
-        #self.world.add_empty_link(tool_frame)
-        #self.world.add_fixed_joint(parent_link=PrefixName('hand_palm_link', self.get_default_group_name()),
+        # tool_frame = PrefixName('hand_gripper_tool_frame', self.get_default_group_name())
+        # self.world.add_empty_link(tool_frame)
+        # self.world.add_fixed_joint(parent_link=PrefixName('hand_palm_link', self.get_default_group_name()),
         #                           child_link=tool_frame,
         #                           homogenous_transform=np.array([[1,0,0,0],
         #                                                          [0,1,0,0],
@@ -120,7 +120,6 @@ class HSR_StandAlone(HSR_Base):
         ])
 
 
-
 class HSR_Local(HSR_Base):
     def configure_execution(self):
         self.execution.set_control_mode(ControlModes.open_loop)
@@ -137,10 +136,15 @@ class HSR_Local(HSR_Base):
         #                                                           [0,0,1,0.08],
         #                                                           [0,0,0,1]]))
 
-
     def configure_behavior_tree(self):
-        self.behavior_tree.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=True,
-                                                              add_to_control_loop=False)
+        visualization = True
+
+        if visualization:
+            self.behavior_tree.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=True,
+                                                                  add_to_control_loop=False)
+
+        # self.behavior_tree.add_trajectory_plotter(wait=True)
+        # self.behavior_tree.add_debug_trajectory_plotter(wait=True)
         # self.behavior_tree.add_debug_marker_publisher()
         # self.behavior_tree.add_qp_data_publisher(publish_debug=True, add_to_base=True)
 
@@ -153,9 +157,9 @@ class HSR_Local(HSR_Base):
 
         self.robot_interface.add_follow_joint_trajectory_server(
             namespace='/hsrb/head_trajectory_controller',
-                                                state_topic='/hsrb/head_trajectory_controller/state',
-                                                fill_velocity_values=True)
-        #self.robot_interface.add_follow_joint_trajectory_server(
+            state_topic='/hsrb/head_trajectory_controller/state',
+            fill_velocity_values=True)
+        # self.robot_interface.add_follow_joint_trajectory_server(
         #    namespace='/hsrb/gripper_controller',
         #    fill_velocity_values=True)
         self.robot_interface.add_follow_joint_trajectory_server(
@@ -172,7 +176,6 @@ class HSR_Local(HSR_Base):
             namespace='/hsrb/arm_trajectory_controller',
             state_topic='/hsrb/arm_trajectory_controller/state',
             fill_velocity_values=True)
-
 
 
 class HSR_GazeboRealtime(HSR_Base):

@@ -916,7 +916,7 @@ class OpenLoop(StandAlone):
 
     def grow_Synchronize(self):
         sync = Sequence('Synchronize')
-        sync.add_child(SuturoWorldSynchroniser('poll world'))
+        # sync.add_child(SuturoWorldSynchroniser('poll world'))
         sync.add_child(SuturoGripperHandler('gripper_handler'))
         sync.add_child(WorldUpdater('update world'))
         sync.add_child(SyncTfFrames('sync tf frames3'))

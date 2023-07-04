@@ -1,20 +1,14 @@
 from typing import Dict
 
-from control_msgs.msg import FollowJointTrajectoryActionGoal, JointTolerance
-from geometry_msgs.msg import WrenchStamped
-from py_trees import Status
-
-from giskardpy.data_types import JointStates
-from giskardpy.exceptions import MonitorForceException
-from giskardpy.tree.behaviors.plugin import GiskardBehavior
-from giskardpy.utils import logging
-from giskardpy.utils.decorators import catch_and_raise_to_blackboard
-
 import controller_manager_msgs.srv
 import rospy
 import trajectory_msgs.msg
-from giskardpy import casadi_wrapper as w
-import numpy as np
+from geometry_msgs.msg import WrenchStamped
+from py_trees import Status
+
+from giskardpy.tree.behaviors.plugin import GiskardBehavior
+from giskardpy.utils import logging
+from giskardpy.utils.decorators import catch_and_raise_to_blackboard
 
 
 class MonitorForceSensor(GiskardBehavior):
