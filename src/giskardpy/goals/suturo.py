@@ -150,9 +150,12 @@ class SequenceGoal(Goal):
 
         super().__init__()
 
+        if isinstance(goal_type_seq[0], str):
+            goal_type_seq = [globals()[goal_name] for goal_name in goal_type_seq]
+
+        self.motion_sequence = motion_sequence
         self.goal_type_seq = goal_type_seq
         self.kwargs_seq = kwargs_seq
-        self.motion_sequence = motion_sequence
 
         self.current_goal_number = 0
         self.eq_weights = []
@@ -1160,7 +1163,7 @@ class NonRotationGoal(Goal):
         return f'{s}{self.tip_link}_suffix:{self.suffix}'
 
 
-class OpenHandleless(ObjectGoal):
+class OpenHandlelessTime(ObjectGoal):
     def __init__(self,
                  # door_name: str,
                  temp_position: PointStamped,
@@ -1216,6 +1219,84 @@ class OpenHandleless(ObjectGoal):
                                         reference_velocity=0.1,
                                         weight=WEIGHT_BELOW_CA,
                                         name='position')
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f'{s}{self.tip_link}_suffix:{self.suffix}'
+
+
+class OpenHandlelessCart(ObjectGoal):
+    def __init__(self,
+                 # door_name: str,
+                 temp_position: PointStamped,
+                 temp_size: Vector3,
+                 offset,
+                 opening_radius: float,
+                 door_opening_direction: str = 'right',
+                 root_link: str = 'map',
+                 tip_link_name: str = 'hand_gripper_tool_frame',
+                 weight: float = WEIGHT_ABOVE_CA,
+                 suffix: Optional[str] = ''):
+        super().__init__()
+
+        # self.door_name = door_name
+        # self.radius_offset = offset
+        self.opening_radius = opening_radius
+        self.door_opening_direction = door_opening_direction
+        self.root_link = root_link
+        self.tip_link_name = tip_link_name
+        self.tip_link = self.world.search_for_link_name(self.tip_link_name)
+        self.weight = weight
+        self.suffix = suffix
+
+        # self.shelf_door_center_pose, self.shelf_door_size = self.get_object_by_name(self.door_name)
+        # self.shelf_door_center_point = PointStamped(header=self.shelf_door_center_pose.header,
+        #                                             point=self.shelf_door_center_pose.pose.position)
+
+        # self.radius = self.shelf_door_size.y / 2
+
+        self.center = temp_position
+        self.radius = temp_size.y / 2
+
+        number_of_cart_goals = 5
+
+        time_points = np.linspace(self.opening_radius, 1, number_of_cart_goals)
+
+        if self.door_opening_direction == 'right':
+            pi_shift = np.pi * 0.5
+
+            x_cart = [w.sin(np.pi * time + pi_shift) * self.radius for time in time_points]
+            y_cart = [w.cos(np.pi * time + pi_shift) * self.radius for time in time_points]
+
+            radius_offset = self.radius
+
+        else:
+
+            x_cart = [w.cos(np.pi * time) * self.radius for time in time_points]
+            y_cart = [w.sin(np.pi * time) * self.radius for time in time_points]
+
+            radius_offset = -self.radius
+
+        goal_type_seq = []
+        kwargs_seq = []
+
+        for cart_goal in range(number_of_cart_goals):
+            tip_P_goal = PointStamped()
+            tip_P_goal.header.frame_id = self.tip_link_name
+            tip_P_goal.point.z = x_cart[cart_goal].evaluate()
+            tip_P_goal.point.y = y_cart[cart_goal].evaluate() + radius_offset
+
+            goal_type_seq.append('CartesianPosition')
+            kwargs_seq.append({'root_link': 'map', 'tip_link': self.tip_link_name, 'goal_point': tip_P_goal})
+
+        print(kwargs_seq)
+
+        self.add_constraints_of_goal(SequenceGoal(motion_sequence={},
+                                                  goal_type_seq=goal_type_seq,
+                                                  kwargs_seq=kwargs_seq))
+
+    def make_constraints(self):
+        pass
 
     def __str__(self) -> str:
         s = super().__str__()
