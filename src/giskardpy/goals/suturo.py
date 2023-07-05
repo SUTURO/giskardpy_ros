@@ -29,7 +29,12 @@ class ObjectGoal(Goal):
             loginfo('trying to get objects with name')
 
             object_link = self.world.get_link(object_name)
-            object_geometry: LinkGeometry = object_link.collisions[0]
+            # TODO: When object has no collision: set size to 0, 0, 0
+            object_collisions = object_link.collisions
+            if len(object_collisions) == 0:
+                object_geometry = BoxGeometry(link_T_geometry=np.eye(4), depth=0, width=0, height=0, color=None)
+            else:
+                object_geometry: LinkGeometry = object_link.collisions[0]
 
             goal_pose = self.world.compute_fk_pose('map', object_name)
 
@@ -134,7 +139,7 @@ class SequenceGoal(Goal):
                  motion_sequence: Dict,
                  goal_type_seq: List[Goal],
                  kwargs_seq: List[Dict]):
-        f"""
+        """
         Current solution to execute Goals in a sequence. The Goals will be executed one by one in the given order.
 
         :param motion_sequence: Future Dictionary to structure the goals with 'goal_type_seq': kwargs_seq
@@ -232,14 +237,16 @@ class MoveGripper(Goal):
             self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_controller)
             self.gripper_function(0.8)
 
+        elif self.gripper_state == 'close':
+            self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_controller)
+            self.gripper_function(-0.8)
+
         elif self.gripper_state == 'neutral':
 
             self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_trajectory)
             self.gripper_function(0.5)
 
-        elif self.gripper_state == 'close':
-            self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_controller)
-            self.gripper_function(-0.8)
+
 
     def make_constraints(self):
         pass
@@ -677,6 +684,12 @@ class Retracting(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
+        if 'base_link' not in self.tip_str:
+            self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
+                                                         weight=self.weight,
+                                                         suffix=self.suffix))
+
+
     def make_constraints(self):
 
         start_tip_T_current_tip = w.TransMatrix(self.get_parameter_as_symbolic_expression('start_tip_T_current_tip'))
@@ -689,9 +702,6 @@ class Retracting(ObjectGoal):
 
         r_P_g = root_T_goal.to_position()
         r_P_c = root_T_tip.to_position()
-
-        # self.add_debug_expr('Goal', r_P_g)
-        # self.add_debug_expr('Current', r_P_c)
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
@@ -1143,6 +1153,35 @@ class NonRotationGoal(Goal):
                                                           goal_orientation=tip_orientation,
                                                           weight=self.weight,
                                                           suffix=self.suffix))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f'{s}{self.tip_link}_suffix:{self.suffix}'
+
+
+class OpenHandleless(ObjectGoal):
+    def __init__(self,
+                 door_name: str,
+                 door_radius: float,
+                 root_link: str = 'map',
+                 tip_link: str = 'hand_gripper_tool_frame',
+                 weight: float = WEIGHT_ABOVE_CA,
+                 suffix: Optional[str] = ''):
+        super().__init__()
+
+        self.door_name = door_name
+        self.door_radius = door_radius
+        self.root_link = root_link
+        self.tip_link = tip_link
+        self.weight = weight
+        self.suffix = suffix
+
+        self.goal_pose, self.object_size = self.get_object_by_name(self.door_name)
+
+
 
     def make_constraints(self):
         pass
