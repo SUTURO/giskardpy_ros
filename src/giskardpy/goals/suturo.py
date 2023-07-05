@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 import numpy as np
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
@@ -8,7 +8,8 @@ import giskardpy.utils.tfwrapper as tf
 from giskardpy import casadi_wrapper as w, identifier
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
+from giskardpy.goals.caster import Circle
+from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal, WEIGHT_BELOW_CA
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.qp.constraint import EqualityConstraint
@@ -24,7 +25,7 @@ class ObjectGoal(Goal):
 
         super().__init__()
 
-    def get_object_by_name(self, object_name):
+    def get_object_by_name(self, object_name) -> Tuple[PoseStamped, Vector3]:
         try:
             loginfo('trying to get objects with name')
 
@@ -246,8 +247,6 @@ class MoveGripper(Goal):
             self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_trajectory)
             self.gripper_function(0.5)
 
-
-
     def make_constraints(self):
         pass
 
@@ -376,12 +375,12 @@ class Reaching(ObjectGoal):
                                                      suffix=self.suffix))
         elif self.action == 'pouring':
             # grasped_object_size = self.object_size
-            #pour_object_size = self.convert_list_to_size(context['pour_object_size'])
+            # pour_object_size = self.convert_list_to_size(context['pour_object_size'])
 
-            #new_height = (pour_object_size.z / 2) + (grasped_object_size.z / 2)
-            #radius = (pour_object_size.x / 2) + (grasped_object_size.x / 2)
+            # new_height = (pour_object_size.z / 2) + (grasped_object_size.z / 2)
+            # radius = (pour_object_size.x / 2) + (grasped_object_size.x / 2)
             radius = 0.0
-            #self.object_size.z += new_height
+            # self.object_size.z += new_height
 
             self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                      object_size=self.object_size,
@@ -397,7 +396,7 @@ class Reaching(ObjectGoal):
 
         elif self.action == 'door-opening':
 
-            radius = 0.0#0.005
+            radius = 0.0  # 0.005
 
             base_P_goal = self.transform_msg(self.world.search_for_link_name('base_link'), self.goal_pose)
 
@@ -414,7 +413,7 @@ class Reaching(ObjectGoal):
                                                      vertical_align=self.vertical_align,
                                                      root_link=self.root_str,
                                                      tip_link=self.tip_str,
-                                                     velocity=self.velocity/2,
+                                                     velocity=self.velocity / 2,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
@@ -688,7 +687,6 @@ class Retracting(ObjectGoal):
             self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
                                                          weight=self.weight,
                                                          suffix=self.suffix))
-
 
     def make_constraints(self):
 
@@ -1164,27 +1162,60 @@ class NonRotationGoal(Goal):
 
 class OpenHandleless(ObjectGoal):
     def __init__(self,
-                 door_name: str,
-                 door_radius: float,
+                 # door_name: str,
+                 temp_position: PointStamped,
+                 temp_size: Vector3,
+                 opening_radius: float,
+                 door_opening_direction: str = 'right',
                  root_link: str = 'map',
-                 tip_link: str = 'hand_gripper_tool_frame',
+                 tip_link_name: str = 'hand_gripper_tool_frame',
                  weight: float = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        self.door_name = door_name
-        self.door_radius = door_radius
+        # self.door_name = door_name
+        self.opening_radius = opening_radius
+        self.door_opening_direction = door_opening_direction
         self.root_link = root_link
-        self.tip_link = tip_link
+        self.tip_link_name = tip_link_name
+        self.tip_link = self.world.search_for_link_name(self.tip_link_name)
         self.weight = weight
         self.suffix = suffix
 
-        self.goal_pose, self.object_size = self.get_object_by_name(self.door_name)
+        # self.shelf_door_center_pose, self.shelf_door_size = self.get_object_by_name(self.door_name)
+        # self.shelf_door_center_point = PointStamped(header=self.shelf_door_center_pose.header,
+        #                                             point=self.shelf_door_center_pose.pose.position)
 
+        # self.radius = self.shelf_door_size.y / 2
 
+        self.center = temp_position
+        self.radius = temp_size.y / 2
 
     def make_constraints(self):
-        pass
+
+        t = self.traj_time_in_seconds()
+
+        map_T_bf = self.get_fk(self.world.root_link_name, self.tip_link)
+
+        map_P_center = w.Point3(self.center)
+        map_T_center = w.TransMatrix.from_point_rotation_matrix(map_P_center)
+
+        if self.door_opening_direction == 'left':
+            x = w.sin(np.pi * t) * self.radius
+            y = w.cos(np.pi * t) * self.radius
+        else:
+            x = w.cos(np.pi * t) * self.radius
+            y = w.sin(np.pi * t) * self.radius
+
+        center_P_bf_goal = w.Point3((x, y, 0))
+        map_P_bf_goal = map_T_center.dot(center_P_bf_goal)
+        map_P_bf = map_T_bf.to_position()
+
+        self.add_point_goal_constraints(frame_P_current=map_P_bf,
+                                        frame_P_goal=map_P_bf_goal,
+                                        reference_velocity=0.1,
+                                        weight=WEIGHT_BELOW_CA,
+                                        name='position')
 
     def __str__(self) -> str:
         s = super().__str__()
