@@ -397,28 +397,46 @@ class Reaching(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
-        elif self.action == 'door-opening':
+        elif self.action == 'approach_door':
 
-            radius = 0.0  # 0.005
+            map_P_shelfdoor, shelf_size = self.get_object_by_name(self.object_name)
 
-            base_P_goal = self.transform_msg(self.world.search_for_link_name('base_link'), self.goal_pose)
+            base_P_shelfdoor = self.transform_msg('base_link', map_P_shelfdoor)
 
-            if 'left' in object_name:
-                base_P_goal.pose.position.y += 0.01
-            elif 'right' in object_name:
-                base_P_goal.pose.position.y -= 0.01
+            if self.context['direction'] == 'left':
+                base_P_shelfdoor.pose.position.y += shelf_size.y
+            else:
+                base_P_shelfdoor.pose.position.y -= shelf_size.y
 
-            self.add_constraints_of_goal(GraspObject(goal_pose=base_P_goal,
-                                                     object_size=self.object_size,
-                                                     reference_frame_alignment=self.reference_frame,
-                                                     frontal_offset=radius,
-                                                     from_above=self.from_above,
-                                                     vertical_align=self.vertical_align,
-                                                     root_link=self.root_str,
-                                                     tip_link=self.tip_str,
-                                                     velocity=self.velocity / 2,
-                                                     weight=self.weight,
-                                                     suffix=self.suffix))
+            approach_goals = ['CartesianPosition', 'CartesianPosition']
+            goal_types = approach_goals
+
+            base_P_shelfdoor_2 = deepcopy(base_P_shelfdoor)
+
+
+            base_P_goal_1 = PointStamped(header=base_P_shelfdoor.header, point=base_P_shelfdoor.pose.position)
+            base_P_goal_2 = PointStamped(header=base_P_shelfdoor_2.header, point=base_P_shelfdoor_2.pose.position)
+
+            if self.context['direction'] == 'left':
+                base_P_goal_2.point.y += shelf_size.y
+            else:
+                base_P_goal_2.point.y -= shelf_size.y
+
+
+            # remove after test
+            base_P_goal_1.point.z += 0.2
+            base_P_goal_2.point.z += 0.2
+
+            # base_P_shelfdoor = self.transform_msg('map', base_P_shelfdoor)
+
+            goal_arguments = [{'root_link': 'map', 'tip_link': self.tip_str, 'goal_point': base_P_goal_1},
+                              {'root_link': 'map', 'tip_link': self.tip_str, 'goal_point': base_P_goal_2}]
+            # goal_arguments = [{'root_link': 'map', 'tip_link': self.tip_str, 'goal_point': base_P_goal_1}]
+
+
+            self.add_constraints_of_goal(SequenceGoal(motion_sequence={},
+                                                      goal_type_seq=goal_types,
+                                                      kwargs_seq=goal_arguments))
 
     def make_constraints(self):
         pass
