@@ -173,16 +173,21 @@ class HSR_Local(HSR_Base):
         # self.robot_interface.add_follow_joint_trajectory_server(
         #    namespace='/hsrb/gripper_controller',
         #    fill_velocity_values=True)
-        self.robot_interface.add_follow_joint_trajectory_server(
-            namespace='/hsrb/omni_base_controller',
-            state_topic='/hsrb/omni_base_controller/state',
-            fill_velocity_values=True,
-            path_tolerance={
-                Derivatives.position: 1,
-                Derivatives.velocity: 1,
-                Derivatives.acceleration: 100,
-            }
-        )
+        #self.robot_interface.add_follow_joint_trajectory_server(
+        #    namespace='/hsrb/omni_base_controller',
+        #    state_topic='/hsrb/omni_base_controller/state',
+        #    fill_velocity_values=True,
+        #    path_tolerance={
+        #        Derivatives.position: 1,
+        #        Derivatives.velocity: 1,
+        #        Derivatives.acceleration: 100,
+        #    }
+        #)
+
+        self.robot_interface.add_base_cmd_velocity(cmd_vel_topic='/hsrb/command_velocity',
+                                                   track_only_velocity=True,
+                                                   joint_name=self.drive_joint_name)
+
         self.robot_interface.add_follow_joint_trajectory_server(
             namespace='/hsrb/arm_trajectory_controller',
             state_topic='/hsrb/arm_trajectory_controller/state',
