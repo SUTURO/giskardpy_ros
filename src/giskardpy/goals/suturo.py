@@ -1245,11 +1245,11 @@ class OpenHandlelessTime(ObjectGoal):
 
 class OpenHandlelessCart(ObjectGoal):
     def __init__(self,
-                 # door_name: str,
-                 temp_position: PointStamped,
-                 temp_size: Vector3,
-                 offset,
-                 opening_radius: float,
+                 object_name: str,
+                 #temp_position: PointStamped,
+                 #temp_size: Vector3,
+                 #offset,
+                 opening_radius: float = 0.4,
                  door_opening_direction: str = 'right',
                  root_link: str = 'map',
                  tip_link_name: str = 'hand_gripper_tool_frame',
@@ -1257,7 +1257,7 @@ class OpenHandlelessCart(ObjectGoal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
-        # self.door_name = door_name
+        self.object_name = object_name
         # self.radius_offset = offset
         self.opening_radius = opening_radius
         self.door_opening_direction = door_opening_direction
@@ -1267,14 +1267,14 @@ class OpenHandlelessCart(ObjectGoal):
         self.weight = weight
         self.suffix = suffix
 
-        # self.shelf_door_center_pose, self.shelf_door_size = self.get_object_by_name(self.door_name)
-        # self.shelf_door_center_point = PointStamped(header=self.shelf_door_center_pose.header,
-        #                                             point=self.shelf_door_center_pose.pose.position)
+        self.shelf_door_center_pose, self.shelf_door_size = self.get_object_by_name(self.object_name)
+        self.shelf_door_center_point = PointStamped(header=self.shelf_door_center_pose.header,
+                                                    point=self.shelf_door_center_pose.pose.position)
 
         # self.radius = self.shelf_door_size.y / 2
 
-        self.center = temp_position
-        self.radius = temp_size.y / 2
+        self.center = self.shelf_door_center_point
+        self.radius = self.shelf_door_size.y / 2
 
         number_of_cart_goals = 5
 
