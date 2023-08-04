@@ -919,7 +919,7 @@ class OpenLoop(StandAlone):
 
     def grow_Synchronize(self):
         sync = Sequence('Synchronize')
-        sync.add_child(SuturoWorldSynchroniser('poll world'))
+        # sync.add_child(SuturoWorldSynchroniser('poll world'))
         sync.add_child(SuturoGripperHandler('gripper_handler'))
         sync.add_child(WorldUpdater('update world'))
         sync.add_child(SyncTfFrames('sync tf frames3'))
@@ -1041,7 +1041,7 @@ class ClosedLoop(OpenLoop):
         planning_4.add_child(RealKinSimPlugin('kin sim'))
         # planning_4.add_child(LoopDetector('loop detector'))
         planning_4.add_child(GoalReached('goal reached', real_time=True))
-        planning_4.add_child(MaxTrajectoryLength('traj length check', real_time=True))
+        # planning_4.add_child(MaxTrajectoryLength('traj length check', real_time=True))
         planning_4.add_child(GoalDone('goal done check'))
         return planning_4
 

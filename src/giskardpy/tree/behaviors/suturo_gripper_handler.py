@@ -2,17 +2,12 @@ import actionlib
 import rospy
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from py_trees import Status
-
-from geometry_msgs.msg import Pose
 from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 from giskardpy import identifier
-from giskardpy.model.utils import make_world_body_box, make_world_body_cylinder, make_world_body_sphere
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
-from giskardpy.utils import logging
 
-from importlib import import_module
 
 # Debugging
 # import pydevd_pycharm
