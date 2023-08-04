@@ -1089,7 +1089,7 @@ class GiskardWrapper:
                 ):
 
         self.set_json_goal(constraint_type='Tilting',
-                           tilt_direction=tilt_direction,
+                           direction=tilt_direction,
                            tilt_angle=tilt_angle,
                            tip_link=tip_link)
 

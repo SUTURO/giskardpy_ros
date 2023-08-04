@@ -18,12 +18,9 @@ import giskardpy.utils.tfwrapper as tf
 
 
 class ObjectGoal(Goal):
-    def __init__(self):
-        """
-        Inherit from this class if the goal tries to get the object by name from the world
-        """
-
-        super().__init__()
+    """
+    Inherit from this class if the goal tries to get the object by name from the world
+    """
 
     def get_object_by_name(self, object_name):
         try:
@@ -40,6 +37,7 @@ class ObjectGoal(Goal):
             if isinstance(object_geometry, BoxGeometry):
                 object_type = 'box'
                 object_geometry: BoxGeometry = object_geometry
+                # FIXE use expression instead of vector3, unless its really a vector
                 object_size = Vector3(object_geometry.width, object_geometry.depth, object_geometry.height)
 
             elif isinstance(object_geometry, CylinderGeometry):
@@ -77,6 +75,7 @@ class ObjectGoal(Goal):
 
     def try_to_get_link(self, expected: str):
         try:
+            # FIXME search for link name gibt eh exception?
             link = self.world.search_for_link_name(expected)
             return link
         except:
@@ -88,7 +87,7 @@ class ObjectGoal(Goal):
                                       geometry: LinkGeometry,
                                       frame_fallback: str,
                                       size_fallback: Vector3):
-
+        # FIXME check which functions are actually being used
         if isinstance(geometry, BoxGeometry):
             object_size = Vector3(x=geometry.width, y=geometry.depth, z=geometry.height)
 
@@ -135,7 +134,7 @@ class SequenceGoal(Goal):
                  motion_sequence: Dict,
                  goal_type_seq: List[Goal],
                  kwargs_seq: List[Dict]):
-        f"""
+        """
         Current solution to execute Goals in a sequence. The Goals will be executed one by one in the given order.
 
         :param motion_sequence: Future Dictionary to structure the goals with 'goal_type_seq': kwargs_seq
@@ -184,7 +183,7 @@ class SequenceGoal(Goal):
                 constraint.quadratic_weight = constraint.quadratic_weight * expr
 
     def asdf(self, goal_number, eq_number, compiled_constraint):
-
+        # FIXME rename
         if goal_number != self.current_goal_number:
             return 0
 
@@ -213,6 +212,7 @@ class SequenceGoal(Goal):
 
 
 class MoveGripper(Goal):
+    thing = None
     def __init__(self,
                  gripper_state: str,
                  suffix=''):
@@ -226,7 +226,8 @@ class MoveGripper(Goal):
         super().__init__()
 
         self.suffix = suffix
-
+        # FIXME use class attibute to keep state
+        MoveGripper.thing
         self.gripper_state = gripper_state
 
         if self.gripper_state == 'open':
@@ -245,6 +246,11 @@ class MoveGripper(Goal):
     def make_constraints(self):
         pass
 
+    def trigger(self):
+        # todo vllt kriegt man mit einem trigger call in einer expr es hin in seq goals zu öffnen
+        # if irgendwas dann trigger
+        return 0
+
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
@@ -252,9 +258,9 @@ class MoveGripper(Goal):
 
 class Reaching(ObjectGoal):
     def __init__(self,
-                 context,
-                 object_name: Optional[str] = '',
-                 object_shape: Optional[str] = '',
+                 context,  # FIXME typehint for context
+                 object_name: str = '',
+                 object_shape: str = '',  # FIXME use optional only when none is allowed
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
                  root_link: Optional[str] = 'odom',
@@ -278,6 +284,7 @@ class Reaching(ObjectGoal):
         :param weight: weight of this goal
         :param suffix: Only relevant for SequenceGoal interns
         """
+        # FIXME use message to define keywords
         super().__init__()
         self.context = context
         self.object_name = object_name
@@ -287,7 +294,8 @@ class Reaching(ObjectGoal):
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
-
+        # FIXME default for root link
+        # self.world.groups[self.world.group_names[0]].root_link_name
         self.action = context['action']
         self.from_above = False
         self.vertical_align = False
@@ -424,7 +432,7 @@ class GraspObject(ObjectGoal):
     def __init__(self,
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
-                 reference_frame_alignment: Optional[str] = 'base_link',
+                 reference_frame_alignment: Optional[str] = 'base_link',  # FIXME base link as default is unintuitive
                  frontal_offset: Optional[float] = 0.0,
                  from_above: Optional[bool] = False,
                  vertical_align: Optional[bool] = False,
@@ -500,6 +508,7 @@ class GraspObject(ObjectGoal):
                                                        weight=self.weight,
                                                        suffix=self.suffix))
 
+        # FIXME you can use orientation goal instead of two align planes
         # Align vertical
         self.add_constraints_of_goal(AlignPlanes(root_link=self.root_str,
                                                  tip_link=self.tip_str,
@@ -933,7 +942,6 @@ class Tilting(Goal):
 
 
 class TakePose(Goal):
-
     def __init__(self,
                  pose_keyword: Optional[str] = None,
                  head_pan_joint: Optional[float] = None,
@@ -1016,6 +1024,7 @@ class TakePose(Goal):
                 loginfo(f'{pose_keyword} is not a valid pose')
                 return
 
+            # FIXME joint position list kann direkt gecalled werden, wenn cram ihn selbst definiert
             joint_states = {
                 'head_pan_joint': head_pan_joint,
                 'head_tilt_joint': head_tilt_joint,
@@ -1083,6 +1092,7 @@ class Mixing(Goal):
 
 
 class JointRotationGoal(Goal):
+    # FIXME rename
     def __init__(self,
                  joint_name: str,
                  joint_center: float,
@@ -1122,6 +1132,7 @@ class JointRotationGoal(Goal):
 
 
 class NonRotationGoal(Goal):
+    # FIXME identity rotation or keep rotation
     def __init__(self,
                  tip_link: str,
                  weight: float = WEIGHT_ABOVE_CA,

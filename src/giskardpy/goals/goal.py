@@ -719,3 +719,8 @@ class ForceSensorGoal(Goal):
     @abc.abstractmethod
     def recovery(self) -> Dict:
         return {}
+
+
+    def clean_up(self):
+        self.tree.remove_node('monitor execution')
+

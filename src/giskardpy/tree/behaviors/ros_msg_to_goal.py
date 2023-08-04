@@ -79,6 +79,7 @@ class RosMsgToGoal(GetGoal):
         for constraint in itertools.chain(cmd.constraints):
             try:
                 if constraint.type == 'AvoidJointLimits':
+                    # FIXME remove this hack
                     continue
 
                 loginfo(f'Adding constraint of type: \'{constraint.type}\'')
@@ -119,7 +120,7 @@ class RosMsgToGoal(GetGoal):
                 raise e
 
     def replace_jsons_with_ros_messages(self, d):
-        # TODO parse recursively
+        # TODO make PR!!!!
 
         if isinstance(d, list):
             for i, element in enumerate(d):

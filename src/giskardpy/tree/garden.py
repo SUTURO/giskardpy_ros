@@ -646,6 +646,7 @@ class StandAlone(TreeManager):
         root.add_child(NewTrajectory('NewTrajectory'))
         root.add_child(self.grow_process_goal())
         root.add_child(SendResult('send result', self.action_server_name, MoveAction))
+        root.add_child(GoalCleanUp('clean up goals'))
         return root
 
     def grow_wait_for_goal(self):
@@ -727,7 +728,6 @@ class StandAlone(TreeManager):
         plan_postprocessing.add_child(running_is_success(TimePlugin)('increase time plan post processing'))
         plan_postprocessing.add_child(SetZeroVelocity('set zero vel 1'))
         plan_postprocessing.add_child(running_is_success(LogTrajPlugin)('log post processing'))
-        plan_postprocessing.add_child(GoalCleanUp('clean up goals'))
         return plan_postprocessing
 
     def configure_visualization_marker(self,
