@@ -231,7 +231,7 @@ class MoveGripper(Goal):
 
         self.suffix = suffix
         # FIXME use class attibute to keep state
-        MoveGripper.thing
+        # MoveGripper.thing
         self.gripper_state = gripper_state
 
         if self.gripper_state == 'open':
@@ -859,6 +859,7 @@ class Placing(ForceSensorGoal):
     def __init__(self,
                  context,
                  goal_pose: PoseStamped,
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.025,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
@@ -880,6 +881,7 @@ class Placing(ForceSensorGoal):
         self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                  root_link=self.base_str,
                                                  from_above=self.from_above,
+                                                 tip_link=tip_link,
                                                  velocity=self.velocity,
                                                  weight=self.weight,
                                                  suffix=self.suffix))
@@ -1104,7 +1106,7 @@ class Mixing(Goal):
 
 
 class JointRotationGoal(Goal):
-    # FIXME rename
+    # FIXME rename 'JointRotationGoalContiunuos'
     def __init__(self,
                  joint_name: str,
                  joint_center: float,

@@ -1,3 +1,5 @@
+import csv
+import os.path
 from typing import Dict
 
 import controller_manager_msgs.srv
@@ -10,6 +12,68 @@ from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
 from giskardpy.utils.decorators import catch_and_raise_to_blackboard
 
+# data extraction
+from numpy import savetxt
+from numpy import asarray
+from pprint import pprint
+
+import scipy
+# !/usr/bin/env python
+
+import rospy
+from geometry_msgs.msg import WrenchStamped
+from scipy.signal import butter, lfilter
+
+
+class ButterworthFilter:
+    def __init__(self, cutoff, fs, order=4):
+        self.prev_values = [WrenchStamped()] * (order + 1)
+        self.b, self.a = butter(order, cutoff / (0.5 * fs), btype='low')
+
+    def filter(self, current_input):
+        filtered_data = WrenchStamped()
+        filtered_data.header = current_input.header
+
+        # Apply filter for each force and torque component
+        for attr in ['x', 'y', 'z']:
+            force_values = [getattr(val.wrench.force, attr) for val in self.prev_values] + [
+                getattr(current_input.wrench.force, attr)]
+            torque_values = [getattr(val.wrench.torque, attr) for val in self.prev_values] + [
+                getattr(current_input.wrench.torque, attr)]
+
+            filtered_force = lfilter(self.b, self.a, force_values)[-1]
+            filtered_torque = lfilter(self.b, self.a, torque_values)[-1]
+
+            setattr(filtered_data.wrench.force, attr, filtered_force)
+            setattr(filtered_data.wrench.torque, attr, filtered_torque)
+
+        self.prev_values.append(current_input)
+        self.prev_values.pop(0)
+
+        return filtered_data
+
+
+def callback(data, filter_obj, pub):
+    filtered_data = filter_obj.filter(data)
+    pub.publish(filtered_data)
+
+
+def main():
+    rospy.init_node('butterworth_filter_node', anonymous=True)
+
+    # Sampling frequency (for a 60Hz publisher)
+    fs = 60.0
+    # Customize these values as needed:
+    cutoff = rospy.get_param("~cutoff", 10.0)  # Cutoff frequency in Hz
+    order = rospy.get_param("~order", 4)  # Order of the filter
+
+    filter_obj = ButterworthFilter(cutoff, fs, order)
+
+    pub = rospy.Publisher('/filtered_force_torque', WrenchStamped, queue_size=10)
+    rospy.Subscriber('/raw_force_torque', WrenchStamped, callback, filter_obj, pub)
+
+    rospy.spin()
+
 
 class MonitorForceSensor(GiskardBehavior):
 
@@ -21,13 +85,23 @@ class MonitorForceSensor(GiskardBehavior):
         self.name = name
         self.wrench_compensated_subscriber = None
 
-        self.wrench_compensated_force_data_x = []
-        self.wrench_compensated_force_data_y = []
-        self.wrench_compensated_force_data_z = []
-        self.wrench_compensated_torque_data_x = []
-        self.wrench_compensated_torque_data_y = []
-        self.wrench_compensated_torque_data_z = []
+        self.filter_range = 4
+        self.wrench_compensated_force_data_x = [0] * self.filter_range
+        self.wrench_compensated_force_data_y = [0] * self.filter_range
+        self.wrench_compensated_force_data_z = [0] * self.filter_range
+        self.wrench_compensated_torque_data_x = [0] * self.filter_range
+        self.wrench_compensated_torque_data_y = [0] * self.filter_range
+        self.wrench_compensated_torque_data_z = [0] * self.filter_range
         self.wrench_compensated_latest_data = WrenchStamped()
+        self.sensor_timestamps = [0] * self.filter_range
+        self.sensor_seq = [0] * self.filter_range
+
+        self.x_force_filtered = []
+        self.y_force_filtered = []
+        self.z_force_filtered = []
+        self.x_torque_filtered = []
+        self.y_torque_filtered = []
+        self.z_torque_filtered = []
 
         # self.force_threshold = 0.0
         # self.torque_threshold = 0.15
@@ -92,32 +166,30 @@ class MonitorForceSensor(GiskardBehavior):
         place with frontal grasping: force: -x, torque: y
         """
 
-        conds = self.conditions
-
-        whole_data = {'x_force': self.wrench_compensated_force_data_x,
-                      'y_force': self.wrench_compensated_force_data_y,
-                      'z_force': self.wrench_compensated_force_data_z,
-                      'x_torque': self.wrench_compensated_torque_data_x,
-                      'y_torque': self.wrench_compensated_torque_data_y,
-                      'z_torque': self.wrench_compensated_torque_data_z}
-
         # TODO: improve math (e.g. work with derivative or moving average)
 
         # if self.counter > 2:
         #    self.cancel_condition = True
 
+        filtered_data = {'x_force': self.x_force_filtered,
+                         'y_force': self.y_force_filtered,
+                         'z_force': self.z_force_filtered,
+                         'x_torque': self.x_torque_filtered,
+                         'y_torque': self.y_torque_filtered,
+                         'z_torque': self.z_torque_filtered}
+
+        conds = self.conditions
         evals = []
         for condition in conds:
             sensor_axis, operator, value = condition
 
-            current_data = whole_data[sensor_axis][-1]
+            current_data = filtered_data[sensor_axis][-1]
 
             evaluated_condition = eval(f'{current_data} {operator} {value}')
 
             evals.append(evaluated_condition)
 
         if any(evals):
-
             logging.loginfo(f'conditions: {conds}')
             logging.loginfo(f'evaluated: {evals}')
 
@@ -134,12 +206,36 @@ class MonitorForceSensor(GiskardBehavior):
         self.wrench_compensated_torque_data_z.append(data_compensated.wrench.torque.z)
 
         self.wrench_compensated_latest_data = data_compensated
+        self.sensor_timestamps.append(self.wrench_compensated_latest_data.header.stamp)
+        self.sensor_seq.append(self.wrench_compensated_latest_data.header.seq)
+
+        order = self.filter_range
+        cutoff = 10
+        fs = 60
+        b, a = butter(order, cutoff / (0.5 * fs), btype='low')
+
+        # filter_range = self.filter_range
+
+        current_x_force_filtered = lfilter(b, a, self.wrench_compensated_force_data_x)[-1]
+        current_y_force_filtered = lfilter(b, a, self.wrench_compensated_force_data_y)[-1]
+        current_z_force_filtered = lfilter(b, a, self.wrench_compensated_force_data_z)[-1]
+        current_x_torque_filtered = lfilter(b, a, self.wrench_compensated_torque_data_x)[-1]
+        current_y_torque_filtered = lfilter(b, a, self.wrench_compensated_torque_data_y)[-1]
+        current_z_torque_filtered = lfilter(b, a, self.wrench_compensated_torque_data_z)[-1]
+
+        self.x_force_filtered.append(current_x_force_filtered)
+        self.y_force_filtered.append(current_y_force_filtered)
+        self.z_force_filtered.append(current_z_force_filtered)
+        self.x_torque_filtered.append(current_x_torque_filtered)
+        self.y_torque_filtered.append(current_y_torque_filtered)
+        self.z_torque_filtered.append(current_z_torque_filtered)
 
     @catch_and_raise_to_blackboard
     @profile
     def update(self):
 
         if self.cancel_condition:
+            self.save_data()
             rospy.loginfo('goal canceled')
 
             return Status.SUCCESS
@@ -186,3 +282,50 @@ class MonitorForceSensor(GiskardBehavior):
 
         # publish ROS message
         self.arm_trajectory_publisher.publish(traj)
+
+    def save_data(self):
+
+        filtered_data = {'timestamp': self.sensor_timestamps,
+                         'seq': self.sensor_seq,
+                         'x_force': self.x_force_filtered,
+                         'y_force': self.y_force_filtered,
+                         'z_force': self.z_force_filtered,
+                         'x_torque': self.x_torque_filtered,
+                         'y_torque': self.y_torque_filtered,
+                         'z_torque': self.z_torque_filtered,
+                         }
+
+        unfiltered_data = {'timestamp': self.sensor_timestamps,
+                           'seq': self.sensor_seq,
+                           'x_force': self.wrench_compensated_force_data_x,
+                           'y_force': self.wrench_compensated_force_data_y,
+                           'z_force': self.wrench_compensated_force_data_z,
+                           'x_torque': self.wrench_compensated_torque_data_x,
+                           'y_torque': self.wrench_compensated_torque_data_y,
+                           'z_torque': self.wrench_compensated_torque_data_z,
+                           }
+
+        pprint(filtered_data)
+        pprint(unfiltered_data)
+
+        with open(os.path.expanduser('~/ForceTorqueData/filtered.csv'), 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(filtered_data.keys())
+
+            for index, value in enumerate(self.x_force_filtered):
+                filtered_row = [filtered_data['timestamp'][index], filtered_data['seq'][index],
+                                filtered_data['x_force'][index], filtered_data['y_force'][index],
+                                filtered_data['z_force'][index], filtered_data['x_torque'][index],
+                                filtered_data['y_torque'][index], filtered_data['z_torque'][index]]
+                writer.writerow(filtered_row)
+
+        with open(os.path.expanduser('~/ForceTorqueData/unfiltered.csv'), 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(unfiltered_data.keys())
+
+            for index, value in enumerate(self.wrench_compensated_force_data_x):
+                unfiltered_row = [unfiltered_data['timestamp'][index], unfiltered_data['seq'][index],
+                                  unfiltered_data['x_force'][index], unfiltered_data['y_force'][index],
+                                  unfiltered_data['z_force'][index], unfiltered_data['x_torque'][index],
+                                  unfiltered_data['y_torque'][index], unfiltered_data['z_torque'][index]]
+                writer.writerow(unfiltered_row)

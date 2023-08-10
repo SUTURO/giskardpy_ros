@@ -991,21 +991,15 @@ class GiskardWrapper:
                            root_link=root_link,
                            tip_link=tip_link)
 
-    def place_object(self,
-                     goal_pose: PoseStamped,
-                     object_height: float,
-                     radius: Optional[float] = 0.0,
-                     root_link: Optional[str] = 'map',
-                     tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                     from_above: Optional[bool] = False):
+    def placing(self,
+                context,
+                goal_pose: PoseStamped,
+                tip_link: Optional[str] = 'hand_palm_link'):
 
-        self.set_json_goal(constraint_type='PlaceObject',
+        self.set_json_goal(constraint_type='Placing',
+                           context=context,
                            goal_pose=goal_pose,
-                           object_height=object_height,
-                           radius=radius,
-                           root_link=root_link,
-                           tip_link=tip_link,
-                           from_above=from_above)
+                           tip_link=tip_link)
 
     def lift_object(self,
                     context: str,
@@ -1114,12 +1108,12 @@ class GiskardWrapper:
                            weight=weight)
 
     def open_environment(self,
-             tip_link: str,
-             environment_link: str,
-             tip_group: Optional[str] = None,
-             environment_group: Optional[str] = None,
-             goal_joint_state: Optional[float] = None,
-             weight: float = WEIGHT_ABOVE_CA):
+                         tip_link: str,
+                         environment_link: str,
+                         tip_group: Optional[str] = None,
+                         environment_group: Optional[str] = None,
+                         goal_joint_state: Optional[float] = None,
+                         weight: float = WEIGHT_ABOVE_CA):
 
         self.set_json_goal(constraint_type='Open',
                            tip_link=tip_link,
@@ -1136,5 +1130,3 @@ class GiskardWrapper:
         self.set_json_goal(constraint_type='Mixing1',
                            mixing_time=mixing_time,
                            scale=scale)
-
-
