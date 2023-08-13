@@ -135,9 +135,7 @@ class TestForceSensorGoal(ForceSensorGoal):
 
 class SequenceGoal(Goal):
     def __init__(self,
-                 motion_sequence: Dict,
-                 goal_type_seq: List[Goal],
-                 kwargs_seq: List[Dict]):
+                 motion_sequence: [Dict]):
         """
         Current solution to execute Goals in a sequence. The Goals will be executed one by one in the given order.
 
@@ -148,28 +146,30 @@ class SequenceGoal(Goal):
 
         super().__init__()
 
-        self.goal_type_seq = goal_type_seq
-        self.kwargs_seq = kwargs_seq
+        #self.goal_type_seq = goal_type_seq
+        #self.kwargs_seq = kwargs_seq
         self.motion_sequence = motion_sequence
 
         self.current_goal_number = 0
         self.eq_weights = []
         self.goal_summary = []
 
-        for index, (current_goal, goal_args) in enumerate(zip(self.goal_type_seq, self.kwargs_seq)):
-            params = deepcopy(goal_args)
-            params['suffix'] = index
+        for index, goal in enumerate(motion_sequence):
+            for current_goal, goal_args in goal.items():
 
-            goal_instance: Goal = current_goal(**params)
-            self.add_constraints_of_goal(goal_instance)
+                params = deepcopy(goal_args)
+                params['suffix'] = index
 
-            self.goal_summary.append(goal_instance)
+                goal_instance: Goal = current_goal(**params)
+                self.add_constraints_of_goal(goal_instance)
+
+                self.goal_summary.append(goal_instance)
 
     def make_constraints(self):
 
         constraints: Dict[str, EqualityConstraint] = self._equality_constraints
 
-        eq_constraint_suffix = [f'_suffix:{x}' for x in range(len(self.goal_type_seq))]
+        eq_constraint_suffix = [f'_suffix:{x}' for x in range(len(self.motion_sequence))]
 
         values = constraints.items()
         for goal_number, suffix_text in enumerate(eq_constraint_suffix):

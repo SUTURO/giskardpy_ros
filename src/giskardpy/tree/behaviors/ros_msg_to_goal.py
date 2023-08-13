@@ -72,16 +72,8 @@ class RosMsgToGoal(GetGoal):
 
     @profile
     def parse_constraints(self, cmd: MoveCmd):
-        # MoveCmd: constraint = Goal
-
-        # MoveSeq: [constraints] = goals: [Goal] -> for single_goal in [Goal] -> SequenceGoal(goals) single_goal(single_goal.params))
-
         for constraint in itertools.chain(cmd.constraints):
             try:
-                if constraint.type == 'AvoidJointLimits':
-                    # FIXME remove this hack
-                    continue
-
                 loginfo(f'Adding constraint of type: \'{constraint.type}\'')
                 C = self.allowed_constraint_types[constraint.type]
             except KeyError:
@@ -104,8 +96,10 @@ class RosMsgToGoal(GetGoal):
                 params = self.replace_jsons_with_ros_messages(parsed_json)
 
                 if issubclass(C, SequenceGoal):
-                    params['goal_type_seq'] = [self.allowed_constraint_types[x] for x in list(params['motion_sequence'].keys())]
-                    params['kwargs_seq'] = list(params['motion_sequence'].values())
+                    sequence = []
+                    for goals in params['motion_sequence']:
+                        sequence.append({self.allowed_constraint_types[k]: v for k, v in goals.items()})
+                    params['motion_sequence'] = sequence
 
                 c: Goal = C(**params)
                 c._save_self_on_god_map()
