@@ -51,6 +51,8 @@ class MonitorForceSensor(GiskardBehavior):
 
         # True to print sensor data
         self.show_data = False
+        self.plugin_canceled = (False, 0)
+
 
     @profile
     def setup(self, timeout):
@@ -116,7 +118,7 @@ class MonitorForceSensor(GiskardBehavior):
         for condition in conds:
             sensor_axis, operator, value = condition
 
-            current_data = filtered_dict[sensor_axis][-1]
+            current_data = filtered_dict[sensor_axis]
 
             evaluated_condition = eval(f'{current_data} {operator} {value}')
 
@@ -125,6 +127,8 @@ class MonitorForceSensor(GiskardBehavior):
         if any(evals):
             logging.loginfo(f'conditions: {conds}')
             logging.loginfo(f'evaluated: {evals}')
+
+            self.plugin_canceled = (True, filtered_data.header.stamp, filtered_data.header.seq)
 
             self.cancel_condition = True
 
@@ -157,8 +161,9 @@ class MonitorForceSensor(GiskardBehavior):
     @profile
     def update(self):
 
+        self.save_data()
+
         if self.cancel_condition:
-            self.save_data()
             rospy.loginfo('goal canceled')
 
             return Status.SUCCESS
@@ -205,29 +210,24 @@ class MonitorForceSensor(GiskardBehavior):
 
         # publish ROS message
         self.arm_trajectory_publisher.publish(traj)
-
     def save_data(self):
 
-        keys = ['timestamp', 'seq', 'x_force', 'y_force', 'z_force', 'x_torque', 'y_torque', 'z_torque']
+        types = ['filtered', 'unfiltered']
+        keys = ['timestamp', 'seq', 'force_x', 'force_y', 'force_z', 'torque_x', 'torque_y', 'torque_z']
+        path = '~/SUTURO/SUTURO_WSS/manipulation_ws/src/suturo_manipulation/suturo_manipulation/src/suturo_manipulation/'
 
-        unfiltered_data = self.whole_data['unfiltered']
-        filtered_data = self.whole_data['filtered']
+        for current_type in types:
+            data = [[ws.header.stamp, ws.header.seq,
+                     ws.wrench.force.x, ws.wrench.force.y, ws.wrench.force.z,
+                     ws.wrench.torque.x, ws.wrench.torque.y, ws.wrench.torque.z]
+                    for ws in self.whole_data[current_type]]
 
-        pprint(filtered_data)
-        pprint(unfiltered_data)
+            # pprint(data)
 
-        with open(os.path.expanduser('~/ForceTorqueData/filtered.csv'), 'w') as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(keys)
+            with open(os.path.expanduser(path + current_type + '.csv'), 'w') as csv_file:
+                writer = csv.writer(csv_file)
+                writer.writerow(keys + [self.plugin_canceled])
 
-            for row_value in self.whole_data['filtered']:
-                filtered_row = [row_value[key] for key in keys]
-                writer.writerow(filtered_row)
+                for row_value in data:
+                    writer.writerow(row_value)
 
-        with open(os.path.expanduser('~/ForceTorqueData/unfiltered.csv'), 'w') as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(keys)
-
-            for row_value in self.whole_data['unfiltered']:
-                unfiltered_row = [row_value[key] for key in keys]
-                writer.writerow(unfiltered_row)
