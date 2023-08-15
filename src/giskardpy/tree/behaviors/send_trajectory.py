@@ -53,7 +53,7 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
         self.group_name = group_name
         self.delay = rospy.Duration(0)
         self.namespace = action_namespace
-        self.action_namespace = action_namespace + '/follow_joint_trajectory'
+        self.action_namespace = action_namespace #+ '/follow_joint_trajectory'
         GiskardBehavior.__init__(self, str(self))
         self.min_deadline: rospy.Time
         self.max_deadline: rospy.Time

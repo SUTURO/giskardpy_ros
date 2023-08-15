@@ -6,7 +6,7 @@ from collections import OrderedDict
 from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
 
 from giskardpy.god_map_user import GodMapWorshipper
-from giskardpy.tree.garden import success_is_failure
+# from giskardpy.tree.garden import success_is_failure
 
 if TYPE_CHECKING:
     from giskardpy.tree.control_modes import ControlModes
