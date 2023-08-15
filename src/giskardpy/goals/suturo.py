@@ -505,9 +505,12 @@ class GraspObject(ObjectGoal):
         if self.vertical_align:
             self.tip_vertical_axis.vector.y = 1
         else:
-            self.tip_vertical_axis.vector.x = 1
+            # self.tip_vertical_axis.vector.x = 1
+            self.tip_vertical_axis.vector.y = -1
 
-        self.tip_frontal_axis.vector.z = 1
+        # self.tip_frontal_axis.vector.z = 1
+        # temp donbot
+        self.tip_frontal_axis.vector.z = -1
 
         # Position
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
@@ -1209,8 +1212,8 @@ class OpenHandleless(ObjectGoal):
 class PushButton(ForceSensorGoal):
     def __init__(self,
                  goal_pose: PoseStamped,
-                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 velocity: Optional[float] = 0.025,
+                 tip_link: Optional[str] = 'gripper_tool_frame',
+                 velocity: Optional[float] = 0.01,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         self.goal_pose = goal_pose

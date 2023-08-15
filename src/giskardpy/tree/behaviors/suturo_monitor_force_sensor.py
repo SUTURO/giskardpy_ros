@@ -8,6 +8,7 @@ import trajectory_msgs.msg
 from geometry_msgs.msg import WrenchStamped
 from py_trees import Status
 
+from giskardpy.exceptions import GiskardException
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
 from giskardpy.utils.decorators import catch_and_raise_to_blackboard
@@ -28,7 +29,7 @@ from scipy.signal import butter, lfilter
 class MonitorForceSensor(GiskardBehavior):
 
     @profile
-    def __init__(self, name, conditions, recovery):
+    def __init__(self, name, robot_name, conditions, recovery):
         super().__init__(name)
         self.base_pub = None
         self.arm_trajectory_publisher = None
@@ -54,42 +55,63 @@ class MonitorForceSensor(GiskardBehavior):
         self.show_data = False
         self.plugin_canceled = (False, 0)
 
+        self.robot_name = robot_name
+
     @profile
     def setup(self, timeout):
-        self.wrench_compensated_subscriber = rospy.Subscriber('/hsrb/wrist_wrench/compensated', WrenchStamped,
+        if self.robot_name == 'hsrb':
+            controller_list_topic = '/hsrb/controller_manager/list_controllers'
+            wrench_topic = '/hsrb/wrist_wrench/compensated'
+            arm_trajectory_topic = '/hsrb/arm_trajectory_controller/command'
+            base_trajectory_topic = '/hsrb/omni_base_controller/command'
+
+        elif self.robot_name == 'iai_donbot':
+            controller_list_topic = None
+            wrench_topic = '/kms40_driver/wrench'
+            arm_trajectory_topic = '/scaled_pos_joint_traj_controller/command'
+            base_trajectory_topic = None  # Does not work yet: '/whole_body_controller/base'
+
+        else:
+            logging.logerr(f'{self.robot_name} is not supported')
+            raise GiskardException()
+
+        self.wrench_compensated_subscriber = rospy.Subscriber(wrench_topic, WrenchStamped,
                                                               self.get_rospy_data)
 
         # initialize ROS publisher
-        self.arm_trajectory_publisher = rospy.Publisher('/hsrb/arm_trajectory_controller/command',
-                                                        trajectory_msgs.msg.JointTrajectory, queue_size=10)
+        if arm_trajectory_topic is not None:
+            self.arm_trajectory_publisher = rospy.Publisher(arm_trajectory_topic,
+                                                            trajectory_msgs.msg.JointTrajectory, queue_size=10)
 
-        self.base_pub = rospy.Publisher('/hsrb/omni_base_controller/command',
-                                        trajectory_msgs.msg.JointTrajectory, queue_size=10)
+            # wait to establish connection between the controller
+            while self.arm_trajectory_publisher.get_num_connections() == 0:
+                rospy.sleep(0.1)
 
-        # wait to establish connection between the controller
-        while self.arm_trajectory_publisher.get_num_connections() == 0:
-            rospy.sleep(0.1)
-        # wait to establish connection between the controller
-        while self.base_pub.get_num_connections() == 0:
-            rospy.sleep(0.1)
+        if base_trajectory_topic is not None:
+            self.base_pub = rospy.Publisher(base_trajectory_topic,
+                                            trajectory_msgs.msg.JointTrajectory, queue_size=10)
+
+            # wait to establish connection between the controller
+            while self.base_pub.get_num_connections() == 0:
+                rospy.sleep(0.1)
 
         # make sure the controller is running
+        if controller_list_topic is not None:
+            rospy.wait_for_service(controller_list_topic)
+            list_controllers = (
+                rospy.ServiceProxy(controller_list_topic,
+                                   controller_manager_msgs.srv.ListControllers))
 
-        rospy.wait_for_service('/hsrb/controller_manager/list_controllers')
-        list_controllers = (
-            rospy.ServiceProxy('/hsrb/controller_manager/list_controllers',
-                               controller_manager_msgs.srv.ListControllers))
+            running1, running2 = False, False
+            while running1 is False or running2 is False:
+                rospy.sleep(0.1)
+                for c in list_controllers().controller:
+                    if c.name == 'arm_trajectory_controller' and c.state == 'running':
+                        running1 = True
+                    if c.name == 'omni_base_controller' and c.state == 'running':
+                        running2 = True
 
-        running1, running2 = False, False
-        while running1 is False or running2 is False:
-            rospy.sleep(0.1)
-            for c in list_controllers().controller:
-                if c.name == 'arm_trajectory_controller' and c.state == 'running':
-                    running1 = True
-                if c.name == 'omni_base_controller' and c.state == 'running':
-                    running2 = True
-
-        print('running')
+            print('running')
 
         return True
 
@@ -129,14 +151,17 @@ class MonitorForceSensor(GiskardBehavior):
             sensor_axis, operator, value = condition
 
             current_data = filtered_dict[sensor_axis]
-
+            # FIXME: lambda function instead of eval
+            # FIXME: condition for norm (np.linag.norm)
             evaluated_condition = eval(f'{current_data} {operator} {value}')
 
             evals.append(evaluated_condition)
 
+            print(filtered_data.wrench.force.z)
+
         if any(evals):
             logging.loginfo(f'conditions: {conds}')
-            logging.loginfo(f'evaluated: {evals}')
+            logging.loginfo(f'evaluated: {evals}, {self.tree_manager.tree.count}')
 
             self.plugin_canceled = (True, filtered_data.header.stamp, filtered_data.header.seq)
 
@@ -171,24 +196,24 @@ class MonitorForceSensor(GiskardBehavior):
     @profile
     def update(self):
 
-        self.save_data()
+        # self.save_data()
 
         if self.cancel_condition:
             rospy.loginfo('goal canceled')
 
-            return Status.SUCCESS
-            # raise MonitorForceException
+            # return Status.SUCCESS
+            raise GiskardException()
 
         # self.counter += 1
 
         return Status.FAILURE
 
-    def terminate(self, new_status):
+    '''  def terminate(self, new_status):
 
         if self.cancel_condition:
-            self.recover()
-            tree = self.tree
-            tree.remove_node(self.name)
+            # self.recover()
+            tree = self.tree_manager
+            tree.remove_node(self.name)'''
 
     def recover(self):
 

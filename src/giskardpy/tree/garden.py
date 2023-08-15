@@ -959,6 +959,7 @@ class OpenLoop(StandAlone):
         execution.add_child(SetTrackingStartTime('start start time'))
         execution.add_child(self.grow_monitor_execution())
         execution.add_child(SetZeroVelocity('set zero vel 2'))
+        execution.add_child(GoalCleanUp('clean up goals'))
         return execution
 
     def grow_monitor_execution(self):

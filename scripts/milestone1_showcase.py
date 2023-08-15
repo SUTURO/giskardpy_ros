@@ -165,26 +165,20 @@ def add_object(name: str,
     _giskard_wrapper.plan_and_execute(wait=True)
 
 
-def test_new_feature(rad=0.0,
+def test_new_feature(pose,
+                     rad=0.0,
                      direction='',
                      plan=True,
                      execute=True,
                      **kwargs):
     sequence = 'SequenceGoal'
     mixing = 'Mixing1'
-    open = 'OpenHandlelessCart'
+    button = 'PushButton'
 
-    test_goal = open
+    test_goal = button
 
-    pose_1 = PoseStamped()
-    pose_1.pose.position.x = 0.0
-    pose_1.pose.position.y = 0.5
-    pose_1.pose.position.z = 0.7
 
-    pose_2 = PoseStamped()
-    pose_2.pose.position.x = -1.0
-    pose_2.pose.position.y = 1.0
-    pose_2.pose.position.z = 0.7
+
 
     circle_point = Point(x=1.3, y=0.7, z=0.7)
     circle_point_stamped = PointStamped(point=circle_point)
@@ -192,12 +186,7 @@ def test_new_feature(rad=0.0,
     obj_size = Vector3(0.1, 0.2, 0.1)
 
     _giskard_wrapper.test_goal(goal_name=test_goal,
-                               temp_position=circle_point_stamped,
-                               temp_size=obj_size,
-                               opening_radius=rad,
-                               door_opening_direction=direction,
-                               offset=0.0,
-                               tip_link_name='hand_palm_link')
+                               goal_pose=pose)
 
     if plan:
         if execute:
@@ -516,11 +505,38 @@ def run_test():
     # move_gripper('open')
 
     # reaching(context_door, name='iai_kitchen/shelf:shelf:shelf_door_left:handle', shape='')
-    open_environment(tip_link='hand_gripper_tool_frame', environment_link='iai_kitchen/shelf:shelf:shelf_door_left:handle', goal_joint_state=-0.3)
+    # open_environment(tip_link='hand_gripper_tool_frame', environment_link='iai_kitchen/shelf:shelf:shelf_door_left:handle', goal_joint_state=-0.3)
 
     # Test new feature
     # test_new_feature(rad=0.3, direction='right', execute=False)
-    # test_new_feature(rad=0.5, direction='left', execute=False)
+    pose_1 = PoseStamped()
+    pose_1.header.frame_id = 'gripper_tool_frame'
+    pose_1.pose.position.z = 0.10
+    # pose_1.pose.position.y = -0.02
+
+    pose_2 = PoseStamped()
+    pose_2.header.frame_id = 'map'
+    pose_2.pose.position = Point(1.239, 3.400, 0.000)
+    pose_2.pose.orientation = Quaternion(0.000, 0.000, -0.715, 0.699)
+
+    _giskard_wrapper.set_cart_goal(goal_pose=pose_2, tip_link='base_footprint', root_link='map')
+
+    exe = True
+    # start position
+    # test_new_feature(pose=pose_2, rad=0.5, direction='left', execute=exe)
+    #test position
+    joints = {'ur5_shoulder_pan_joint': 0.3420354127883911,
+              'ur5_shoulder_lift_joint': -1.5708325544940394,
+              'ur5_elbow_joint': -2.051464382802145,
+              'ur5_wrist_1_joint': 0.4776092767715454,
+              'ur5_wrist_2_joint': -5.05350643793215,
+              'ur5_wrist_3_joint': -1.5601113478290003}
+
+    _giskard_wrapper.set_joint_goal(joints)
+    _giskard_wrapper.allow_all_collisions()
+    _giskard_wrapper.plan_and_execute(wait=True)
+
+    test_new_feature(pose=pose_1, rad=0.5, direction='left', execute=exe)
 
     # move_gripper(gripper_state='neutral')
 
@@ -538,6 +554,7 @@ def run_test():
     # tilting(tilt_direction='right')
 
     # open_environment(tip_link='hand_gripper_tool_frame', environment_link='shelf:shelf:shelf_door_left:handle', goal_joint_state=-0.2, execute=True)
+
 
 
 def read_force_torque_data(path, filename, topic_names=False, trim_data=True):

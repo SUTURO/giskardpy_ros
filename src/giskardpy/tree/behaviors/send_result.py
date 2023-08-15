@@ -26,18 +26,11 @@ class SendResult(ActionServerBehavior):
 
         else:
             if not self.all_goals_succeeded(result):
-                logging.logwarn('Failed to execute goal.')
+                logging.logwarn(f'Failed to execute goal. {self.tree_manager.tree.count}')
                 self.get_as().send_aborted(result)
                 return Status.SUCCESS
             else:
                 logging.loginfo('----------------Successfully executed goal.----------------')
-
-        # TODO: find a better place to remove the monitor force node
-        try:
-            self.tree.remove_node('Monitor_Force')
-            logging.loginfo('Monitor force node removed')
-        except:
-            logging.loginfo('Monitor force node did not exist')
 
         self.get_as().send_result(result)
         return Status.SUCCESS

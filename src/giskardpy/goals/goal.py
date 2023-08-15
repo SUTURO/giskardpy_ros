@@ -6,6 +6,7 @@ from collections import OrderedDict
 from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
 
 from giskardpy.god_map_user import GodMapWorshipper
+from giskardpy.tree.garden import success_is_failure
 
 if TYPE_CHECKING:
     from giskardpy.tree.control_modes import ControlModes
@@ -698,9 +699,11 @@ class ForceSensorGoal(Goal):
 
         cond = self.goal_cancel_condition()
         recover = self.recovery()
-
+        robot = 'iai_donbot' # self.world.group_names[0]
         tree = self.god_map.get_data(identifier=identifier.tree_manager)
-        tree.insert_node(MonitorForceSensor('Monitor_Force', cond, recover), 'monitor execution', 2)
+        # self.behaviour = success_is_failure(MonitorForceSensor)('Monitor_Force', robot, cond, recover)
+        self.behaviour = MonitorForceSensor('Monitor_Force', robot, cond, recover)
+        tree.insert_node(self.behaviour, 'monitor execution', 2)
 
     def make_constraints(self):
         pass
@@ -718,5 +721,7 @@ class ForceSensorGoal(Goal):
 
 
     def clean_up(self):
-        self.tree.remove_node('monitor execution')
+        self.behaviour.wrench_compensated_subscriber.unregister()
+        tree = self.tree_manager
+        tree.remove_node('Monitor_Force')
 
