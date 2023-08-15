@@ -3,14 +3,18 @@ from __future__ import annotations
 import abc
 from abc import ABC
 from collections import OrderedDict
-from typing import Optional, Tuple, Dict, List, Union, Callable
+from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
+
+from giskardpy.god_map_user import GodMapWorshipper
+
+if TYPE_CHECKING:
+    from giskardpy.tree.control_modes import ControlModes
 
 import giskardpy.identifier as identifier
 import giskardpy.utils.tfwrapper as tf
 from giskard_msgs.msg import Constraint as Constraint_msg
 from giskardpy import casadi_wrapper as w
 from giskardpy.casadi_wrapper import symbol_expr_float
-from giskardpy.configs.data_types import ControlModes
 from giskardpy.exceptions import ConstraintInitalizationException, GiskardException, UnknownGroupException
 from giskardpy.god_map import GodMap
 from giskardpy.model.joints import OneDofJoint
@@ -26,11 +30,8 @@ WEIGHT_BELOW_CA = Constraint_msg.WEIGHT_BELOW_CA
 WEIGHT_MIN = Constraint_msg.WEIGHT_MIN
 
 
-class Goal(ABC):
-    world: WorldTree
-    tree: tree.garden.TreeManager
+class Goal(GodMapWorshipper, ABC):
     _sub_goals: List[Goal]
-    god_map = GodMap()
 
     @abc.abstractmethod
     def __init__(self):
@@ -38,8 +39,6 @@ class Goal(ABC):
         This is where you specify goal parameters and save them as self attributes.
         """
         self._sub_goals = []
-        self.world = self.god_map.get_data(identifier.world)
-        self.tree = self.god_map.get_data(identifier.tree_manager)
 
     def clean_up(self):
         pass
@@ -74,10 +73,7 @@ class Goal(ABC):
         :param distance: distance threshold for the collision check. Only distances smaller than this value can be
                             detected.
         """
-        if self.world.link_order(link_a, link_b):
-            key = (link_a, link_b)
-        else:
-            key = (link_b, link_a)
+        key = link_a, link_b
         if self.world.are_linked(link_a, link_b):
             return
         try:

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import abc
+import hashlib
 from abc import ABC
+from copy import deepcopy
 from functools import cached_property
 from itertools import combinations
 from typing import Dict, Union, Tuple, Set, Optional, List, Callable, Sequence
@@ -20,9 +22,10 @@ from giskardpy.data_types import JointStates
 from giskardpy.exceptions import DuplicateNameException, UnknownGroupException, UnknownLinkException, \
     PhysicsWorldException, GiskardException
 from giskardpy.god_map import GodMap
+from giskardpy.god_map_user import GodMapWorshipper
 from giskardpy.model.joints import Joint, FixedJoint, PrismaticJoint, RevoluteJoint, OmniDrive, DiffDrive, \
     urdf_to_joint, VirtualFreeVariables, MovableJoint, Joint6DOF
-from giskardpy.model.links import Link
+from giskardpy.model.links import Link, MeshGeometry
 from giskardpy.model.utils import hacky_urdf_parser_fix
 from giskardpy.my_types import PrefixName, Derivatives, derivative_joint_map, derivative_map
 from giskardpy.my_types import my_string
@@ -30,7 +33,7 @@ from giskardpy.qp.free_variable import FreeVariable
 from giskardpy.qp.next_command import NextCommands
 from giskardpy.utils import logging
 from giskardpy.utils.tfwrapper import homo_matrix_to_pose, np_to_pose, msg_to_homogeneous_matrix, make_transform
-from giskardpy.utils.utils import suppress_stderr
+from giskardpy.utils.utils import suppress_stderr, clear_cached_properties
 from giskardpy.utils.decorators import memoize, copy_memoize, clear_memo
 
 
@@ -74,6 +77,18 @@ class WorldTreeInterface(ABC):
     def link_names_with_collisions(self) -> Set[PrefixName]:
         return set(link.name for link in self.links.values() if link.has_collisions())
 
+    @profile
+    def to_hash(self):
+        s = ''
+        for link_name in sorted(self.link_names_with_collisions):
+            link = self.links[link_name]
+            for collision in link.collisions:
+                s += collision.to_hash()
+        # s += str(sorted(self.controlled_joints))
+        hash_object = hashlib.sha256()
+        hash_object.update(s.encode('utf-8'))
+        return hash_object.hexdigest()
+
     @cached_property
     def link_names_without_collisions(self) -> Set[PrefixName]:
         return self.link_names_as_set.difference(self.link_names_with_collisions)
@@ -97,22 +112,7 @@ class WorldTreeInterface(ABC):
     def reset_cache(self):
         for group in self.groups.values():
             group.reset_cache()
-        try:
-            del self.link_names_as_set
-        except:
-            pass
-        try:
-            del self.link_names_with_collisions
-        except:
-            pass
-        try:
-            del self.movable_joints_as_set
-        except:
-            pass
-        try:
-            del self.movable_joints
-        except:
-            pass
+        clear_cached_properties(self)
 
 
 class WorldModelUpdateContextManager:
@@ -133,7 +133,20 @@ class WorldModelUpdateContextManager:
             self.world.notify_model_change()
 
 
-class WorldTree(WorldTreeInterface):
+class ResetJointStateContextManager:
+    def __init__(self, world: WorldTree):
+        self.world = world
+
+    def __enter__(self):
+        self.joint_state_tmp = deepcopy(self.world.state)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.world.state = self.joint_state_tmp
+            self.world.notify_state_change()
+
+
+class WorldTree(WorldTreeInterface, GodMapWorshipper):
     joints: Dict[PrefixName, Union[Joint, OmniDrive]]
     links: Dict[PrefixName, Link]
     state: JointStates
@@ -145,15 +158,28 @@ class WorldTree(WorldTreeInterface):
     _root_link_name: PrefixName = None
 
     def __init__(self):
-        self.god_map = GodMap()
         self.default_link_color = ColorRGBA(1, 1, 1, 0.75)
-        if self.god_map is not None:
-            self.god_map.set_data(identifier.world, self)
+        self.god_map.set_data(identifier.world, self)
         self.connection_prefix = 'connection'
         self.fast_all_fks = None
         self._state_version = 0
         self._model_version = 0
         self._clear()
+
+    @classmethod
+    def empty_world(cls):
+        self = WorldTree()
+        self._default_weights = {
+            Derivatives.velocity: 1,
+            Derivatives.acceleration: 1,
+            Derivatives.jerk: 1,
+        }
+        self._default_limits = {
+            Derivatives.velocity: 1,
+        }
+        identifier.max_derivative = ['max_derivative']
+        self.god_map.set_data(identifier.max_derivative, Derivatives.jerk)
+        return self
 
     @property
     def root_link_name(self) -> PrefixName:
@@ -256,9 +282,9 @@ class WorldTree(WorldTreeInterface):
             if link_name == internal_link_name or link_name == internal_link_name.short_name:
                 matches.append(internal_link_name)
         if len(matches) > 1:
-            raise UnknownLinkException(f'Multiple matches for \'{link_name}\' found: \'{matches}\'.')
+            raise UnknownLinkException(f'Multiple links matches for \'{link_name}\' found: \'{matches}\'.')
         if len(matches) == 0:
-            raise UnknownLinkException(f'No matches for \'{link_name}\' found: \'{matches}\'.')
+            raise UnknownLinkException(f'Link \'{link_name}\' not found.')
         return matches[0]
 
     def get_link(self, link_name: str, group_name: Optional[str] = None) -> Link:
@@ -489,6 +515,10 @@ class WorldTree(WorldTreeInterface):
         return [r.name for r in self.robots]
 
     @property
+    def robot_name(self) -> str:
+        return self.robot_names[0]
+
+    @property
     def minimal_group_names(self) -> Set[str]:
         """
         :return: All groups that are not part of another group.
@@ -529,8 +559,8 @@ class WorldTree(WorldTreeInterface):
     def update_state(self, next_commands: NextCommands, dt: float):
         max_derivative = self.god_map.get_data(identifier.max_derivative)
         for free_variable_name, command in next_commands.free_variable_data.items():
-            self.state[free_variable_name][Derivatives.position] += command[0] * dt
-            self.state[free_variable_name][Derivatives.velocity:max_derivative + 1] = command
+            self.state[free_variable_name][:max_derivative] += command * dt
+            self.state[free_variable_name][max_derivative] = command[-1]
         for joint in self.joints.values():
             if isinstance(joint, VirtualFreeVariables):
                 joint.update_state(dt)
@@ -837,7 +867,7 @@ class WorldTree(WorldTreeInterface):
         """
         self._clear()
         with self.modify_world():
-            self.god_map.get_data(identifier.giskard).configure_world()
+            self.god_map.get_data(identifier.giskard).world_config.setup()
 
     def _add_joint_and_create_child(self, joint: Joint):
         self._raise_if_joint_exists(joint.name)
@@ -1002,10 +1032,6 @@ class WorldTree(WorldTreeInterface):
         this function is used when deciding for which order to calculate the collisions
         true if link_a < link_b
         """
-        if self.is_link_controlled(link_a) and not self.is_link_controlled(link_b):
-            return True
-        elif not self.is_link_controlled(link_a) and self.is_link_controlled(link_b):
-            return False
         return link_a < link_b
 
     def sort_links(self, link_a: PrefixName, link_b: PrefixName) -> Tuple[PrefixName, PrefixName]:
@@ -1146,6 +1172,9 @@ class WorldTree(WorldTreeInterface):
     def modify_world(self):
         return WorldModelUpdateContextManager(self)
 
+    def reset_joint_state_context(self):
+        return ResetJointStateContextManager(self)
+
     @copy_memoize
     @profile
     def compose_fk_expression(self, root_link: PrefixName, tip_link: PrefixName) -> w.TransMatrix:
@@ -1196,32 +1225,6 @@ class WorldTree(WorldTreeInterface):
         return p
 
     @profile
-    def compute_all_fks(self):
-        if self.fast_all_fks is None:
-            fks = []
-            self.fk_idx = {}
-            i = 0
-            for link in self.links.values():
-                if link.name == self.root_link_name:
-                    continue
-                if link.has_collisions():
-                    fk: w.TransMatrix = self.compose_fk_expression(self.root_link_name, link.name)
-                    fk = fk.dot(link.collisions[0].link_T_geometry)
-                    position = fk.to_position()
-                    orientation = fk.to_rotation().to_quaternion()
-                    fks.append(w.vstack([position, orientation]).T)
-                    self.fk_idx[link.name] = i
-                    i += 1
-            fks = w.vstack(fks)
-            self.fast_all_fks = fks.compile()
-
-        fks_evaluated = self.fast_all_fks.fast_call(self.god_map.unsafe_get_values(self.fast_all_fks.str_params))
-        result = {}
-        for link in self.link_names_with_collisions:
-            result[link] = fks_evaluated[self.fk_idx[link], :]
-        return result
-
-    @profile
     def as_tf_msg(self, include_prefix: bool) -> TFMessage:
         """
         Create a tfmessage for the whole world tree.
@@ -1243,8 +1246,9 @@ class WorldTree(WorldTreeInterface):
         return tf_msg
 
     @profile
-    def compute_all_fks_matrix(self):
-        return self._fk_computer.collision_fk_matrix
+    def compute_all_collision_fks(self):
+        params = self.god_map.unsafe_get_values(self._fk_computer.fast_collision_fks.str_params)
+        return self._fk_computer.fast_collision_fks.fast_call(params)
 
     @profile
     def init_all_fks(self):
@@ -1270,17 +1274,17 @@ class WorldTree(WorldTreeInterface):
             def compile_fks(self):
                 all_fks = w.vstack([self.fks[link_name] for link_name in self.world.link_names_as_set])
                 collision_fks = []
-                collision_ids = []
-                for link_name in self.world.link_names_with_collisions:
+                # collision_ids = []
+                for link_name in sorted(self.world.link_names_with_collisions):
                     if link_name == self.world.root_link_name:
                         continue
-                    link = self.world.links[link_name]
-                    for collision_id, geometry in enumerate(link.collisions):
-                        link_name_with_id = link.name_with_collision_id(collision_id)
-                        collision_fks.append(self.fks[link_name].dot(geometry.link_T_geometry))
-                        collision_ids.append(link_name_with_id)
+                    # link = self.world.links[link_name]
+                    # for collision_id, geometry in enumerate(link.collisions):
+                    #     link_name_with_id = link.name_with_collision_id(collision_id)
+                    collision_fks.append(self.fks[link_name])
+                        # collision_ids.append(link_name_with_id)
                 collision_fks = w.vstack(collision_fks)
-                self.collision_link_order = list(collision_ids)
+                # self.collision_link_order = list(collision_ids)
                 params = set()
                 params.update(all_fks.free_symbols())
                 params.update(collision_fks.free_symbols())
@@ -1293,9 +1297,7 @@ class WorldTree(WorldTreeInterface):
             @profile
             def recompute(self):
                 self.compute_fk_np.memo.clear()
-                substitutions = self.god_map.unsafe_get_values(self.str_params)
-                self.fks = self.fast_all_fks.fast_call(substitutions)
-                self.collision_fk_matrix = self.fast_collision_fks.fast_call(substitutions)
+                self.fks = self.fast_all_fks.fast_call(self.god_map.unsafe_get_values(self.fast_all_fks.str_params))
 
             @memoize
             @profile
@@ -1572,7 +1574,7 @@ class WorldBranch(WorldTreeInterface):
             raise ValueError(f'No matches for \'{joint_name}\' found: \'{matches}\'.')
         return matches[0]
 
-    @property
+    @cached_property
     def controlled_joints(self) -> List[PrefixName]:
         return [j for j in self.god_map.unsafe_get_data(identifier.controlled_joints) if j in self.joint_names_as_set]
 
@@ -1640,6 +1642,10 @@ class WorldBranch(WorldTreeInterface):
             pass
         try:
             del self.groups
+        except:
+            pass
+        try:
+            del self.controlled_joints
         except:
             pass
 
