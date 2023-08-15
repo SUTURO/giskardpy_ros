@@ -11,7 +11,7 @@ from py_trees import Status
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
 from giskardpy.utils.decorators import catch_and_raise_to_blackboard
-
+from giskardpy import casadi_wrapper as w
 # data extraction
 from numpy import savetxt
 from numpy import asarray
@@ -30,6 +30,7 @@ class MonitorForceSensor(GiskardBehavior):
     @profile
     def __init__(self, name, conditions, recovery):
         super().__init__(name)
+        self.base_pub = None
         self.arm_trajectory_publisher = None
         self.cancel_condition = False
         self.name = name
@@ -53,7 +54,6 @@ class MonitorForceSensor(GiskardBehavior):
         self.show_data = False
         self.plugin_canceled = (False, 0)
 
-
     @profile
     def setup(self, timeout):
         self.wrench_compensated_subscriber = rospy.Subscriber('/hsrb/wrist_wrench/compensated', WrenchStamped,
@@ -62,8 +62,15 @@ class MonitorForceSensor(GiskardBehavior):
         # initialize ROS publisher
         self.arm_trajectory_publisher = rospy.Publisher('/hsrb/arm_trajectory_controller/command',
                                                         trajectory_msgs.msg.JointTrajectory, queue_size=10)
+
+        self.base_pub = rospy.Publisher('/hsrb/omni_base_controller/command',
+                                        trajectory_msgs.msg.JointTrajectory, queue_size=10)
+
         # wait to establish connection between the controller
         while self.arm_trajectory_publisher.get_num_connections() == 0:
+            rospy.sleep(0.1)
+        # wait to establish connection between the controller
+        while self.base_pub.get_num_connections() == 0:
             rospy.sleep(0.1)
 
         # make sure the controller is running
@@ -72,12 +79,15 @@ class MonitorForceSensor(GiskardBehavior):
         list_controllers = (
             rospy.ServiceProxy('/hsrb/controller_manager/list_controllers',
                                controller_manager_msgs.srv.ListControllers))
-        running = False
-        while running is False:
+
+        running1, running2 = False, False
+        while running1 is False or running2 is False:
             rospy.sleep(0.1)
             for c in list_controllers().controller:
                 if c.name == 'arm_trajectory_controller' and c.state == 'running':
-                    running = True
+                    running1 = True
+                if c.name == 'omni_base_controller' and c.state == 'running':
+                    running2 = True
 
         print('running')
 
@@ -182,34 +192,65 @@ class MonitorForceSensor(GiskardBehavior):
 
     def recover(self):
 
-        joint_names = ['arm_lift_joint', 'arm_flex_joint',
-                       'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint']
-
         joint_modify: Dict = self.recovery
 
-        joint_positions = []
-        for joint_name in joint_names:
-            join_state_position = self.world.state.get(self.world.search_for_joint_name(joint_name)).position
+        arm_joint_names = ['arm_lift_joint', 'arm_flex_joint',
+                           'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint']
 
-            if joint_name in joint_modify:
-                mod = joint_modify.get(joint_name)
-            else:
-                mod = 0.0
+        odom_joint_names = ["odom_x", "odom_y", "odom_t"]
 
-            joint_positions.append(join_state_position + mod)
+        if any(x in joint_modify for x in arm_joint_names):
+            arm_joint_positions = []
+            for joint_name in arm_joint_names:
+                join_state_position = self.world.state.get(self.world.search_for_joint_name(joint_name)).position
 
-        # fill ROS message
-        traj = trajectory_msgs.msg.JointTrajectory()
-        traj.joint_names = joint_names
+                if joint_name in joint_modify:
+                    mod = joint_modify.get(joint_name)
+                else:
+                    mod = 0.0
 
-        trajectory_point = trajectory_msgs.msg.JointTrajectoryPoint()
-        trajectory_point.positions = joint_positions
-        trajectory_point.velocities = [0, 0, 0, 0, 0]
-        trajectory_point.time_from_start = rospy.Duration(1)
-        traj.points = [trajectory_point]
+                arm_joint_positions.append(join_state_position + mod)
 
-        # publish ROS message
-        self.arm_trajectory_publisher.publish(traj)
+            # fill ROS message
+            traj = trajectory_msgs.msg.JointTrajectory()
+            traj.joint_names = arm_joint_names
+
+            trajectory_point = trajectory_msgs.msg.JointTrajectoryPoint()
+            trajectory_point.positions = arm_joint_positions
+            trajectory_point.velocities = [0, 0, 0, 0, 0]
+            trajectory_point.time_from_start = rospy.Duration(1)
+            traj.points = [trajectory_point]
+
+            # publish ROS message
+            self.arm_trajectory_publisher.publish(traj)
+
+        if any(x in joint_modify for x in odom_joint_names):
+            c_T_o = w.TransMatrix(
+                self.god_map.evaluate_expr(self.world.joints['hsrb/brumbrum'].parent_T_child)).to_position()
+
+            odom_joint_positions = c_T_o.compile().fast_call(
+                self.god_map.get_values(c_T_o.compile().str_params)).tolist()[:3]
+
+            odom_positions = []
+            for index, names in enumerate(odom_joint_names):
+                if names in joint_modify:
+                    mod = joint_modify.get(names)
+                else:
+                    mod = 0.0
+                odom_positions.append(odom_joint_positions[index] + mod)
+
+            # Send data
+            traj = trajectory_msgs.msg.JointTrajectory()
+            traj.joint_names = odom_joint_names
+            p = trajectory_msgs.msg.JointTrajectoryPoint()
+            p.positions = odom_positions
+            p.velocities = [0, 0, 0]
+            p.time_from_start = rospy.Duration(5)
+            traj.points = [p]
+
+            # publish ROS message
+            self.base_pub.publish(traj)
+
     def save_data(self):
 
         types = ['filtered', 'unfiltered']
@@ -230,4 +271,3 @@ class MonitorForceSensor(GiskardBehavior):
 
                 for row_value in data:
                     writer.writerow(row_value)
-
