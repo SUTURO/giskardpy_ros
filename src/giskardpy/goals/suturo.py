@@ -1,11 +1,16 @@
 from copy import deepcopy
+from pprint import pprint
 from typing import Optional, List, Dict
 
+import actionlib
 import controller_manager_msgs
 import numpy as np
 import rospy
 import trajectory_msgs
+from control_msgs.msg import FollowJointTrajectoryGoal, FollowJointTrajectoryAction
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
+from tmc_control_msgs.msg import GripperApplyEffortGoal, GripperApplyEffortAction
+from trajectory_msgs.msg import JointTrajectoryPoint
 
 import giskardpy.utils.tfwrapper as tf
 from giskardpy import casadi_wrapper as w, identifier
@@ -80,15 +85,6 @@ class ObjectGoal(Goal):
             # Type Sphere
             return Vector3(size[0], size[0], size[0])
 
-    def try_to_get_link(self, expected: str):
-        try:
-            # FIXME search for link name gibt eh exception?
-            link = self.world.search_for_link_name(expected)
-            return link
-        except:
-            logwarn(f'Could not find {expected}.')
-            raise Exception  # TODO:  CouldNotFindLinkException
-
     def try_to_get_size_from_geometry(self,
                                       name: str,
                                       geometry: LinkGeometry,
@@ -149,15 +145,13 @@ class SequenceGoal(Goal):
 
         super().__init__()
 
-        #self.goal_type_seq = goal_type_seq
-        #self.kwargs_seq = kwargs_seq
         self.motion_sequence = motion_sequence
 
         self.current_goal_number = 0
         self.eq_weights = []
         self.goal_summary = []
 
-        for index, goal in enumerate(motion_sequence):
+        for index, goal in enumerate(self.motion_sequence):
             for current_goal, goal_args in goal.items():
 
                 params = deepcopy(goal_args)
@@ -174,32 +168,41 @@ class SequenceGoal(Goal):
 
         eq_constraint_suffix = [f'_suffix:{x}' for x in range(len(self.motion_sequence))]
 
-        values = constraints.items()
         for goal_number, suffix_text in enumerate(eq_constraint_suffix):
 
-            ordered_eq_constraints = [x[1] for x in values if suffix_text in x[0]]
+            ordered_eq_constraints = [x[1] for x in constraints.items() if suffix_text in x[0]]
 
             eq_constraint_weights = [1] * len(ordered_eq_constraints)
             self.eq_weights.append(eq_constraint_weights)
 
+
+            all_exprs = 1
             for eq_number, constraint in enumerate(ordered_eq_constraints):
                 compiled = constraint.capped_error(self.sample_period).compile()
-                s = self.god_map.to_symbol(self._get_identifier() + ['asdf', (goal_number, eq_number, compiled)])
+                s = self.god_map.to_symbol(self._get_identifier() + ['evaluate_constraint_weight', (goal_number, eq_number, compiled)])
+
+
 
                 expr = w.Expression(s)
                 constraint.quadratic_weight = constraint.quadratic_weight * expr
 
-    def asdf(self, goal_number, eq_number, compiled_constraint):
-        # FIXME rename
+                all_exprs = all_exprs * expr
+
+            #self.add_debug_expr(self.goal_summary[goal_number].__str__(),
+            #                    all_exprs)
+
+            print(self.eq_weights[goal_number])
+
+
+
+    def evaluate_constraint_weight(self, goal_number, eq_number, compiled_constraint):
+        # TODO: Test if this works
         if goal_number != self.current_goal_number:
             return 0
 
         eq_constraint_error = compiled_constraint.fast_call(self.god_map.get_values(compiled_constraint.str_params))
 
-        if abs(eq_constraint_error) < 0.0001:
-            self.eq_weights[goal_number][eq_number] = 0
-        else:
-            self.eq_weights[goal_number][eq_number] = 1
+        self.eq_weights[goal_number][eq_number] = abs(eq_constraint_error) > 0.001
 
         goal_not_finished = any(self.eq_weights[goal_number])
         if goal_not_finished:
@@ -219,7 +222,11 @@ class SequenceGoal(Goal):
 
 
 class MoveGripper(Goal):
-    thing = None
+    # TODO: Test if this works
+    _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
+                                                                    GripperApplyEffortAction)
+    _gripper_controller = actionlib.SimpleActionClient('/hsrb/gripper_controller/follow_joint_trajectory',
+                                                            FollowJointTrajectoryAction)
     def __init__(self,
                  gripper_state: str,
                  suffix=''):
@@ -233,8 +240,6 @@ class MoveGripper(Goal):
         super().__init__()
 
         self.suffix = suffix
-        # FIXME use class attibute to keep state
-        # MoveGripper.thing
         self.gripper_state = gripper_state
 
         if self.gripper_state == 'open':
@@ -263,6 +268,35 @@ class MoveGripper(Goal):
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
+
+    def close_gripper_force(self, force=0.8):
+        """
+        Closes the gripper with the given force.
+        :param force: force to grasp with should be between 0.2 and 0.8 (N)
+        :return: applied effort
+        """
+        rospy.loginfo("Closing gripper with force: {}".format(force))
+        f = force # max(min(0.8, force), 0.2)
+        goal = GripperApplyEffortGoal()
+        goal.effort = f
+        self._gripper_apply_force_client.send_goal(goal)
+
+    def set_gripper_joint_position(self, position):
+        """
+        Sets the gripper joint to the given  position
+        :param position: goal position of the joint -0.105 to 1.239 rad
+        :return: error_code of FollowJointTrajectoryResult
+        """
+        pos = max(min(1.239, position), -0.105)
+        goal = FollowJointTrajectoryGoal()
+        goal.trajectory.joint_names = [u'hand_motor_joint']
+        p = JointTrajectoryPoint()
+        p.positions = [pos]
+        p.velocities = [0]
+        p.effort = [0.1]
+        p.time_from_start = rospy.Time(1)
+        goal.trajectory.points = [p]
+        self._gripper_controller.send_goal(goal)
 
 
 class Reaching(ObjectGoal):
@@ -459,7 +493,7 @@ class GraspObject(ObjectGoal):
         self.vertical_align = vertical_align
         self.root_link = self.world.search_for_link_name(root_link)
         self.root_str = self.root_link.short_name
-        self.tip_link = self.try_to_get_link(expected=tip_link)
+        self.tip_link = self.world.search_for_link_name(tip_link)
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
         self.weight = weight
@@ -505,12 +539,12 @@ class GraspObject(ObjectGoal):
         if self.vertical_align:
             self.tip_vertical_axis.vector.y = 1
         else:
-            # self.tip_vertical_axis.vector.x = 1
+            self.tip_vertical_axis.vector.x = 1
             self.tip_vertical_axis.vector.y = -1
 
-        # self.tip_frontal_axis.vector.z = 1
+        self.tip_frontal_axis.vector.z = 1
         # temp donbot
-        self.tip_frontal_axis.vector.z = -1
+        # self.tip_frontal_axis.vector.z = -1
 
         # Position
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
@@ -591,7 +625,7 @@ class VerticalMotion(ObjectGoal):
         self.context = context
         self.distance = distance
         self.root_link = self.world.search_for_link_name(root_link)
-        self.tip_link = self.try_to_get_link(expected=tip_link)
+        self.tip_link = self.world.search_for_link_name(tip_link) 
         self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
@@ -635,6 +669,11 @@ class VerticalMotion(ObjectGoal):
         r_P_g = root_T_goal.to_position()
         r_P_c = root_T_tip.to_position()
 
+        r_P_c_debug = deepcopy(r_P_c)
+        #r_P_c_debug.x += 0.5
+
+        #self.add_debug_expr('lift_position', w.norm(r_P_c_debug))
+
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
                                         reference_velocity=self.velocity,
@@ -668,9 +707,9 @@ class Retracting(ObjectGoal):
 
         self.object_name = object_name
         self.distance = distance
-        self.reference_frame = self.try_to_get_link(expected=reference_frame)
+        self.reference_frame = self.world.search_for_link_name(reference_frame)
         self.root_link = self.world.search_for_link_name(root_link)
-        self.tip_link = self.try_to_get_link(expected=tip_link)
+        self.tip_link = self.world.search_for_link_name(tip_link)
         self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
@@ -717,6 +756,8 @@ class Retracting(ObjectGoal):
 
         r_P_g = root_T_goal.to_position()
         r_P_c = root_T_tip.to_position()
+
+        #self.add_debug_expr('retract_position', w.norm(r_P_c))
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
@@ -776,7 +817,7 @@ class AlignHeight(ObjectGoal):
 
         self.object_height = object_height
         self.root_link = self.world.search_for_link_name(root_link)
-        self.tip_link = self.try_to_get_link(expected=tip_link)
+        self.tip_link = self.world.search_for_link_name(tip_link)
         self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity

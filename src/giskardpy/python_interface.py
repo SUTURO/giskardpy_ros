@@ -1033,14 +1033,14 @@ class GiskardWrapper:
                      context,
                      object_name: str,
                      goal_pose: PoseStamped,
-                     height: float,
+                     object_height: float,
                      tip_link: Optional[str] = 'hand_gripper_tool_frame'):
 
         self.set_json_goal(constraint_type='AlignHeight',
                            context=context,
                            object_name=object_name,
                            goal_pose=goal_pose,
-                           object_height=height,
+                           object_height=object_height,
                            tip_link=tip_link)
 
     def sequence_goal(self,
