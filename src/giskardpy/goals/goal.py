@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import time
 from abc import ABC
 from collections import OrderedDict
 from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
@@ -699,7 +700,7 @@ class ForceSensorGoal(Goal):
 
         cond = self.goal_cancel_condition()
         recover = self.recovery()
-        robot = 'iai_donbot' # self.world.group_names[0]
+        robot = self.world.robot_name
         tree = self.god_map.get_data(identifier=identifier.tree_manager)
         # self.behaviour = success_is_failure(MonitorForceSensor)('Monitor_Force', robot, cond, recover)
         self.behaviour = MonitorForceSensor('Monitor_Force', robot, cond, recover)
@@ -722,6 +723,7 @@ class ForceSensorGoal(Goal):
 
     def clean_up(self):
         self.behaviour.wrench_compensated_subscriber.unregister()
+        time.sleep(0.2)
         tree = self.tree_manager
         tree.remove_node('Monitor_Force')
 
