@@ -1,4 +1,5 @@
 import csv
+import math
 import os.path
 from typing import Dict
 
@@ -37,15 +38,16 @@ class MonitorForceSensor(GiskardBehavior):
         self.name = name
         self.wrench_compensated_subscriber = None
 
-        order = 4
+        self.order = 4
         cutoff = 10
         fs = 60
-        self.b, self.a = butter(order, cutoff / (0.5 * fs), btype='low')
+        self.b, self.a = butter(self.order, cutoff / (0.5 * fs), btype='low')
 
         self.whole_data = {'unfiltered': [],
                            'filtered': []}
 
-        self.prev_values = [WrenchStamped()] * (order + 1)
+        # self.prev_values = [WrenchStamped()] * (order + 1)
+        self.prev_values = None
 
         self.conditions = conditions
 
@@ -56,6 +58,7 @@ class MonitorForceSensor(GiskardBehavior):
         self.plugin_canceled = (False, 0)
 
         self.robot_name = robot_name
+        self.init_data = True
 
     @profile
     def setup(self, timeout):
@@ -85,6 +88,7 @@ class MonitorForceSensor(GiskardBehavior):
 
             # wait to establish connection between the controller
             while self.arm_trajectory_publisher.get_num_connections() == 0:
+                logging.logwarn(f'connecting to {arm_trajectory_topic}')
                 rospy.sleep(0.1)
 
         if base_trajectory_topic is not None:
@@ -93,6 +97,7 @@ class MonitorForceSensor(GiskardBehavior):
 
             # wait to establish connection between the controller
             while self.base_pub.get_num_connections() == 0:
+                logging.logwarn(f'connecting to {base_trajectory_topic}')
                 rospy.sleep(0.1)
 
         # make sure the controller is running
@@ -118,6 +123,9 @@ class MonitorForceSensor(GiskardBehavior):
     @profile
     def get_rospy_data(self,
                        data_compensated: WrenchStamped):
+        if self.init_data:
+            self.clean_filter(data_compensated)
+            self.init_data = False
 
         self.add_data(data_compensated)
 
@@ -131,41 +139,8 @@ class MonitorForceSensor(GiskardBehavior):
         if self.show_data:
             print(data_compensated.wrench.force)
 
-    def cancel_goal_check(self):
-        """
-        place with frontal grasping: force: -x, torque: y
-        """
-
-        filtered_data = self.whole_data['filtered'][-1]
-
-        filtered_dict = {'x_force': filtered_data.wrench.force.x,
-                         'y_force': filtered_data.wrench.force.y,
-                         'z_force': filtered_data.wrench.force.z,
-                         'x_torque': filtered_data.wrench.torque.x,
-                         'y_torque': filtered_data.wrench.torque.y,
-                         'z_torque': filtered_data.wrench.torque.z}
-
-        conds = self.conditions
-        evals = []
-        for condition in conds:
-            sensor_axis, operator, value = condition
-
-            current_data = filtered_dict[sensor_axis]
-            # FIXME: lambda function instead of eval
-            # FIXME: condition for norm (np.linag.norm)
-            evaluated_condition = eval(f'{current_data} {operator} {value}')
-
-            evals.append(evaluated_condition)
-
-            print(filtered_data.wrench.force.z)
-
-        if any(evals):
-            logging.loginfo(f'conditions: {conds}')
-            logging.loginfo(f'evaluated: {evals}, {self.tree_manager.tree.count}')
-
-            self.plugin_canceled = (True, filtered_data.header.stamp, filtered_data.header.seq)
-
-            self.cancel_condition = True
+    def clean_filter(self, data_compensated):
+        self.prev_values = [data_compensated] * (self.order + 1)
 
     def add_data(self,
                  data_compensated: WrenchStamped):
@@ -192,11 +167,57 @@ class MonitorForceSensor(GiskardBehavior):
         self.whole_data['unfiltered'].append(data_compensated)
         self.whole_data['filtered'].append(filtered_data)
 
+    def cancel_goal_check(self):
+        """
+        place with frontal grasping: force: -x, torque: y
+        """
+
+        filtered_data = self.whole_data['filtered'][-1]
+
+        filtered_dict = {'x_force': filtered_data.wrench.force.x,
+                         'y_force': filtered_data.wrench.force.y,
+                         'z_force': filtered_data.wrench.force.z,
+                         'x_torque': filtered_data.wrench.torque.x,
+                         'y_torque': filtered_data.wrench.torque.y,
+                         'z_torque': filtered_data.wrench.torque.z}
+
+        conds = self.conditions
+        evals = []
+        use_all = False
+        for condition in conds:
+            sensor_axis, operator, threshold = condition
+
+            current_data = filtered_dict[sensor_axis]
+            # FIXME: lambda function instead of eval
+            # FIXME: condition for norm (np.linag.norm)
+            if 'around' in operator:
+                evaluated_condition = math.isclose(current_data, threshold, abs_tol=0.3)
+                use_all = True
+            else:
+                evaluated_condition = eval(f'{current_data} {operator} {threshold}')
+
+            evals.append(evaluated_condition)
+
+            print(f'force_z {filtered_data.wrench.force.z}')
+        if use_all:
+            condition_triggered = all(evals)
+        else:
+            condition_triggered = any(evals)
+
+        if condition_triggered:
+            logging.loginfo(f'conditions: {conds}')
+            logging.loginfo(f'evaluated: {evals}, {self.tree_manager.tree.count}')
+            pprint(filtered_dict)
+
+            self.plugin_canceled = (True, filtered_data.header.stamp, filtered_data.header.seq)
+
+            self.cancel_condition = True
+
     @catch_and_raise_to_blackboard
     @profile
     def update(self):
 
-        # self.save_data()
+        self.save_data()
 
         if self.cancel_condition:
             rospy.loginfo('goal canceled')
@@ -208,12 +229,14 @@ class MonitorForceSensor(GiskardBehavior):
 
         return Status.FAILURE
 
-    '''  def terminate(self, new_status):
+    def terminate(self, new_status):
 
         if self.cancel_condition:
-            # self.recover()
-            tree = self.tree_manager
-            tree.remove_node(self.name)'''
+            self.recover()
+            # tree = self.tree_manager
+            # tree.remove_node(self.name)
+
+
 
     def recover(self):
 
@@ -280,7 +303,7 @@ class MonitorForceSensor(GiskardBehavior):
 
         types = ['filtered', 'unfiltered']
         keys = ['timestamp', 'seq', 'force_x', 'force_y', 'force_z', 'torque_x', 'torque_y', 'torque_z']
-        path = '~/SUTURO/SUTURO_WSS/manipulation_ws/src/suturo_manipulation/suturo_manipulation/src/suturo_manipulation/'
+        standard_path = '~/SUTURO/SUTURO_WSS/manipulation_ws/src/suturo_manipulation/suturo_manipulation/src/suturo_manipulation/'
 
         for current_type in types:
             data = [[ws.header.stamp, ws.header.seq,
@@ -290,7 +313,7 @@ class MonitorForceSensor(GiskardBehavior):
 
             # pprint(data)
 
-            with open(os.path.expanduser(path + current_type + '.csv'), 'w') as csv_file:
+            with open(os.path.expanduser(standard_path + current_type + '.csv'), 'w') as csv_file:
                 writer = csv.writer(csv_file)
                 writer.writerow(keys + [self.plugin_canceled])
 
