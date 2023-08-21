@@ -8,7 +8,7 @@ from giskardpy.goals.joint_goals import JointPosition
 from giskardpy import casadi_wrapper as w
 
 
-class Open(Goal):
+class Open(ForceSensorGoal):
     def __init__(self,
                  tip_link: str,
                  environment_link: str,
@@ -30,11 +30,6 @@ class Open(Goal):
         """
         super().__init__()
 
-        try:
-            tip_link = self.world.search_for_link_name('hand_gripper_tool_frame').short_name
-        except:
-            tip_link = self.world.search_for_link_name('hand_palm_link').short_name
-
         self.weight = weight
         self.tip_link = self.world.search_for_link_name(tip_link, tip_group)
         self.handle_link = self.world.search_for_link_name(environment_link, environment_group)
@@ -46,7 +41,8 @@ class Open(Goal):
         if goal_joint_state is None:
             goal_joint_state = max_position
         else:
-            goal_joint_state = min(max_position, goal_joint_state)
+            # goal_joint_state = min(max_position, goal_joint_state)
+            goal_joint_state = goal_joint_state
 
         self.add_constraints_of_goal(CartesianPose(root_link=environment_link,
                                                    root_group=environment_group,
@@ -67,13 +63,16 @@ class Open(Goal):
 
     def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
 
-        z_force_threshold = w.Expression(0.0)
-        z_force_condition = ['z_force', '>=', z_force_threshold]
+        y_force_threshold = 0.0 # w.Expression(0.0)
+        y_force_condition = ['y_force', 'around_0', y_force_threshold]  # lambda value: abs(z_force_threshold - value) <= 0.2
 
-        y_torque_threshold = w.Expression(0.0)
-        y_torque_condition = ['y_torque', '<=', y_torque_threshold]
+        z_force_threshold = 0.0 # w.Expression(0.0)
+        z_force_condition = ['z_force', 'around_0', z_force_threshold] # lambda value: abs(z_force_threshold - value) <= 0.2
 
-        expressions = [z_force_condition, y_torque_condition]
+        x_torque_threshold = 0.0 # w.Expression(0.0)
+        x_torque_condition = ['x_torque', 'around_0', x_torque_threshold] # lambda value: abs(y_torque_threshold - value) <= 0.2
+
+        expressions = [y_force_condition, z_force_condition, x_torque_condition]
 
         return expressions
 
