@@ -153,7 +153,6 @@ class SequenceGoal(Goal):
 
         for index, goal in enumerate(self.motion_sequence):
             for current_goal, goal_args in goal.items():
-
                 params = deepcopy(goal_args)
                 params['suffix'] = index
 
@@ -175,25 +174,21 @@ class SequenceGoal(Goal):
             eq_constraint_weights = [1] * len(ordered_eq_constraints)
             self.eq_weights.append(eq_constraint_weights)
 
-
             all_exprs = 1
             for eq_number, constraint in enumerate(ordered_eq_constraints):
                 compiled = constraint.capped_error(self.sample_period).compile()
-                s = self.god_map.to_symbol(self._get_identifier() + ['evaluate_constraint_weight', (goal_number, eq_number, compiled)])
-
-
+                s = self.god_map.to_symbol(
+                    self._get_identifier() + ['evaluate_constraint_weight', (goal_number, eq_number, compiled)])
 
                 expr = w.Expression(s)
                 constraint.quadratic_weight = constraint.quadratic_weight * expr
 
                 all_exprs = all_exprs * expr
 
-            #self.add_debug_expr(self.goal_summary[goal_number].__str__(),
+            # self.add_debug_expr(self.goal_summary[goal_number].__str__(),
             #                    all_exprs)
 
             print(self.eq_weights[goal_number])
-
-
 
     def evaluate_constraint_weight(self, goal_number, eq_number, compiled_constraint):
         # TODO: Test if this works
@@ -223,9 +218,10 @@ class SequenceGoal(Goal):
 
 class MoveGripper(Goal):
     _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
-                                                                    GripperApplyEffortAction)
+                                                               GripperApplyEffortAction)
     _gripper_controller = actionlib.SimpleActionClient('/hsrb/gripper_controller/follow_joint_trajectory',
-                                                            FollowJointTrajectoryAction)
+                                                       FollowJointTrajectoryAction)
+
     def __init__(self,
                  gripper_state: str,
                  suffix=''):
@@ -242,16 +238,13 @@ class MoveGripper(Goal):
         self.gripper_state = gripper_state
 
         if self.gripper_state == 'open':
-            # self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_controller)
             self.close_gripper_force(0.8)
 
         elif self.gripper_state == 'close':
-            # self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_controller)
             self.close_gripper_force(-0.8)
 
         elif self.gripper_state == 'neutral':
 
-            # self.gripper_function = self.god_map.get_data(identifier=identifier.gripper_trajectory)
             self.set_gripper_joint_position(0.5)
 
     def close_gripper_force(self, force=0.8):
@@ -261,7 +254,7 @@ class MoveGripper(Goal):
         :return: applied effort
         """
         rospy.loginfo("Closing gripper with force: {}".format(force))
-        f = force # max(min(0.8, force), 0.2)
+        f = force  # max(min(0.8, force), 0.2)
         goal = GripperApplyEffortGoal()
         goal.effort = f
         self._gripper_apply_force_client.send_goal(goal)
@@ -294,35 +287,6 @@ class MoveGripper(Goal):
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
-
-    def close_gripper_force(self, force=0.8):
-        """
-        Closes the gripper with the given force.
-        :param force: force to grasp with should be between 0.2 and 0.8 (N)
-        :return: applied effort
-        """
-        rospy.loginfo("Closing gripper with force: {}".format(force))
-        f = force # max(min(0.8, force), 0.2)
-        goal = GripperApplyEffortGoal()
-        goal.effort = f
-        self._gripper_apply_force_client.send_goal(goal)
-
-    def set_gripper_joint_position(self, position):
-        """
-        Sets the gripper joint to the given  position
-        :param position: goal position of the joint -0.105 to 1.239 rad
-        :return: error_code of FollowJointTrajectoryResult
-        """
-        pos = max(min(1.239, position), -0.105)
-        goal = FollowJointTrajectoryGoal()
-        goal.trajectory.joint_names = [u'hand_motor_joint']
-        p = JointTrajectoryPoint()
-        p.positions = [pos]
-        p.velocities = [0]
-        p.effort = [0.1]
-        p.time_from_start = rospy.Time(1)
-        goal.trajectory.points = [p]
-        self._gripper_controller.send_goal(goal)
 
 
 class Reaching(ObjectGoal):
@@ -447,12 +411,12 @@ class Reaching(ObjectGoal):
                                                      suffix=self.suffix))
         elif self.action == 'pouring':
             # grasped_object_size = self.object_size
-            #pour_object_size = self.convert_list_to_size(context['pour_object_size'])
+            # pour_object_size = self.convert_list_to_size(context['pour_object_size'])
 
-            #new_height = (pour_object_size.z / 2) + (grasped_object_size.z / 2)
-            #radius = (pour_object_size.x / 2) + (grasped_object_size.x / 2)
+            # new_height = (pour_object_size.z / 2) + (grasped_object_size.z / 2)
+            # radius = (pour_object_size.x / 2) + (grasped_object_size.x / 2)
             radius = 0.0
-            #self.object_size.z += new_height
+            # self.object_size.z += new_height
 
             self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                      object_size=self.object_size,
@@ -467,15 +431,20 @@ class Reaching(ObjectGoal):
                                                      suffix=self.suffix))
 
         elif self.action == 'door-opening':
+            radius = 0.0
 
-            radius = 0.0#0.005
+            if 'slip_door' in context:
+                radius = context['slip_door']
+                print(radius)
+            else:
+                print('no radius')
 
             base_P_goal = self.transform_msg(self.world.search_for_link_name('base_link'), self.goal_pose)
 
-            if 'left' in object_name:
-                base_P_goal.pose.position.y += 0.01
-            elif 'right' in object_name:
-                base_P_goal.pose.position.y -= 0.01
+            # if 'left' in object_name:
+            #     base_P_goal.pose.position.y += 0.01
+            # elif 'right' in object_name:
+            #     base_P_goal.pose.position.y -= 0.01
 
             self.add_constraints_of_goal(GraspObject(goal_pose=base_P_goal,
                                                      object_size=self.object_size,
@@ -485,7 +454,7 @@ class Reaching(ObjectGoal):
                                                      vertical_align=self.vertical_align,
                                                      root_link=self.root_str,
                                                      tip_link=self.tip_str,
-                                                     velocity=self.velocity/2,
+                                                     velocity=self.velocity / 2,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
@@ -599,9 +568,9 @@ class GraspObject(ObjectGoal):
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
-        self.add_constraints_of_goal(NonRotationGoal(tip_link='base_link',
-                                                     weight=self.weight,
-                                                     suffix=self.suffix))
+        self.add_constraints_of_goal(KeepRotationGoal(tip_link='base_link',
+                                                      weight=self.weight,
+                                                      suffix=self.suffix))
 
     def make_constraints(self):
         pass
@@ -651,7 +620,7 @@ class VerticalMotion(ObjectGoal):
         self.context = context
         self.distance = distance
         self.root_link = self.world.search_for_link_name(root_link)
-        self.tip_link = self.world.search_for_link_name(tip_link) 
+        self.tip_link = self.world.search_for_link_name(tip_link)
         self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
@@ -676,9 +645,9 @@ class VerticalMotion(ObjectGoal):
 
         self.goal_point = deepcopy(goal_point_tip)
 
-        self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
-                                                     weight=self.weight,
-                                                     suffix=self.suffix))
+        self.add_constraints_of_goal(KeepRotationGoal(tip_link=self.tip_str,
+                                                      weight=self.weight,
+                                                      suffix=self.suffix))
 
         self.root_T_tip_start = self.world.compute_fk_np(self.root_link, self.tip_link)
         self.start_tip_T_current_tip = np.eye(4)
@@ -694,11 +663,6 @@ class VerticalMotion(ObjectGoal):
 
         r_P_g = root_T_goal.to_position()
         r_P_c = root_T_tip.to_position()
-
-        r_P_c_debug = deepcopy(r_P_c)
-        #r_P_c_debug.x += 0.5
-
-        #self.add_debug_expr('lift_position', w.norm(r_P_c_debug))
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
@@ -760,15 +724,14 @@ class Retracting(ObjectGoal):
 
         self.start_tip_T_current_tip = np.eye(4)
 
-        self.add_constraints_of_goal(NonRotationGoal(tip_link='base_link',
-                                                     weight=self.weight,
-                                                     suffix=self.suffix))
+        self.add_constraints_of_goal(KeepRotationGoal(tip_link='base_link',
+                                                      weight=self.weight,
+                                                      suffix=self.suffix))
 
         if 'base_link' not in self.tip_str:
-            self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
-                                                         weight=self.weight,
-                                                         suffix=self.suffix))
-
+            self.add_constraints_of_goal(KeepRotationGoal(tip_link=self.tip_str,
+                                                          weight=self.weight,
+                                                          suffix=self.suffix))
 
     def make_constraints(self):
 
@@ -783,7 +746,7 @@ class Retracting(ObjectGoal):
         r_P_g = root_T_goal.to_position()
         r_P_c = root_T_tip.to_position()
 
-        #self.add_debug_expr('retract_position', w.norm(r_P_c))
+        # self.add_debug_expr('retract_position', w.norm(r_P_c))
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
@@ -902,13 +865,13 @@ class AlignHeight(ObjectGoal):
 
         else:
             # Tip facing frontal
-            self.add_constraints_of_goal(NonRotationGoal(tip_link=self.tip_str,
-                                                         weight=self.weight,
-                                                         suffix=self.suffix))
+            self.add_constraints_of_goal(KeepRotationGoal(tip_link=self.tip_str,
+                                                          weight=self.weight,
+                                                          suffix=self.suffix))
 
-        self.add_constraints_of_goal(NonRotationGoal(tip_link=self.base_str,
-                                                     weight=self.weight,
-                                                     suffix=self.suffix))
+        self.add_constraints_of_goal(KeepRotationGoal(tip_link=self.base_str,
+                                                      weight=self.weight,
+                                                      suffix=self.suffix))
 
         self.goal_point = self.transform_msg(self.tip_link, base_goal_point)
 
@@ -933,7 +896,7 @@ class Placing(ForceSensorGoal):
                  context,
                  goal_pose: PoseStamped,
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 velocity: Optional[float] = 0.025,
+                 velocity: Optional[float] = 0.02,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
 
@@ -966,25 +929,28 @@ class Placing(ForceSensorGoal):
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
 
-    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
-        if self.from_above:
-            z_force_threshold = w.Expression(0.0)
-            z_force_condition = ['z_force', '>=', z_force_threshold]
+    def goal_cancel_condition(self) -> (bool, [(str, str, w.Expression)]):
+        use_all = False
 
-            y_torque_threshold = w.Expression(-0.15)
-            y_torque_condition = ['y_torque', '<=', y_torque_threshold]
+        if self.from_above:
+            z_force_threshold = 0.0
+            z_force_condition = lambda sensor_values: sensor_values['z_force'] >= z_force_threshold
+
+            y_torque_threshold = -0.15
+            y_torque_condition = lambda sensor_values: sensor_values['y_torque'] <= y_torque_threshold
 
             expressions = [z_force_condition, y_torque_condition]
-        else:
-            x_force_threshold = w.Expression(0.0)
-            x_force_condition = ['x_force', '<=', x_force_threshold]
 
-            y_torque_threshold = w.Expression(0.15)
-            y_torque_condition = ['y_torque', '>=', y_torque_threshold]
+        else:
+            x_force_threshold = 0.0
+            x_force_condition = lambda sensor_values: sensor_values['x_force'] <= x_force_threshold
+
+            y_torque_threshold = 0.15
+            y_torque_condition = lambda sensor_values: sensor_values['y_torque'] >= y_torque_threshold
 
             expressions = [x_force_condition, y_torque_condition]
 
-        return expressions
+        return use_all, expressions
 
     def recovery(self) -> Dict:
         joint_states = {'arm_lift_joint': 0.03}
@@ -1150,26 +1116,26 @@ class Mixing(Goal):
 
         target_speed = 1
 
-        self.add_constraints_of_goal(JointRotationGoal(joint_name='wrist_roll_joint',
-                                                       joint_center=0.0,
-                                                       joint_range=0.9,
-                                                       trajectory_length=mixing_time,
-                                                       target_speed=target_speed,
-                                                       suffix=suffix))
+        self.add_constraints_of_goal(JointRotationGoalContinuous(joint_name='wrist_roll_joint',
+                                                                 joint_center=0.0,
+                                                                 joint_range=0.9,
+                                                                 trajectory_length=mixing_time,
+                                                                 target_speed=target_speed,
+                                                                 suffix=suffix))
 
-        self.add_constraints_of_goal(JointRotationGoal(joint_name='wrist_flex_joint',
-                                                       joint_center=-1.3,
-                                                       joint_range=0.2,
-                                                       trajectory_length=mixing_time,
-                                                       target_speed=target_speed,
-                                                       suffix=suffix))
+        self.add_constraints_of_goal(JointRotationGoalContinuous(joint_name='wrist_flex_joint',
+                                                                 joint_center=-1.3,
+                                                                 joint_range=0.2,
+                                                                 trajectory_length=mixing_time,
+                                                                 target_speed=target_speed,
+                                                                 suffix=suffix))
 
-        self.add_constraints_of_goal(JointRotationGoal(joint_name='arm_roll_joint',
-                                                       joint_center=0.0,
-                                                       joint_range=0.1,
-                                                       trajectory_length=mixing_time,
-                                                       target_speed=target_speed,
-                                                       suffix=suffix))
+        self.add_constraints_of_goal(JointRotationGoalContinuous(joint_name='arm_roll_joint',
+                                                                 joint_center=0.0,
+                                                                 joint_range=0.1,
+                                                                 trajectory_length=mixing_time,
+                                                                 target_speed=target_speed,
+                                                                 suffix=suffix))
 
     def make_constraints(self):
         pass
@@ -1178,8 +1144,7 @@ class Mixing(Goal):
         return super().__str__()
 
 
-class JointRotationGoal(Goal):
-    # FIXME rename 'JointRotationGoalContiunuos'
+class JointRotationGoalContinuous(Goal):
     def __init__(self,
                  joint_name: str,
                  joint_center: float,
@@ -1218,8 +1183,7 @@ class JointRotationGoal(Goal):
         return f'{s}{self.joint.short_name}_suffix:{self.suffix}'
 
 
-class NonRotationGoal(Goal):
-    # FIXME identity rotation or keep rotation
+class KeepRotationGoal(Goal):
     def __init__(self,
                  tip_link: str,
                  weight: float = WEIGHT_ABOVE_CA,
@@ -1267,14 +1231,13 @@ class OpenHandleless(ObjectGoal):
 
         self.goal_pose, self.object_size = self.get_object_by_name(self.door_name)
 
-
-
     def make_constraints(self):
         pass
 
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}{self.tip_link}_suffix:{self.suffix}'
+
 
 class PushButton(ForceSensorGoal):
     def __init__(self,
@@ -1310,21 +1273,15 @@ class PushButton(ForceSensorGoal):
         return f'{s}_suffix:{self.suffix}'
 
     def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+        z_force_threshold = -1.0
+        z_force_condition = lambda sensor_values: sensor_values['z_force'] <= z_force_threshold
 
-        z_force_threshold = w.Expression(-1.0)
-        z_force_condition = ['z_force', '<=', z_force_threshold]
-
-        #y_torque_threshold = w.Expression(0.15)
-        #y_torque_condition = ['x_torque', '>=', y_torque_threshold]
-
-        #expressions = [x_force_condition, y_torque_condition]
         expressions = [z_force_condition]
 
         return expressions
 
     # Move back after pushing the button
     def recovery(self) -> Dict:
-
         joint_states = {'odom_x': -0.05}
 
         return joint_states
@@ -1357,7 +1314,6 @@ class TestBase(Goal):
                 if c.name == 'omni_base_controller' and c.state == 'running':
                     running = True
 
-
         # Apply modifier
         # odom to map
         # self.god_map.evaluate_expr(self.world.joints['localization'].parent_T_child)
@@ -1365,9 +1321,11 @@ class TestBase(Goal):
         # self.god_map.evaluate_expr(self.world.joints['hsrb/brumbrum'].parent_T_child)
         joint_modify = {'x': -0.05}
         odom_joint_names = [("odom_x", 'localization/x'), ("odom_y", 'localization/y'), ("odom_t", 'localization/z')]
-        c_T_o = w.TransMatrix(self.god_map.evaluate_expr(self.world.joints['hsrb/brumbrum'].parent_T_child)).to_position()
+        c_T_o = w.TransMatrix(
+            self.god_map.evaluate_expr(self.world.joints['hsrb/brumbrum'].parent_T_child)).to_position()
 
-        odom_joint_positions = c_T_o.compile().fast_call(self.god_map.get_values(c_T_o.compile().str_params)).tolist()[:3]
+        odom_joint_positions = c_T_o.compile().fast_call(self.god_map.get_values(c_T_o.compile().str_params)).tolist()[
+                               :3]
 
         bases = ['x', 'y', 'z']
 
