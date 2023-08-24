@@ -31,6 +31,8 @@ class MonitorForceSensor(GiskardBehavior):
 
     @profile
     def __init__(self, name, robot_name, conditions, recovery):
+        self.cancel = True
+
         super().__init__(name)
         self.base_pub = None
         self.arm_trajectory_publisher = None
@@ -38,6 +40,7 @@ class MonitorForceSensor(GiskardBehavior):
         self.name = name
         self.wrench_compensated_subscriber = None
 
+        self.prev_values = None
         self.order = 4
         cutoff = 10
         fs = 60
@@ -46,10 +49,8 @@ class MonitorForceSensor(GiskardBehavior):
         self.whole_data = {'unfiltered': [],
                            'filtered': []}
 
-        # self.prev_values = [WrenchStamped()] * (order + 1)
-        self.prev_values = None
 
-        self.conditions = conditions
+        self.reg_ex_condition, self.conditions = conditions
 
         self.recovery = recovery
 
@@ -124,7 +125,7 @@ class MonitorForceSensor(GiskardBehavior):
     def get_rospy_data(self,
                        data_compensated: WrenchStamped):
         if self.init_data:
-            self.clean_filter(data_compensated)
+            self.prev_values = [data_compensated] * (self.order + 1)
             self.init_data = False
 
         self.add_data(data_compensated)
@@ -138,9 +139,6 @@ class MonitorForceSensor(GiskardBehavior):
 
         if self.show_data:
             print(data_compensated.wrench.force)
-
-    def clean_filter(self, data_compensated):
-        self.prev_values = [data_compensated] * (self.order + 1)
 
     def add_data(self,
                  data_compensated: WrenchStamped):
@@ -182,36 +180,26 @@ class MonitorForceSensor(GiskardBehavior):
                          'z_torque': filtered_data.wrench.torque.z}
 
         conds = self.conditions
-        evals = []
-        use_all = False
-        for condition in conds:
-            sensor_axis, operator, threshold = condition
+        use_all = self.reg_ex_condition
 
-            current_data = filtered_dict[sensor_axis]
-            # FIXME: lambda function instead of eval
-            # FIXME: condition for norm (np.linag.norm)
-            if 'around' in operator:
-                evaluated_condition = math.isclose(current_data, threshold, abs_tol=0.3)
-                use_all = True
-            else:
-                evaluated_condition = eval(f'{current_data} {operator} {threshold}')
+        # FIXME: condition for norm (np.linag.norm)
+        evals = [condition(filtered_dict) for condition in conds]
 
-            evals.append(evaluated_condition)
 
-            print(f'force_z {filtered_data.wrench.force.z}')
         if use_all:
             condition_triggered = all(evals)
         else:
             condition_triggered = any(evals)
 
         if condition_triggered:
-            logging.loginfo(f'conditions: {conds}')
-            logging.loginfo(f'evaluated: {evals}, {self.tree_manager.tree.count}')
-            pprint(filtered_dict)
-
             self.plugin_canceled = (True, filtered_data.header.stamp, filtered_data.header.seq)
 
-            self.cancel_condition = True
+            if self.cancel:
+                logging.loginfo(f'conditions: {conds}')
+                logging.loginfo(f'evaluated: {evals}, {self.tree_manager.tree.count}')
+
+                self.cancel_condition = True
+
 
     @catch_and_raise_to_blackboard
     @profile
@@ -220,22 +208,12 @@ class MonitorForceSensor(GiskardBehavior):
         self.save_data()
 
         if self.cancel_condition:
-            rospy.loginfo('goal canceled')
 
             # return Status.SUCCESS
+            rospy.loginfo('goal canceled')
             raise GiskardException()
 
-        # self.counter += 1
-
         return Status.FAILURE
-
-    def terminate(self, new_status):
-
-        if self.cancel_condition:
-            self.recover()
-            # tree = self.tree_manager
-            # tree.remove_node(self.name)
-
 
 
     def recover(self):

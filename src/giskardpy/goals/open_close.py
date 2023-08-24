@@ -1,5 +1,6 @@
 from __future__ import division
 
+import math
 from typing import Optional, Dict
 
 from giskardpy.goals.cartesian_goals import CartesianPose
@@ -63,14 +64,14 @@ class Open(ForceSensorGoal):
 
     def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
 
-        y_force_threshold = 0.0 # w.Expression(0.0)
-        y_force_condition = ['y_force', 'around_0', y_force_threshold]  # lambda value: abs(z_force_threshold - value) <= 0.2
+        y_force_threshold = 0.0
+        y_force_condition = lambda sensor_values: math.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
 
-        z_force_threshold = 0.0 # w.Expression(0.0)
-        z_force_condition = ['z_force', 'around_0', z_force_threshold] # lambda value: abs(z_force_threshold - value) <= 0.2
+        z_force_threshold = 0.0
+        z_force_condition = lambda sensor_values: math.isclose(sensor_values['z_force'], z_force_threshold, abs_tol=0.3)
 
-        x_torque_threshold = 0.0 # w.Expression(0.0)
-        x_torque_condition = ['x_torque', 'around_0', x_torque_threshold] # lambda value: abs(y_torque_threshold - value) <= 0.2
+        x_torque_threshold = 0.0
+        x_torque_condition = lambda sensor_values: math.isclose(sensor_values['x_torque'], x_torque_threshold, abs_tol=0.3)
 
         expressions = [y_force_condition, z_force_condition, x_torque_condition]
 

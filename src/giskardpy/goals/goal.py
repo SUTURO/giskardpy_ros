@@ -8,6 +8,7 @@ from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
 
 from giskardpy.god_map_user import GodMapWorshipper
 # from giskardpy.tree.garden import success_is_failure
+from giskardpy.utils import logging
 
 if TYPE_CHECKING:
     from giskardpy.tree.control_modes import ControlModes
@@ -698,12 +699,12 @@ class ForceSensorGoal(Goal):
     def __init__(self):
         super().__init__()
 
-        cond = self.goal_cancel_condition()
+        conditions = self.goal_cancel_condition()
         recover = self.recovery()
         robot = self.world.robot_name
         tree = self.god_map.get_data(identifier=identifier.tree_manager)
         # self.behaviour = success_is_failure(MonitorForceSensor)('Monitor_Force', robot, cond, recover)
-        self.behaviour = MonitorForceSensor('Monitor_Force', robot, cond, recover)
+        self.behaviour = MonitorForceSensor('Monitor_Force', robot, conditions, recover)
         tree.insert_node(self.behaviour, 'monitor execution', 2)
 
     def make_constraints(self):
@@ -722,7 +723,12 @@ class ForceSensorGoal(Goal):
 
 
     def clean_up(self):
-        self.behaviour.wrench_compensated_subscriber.unregister()
+        self.recovery()
+
+        try:
+            self.behaviour.wrench_compensated_subscriber.unregister()
+        except:
+            logging.logwarn(f'Subscriber does not exist in {self.behaviour.name}')
         time.sleep(0.2)
         tree = self.tree_manager
         tree.remove_node('Monitor_Force')
