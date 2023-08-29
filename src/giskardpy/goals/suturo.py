@@ -20,8 +20,10 @@ from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.qp.constraint import EqualityConstraint
+from giskardpy.utils import math
 from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
+import math as m
 
 
 class ObjectGoal(Goal):
@@ -1186,7 +1188,7 @@ class JointRotationGoalContinuous(Goal):
 class KeepRotationGoal(Goal):
     def __init__(self,
                  tip_link: str,
-                 weight: float = WEIGHT_ABOVE_CA,
+                 weight = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
@@ -1354,3 +1356,33 @@ class TestBase(Goal):
 
     def __str__(self) -> str:
         return super().__str__()
+
+class CheckforForce(ForceSensorGoal):
+    def __init__(self,
+                 tip_link='hand_palm_link',
+                 waiting_time=3):
+
+        super().__init__()
+
+        time = self.traj_time_in_seconds()
+
+        self.add_constraints_of_goal(KeepRotationGoal(tip_link=tip_link,
+                                     weight=w.if_greater(time, waiting_time, 0, WEIGHT_ABOVE_CA)))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+
+        y_force_threshold = 0.0
+        y_force_condition = lambda sensor_values: m.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
+
+        expressions = [y_force_condition]
+
+        return expressions
+
+    def recovery(self) -> Dict:
+        pass
