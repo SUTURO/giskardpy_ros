@@ -62,20 +62,23 @@ class Open(ForceSensorGoal):
     def __str__(self):
         return f'{super().__str__()}/{self.tip_link}/{self.handle_link}'
 
-    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+    def goal_cancel_condition(self):
 
-        y_force_threshold = 0.0
-        y_force_condition = lambda sensor_values: math.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
+        #y_force_threshold = 0.0
+        #y_force_condition = lambda sensor_values: math.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
 
-        z_force_threshold = 0.0
-        z_force_condition = lambda sensor_values: math.isclose(sensor_values['z_force'], z_force_threshold, abs_tol=0.3)
+        #z_force_threshold = 0.0
+        #z_force_condition = lambda sensor_values: math.isclose(sensor_values['z_force'], z_force_threshold, abs_tol=0.3)
 
-        x_torque_threshold = 0.0
-        x_torque_condition = lambda sensor_values: math.isclose(sensor_values['x_torque'], x_torque_threshold, abs_tol=0.3)
+        #x_torque_threshold = 0.0
+        #x_torque_condition = lambda sensor_values: math.isclose(sensor_values['x_torque'], x_torque_threshold, abs_tol=0.3)
 
-        expressions = [y_force_condition, z_force_condition, x_torque_condition]
+        expression = (lambda sensor_values:
+                      (math.isclose(sensor_values['y_force'], 0.0, abs_tol=0.3)) and
+                      (math.isclose(sensor_values['z_force'], 0.0, abs_tol=0.3)) and
+                      (math.isclose(sensor_values['x_torque'], 0.0, abs_tol=0.3)))
 
-        return expressions
+        return expression
 
     def recovery(self) -> Dict:
         recover = {}

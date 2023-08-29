@@ -30,7 +30,7 @@ from scipy.signal import butter, lfilter
 class MonitorForceSensor(GiskardBehavior):
 
     @profile
-    def __init__(self, name, robot_name, conditions, recovery):
+    def __init__(self, name, robot_name, condition, recovery):
         self.cancel = True
 
         super().__init__(name)
@@ -50,7 +50,7 @@ class MonitorForceSensor(GiskardBehavior):
                            'filtered': []}
 
 
-        self.reg_ex_condition, self.conditions = conditions
+        self.condition = condition
 
         self.recovery = recovery
 
@@ -179,24 +179,18 @@ class MonitorForceSensor(GiskardBehavior):
                          'y_torque': filtered_data.wrench.torque.y,
                          'z_torque': filtered_data.wrench.torque.z}
 
-        conds = self.conditions
-        use_all = self.reg_ex_condition
 
         # FIXME: condition for norm (np.linag.norm)
-        evals = [condition(filtered_dict) for condition in conds]
 
-
-        if use_all:
-            condition_triggered = all(evals)
-        else:
-            condition_triggered = any(evals)
+        condition_triggered = self.condition(filtered_dict)
 
         if condition_triggered:
             self.plugin_canceled = (True, filtered_data.header.stamp, filtered_data.header.seq)
 
             if self.cancel:
-                logging.loginfo(f'conditions: {conds}')
-                logging.loginfo(f'evaluated: {evals}, {self.tree_manager.tree.count}')
+                #logging.loginfo(f'conditions: {conds}')
+                #logging.loginfo(f'evaluated: {evals}, {self.tree_manager.tree.count}')
+                logging.loginfo(f'evaluated: {self.condition}, {self.tree_manager.tree.count}')
 
                 self.cancel_condition = True
 

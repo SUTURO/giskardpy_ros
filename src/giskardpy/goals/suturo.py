@@ -931,28 +931,31 @@ class Placing(ForceSensorGoal):
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
 
-    def goal_cancel_condition(self) -> (bool, [(str, str, w.Expression)]):
-        use_all = False
+    def goal_cancel_condition(self):
 
         if self.from_above:
             z_force_threshold = 0.0
-            z_force_condition = lambda sensor_values: sensor_values['z_force'] >= z_force_threshold
+            #z_force_condition = lambda sensor_values: sensor_values['z_force'] >= z_force_threshold
 
             y_torque_threshold = -0.15
-            y_torque_condition = lambda sensor_values: sensor_values['y_torque'] <= y_torque_threshold
+            #y_torque_condition = lambda sensor_values: sensor_values['y_torque'] <= y_torque_threshold
 
-            expressions = [z_force_condition, y_torque_condition]
+            expression = (lambda sensor_values:
+                          (sensor_values['z_force'] >= z_force_threshold) or
+                          (sensor_values['y_torque'] <= y_torque_threshold))
 
         else:
             x_force_threshold = 0.0
-            x_force_condition = lambda sensor_values: sensor_values['x_force'] <= x_force_threshold
+            #x_force_condition = lambda sensor_values: (sensor_values['x_force'] <= x_force_threshold)
 
             y_torque_threshold = 0.15
-            y_torque_condition = lambda sensor_values: sensor_values['y_torque'] >= y_torque_threshold
+            #y_torque_condition = lambda sensor_values: sensor_values['y_torque'] >= y_torque_threshold
 
-            expressions = [x_force_condition, y_torque_condition]
+            expression = (lambda sensor_values:
+                          (sensor_values['x_force'] <= x_force_threshold) or
+                          (sensor_values['y_torque'] >= y_torque_threshold))
 
-        return use_all, expressions
+        return expression
 
     def recovery(self) -> Dict:
         joint_states = {'arm_lift_joint': 0.03}
@@ -1188,7 +1191,7 @@ class JointRotationGoalContinuous(Goal):
 class KeepRotationGoal(Goal):
     def __init__(self,
                  tip_link: str,
-                 weight = WEIGHT_ABOVE_CA,
+                 weight=WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
         super().__init__()
 
@@ -1274,13 +1277,12 @@ class PushButton(ForceSensorGoal):
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
 
-    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+    def goal_cancel_condition(self):
+
         z_force_threshold = -1.0
-        z_force_condition = lambda sensor_values: sensor_values['z_force'] <= z_force_threshold
+        expression = lambda sensor_values: sensor_values['z_force'] <= z_force_threshold
 
-        expressions = [z_force_condition]
-
-        return expressions
+        return expression
 
     # Move back after pushing the button
     def recovery(self) -> Dict:
@@ -1357,17 +1359,17 @@ class TestBase(Goal):
     def __str__(self) -> str:
         return super().__str__()
 
-class CheckforForce(ForceSensorGoal):
+
+class CheckForce(ForceSensorGoal):
     def __init__(self,
                  tip_link='hand_palm_link',
                  waiting_time=3):
-
         super().__init__()
 
         time = self.traj_time_in_seconds()
 
         self.add_constraints_of_goal(KeepRotationGoal(tip_link=tip_link,
-                                     weight=w.if_greater(time, waiting_time, 0, WEIGHT_ABOVE_CA)))
+                                                      weight=w.if_greater(time, waiting_time, 0, WEIGHT_ABOVE_CA)))
 
     def make_constraints(self):
         pass
@@ -1375,14 +1377,13 @@ class CheckforForce(ForceSensorGoal):
     def __str__(self) -> str:
         return super().__str__()
 
-    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+    def goal_cancel_condition(self):
 
         y_force_threshold = 0.0
-        y_force_condition = lambda sensor_values: m.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
 
-        expressions = [y_force_condition]
+        expression = lambda sensor_values: m.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
 
-        return expressions
+        return expression
 
     def recovery(self) -> Dict:
         pass
