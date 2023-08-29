@@ -37,8 +37,6 @@ class SuturoGripperHandler(GiskardBehavior):
     def setup(self, timeout):
         self._gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
                                                                         GripperApplyEffortAction)
-        self._gripper_controller = actionlib.SimpleActionClient(self.follow_joint_trajectory_server,
-                                                                FollowJointTrajectoryAction)
         self._gripper_apply_force_client.wait_for_server()
 
         self._gripper_controller = actionlib.SimpleActionClient('/hsrb/gripper_controller/follow_joint_trajectory',
