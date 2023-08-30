@@ -220,9 +220,9 @@ class Goal(GodMapWorshipper, ABC):
 
     @profile
     def get_constraints(self) -> Tuple[Dict[str, EqualityConstraint],
-                                       Dict[str, InequalityConstraint],
-                                       Dict[str, DerivativeInequalityConstraint],
-                                       Dict[str, Union[w.Symbol, float]]]:
+    Dict[str, InequalityConstraint],
+    Dict[str, DerivativeInequalityConstraint],
+    Dict[str, Union[w.Symbol, float]]]:
         self._equality_constraints = OrderedDict()
         self._inequality_constraints = OrderedDict()
         self._derivative_constraints = OrderedDict()
@@ -239,7 +239,7 @@ class Goal(GodMapWorshipper, ABC):
 
         self.make_constraints()
         return self._equality_constraints, self._inequality_constraints, self._derivative_constraints, \
-               self._debug_expressions
+            self._debug_expressions
 
     def add_constraints_of_goal(self, goal: Goal):
         self._sub_goals.append(goal)
@@ -691,6 +691,7 @@ class NonMotionGoal(Goal):
     def make_constraints(self):
         pass
 
+
 class ForceSensorGoal(Goal):
     """
     Inherit from this goal, if the goal should use the Force Sensor.
@@ -701,10 +702,8 @@ class ForceSensorGoal(Goal):
 
         conditions = self.goal_cancel_condition()
         recover = self.recovery()
-        robot = self.world.robot_name
         tree = self.god_map.get_data(identifier=identifier.tree_manager)
-        # self.behaviour = success_is_failure(MonitorForceSensor)('Monitor_Force', robot, cond, recover)
-        self.behaviour = MonitorForceSensor('Monitor_Force', robot, conditions, recover)
+        self.behaviour = MonitorForceSensor('Monitor_Force', conditions, recover)
         tree.insert_node(self.behaviour, 'monitor execution', 2)
 
     def make_constraints(self):
@@ -714,22 +713,21 @@ class ForceSensorGoal(Goal):
         return super().__str__()
 
     @abc.abstractmethod
-    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+    def goal_cancel_condition(self):
         pass
 
     @abc.abstractmethod
     def recovery(self) -> Dict:
         return {}
 
-
     def clean_up(self):
         self.recovery()
 
         try:
             self.behaviour.wrench_compensated_subscriber.unregister()
+            logging.logwarn('Successfully unsubscribed')
         except:
             logging.logwarn(f'Subscriber does not exist in {self.behaviour.name}')
         time.sleep(0.2)
         tree = self.tree_manager
         tree.remove_node('Monitor_Force')
-

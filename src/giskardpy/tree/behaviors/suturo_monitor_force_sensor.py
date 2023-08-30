@@ -30,10 +30,13 @@ from scipy.signal import butter, lfilter
 class MonitorForceSensor(GiskardBehavior):
 
     @profile
-    def __init__(self, name, robot_name, condition, recovery):
+    def __init__(self, name, condition, recovery):
         self.cancel = True
 
         super().__init__(name)
+
+        robot_name = self.world.robot_name
+
         self.base_pub = None
         self.arm_trajectory_publisher = None
         self.cancel_condition = False
@@ -203,8 +206,8 @@ class MonitorForceSensor(GiskardBehavior):
 
         if self.cancel_condition:
 
-            # return Status.SUCCESS
-            rospy.loginfo('goal canceled')
+            logging.loginfo('goal canceled')
+
             raise GiskardException()
 
         return Status.FAILURE
