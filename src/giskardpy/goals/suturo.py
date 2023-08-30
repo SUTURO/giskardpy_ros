@@ -435,20 +435,9 @@ class Reaching(ObjectGoal):
         elif self.action == 'door-opening':
             radius = 0.0
 
-            if 'slip_door' in context:
-                radius = context['slip_door']
-                print(radius)
-            else:
-                print('no radius')
-
             base_P_goal = self.transform_msg(self.world.search_for_link_name('base_link'), self.goal_pose)
 
-            # if 'left' in object_name:
-            #     base_P_goal.pose.position.y += 0.01
-            # elif 'right' in object_name:
-            #     base_P_goal.pose.position.y -= 0.01
-
-            self.add_constraints_of_goal(GraspObject(goal_pose=base_P_goal,
+            '''self.add_constraints_of_goal(GraspObject(goal_pose=base_P_goal,
                                                      object_size=self.object_size,
                                                      reference_frame_alignment=self.reference_frame,
                                                      frontal_offset=radius,
@@ -458,7 +447,18 @@ class Reaching(ObjectGoal):
                                                      tip_link=self.tip_str,
                                                      velocity=self.velocity / 2,
                                                      weight=self.weight,
-                                                     suffix=self.suffix))
+                                                     suffix=self.suffix))'''
+            self.add_constraints_of_goal(GraspCarefully(goal_pose=base_P_goal,
+                                                        object_size=self.object_size,
+                                                        reference_frame_alignment=self.reference_frame,
+                                                        frontal_offset=radius,
+                                                        from_above=self.from_above,
+                                                        vertical_align=self.vertical_align,
+                                                        root_link=self.root_str,
+                                                        tip_link=self.tip_str,
+                                                        velocity=self.velocity / 2,
+                                                        weight=self.weight,
+                                                        suffix=self.suffix))
 
     def make_constraints(self):
         pass
@@ -893,6 +893,54 @@ class AlignHeight(ObjectGoal):
         return f'{s}_suffix:{self.suffix}'
 
 
+class GraspCarefully(ForceSensorGoal):
+    def __init__(self,
+                 goal_pose: Optional[PoseStamped] = None,
+                 object_size: Optional[Vector3] = None,
+                 reference_frame_alignment: Optional[str] = 'base_link',  # FIXME base link as default is unintuitive
+                 frontal_offset: Optional[float] = 0.0,
+                 from_above: Optional[bool] = False,
+                 vertical_align: Optional[bool] = False,
+                 root_link: Optional[str] = 'odom',
+                 tip_link: Optional[str] = 'hand_gripper_tool_frame',
+                 velocity: Optional[float] = 0.02,
+                 weight: Optional[float] = WEIGHT_ABOVE_CA,
+                 suffix: Optional[str] = ''):
+        super().__init__()
+
+        self.add_constraints_of_goal(GraspObject(goal_pose=goal_pose,
+                                                 object_size=object_size,
+                                                 reference_frame_alignment=reference_frame_alignment,
+                                                 frontal_offset=frontal_offset,
+                                                 from_above=from_above,
+                                                 vertical_align=vertical_align,
+                                                 root_link=root_link,
+                                                 tip_link=tip_link,
+                                                 velocity=velocity,
+                                                 weight=weight,
+                                                 suffix=suffix))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
+
+    def goal_cancel_condition(self):
+        force_threshold = 1.0
+
+        expression = (lambda sensor_values:
+                      (abs(sensor_values['x_force']) >= force_threshold) or
+                      (abs(sensor_values['y_force']) >= force_threshold) or
+                      (abs(sensor_values['z_force']) >= force_threshold))
+
+        return expression
+
+    def recovery(self) -> Dict:
+        return {}
+
+
 class Placing(ForceSensorGoal):
     def __init__(self,
                  context,
@@ -935,10 +983,10 @@ class Placing(ForceSensorGoal):
 
         if self.from_above:
             z_force_threshold = 0.0
-            #z_force_condition = lambda sensor_values: sensor_values['z_force'] >= z_force_threshold
+            # z_force_condition = lambda sensor_values: sensor_values['z_force'] >= z_force_threshold
 
             y_torque_threshold = -0.15
-            #y_torque_condition = lambda sensor_values: sensor_values['y_torque'] <= y_torque_threshold
+            # y_torque_condition = lambda sensor_values: sensor_values['y_torque'] <= y_torque_threshold
 
             expression = (lambda sensor_values:
                           (sensor_values['z_force'] >= z_force_threshold) or
@@ -946,10 +994,10 @@ class Placing(ForceSensorGoal):
 
         else:
             x_force_threshold = 0.0
-            #x_force_condition = lambda sensor_values: (sensor_values['x_force'] <= x_force_threshold)
+            # x_force_condition = lambda sensor_values: (sensor_values['x_force'] <= x_force_threshold)
 
             y_torque_threshold = 0.15
-            #y_torque_condition = lambda sensor_values: sensor_values['y_torque'] >= y_torque_threshold
+            # y_torque_condition = lambda sensor_values: sensor_values['y_torque'] >= y_torque_threshold
 
             expression = (lambda sensor_values:
                           (sensor_values['x_force'] <= x_force_threshold) or
@@ -1217,33 +1265,6 @@ class KeepRotationGoal(Goal):
         return f'{s}{self.tip_link}_suffix:{self.suffix}'
 
 
-class OpenHandleless(ObjectGoal):
-    def __init__(self,
-                 door_name: str,
-                 door_radius: float,
-                 root_link: str = 'map',
-                 tip_link: str = 'hand_gripper_tool_frame',
-                 weight: float = WEIGHT_ABOVE_CA,
-                 suffix: Optional[str] = ''):
-        super().__init__()
-
-        self.door_name = door_name
-        self.door_radius = door_radius
-        self.root_link = root_link
-        self.tip_link = tip_link
-        self.weight = weight
-        self.suffix = suffix
-
-        self.goal_pose, self.object_size = self.get_object_by_name(self.door_name)
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        s = super().__str__()
-        return f'{s}{self.tip_link}_suffix:{self.suffix}'
-
-
 class PushButton(ForceSensorGoal):
     def __init__(self,
                  goal_pose: PoseStamped,
@@ -1278,7 +1299,6 @@ class PushButton(ForceSensorGoal):
         return f'{s}_suffix:{self.suffix}'
 
     def goal_cancel_condition(self):
-
         z_force_threshold = -1.0
         expression = lambda sensor_values: sensor_values['z_force'] <= z_force_threshold
 
@@ -1289,6 +1309,35 @@ class PushButton(ForceSensorGoal):
         joint_states = {'odom_x': -0.05}
 
         return joint_states
+
+
+class CheckForce(ForceSensorGoal):
+    def __init__(self,
+                 waiting_time=3):
+        super().__init__()
+
+        self.add_constraints_of_goal(JointRotationGoalContinuous(joint_name='head_pan_joint',
+                                                                 joint_center=0.0,
+                                                                 joint_range=0.1,
+                                                                 trajectory_length=waiting_time,
+                                                                 target_speed=0.02,
+                                                                 suffix=''))
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+    def goal_cancel_condition(self):
+        y_force_threshold = 0.0
+
+        expression = lambda sensor_values: m.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
+
+        return expression
+
+    def recovery(self) -> Dict:
+        pass
 
 
 class TestBase(Goal):
@@ -1358,32 +1407,3 @@ class TestBase(Goal):
 
     def __str__(self) -> str:
         return super().__str__()
-
-
-class CheckForce(ForceSensorGoal):
-    def __init__(self,
-                 tip_link='hand_palm_link',
-                 waiting_time=3):
-        super().__init__()
-
-        time = self.traj_time_in_seconds()
-
-        self.add_constraints_of_goal(KeepRotationGoal(tip_link=tip_link,
-                                                      weight=w.if_greater(time, waiting_time, 0, WEIGHT_ABOVE_CA)))
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        return super().__str__()
-
-    def goal_cancel_condition(self):
-
-        y_force_threshold = 0.0
-
-        expression = lambda sensor_values: m.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
-
-        return expression
-
-    def recovery(self) -> Dict:
-        pass
