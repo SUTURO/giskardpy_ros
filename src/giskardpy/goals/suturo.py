@@ -908,6 +908,8 @@ class GraspCarefully(ForceSensorGoal):
                  suffix: Optional[str] = ''):
         super().__init__()
 
+        self.suffix = suffix
+
         self.add_constraints_of_goal(GraspObject(goal_pose=goal_pose,
                                                  object_size=object_size,
                                                  reference_frame_alignment=reference_frame_alignment,
@@ -928,7 +930,7 @@ class GraspCarefully(ForceSensorGoal):
         return f'{s}_suffix:{self.suffix}'
 
     def goal_cancel_condition(self):
-        force_threshold = 1.0
+        force_threshold = 5.0
 
         expression = (lambda sensor_values:
                       (abs(sensor_values['x_force']) >= force_threshold) or
