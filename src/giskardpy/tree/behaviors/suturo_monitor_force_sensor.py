@@ -31,41 +31,51 @@ class MonitorForceSensor(GiskardBehavior):
 
     @profile
     def __init__(self, name, condition, recovery):
-        self.cancel = True
-
         super().__init__(name)
 
-        robot_name = self.world.robot_name
-
-        self.base_pub = None
-        self.arm_trajectory_publisher = None
-        self.cancel_condition = False
         self.name = name
-        self.wrench_compensated_subscriber = None
+        self.robot_name = self.world.robot_name
 
+        self.condition = condition
+        self.recovery = recovery
+        self.cancel_condition = False
+
+        # Data
+        self.whole_data = {'unfiltered': [],
+                           'filtered': []}
+
+        # Filter
         self.prev_values = None
         self.order = 4
         cutoff = 10
         fs = 60
         self.b, self.a = butter(self.order, cutoff / (0.5 * fs), btype='low')
 
-        self.whole_data = {'unfiltered': [],
-                           'filtered': []}
+        # Subscriber
+        self.wrench_compensated_subscriber = None
 
+        # Publisher
+        self.base_pub = None
+        self.arm_trajectory_publisher = None
 
-        self.condition = condition
-
-        self.recovery = recovery
+        if self.control_mode == self.control_mode.open_loop:
+            self.continue_plugin_state = Status.FAILURE
+        elif self.control_mode == self.control_mode.close_loop:
+            self.continue_plugin_state = Status.RUNNING
+        else:
+            logging.logerr(f'{self.control_mode} is not supported')
+            raise GiskardException()
 
         # True to print sensor data
         self.show_data = False
+        self.cancel = True
         self.plugin_canceled = (False, 0)
 
-        self.robot_name = robot_name
         self.init_data = True
 
     @profile
     def setup(self, timeout):
+
         if self.robot_name == 'hsrb':
             controller_list_topic = '/hsrb/controller_manager/list_controllers'
             wrench_topic = '/hsrb/wrist_wrench/compensated'
@@ -85,42 +95,43 @@ class MonitorForceSensor(GiskardBehavior):
         self.wrench_compensated_subscriber = rospy.Subscriber(wrench_topic, WrenchStamped,
                                                               self.get_rospy_data)
 
-        # initialize ROS publisher
-        if arm_trajectory_topic is not None:
-            self.arm_trajectory_publisher = rospy.Publisher(arm_trajectory_topic,
-                                                            trajectory_msgs.msg.JointTrajectory, queue_size=10)
+        if self.control_mode == self.control_mode.open_loop:
+            # initialize ROS publisher
+            if arm_trajectory_topic is not None:
+                self.arm_trajectory_publisher = rospy.Publisher(arm_trajectory_topic,
+                                                                trajectory_msgs.msg.JointTrajectory, queue_size=10)
 
-            # wait to establish connection between the controller
-            while self.arm_trajectory_publisher.get_num_connections() == 0:
-                logging.logwarn(f'connecting to {arm_trajectory_topic}')
-                rospy.sleep(0.1)
+                # wait to establish connection between the controller
+                while self.arm_trajectory_publisher.get_num_connections() == 0:
+                    logging.logwarn(f'connecting to {arm_trajectory_topic}')
+                    rospy.sleep(0.1)
 
-        if base_trajectory_topic is not None:
-            self.base_pub = rospy.Publisher(base_trajectory_topic,
-                                            trajectory_msgs.msg.JointTrajectory, queue_size=10)
+            if base_trajectory_topic is not None:
+                self.base_pub = rospy.Publisher(base_trajectory_topic,
+                                                trajectory_msgs.msg.JointTrajectory, queue_size=10)
 
-            # wait to establish connection between the controller
-            while self.base_pub.get_num_connections() == 0:
-                logging.logwarn(f'connecting to {base_trajectory_topic}')
-                rospy.sleep(0.1)
+                # wait to establish connection between the controller
+                while self.base_pub.get_num_connections() == 0:
+                    logging.logwarn(f'connecting to {base_trajectory_topic}')
+                    rospy.sleep(0.1)
 
-        # make sure the controller is running
-        if controller_list_topic is not None:
-            rospy.wait_for_service(controller_list_topic)
-            list_controllers = (
-                rospy.ServiceProxy(controller_list_topic,
-                                   controller_manager_msgs.srv.ListControllers))
+            # make sure the controller is running
+            if controller_list_topic is not None:
+                rospy.wait_for_service(controller_list_topic)
+                list_controllers = (
+                    rospy.ServiceProxy(controller_list_topic,
+                                       controller_manager_msgs.srv.ListControllers))
 
-            running1, running2 = False, False
-            while running1 is False or running2 is False:
-                rospy.sleep(0.1)
-                for c in list_controllers().controller:
-                    if c.name == 'arm_trajectory_controller' and c.state == 'running':
-                        running1 = True
-                    if c.name == 'omni_base_controller' and c.state == 'running':
-                        running2 = True
+                running1, running2 = False, False
+                while running1 is False or running2 is False:
+                    rospy.sleep(0.1)
+                    for c in list_controllers().controller:
+                        if c.name == 'arm_trajectory_controller' and c.state == 'running':
+                            running1 = True
+                        if c.name == 'omni_base_controller' and c.state == 'running':
+                            running2 = True
 
-            print('running')
+                print('running')
 
         return True
 
@@ -191,9 +202,7 @@ class MonitorForceSensor(GiskardBehavior):
             self.plugin_canceled = (True, filtered_data.header.stamp, filtered_data.header.seq)
 
             if self.cancel:
-                #logging.loginfo(f'conditions: {conds}')
-                #logging.loginfo(f'evaluated: {evals}, {self.tree_manager.tree.count}')
-                logging.loginfo(f'evaluated: {self.condition}, {self.tree_manager.tree.count}')
+                logging.loginfo(f'tree cycle:  {self.tree_manager.tree.count}')
 
                 self.cancel_condition = True
 
@@ -210,7 +219,7 @@ class MonitorForceSensor(GiskardBehavior):
 
             raise GiskardException()
 
-        return Status.FAILURE
+        return self.continue_plugin_state
 
 
     def recover(self):
@@ -286,7 +295,6 @@ class MonitorForceSensor(GiskardBehavior):
                      ws.wrench.torque.x, ws.wrench.torque.y, ws.wrench.torque.z]
                     for ws in self.whole_data[current_type]]
 
-            # pprint(data)
 
             with open(os.path.expanduser(standard_path + current_type + '.csv'), 'w') as csv_file:
                 writer = csv.writer(csv_file)

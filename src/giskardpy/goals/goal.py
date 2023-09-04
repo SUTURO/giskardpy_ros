@@ -703,8 +703,16 @@ class ForceSensorGoal(Goal):
         conditions = self.goal_cancel_condition()
         recover = self.recovery()
         tree = self.god_map.get_data(identifier=identifier.tree_manager)
+
         self.behaviour = MonitorForceSensor('Monitor_Force', conditions, recover)
-        tree.insert_node(self.behaviour, 'monitor execution', 2)
+
+        if self.control_mode == self.control_mode.open_loop:
+            tree.insert_node(self.behaviour, 'monitor execution', 2)
+        else:
+            tree.insert_node(self.behaviour, 'closed loop control', 12)
+            # pass
+
+
 
     def make_constraints(self):
         pass

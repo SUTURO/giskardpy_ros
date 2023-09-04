@@ -433,7 +433,7 @@ class Reaching(ObjectGoal):
                                                      suffix=self.suffix))
 
         elif self.action == 'door-opening':
-            radius = 0.0
+            radius = -0.02
 
             base_P_goal = self.transform_msg(self.world.search_for_link_name('base_link'), self.goal_pose)
 
@@ -991,8 +991,8 @@ class Placing(ForceSensorGoal):
             # y_torque_condition = lambda sensor_values: sensor_values['y_torque'] <= y_torque_threshold
 
             expression = (lambda sensor_values:
-                          (sensor_values['z_force'] >= z_force_threshold) or
-                          (sensor_values['y_torque'] <= y_torque_threshold))
+                          (sensor_values['x_force'] <= x_force_threshold) or
+                          (sensor_values['y_torque'] >= y_torque_threshold))
 
         else:
             x_force_threshold = 0.0
@@ -1340,72 +1340,3 @@ class CheckForce(ForceSensorGoal):
 
     def recovery(self) -> Dict:
         pass
-
-
-class TestBase(Goal):
-    def __init__(self,
-                 **kwargs):
-
-        super().__init__()
-
-        # initialize ROS publisher
-        pub = rospy.Publisher(
-            '/hsrb/omni_base_controller/command',
-            trajectory_msgs.msg.JointTrajectory, queue_size=10)
-
-        # wait to establish connection between the controller
-        while pub.get_num_connections() == 0:
-            rospy.sleep(0.1)
-
-        # make sure the controller is running
-        rospy.wait_for_service('/hsrb/controller_manager/list_controllers')
-        list_controllers = rospy.ServiceProxy(
-            '/hsrb/controller_manager/list_controllers',
-            controller_manager_msgs.srv.ListControllers)
-        running = False
-        while running is False:
-            rospy.sleep(0.1)
-            for c in list_controllers().controller:
-                if c.name == 'omni_base_controller' and c.state == 'running':
-                    running = True
-
-        # Apply modifier
-        # odom to map
-        # self.god_map.evaluate_expr(self.world.joints['localization'].parent_T_child)
-        # Current position to odom
-        # self.god_map.evaluate_expr(self.world.joints['hsrb/brumbrum'].parent_T_child)
-        joint_modify = {'x': -0.05}
-        odom_joint_names = [("odom_x", 'localization/x'), ("odom_y", 'localization/y'), ("odom_t", 'localization/z')]
-        c_T_o = w.TransMatrix(
-            self.god_map.evaluate_expr(self.world.joints['hsrb/brumbrum'].parent_T_child)).to_position()
-
-        odom_joint_positions = c_T_o.compile().fast_call(self.god_map.get_values(c_T_o.compile().str_params)).tolist()[
-                               :3]
-
-        bases = ['x', 'y', 'z']
-
-        odom_positions = []
-        for index, names in enumerate(bases):
-            if names in joint_modify:
-                mod = joint_modify.get(names)
-            else:
-                mod = 0.0
-            odom_positions.append(odom_joint_positions[index] + mod)
-
-        # Send data
-        traj = trajectory_msgs.msg.JointTrajectory()
-        traj.joint_names = [name[0] for name in odom_joint_names]
-        p = trajectory_msgs.msg.JointTrajectoryPoint()
-        p.positions = odom_positions
-        p.velocities = [0, 0, 0]
-        p.time_from_start = rospy.Duration(5)
-        traj.points = [p]
-
-        # publish ROS message
-        pub.publish(traj)
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        return super().__str__()
