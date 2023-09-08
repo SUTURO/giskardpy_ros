@@ -220,9 +220,9 @@ class Goal(GodMapWorshipper, ABC):
 
     @profile
     def get_constraints(self) -> Tuple[Dict[str, EqualityConstraint],
-    Dict[str, InequalityConstraint],
-    Dict[str, DerivativeInequalityConstraint],
-    Dict[str, Union[w.Symbol, float]]]:
+                                       Dict[str, InequalityConstraint],
+                                       Dict[str, DerivativeInequalityConstraint],
+                                       Dict[str, Union[w.Symbol, float]]]:
         self._equality_constraints = OrderedDict()
         self._inequality_constraints = OrderedDict()
         self._derivative_constraints = OrderedDict()
@@ -239,7 +239,7 @@ class Goal(GodMapWorshipper, ABC):
 
         self.make_constraints()
         return self._equality_constraints, self._inequality_constraints, self._derivative_constraints, \
-            self._debug_expressions
+               self._debug_expressions
 
     def add_constraints_of_goal(self, goal: Goal):
         self._sub_goals.append(goal)
@@ -700,6 +700,22 @@ class ForceSensorGoal(Goal):
     def __init__(self):
         super().__init__()
 
+        directions = {}
+
+        if self.world.robot_name == 'hsrb':
+            directions = {'up': 'x',
+                          'forward': 'z',
+                          'side': 'y'}
+
+        elif self.world.robot_name == 'iai_donbot':
+            directions = {'up': 'y',
+                          'forward': 'z',
+                          'side': 'x'}
+
+        self.upwards_force, self.forward_force, self.sideway_force = [value + '_force' for key, value in directions.items()]
+
+        self.upwards_torque, self.forward_torque, self.sideway_torque = [value + '_torque' for key, value in directions.items()]
+
         conditions = self.goal_cancel_condition()
         recover = self.recovery()
         tree = self.god_map.get_data(identifier=identifier.tree_manager)
@@ -711,8 +727,6 @@ class ForceSensorGoal(Goal):
         else:
             tree.insert_node(self.behaviour, 'closed loop control', 12)
             # pass
-
-
 
     def make_constraints(self):
         pass

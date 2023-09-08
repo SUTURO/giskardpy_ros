@@ -948,7 +948,7 @@ class Placing(ForceSensorGoal):
                  context,
                  goal_pose: PoseStamped,
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                 velocity: Optional[float] = 0.02,
+                 velocity: Optional[float] = 0.1,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
                  suffix: Optional[str] = ''):
 
@@ -991,8 +991,8 @@ class Placing(ForceSensorGoal):
             # y_torque_condition = lambda sensor_values: sensor_values['y_torque'] <= y_torque_threshold
 
             expression = (lambda sensor_values:
-                          (sensor_values['x_force'] <= x_force_threshold) or
-                          (sensor_values['y_torque'] >= y_torque_threshold))
+                          (sensor_values[self.upwards_force] <= x_force_threshold) or
+                          (sensor_values[self.sideway_torque] >= y_torque_threshold))
 
         else:
             x_force_threshold = 0.0
@@ -1002,8 +1002,8 @@ class Placing(ForceSensorGoal):
             # y_torque_condition = lambda sensor_values: sensor_values['y_torque'] >= y_torque_threshold
 
             expression = (lambda sensor_values:
-                          (sensor_values['x_force'] <= x_force_threshold) or
-                          (sensor_values['y_torque'] >= y_torque_threshold))
+                          (sensor_values[self.upwards_force] <= x_force_threshold) or
+                          (sensor_values[self.sideway_torque] >= y_torque_threshold))
 
         return expression
 
