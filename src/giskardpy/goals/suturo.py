@@ -298,7 +298,7 @@ class Reaching(ObjectGoal):
                  object_shape: str = '',  # FIXME use optional only when none is allowed
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
-                 root_link: Optional[str] = 'odom',
+                 root_link: Optional[str] = 'map',
                  tip_link: Optional[str] = 'hand_gripper_tool_frame',
                  velocity: Optional[float] = 0.2,
                  weight: Optional[float] = WEIGHT_ABOVE_CA,
@@ -331,15 +331,15 @@ class Reaching(ObjectGoal):
         self.suffix = suffix
         # FIXME default for root link
         # self.world.groups[self.world.group_names[0]].root_link_name
-        self.action = context['action']
+        self.action = context['action'] if 'action' in context else context['action'].content
         self.from_above = False
         self.vertical_align = False
 
         if 'from_above' in context:
-            self.from_above = context['from_above']
+            self.from_above = context['from_above'] if 'from_above' in context else context['from_above'].content
 
         if 'vertical_align' in context:
-            self.vertical_align = context['vertical_align']
+            self.vertical_align = context['vertical_align'] if 'vertical_align' in context else context['vertical_align'].content
 
         # Get object geometry from name
         if goal_pose is None:
@@ -638,9 +638,12 @@ class VerticalMotion(ObjectGoal):
 
         goal_point_base = self.transform_msg(self.base_link, start_point_tip)
 
-        if context['action'] == 'grasping':
+        up = 'grasping' in (context['action'] if 'action' in context else context['action'].content)
+        down = 'placing' in (context['action'] if 'action' in context else context['action'].content)
+
+        if up:
             goal_point_base.pose.position.z += self.distance
-        if context['action'] == 'placing':
+        if down:
             goal_point_base.pose.position.z -= self.distance
 
         goal_point_tip = self.transform_msg(self.tip_link, goal_point_base)
@@ -673,7 +676,9 @@ class VerticalMotion(ObjectGoal):
 
     def __str__(self) -> str:
         s = super().__str__()
-        return f'{s}{self.context["action"]}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
+        # return f'{s}{self.context["action"]}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
+
+        return f'{s}/{self.root_str}/{self.tip_str}_suffix:{self.suffix}'
 
     def update_params(self):
         root_T_tip_current = self.world.compute_fk_np(self.root_link, self.tip_link)
@@ -959,7 +964,7 @@ class Placing(ForceSensorGoal):
         self.suffix = suffix
 
         if 'from_above' in context:
-            self.from_above = context['from_above']
+            self.from_above = context['from_above'].content
 
         super().__init__()
 
@@ -984,15 +989,17 @@ class Placing(ForceSensorGoal):
     def goal_cancel_condition(self):
 
         if self.from_above:
-            z_force_threshold = 0.0
             # z_force_condition = lambda sensor_values: sensor_values['z_force'] >= z_force_threshold
 
             y_torque_threshold = -0.15
             # y_torque_condition = lambda sensor_values: sensor_values['y_torque'] <= y_torque_threshold
 
+            z_force_threshold = 1.0
+
             expression = (lambda sensor_values:
-                          (sensor_values[self.upwards_force] <= x_force_threshold) or
-                          (sensor_values[self.sideway_torque] >= y_torque_threshold))
+                          (sensor_values[self.forward_force] >= z_force_threshold))
+                          # or
+                          # (sensor_values[self.sideway_torque] >= y_torque_threshold))
 
         else:
             x_force_threshold = 0.0
