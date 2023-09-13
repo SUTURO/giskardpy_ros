@@ -23,7 +23,22 @@ from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
 import math as m
 
-from manipulation_msgs.msg import ContextAction, ContextFromAbove
+from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, ContextObjectShape
+
+class ContextTypes(Enum):
+    context_action = ContextAction
+    context_from_above = ContextFromAbove
+    context_neatly = ContextNeatly
+    context_object_type = ContextObjectType
+    context_object_shape = ContextObjectShape
+class ContextActionModes(Enum):
+    grasping = 'grasping'
+    placing = 'placing'
+    pouring = 'pouring'
+    door_opening = 'door-opening'
+
+
+
 
 class ObjectGoal(Goal):
     """
@@ -232,7 +247,7 @@ class MoveGripper(Goal):
 
 class Reaching(ObjectGoal):
     def __init__(self,
-                 context,  # FIXME typehint for context
+                 context: {str: ContextTypes},
                  object_name: Optional[str] = None,
                  object_shape: Optional[str] = None,
                  goal_pose: Optional[PoseStamped] = None,
@@ -258,7 +273,6 @@ class Reaching(ObjectGoal):
         :param weight: weight of this goal
         :param suffix: Only relevant for SequenceGoal interns
         """
-        # FIXME use message to define keywords
         super().__init__()
         self.context = context
         self.object_name = object_name
@@ -285,12 +299,12 @@ class Reaching(ObjectGoal):
             else:
                 self.from_above = context['from_above']
 
+        # TODO: either uncomment or remove (Communicate with planning)
         '''if 'vertical_align' in context:
             if isinstance(context['vertical_align']) :
                 self.vertical_align = context['vertical_align'].content
             else:
                 self.vertical_align = context['vertical_align']'''
-
 
         # Get object geometry from name
         if goal_pose is None:
@@ -313,7 +327,7 @@ class Reaching(ObjectGoal):
             object_in_world = False
             logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
 
-        if self.action == 'grasping':
+        if self.action == ContextActionModes.grasping:
             if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
             else:
@@ -335,7 +349,7 @@ class Reaching(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
-        elif self.action == 'placing':
+        elif self.action == ContextActionModes.placing:
             # Todo: Place from above: use radius for object height offset
             if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
@@ -357,7 +371,7 @@ class Reaching(ObjectGoal):
                                                      velocity=self.velocity,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
-        elif self.action == 'pouring':
+        elif self.action == ContextActionModes.placing:
             # grasped_object_size = self.object_size
             # pour_object_size = self.convert_list_to_size(context['pour_object_size'])
 
@@ -377,7 +391,7 @@ class Reaching(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
-        elif self.action == 'door-opening':
+        elif self.action == ContextActionModes.door_opening:
             radius = -0.02
 
             base_P_goal = self.transform_msg(self.world.search_for_link_name('base_link'), self.goal_pose)
@@ -487,8 +501,6 @@ class GraspObject(ObjectGoal):
                 self.tip_vertical_axis.vector.y = 1
 
         self.tip_frontal_axis.vector.z = 1
-        # temp donbot
-        # self.tip_frontal_axis.vector.z = -1
 
         # Position
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
