@@ -23,6 +23,7 @@ from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
 import math as m
 
+from manipulation_msgs.msg import ContextAction, ContextFromAbove
 
 class ObjectGoal(Goal):
     """
@@ -269,15 +270,27 @@ class Reaching(ObjectGoal):
         self.suffix = suffix
         # FIXME default for root link
         # self.world.groups[self.world.group_names[0]].root_link_name
-        self.action = context['action'] if 'action' in context else context['action'].content
+        if 'action' in context:
+            if isinstance(context['action'], ContextAction):
+                self.action = context['action'].content
+            else:
+                self.action = context['action']
+
         self.from_above = False
         self.vertical_align = False
 
         if 'from_above' in context:
-            self.from_above = context['from_above'] if 'from_above' in context else context['from_above'].content
+            if isinstance(context['from_above'], ContextFromAbove):
+                self.from_above = context['from_above'].content
+            else:
+                self.from_above = context['from_above']
 
-        if 'vertical_align' in context:
-            self.vertical_align = context['vertical_align'] if 'vertical_align' in context else context['vertical_align'].content
+        '''if 'vertical_align' in context:
+            if isinstance(context['vertical_align']) :
+                self.vertical_align = context['vertical_align'].content
+            else:
+                self.vertical_align = context['vertical_align']'''
+
 
         # Get object geometry from name
         if goal_pose is None:
@@ -448,19 +461,30 @@ class GraspObject(ObjectGoal):
 
         else:
 
-            # Temporary solution to not be bothered with vertical grasping
-            # self.bar_axis.vector = self.set_grasp_axis(self.object_size, maximum=True)
-            self.goal_vertical_axis.vector.z = 1
-            self.goal_frontal_axis.vector.x = 1
+            if self.world.robot_name == 'hsrb':
+                self.goal_vertical_axis.vector.z = 1
+                self.goal_frontal_axis.vector.x = 1
+
+            elif self.world.robot_name == 'iai_donbot':
+                self.goal_vertical_axis.vector.z = -1
+                self.goal_frontal_axis.vector.x = -1
 
             self.goal_point.point.x += frontal_offset
             self.goal_point.point.z -= 0.01
 
         if self.vertical_align:
-            self.tip_vertical_axis.vector.y = 1
+            if self.world.robot_name == 'hsrb':
+                self.tip_vertical_axis.vector.y = 1
+
+            elif self.world.robot_name == 'donbot':
+                self.tip_vertical_axis.vector.x = 1
+
         else:
-            self.tip_vertical_axis.vector.x = 1
-            # self.tip_vertical_axis.vector.y = -1
+            if self.world.robot_name == 'hsrb':
+                self.tip_vertical_axis.vector.x = 1
+
+            elif self.world.robot_name == 'donbot':
+                self.tip_vertical_axis.vector.y = 1
 
         self.tip_frontal_axis.vector.z = 1
         # temp donbot
@@ -539,8 +563,15 @@ class VerticalMotion(ObjectGoal):
 
         goal_point_base = self.transform_msg(self.base_link, start_point_tip)
 
-        up = 'grasping' in (context['action'] if 'action' in context else context['action'].content)
-        down = 'placing' in (context['action'] if 'action' in context else context['action'].content)
+        if 'action' in context:
+            if isinstance(context['action'], ContextAction):
+                self.action = context['action'].content
+            else:
+                self.action = context['action']
+
+
+        up = 'grasping' in self.action
+        down = 'placing' in self.action
 
         if up:
             goal_point_base.pose.position.z += self.distance
@@ -588,6 +619,7 @@ class VerticalMotion(ObjectGoal):
 
 class Retracting(ObjectGoal):
     def __init__(self,
+                 object_name='',
                  distance: float = 0.2,
                  reference_frame: str = 'base_footprint',
                  root_link: str = 'map',
@@ -720,7 +752,10 @@ class AlignHeight(ObjectGoal):
         self.from_above = False
 
         if 'from_above' in context:
-            self.from_above = context['from_above']
+            if isinstance(context['from_above'], ContextAction):
+                self.from_above = context['from_above'].content
+            else:
+                self.from_above = context['from_above']
 
         self.base_link = self.world.search_for_link_name('base_link')
         self.base_str = self.base_link.short_name
@@ -859,7 +894,10 @@ class Placing(ForceSensorGoal):
         self.suffix = suffix
 
         if 'from_above' in context:
-            self.from_above = context['from_above'].content
+            if isinstance(context['from_above'], ContextFromAbove):
+                self.from_above = context['from_above'].content
+            else:
+                self.from_above = context['from_above']
 
         super().__init__()
 
@@ -1175,8 +1213,8 @@ class PushButton(ForceSensorGoal):
         return f'{s}_suffix:{self.suffix}'
 
     def goal_cancel_condition(self):
-        z_force_threshold = -1.0
-        expression = lambda sensor_values: sensor_values['z_force'] <= z_force_threshold
+        z_force_threshold = 3.0
+        expression = lambda sensor_values: abs(sensor_values[self.forward_force]) >= z_force_threshold
 
         return expression
 

@@ -22,6 +22,7 @@ from pprint import pprint
 import scipy
 # !/usr/bin/env python
 
+import rospkg
 import rospy
 from geometry_msgs.msg import WrenchStamped
 from scipy.signal import butter, lfilter
@@ -35,6 +36,7 @@ class MonitorForceSensor(GiskardBehavior):
 
         self.name = name
         self.robot_name = self.world.robot_name
+        self.rospack = rospkg.RosPack()
 
         self.condition = condition
         self.recovery = recovery
@@ -287,7 +289,9 @@ class MonitorForceSensor(GiskardBehavior):
 
         types = ['filtered', 'unfiltered']
         keys = ['timestamp', 'seq', 'force_x', 'force_y', 'force_z', 'torque_x', 'torque_y', 'torque_z']
-        standard_path = '~/SUTURO/SUTURO_WSS/manipulation_ws/src/suturo_manipulation/suturo_manipulation/src/suturo_manipulation/'
+
+        package_path = self.rospack.get_path('suturo_manipulation')
+        standard_path = package_path + '/src/suturo_manipulation/'
 
         for current_type in types:
             data = [[ws.header.stamp, ws.header.seq,
