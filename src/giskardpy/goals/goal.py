@@ -6,6 +6,8 @@ from abc import ABC
 from collections import OrderedDict
 from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
 
+from geometry_msgs.msg import Vector3
+
 from giskardpy.god_map_user import GodMapWorshipper
 # from giskardpy.tree.garden import success_is_failure
 from giskardpy.utils import logging
@@ -42,6 +44,22 @@ class Goal(GodMapWorshipper, ABC):
         This is where you specify goal parameters and save them as self attributes.
         """
         self._sub_goals = []
+
+        self.gripper_forward, self.gripper_up, self.gripper_right
+
+        if self.world.robot_name == 'hsrb':
+            self.gripper_forward = Vector3(x=0, y=0, z=1)
+            self.gripper_up = Vector3(x=1, y=0, z=0)
+            self.gripper_right = Vector3(x=0, y=1, z=0)
+
+        elif self.world.robot_name == 'iai_donbot':
+            self.gripper_forward = Vector3(x=0, y=0, z=1)
+            self.gripper_up = Vector3(x=0, y=1, z=0)
+            self.gripper_right = Vector3(x=-1, y=0, z=0)
+
+
+
+
 
     def clean_up(self):
         pass
