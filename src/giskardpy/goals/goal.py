@@ -45,17 +45,36 @@ class Goal(GodMapWorshipper, ABC):
         """
         self._sub_goals = []
 
-        self.gripper_forward, self.gripper_up, self.gripper_right
+        self.standard_forward, self.standard_left, self.standard_up = None, None, None
+        self.gripper_forward, self.gripper_left, self.gripper_up = None, None, None
+        self.base_forward, self.base_left, self.base_up = None, None, None
 
         if self.world.robot_name == 'hsrb':
+            self.standard_forward = Vector3(x=1, y=0, z=0)
+            self.standard_left = Vector3(x=0, y=1, z=0)
+            self.standard_up = Vector3(x=0, y=0, z=1)
+
             self.gripper_forward = Vector3(x=0, y=0, z=1)
+            self.gripper_left = Vector3(x=0, y=-1, z=0)
             self.gripper_up = Vector3(x=1, y=0, z=0)
-            self.gripper_right = Vector3(x=0, y=1, z=0)
+
+            self.base_forward = Vector3(x=1, y=0, z=0)
+            self.base_left = Vector3(x=0, y=1, z=0)
+            self.base_up = Vector3(x=0, y=0, z=1)
 
         elif self.world.robot_name == 'iai_donbot':
+            self.standard_forward = Vector3(x=1, y=0, z=0)
+            self.standard_left = Vector3(x=0, y=1, z=0)
+            self.standard_up = Vector3(x=0, y=0, z=1)
+
             self.gripper_forward = Vector3(x=0, y=0, z=1)
+            self.gripper_left = Vector3(x=1, y=0, z=0)
             self.gripper_up = Vector3(x=0, y=1, z=0)
-            self.gripper_right = Vector3(x=-1, y=0, z=0)
+
+            # FIXME: Look up the real values
+            self.base_forward = Vector3(x=-1, y=0, z=0)
+            self.base_left = Vector3(x=0, y=-1, z=0)
+            self.base_up = Vector3(x=0, y=0, z=1)
 
 
 

@@ -394,7 +394,7 @@ class Reaching(ObjectGoal):
         elif self.action == ContextActionModes.door_opening:
             radius = -0.02
 
-            base_P_goal = self.transform_msg(self.world.search_for_link_name('base_link'), self.goal_pose)
+            base_P_goal = self.transform_msg(self.world.search_for_link_name('base_footprint'), self.goal_pose)
 
             self.add_constraints_of_goal(GraspCarefully(goal_pose=base_P_goal,
                                                         reference_frame_alignment=self.reference_frame,
@@ -470,37 +470,24 @@ class GraspObject(ObjectGoal):
             # Grasp at the upper edge of the object
             #  self.goal_point.point.z += self.object_size.z / 2
 
-            self.goal_vertical_axis.vector.x = 1
-            self.goal_frontal_axis.vector.z = -1
+            self.goal_vertical_axis.vector = self.standard_forward
+            self.goal_frontal_axis.vector = multiply_vector(self.standard_up, -1)
 
         else:
 
-            if self.world.robot_name == 'hsrb':
-                self.goal_vertical_axis.vector.z = 1
-                self.goal_frontal_axis.vector.x = 1
-
-            elif self.world.robot_name == 'iai_donbot':
-                self.goal_vertical_axis.vector.z = -1
-                self.goal_frontal_axis.vector.x = -1
+            self.goal_vertical_axis.vector = self.standard_up
+            self.goal_frontal_axis.vector = self.base_forward
 
             self.goal_point.point.x += frontal_offset
             self.goal_point.point.z -= 0.01
 
         if self.vertical_align:
-            if self.world.robot_name == 'hsrb':
-                self.tip_vertical_axis.vector.y = 1
-
-            elif self.world.robot_name == 'donbot':
-                self.tip_vertical_axis.vector.x = 1
+            self.tip_vertical_axis.vector = self.gripper_left
 
         else:
-            if self.world.robot_name == 'hsrb':
-                self.tip_vertical_axis.vector.x = 1
+            self.tip_vertical_axis.vector = self.gripper_up
 
-            elif self.world.robot_name == 'donbot':
-                self.tip_vertical_axis.vector.y = 1
-
-        self.tip_frontal_axis.vector.z = 1
+        self.tip_frontal_axis.vector = self.gripper_forward
 
         # Position
         self.add_constraints_of_goal(CartesianPosition(root_link=self.root_str,
@@ -529,7 +516,7 @@ class GraspObject(ObjectGoal):
                                                  weight=self.weight,
                                                  suffix=self.suffix))
 
-        self.add_constraints_of_goal(KeepRotationGoal(tip_link='base_link',
+        self.add_constraints_of_goal(KeepRotationGoal(tip_link='base_footprint',
                                                       weight=self.weight,
                                                       suffix=self.suffix))
 
@@ -539,6 +526,13 @@ class GraspObject(ObjectGoal):
     def __str__(self) -> str:
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
+
+
+def multiply_vector(vec: Vector3,
+                    number: int):
+
+    return Vector3(vec.x * number, vec.y * number, vec.z*number)
+
 
 
 class VerticalMotion(ObjectGoal):
@@ -566,14 +560,14 @@ class VerticalMotion(ObjectGoal):
         self.weight = weight
         self.suffix = suffix
 
-        self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = self.base_link.short_name
+        self.base_footprint = self.world.search_for_link_name('base_footprint')
+        self.base_str = self.base_footprint.short_name
 
         # Lifting
         start_point_tip = PoseStamped()
         start_point_tip.header.frame_id = self.tip_str
 
-        goal_point_base = self.transform_msg(self.base_link, start_point_tip)
+        goal_point_base = self.transform_msg(self.base_footprint, start_point_tip)
 
         if 'action' in context:
             if isinstance(context['action'], ContextAction):
@@ -581,14 +575,15 @@ class VerticalMotion(ObjectGoal):
             else:
                 self.action = context['action']
 
-
-        up = 'grasping' in self.action
-        down = 'placing' in self.action
+        up = ContextActionModes.grasping in self.action
+        down = ContextActionModes in self.action
 
         if up:
             goal_point_base.pose.position.z += self.distance
-        if down:
+        elif down:
             goal_point_base.pose.position.z -= self.distance
+        else:
+            logwarn('no direction given')
 
         goal_point_tip = self.transform_msg(self.tip_link, goal_point_base)
 
@@ -674,7 +669,7 @@ class Retracting(ObjectGoal):
 
         self.start_tip_T_current_tip = np.eye(4)
 
-        self.add_constraints_of_goal(KeepRotationGoal(tip_link='base_link',
+        self.add_constraints_of_goal(KeepRotationGoal(tip_link='base_footprint',
                                                       weight=self.weight,
                                                       suffix=self.suffix))
 
@@ -769,18 +764,18 @@ class AlignHeight(ObjectGoal):
             else:
                 self.from_above = context['from_above']
 
-        self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = self.base_link.short_name
+        self.base_footprint = self.world.search_for_link_name('base_footprint')
+        self.base_str = self.base_footprint.short_name
 
         # CartesianPosition
         goal_point = PointStamped()
         goal_point.header.frame_id = self.goal_pose.header.frame_id
         goal_point.point = self.goal_pose.pose.position
 
-        base_to_tip = self.world.compute_fk_pose(self.base_link, self.tip_link)
+        base_to_tip = self.world.compute_fk_pose(self.base_footprint, self.tip_link)
 
         offset = 0.02
-        base_goal_point = self.transform_msg(self.base_link, goal_point)
+        base_goal_point = self.transform_msg(self.base_footprint, goal_point)
         base_goal_point.point.x = base_to_tip.pose.position.x
         base_goal_point.point.z += (self.object_height / 2) + offset
 
@@ -913,8 +908,8 @@ class Placing(ForceSensorGoal):
 
         super().__init__()
 
-        self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = self.base_link.short_name
+        self.base_footprint = self.world.search_for_link_name('base_footprint')
+        self.base_str = self.base_footprint.short_name
 
         self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                  root_link=self.base_str,
@@ -1206,8 +1201,8 @@ class PushButton(ForceSensorGoal):
 
         super().__init__()
 
-        self.base_link = self.world.search_for_link_name('base_link')
-        self.base_str = self.base_link.short_name
+        self.base_footprint = self.world.search_for_link_name('base_footprint')
+        self.base_str = self.base_footprint.short_name
 
         self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                  root_link=self.base_str,
