@@ -252,7 +252,7 @@ class Reaching(ObjectGoal):
                  object_shape: Optional[str] = None,
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
-                 root_link: str = 'map',
+                 root_link: Optional[str] = None,
                  tip_link: str = 'hand_gripper_tool_frame',
                  velocity: float = 0.2,
                  weight: float = WEIGHT_ABOVE_CA,
@@ -277,13 +277,16 @@ class Reaching(ObjectGoal):
         self.context = context
         self.object_name = object_name
         self.object_shape = object_shape
-        self.root_str = root_link
+
+        if root_link is None:
+            root_link = self.world.groups[self.world.robot_name].root_link.name
+
+        self.root_str = root_link.short_name
         self.tip_str = tip_link
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
-        # FIXME default for root link
-        # self.world.groups[self.world.group_names[0]].root_link_name
+
         if 'action' in context:
             if isinstance(context['action'], ContextAction):
                 self.action = context['action'].content
@@ -422,7 +425,7 @@ class GraspObject(ObjectGoal):
                  frontal_offset: float = 0.0,
                  from_above: bool = False,
                  vertical_align: bool = False,
-                 root_link: str = 'map',
+                 root_link: Optional[str] = None,
                  tip_link: str = 'hand_gripper_tool_frame',
                  velocity: float = 0.2,
                  weight: float = WEIGHT_ABOVE_CA,
@@ -438,8 +441,12 @@ class GraspObject(ObjectGoal):
         self.frontal_offset = frontal_offset
         self.from_above = from_above
         self.vertical_align = vertical_align
-        self.root_link = self.world.search_for_link_name(root_link)
-        self.root_str = self.root_link.short_name
+
+        if root_link is None:
+            root_link = self.world.groups[self.world.robot_name].root_link.name
+
+        self.root_str = root_link.short_name
+
         self.tip_link = self.world.search_for_link_name(tip_link)
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
@@ -539,7 +546,7 @@ class VerticalMotion(ObjectGoal):
     def __init__(self,
                  context,
                  distance: float = 0.02,
-                 root_link: str = 'base_footprint',
+                 root_link: Optional[str] = None,
                  tip_link: str = 'hand_gripper_tool_frame',
                  velocity: float = 0.2,
                  weight: float = WEIGHT_ABOVE_CA,
@@ -552,9 +559,14 @@ class VerticalMotion(ObjectGoal):
 
         self.context = context
         self.distance = distance
-        self.root_link = self.world.search_for_link_name(root_link)
+
+        if root_link is None:
+            root_link = self.world.search_for_link_name('base_footprint')
+
+        self.root_link = root_link
+        self.root_str = root_link.short_name
+
         self.tip_link = self.world.search_for_link_name(tip_link)
-        self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
         self.weight = weight
@@ -629,7 +641,7 @@ class Retracting(ObjectGoal):
                  object_name='',
                  distance: float = 0.2,
                  reference_frame: str = 'base_footprint',
-                 root_link: str = 'map',
+                 root_link: Optional[str] = None,
                  tip_link: str = 'hand_gripper_tool_frame',
                  velocity: float = 0.2,
                  weight: float = WEIGHT_ABOVE_CA,
@@ -643,9 +655,14 @@ class Retracting(ObjectGoal):
 
         self.distance = distance
         self.reference_frame = self.world.search_for_link_name(reference_frame)
-        self.root_link = self.world.search_for_link_name(root_link)
+
+        if root_link is None:
+            root_link = self.world.groups[self.world.robot_name].root_link.name
+
+        self.root_link = root_link
+        self.root_str = root_link.short_name
+
         self.tip_link = self.world.search_for_link_name(tip_link)
-        self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
         self.weight = weight
@@ -712,7 +729,7 @@ class AlignHeight(ObjectGoal):
                  object_name: Optional[str] = None,
                  goal_pose: Optional[PoseStamped] = None,
                  object_height: float = 0.0,
-                 root_link: str = 'map',
+                 root_link: Optional[str] = None,
                  tip_link: str = 'hand_gripper_tool_frame',
                  velocity: float = 0.2,
                  weight: float = WEIGHT_ABOVE_CA,
@@ -748,9 +765,13 @@ class AlignHeight(ObjectGoal):
             self.goal_pose = tf.lookup_pose('map', goal_pose)
 
         self.object_height = object_height
-        self.root_link = self.world.search_for_link_name(root_link)
+
+        if root_link is None:
+            root_link = self.world.groups[self.world.robot_name].root_link.name
+
+        self.root_str = root_link.short_name
+
         self.tip_link = self.world.search_for_link_name(tip_link)
-        self.root_str = self.root_link.short_name
         self.tip_str = self.tip_link.short_name
         self.velocity = velocity
         self.weight = weight
@@ -844,7 +865,7 @@ class GraspCarefully(ForceSensorGoal):
                  frontal_offset: float = 0.0,
                  from_above: bool = False,
                  vertical_align: bool = False,
-                 root_link: str = 'map',
+                 root_link: Optional[str] = None,
                  tip_link: str = 'hand_gripper_tool_frame',
                  velocity: float = 0.02,
                  weight: float = WEIGHT_ABOVE_CA,
