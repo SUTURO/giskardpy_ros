@@ -25,19 +25,20 @@ import math as m
 
 from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, ContextObjectShape
 
+
 class ContextTypes(Enum):
     context_action = ContextAction
     context_from_above = ContextFromAbove
     context_neatly = ContextNeatly
     context_object_type = ContextObjectType
     context_object_shape = ContextObjectShape
+
+
 class ContextActionModes(Enum):
     grasping = 'grasping'
     placing = 'placing'
     pouring = 'pouring'
     door_opening = 'door-opening'
-
-
 
 
 class ObjectGoal(Goal):
@@ -244,7 +245,14 @@ class MoveGripper(Goal):
         s = super().__str__()
         return f'{s}_suffix:{self.suffix}'
 
-
+def check_context_element(name: str,
+                          context_type,
+                          context):
+    if name in context:
+        if isinstance(context['action'], context_type):
+            return context['action'].content
+        else:
+            return context['action']
 class Reaching(ObjectGoal):
     def __init__(self,
                  context: {str: ContextTypes},
@@ -280,6 +288,8 @@ class Reaching(ObjectGoal):
 
         if root_link is None:
             root_link = self.world.groups[self.world.robot_name].root_link.name
+        else:
+            root_link = self.world.search_for_link_name(root_link)
 
         self.root_str = root_link.short_name
         self.tip_str = tip_link
@@ -287,27 +297,15 @@ class Reaching(ObjectGoal):
         self.weight = weight
         self.suffix = suffix
 
-        if 'action' in context:
-            if isinstance(context['action'], ContextAction):
-                self.action = context['action'].content
-            else:
-                self.action = context['action']
+        self.action = check_context_element('action', ContextAction, self.context)
 
         self.from_above = False
         self.vertical_align = False
 
-        if 'from_above' in context:
-            if isinstance(context['from_above'], ContextFromAbove):
-                self.from_above = context['from_above'].content
-            else:
-                self.from_above = context['from_above']
+        self.from_above = check_context_element('from_above', ContextFromAbove, self.context)
 
         # TODO: either uncomment or remove (Communicate with planning)
-        '''if 'vertical_align' in context:
-            if isinstance(context['vertical_align']) :
-                self.vertical_align = context['vertical_align'].content
-            else:
-                self.vertical_align = context['vertical_align']'''
+        # self.vertical_align = check_context_element('vertical_align', ContextVerticalAlign, self.context)
 
         # Get object geometry from name
         if goal_pose is None:
@@ -330,7 +328,7 @@ class Reaching(ObjectGoal):
             object_in_world = False
             logwarn(f'Deprecated warning: Please add object to giskard and set object name.')
 
-        if self.action == ContextActionModes.grasping:
+        if self.action == ContextActionModes.grasping.value:
             if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
             else:
@@ -352,7 +350,7 @@ class Reaching(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
-        elif self.action == ContextActionModes.placing:
+        elif self.action == ContextActionModes.placing.value:
             # Todo: Place from above: use radius for object height offset
             if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
                 radius = self.object_size.x
@@ -374,7 +372,7 @@ class Reaching(ObjectGoal):
                                                      velocity=self.velocity,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
-        elif self.action == ContextActionModes.placing:
+        elif self.action == ContextActionModes.placing.value:
             # grasped_object_size = self.object_size
             # pour_object_size = self.convert_list_to_size(context['pour_object_size'])
 
@@ -394,7 +392,7 @@ class Reaching(ObjectGoal):
                                                      weight=self.weight,
                                                      suffix=self.suffix))
 
-        elif self.action == ContextActionModes.door_opening:
+        elif self.action == ContextActionModes.door_opening.value:
             radius = -0.02
 
             base_P_goal = self.transform_msg(self.world.search_for_link_name('base_footprint'), self.goal_pose)
@@ -444,6 +442,8 @@ class GraspObject(ObjectGoal):
 
         if root_link is None:
             root_link = self.world.groups[self.world.robot_name].root_link.name
+        else:
+            root_link = self.world.search_for_link_name(root_link)
 
         self.root_str = root_link.short_name
 
@@ -537,9 +537,7 @@ class GraspObject(ObjectGoal):
 
 def multiply_vector(vec: Vector3,
                     number: int):
-
-    return Vector3(vec.x * number, vec.y * number, vec.z*number)
-
+    return Vector3(vec.x * number, vec.y * number, vec.z * number)
 
 
 class VerticalMotion(ObjectGoal):
@@ -562,6 +560,8 @@ class VerticalMotion(ObjectGoal):
 
         if root_link is None:
             root_link = self.world.search_for_link_name('base_footprint')
+        else:
+            root_link = self.world.search_for_link_name(root_link)
 
         self.root_link = root_link
         self.root_str = root_link.short_name
@@ -581,14 +581,10 @@ class VerticalMotion(ObjectGoal):
 
         goal_point_base = self.transform_msg(self.base_footprint, start_point_tip)
 
-        if 'action' in context:
-            if isinstance(context['action'], ContextAction):
-                self.action = context['action'].content
-            else:
-                self.action = context['action']
+        self.action = check_context_element('action', ContextAction, self.context)
 
-        up = ContextActionModes.grasping in self.action
-        down = ContextActionModes in self.action
+        up = ContextActionModes.grasping.value in self.action
+        down = ContextActionModes.placing.value in self.action
 
         if up:
             goal_point_base.pose.position.z += self.distance
@@ -658,6 +654,8 @@ class Retracting(ObjectGoal):
 
         if root_link is None:
             root_link = self.world.groups[self.world.robot_name].root_link.name
+        else:
+            root_link = self.world.search_for_link_name(root_link)
 
         self.root_link = root_link
         self.root_str = root_link.short_name
@@ -768,6 +766,8 @@ class AlignHeight(ObjectGoal):
 
         if root_link is None:
             root_link = self.world.groups[self.world.robot_name].root_link.name
+        else:
+            root_link = self.world.search_for_link_name(root_link)
 
         self.root_str = root_link.short_name
 
@@ -779,11 +779,7 @@ class AlignHeight(ObjectGoal):
 
         self.from_above = False
 
-        if 'from_above' in context:
-            if isinstance(context['from_above'], ContextAction):
-                self.from_above = context['from_above'].content
-            else:
-                self.from_above = context['from_above']
+        self.from_above = check_context_element('from_above', ContextFromAbove, context)
 
         self.base_footprint = self.world.search_for_link_name('base_footprint')
         self.base_str = self.base_footprint.short_name
@@ -921,11 +917,7 @@ class Placing(ForceSensorGoal):
         self.weight = weight
         self.suffix = suffix
 
-        if 'from_above' in context:
-            if isinstance(context['from_above'], ContextFromAbove):
-                self.from_above = context['from_above'].content
-            else:
-                self.from_above = context['from_above']
+        self.from_above = check_context_element('from_above', ContextFromAbove, context)
 
         super().__init__()
 
@@ -957,8 +949,8 @@ class Placing(ForceSensorGoal):
 
             expression = (lambda sensor_values:
                           (sensor_values[self.forward_force] >= z_force_threshold))
-                          # or
-                          # (sensor_values[self.sideway_torque] >= y_torque_threshold))
+            # or
+            # (sensor_values[self.sideway_torque] >= y_torque_threshold))
 
         else:
             x_force_threshold = 0.0
@@ -1148,7 +1140,6 @@ class JointRotationGoalContinuous(Goal):
                  target_speed: float = 1,
                  period_length: float = 1.0,
                  suffix: str = ''):
-
         super().__init__()
         self.joint = self.world.search_for_joint_name(joint_name)
         self.target_speed = target_speed
@@ -1284,3 +1275,7 @@ class CheckForce(ForceSensorGoal):
 
 donbot_tool_frame = 'gripper_tool_frame'
 hsr_tool_frame = 'hand_gripper_tool_frame'
+
+# TODO: Write Tests
+# TODO: Make PR of recursive parsing (ros_msg_to_goal, python_interface, garden for moved clean up(?))
+# TODO: Make CartesianOrientation from two alignplanes
