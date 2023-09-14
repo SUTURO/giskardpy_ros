@@ -372,7 +372,7 @@ class Reaching(ObjectGoal):
                                                      velocity=self.velocity,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
-        elif self.action == ContextActionModes.placing.value:
+        elif self.action == ContextActionModes.pouring.value:
             # grasped_object_size = self.object_size
             # pour_object_size = self.convert_list_to_size(context['pour_object_size'])
 
@@ -635,7 +635,7 @@ class VerticalMotion(ObjectGoal):
 class Retracting(ObjectGoal):
     def __init__(self,
                  object_name='',
-                 distance: float = 0.2,
+                 distance: float = 0.3,
                  reference_frame: str = 'base_footprint',
                  root_link: Optional[str] = None,
                  tip_link: str = 'hand_gripper_tool_frame',
