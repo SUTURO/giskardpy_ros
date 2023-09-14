@@ -48,6 +48,7 @@ class Goal(GodMapWorshipper, ABC):
         self.standard_forward, self.standard_left, self.standard_up = None, None, None
         self.gripper_forward, self.gripper_left, self.gripper_up = None, None, None
         self.base_forward, self.base_left, self.base_up = None, None, None
+        self.gripper_tool_frame = None
 
         if self.world.robot_name == 'hsrb':
             self.standard_forward = Vector3(x=1, y=0, z=0)
@@ -62,6 +63,8 @@ class Goal(GodMapWorshipper, ABC):
             self.base_left = Vector3(x=0, y=1, z=0)
             self.base_up = Vector3(x=0, y=0, z=1)
 
+            self.gripper_tool_frame = 'hand_gripper_tool_frame'
+
         elif self.world.robot_name == 'iai_donbot':
             self.standard_forward = Vector3(x=1, y=0, z=0)
             self.standard_left = Vector3(x=0, y=1, z=0)
@@ -75,6 +78,8 @@ class Goal(GodMapWorshipper, ABC):
             self.base_forward = Vector3(x=-1, y=0, z=0)
             self.base_left = Vector3(x=0, y=-1, z=0)
             self.base_up = Vector3(x=0, y=0, z=1)
+
+            self.gripper_tool_frame = 'gripper_tool_frame'
 
 
 
