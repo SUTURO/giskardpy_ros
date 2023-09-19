@@ -466,3 +466,51 @@ class TestAddObject:
 
         zero_pose.set_joint_goal({'arm_flex_joint': -0.7})
         zero_pose.plan_and_execute()
+
+
+class TestSUTURO:
+    def test_sequence_goal(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_reaching(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_grasp_object_frontal(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_grasp_object_from_above(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_grasp_object_vertical(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_vertical_motion(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_retracting_hand(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_retracting_base(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_align_height(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_placing(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_tilting(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_take_pose(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_mixing(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_joint_rotation_goal_continuous(self, zero_pose: HSRTestWrapper):
+        pass
+
+    def test_keep_rotation_goal(self, zero_pose: HSRTestWrapper):
+        pass
+
