@@ -940,23 +940,23 @@ class Placing(ForceSensorGoal):
 
 class Tilting(Goal):
     def __init__(self,
-                 tilt_direction: Optional[str] = None,
-                 tilt_angle: Optional[float] = None,
+                 direction: Optional[str] = None,
+                 angle: Optional[float] = None,
                  tip_link: str = 'wrist_roll_joint',
                  suffix: str = ''):
         super().__init__()
 
         max_angle = -2.0
 
-        if tilt_angle is None:
-            tilt_angle = max_angle
+        if angle is None:
+            angle = max_angle
 
-        if tilt_direction == 'right':
-            tilt_angle = abs(tilt_angle)
+        if direction == 'right':
+            angle = abs(angle)
         else:
-            tilt_angle = abs(tilt_angle) * -1
+            angle = abs(angle) * -1
 
-        self.wrist_state = tilt_angle
+        self.wrist_state = angle
         self.tip_link = tip_link
         self.suffix = suffix
 
