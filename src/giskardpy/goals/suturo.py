@@ -23,7 +23,8 @@ from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
 import math as m
 
-from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, ContextObjectShape
+from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, ContextObjectShape, \
+    ContextAlignVertical
 
 
 class ContextTypes(Enum):
@@ -293,9 +294,7 @@ class Reaching(ObjectGoal):
 
         self.action = check_context_element('action', ContextAction, self.context)
         self.from_above = check_context_element('from_above', ContextFromAbove, self.context)
-        self.vertical_align = False
-        # TODO: either uncomment or remove (Communicate with planning)
-        # self.vertical_align = check_context_element('vertical_align', ContextVerticalAlign, self.context)
+        self.align_vertical = check_context_element('align_vertical', ContextAlignVertical, self.context)
         self.radius = 0.0
 
         # Get object geometry from name
@@ -335,7 +334,7 @@ class Reaching(ObjectGoal):
                                                      reference_frame_alignment=self.reference_frame,
                                                      frontal_offset=self.radius,
                                                      from_above=self.from_above,
-                                                     vertical_align=self.vertical_align,
+                                                     align_vertical=self.align_vertical,
                                                      root_link=self.root_link_name,
                                                      tip_link=self.tip_link_name,
                                                      velocity=self.velocity,
@@ -355,7 +354,7 @@ class Reaching(ObjectGoal):
                                                      reference_frame_alignment=self.reference_frame,
                                                      frontal_offset=self.radius,
                                                      from_above=self.from_above,
-                                                     vertical_align=self.vertical_align,
+                                                     align_vertical=self.align_vertical,
                                                      root_link=self.root_link_name,
                                                      tip_link=self.tip_link_name,
                                                      velocity=self.velocity,
@@ -367,7 +366,7 @@ class Reaching(ObjectGoal):
                                                      reference_frame_alignment=self.reference_frame,
                                                      frontal_offset=self.radius,
                                                      from_above=self.from_above,
-                                                     vertical_align=self.vertical_align,
+                                                     align_vertical=self.align_vertical,
                                                      root_link=self.root_link_name,
                                                      tip_link=self.tip_link_name,
                                                      velocity=self.velocity,
@@ -383,7 +382,7 @@ class Reaching(ObjectGoal):
                                                         reference_frame_alignment=self.reference_frame,
                                                         frontal_offset=self.radius,
                                                         from_above=self.from_above,
-                                                        vertical_align=self.vertical_align,
+                                                        align_vertical=self.align_vertical,
                                                         root_link=self.root_link_name,
                                                         tip_link=self.tip_link_name,
                                                         velocity=self.velocity / 2,
@@ -403,7 +402,7 @@ class GraspObject(ObjectGoal):
                  goal_pose: PoseStamped,
                  frontal_offset: float = 0.0,
                  from_above: bool = False,
-                 vertical_align: bool = False,
+                 align_vertical: bool = False,
                  reference_frame_alignment: Optional[str] = None,
                  root_link: Optional[str] = None,
                  tip_link: Optional[str] = None,
@@ -415,7 +414,7 @@ class GraspObject(ObjectGoal):
 
         self.frontal_offset = frontal_offset
         self.from_above = from_above
-        self.vertical_align = vertical_align
+        self.align_vertical = align_vertical
 
         if reference_frame_alignment is None:
             reference_frame_alignment = 'base_footprint'
@@ -463,7 +462,7 @@ class GraspObject(ObjectGoal):
             self.goal_point.point.x += frontal_offset
             self.goal_point.point.z -= 0.01
 
-        if self.vertical_align:
+        if self.align_vertical:
             self.tip_vertical_axis.vector = self.gripper_left
 
         else:
@@ -824,7 +823,7 @@ class GraspCarefully(ForceSensorGoal):
                  reference_frame_alignment: Optional[str] = None,
                  frontal_offset: float = 0.0,
                  from_above: bool = False,
-                 vertical_align: bool = False,
+                 align_vertical: bool = False,
                  root_link: Optional[str] = None,
                  tip_link: Optional[str] = None,
                  velocity: float = 0.02,
@@ -838,7 +837,7 @@ class GraspCarefully(ForceSensorGoal):
                                                  reference_frame_alignment=reference_frame_alignment,
                                                  frontal_offset=frontal_offset,
                                                  from_above=from_above,
-                                                 vertical_align=vertical_align,
+                                                 align_vertical=align_vertical,
                                                  root_link=root_link,
                                                  tip_link=tip_link,
                                                  velocity=velocity,
@@ -1264,6 +1263,5 @@ def multiply_vector(vec: Vector3,
                     number: int):
     return Vector3(vec.x * number, vec.y * number, vec.z * number)
 
-# TODO: Write Tests
 # TODO: Make PR of recursive parsing (ros_msg_to_goal, python_interface, garden for moved clean up(?))
 # TODO: Make CartesianOrientation from two alignplanes
