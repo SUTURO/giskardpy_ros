@@ -85,6 +85,7 @@ class HSRTestWrapper(GiskardTestWrapper):
 def giskard(request, ros):
     launch_launchfile('package://hsr_description/launch/upload_hsrb.launch')
     c = HSRTestWrapper()
+    # c = HSRTestWrapper(myGiskard)
     # c = HSRTestWrapperMujoco()
     request.addfinalizer(c.tear_down)
     return c
@@ -227,31 +228,6 @@ class TestCartGoals:
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi, [0, 0, 1]))
         zero_pose.set_cart_goal(base_goal, 'base_footprint')
         zero_pose.allow_all_collisions()
-        zero_pose.plan_and_execute()
-
-    def test_seq(self, zero_pose: HSRTestWrapper):
-        map_T_odom = PoseStamped()
-        map_T_odom.header.frame_id = 'map'
-        map_T_odom.pose.position.x = 1
-        map_T_odom.pose.position.y = 1
-        map_T_odom.pose.orientation = Quaternion(*quaternion_about_axis(np.pi / 3, [0, 0, 1]))
-        zero_pose.set_json_goal('SequenceGoal',
-                                goal_type_seq=['CartesianPose'],
-                                kwargs_seq=[{'root_link': 'map',
-                                             'tip_link': 'base_footprint',
-                                             'goal_pose': map_T_odom}])
-        '''zero_pose.set_json_goal('SequenceGoal',
-                                goals={'JointPositionPrismatic':
-                                           {'joint_name': 'torso_lift_joint',
-                                            'goal': 0.3}})'''
-
-        '''zero_pose.set_json_goal('SequenceGoal',
-                                goal_type_seq=['JointPositionPrismatic'],
-                                kwargs_seq=[{'joint_name': 'torso_lift_joint',
-                                             'goal': 0.3}])'''
-
-        zero_pose.prepare_placing(object_name='', object_pose=map_T_odom, height=0.2)
-
         zero_pose.plan_and_execute()
 
     def test_move_base_1m_forward(self, zero_pose: HSRTestWrapper):
@@ -475,42 +451,140 @@ class TestSUTURO:
     def test_reaching(self, zero_pose: HSRTestWrapper):
         pass
 
-    def test_grasp_object_frontal(self, zero_pose: HSRTestWrapper):
-        pass
+    def test_grasp_object(self, zero_pose: HSRTestWrapper):
+        from_above_modes = [False, True]
+        vertical_align_modes = [False, True]
 
-    def test_grasp_object_from_above(self, zero_pose: HSRTestWrapper):
-        pass
+        target_pose = PoseStamped()
+        target_pose.pose.position.x = 1
+        target_pose.pose.position.z = 0.7
 
-    def test_grasp_object_vertical(self, zero_pose: HSRTestWrapper):
-        pass
+        for from_above_mode in from_above_modes:
+            for vertical_align_mode in vertical_align_modes:
 
-    def test_vertical_motion(self, zero_pose: HSRTestWrapper):
-        pass
+                zero_pose.set_json_goal(constraint_type='GraspObject',
+                                        goal_pose=target_pose,
+                                        from_above=from_above_mode,
+                                        vertical_align=vertical_align_mode,
+                                        root_link='map',
+                                        tip_link='hand_palm_link')
+
+                zero_pose.allow_self_collision()
+                zero_pose.plan_and_execute()
+
+    def test_vertical_motion_up(self, zero_pose: HSRTestWrapper):
+        zero_pose.set_json_goal(constraint_type='TakePose',
+                                pose_keyword='park')
+
+        zero_pose.allow_self_collision()
+        zero_pose.plan_and_execute()
+
+        context = {'action': 'grasping'}
+        zero_pose.set_json_goal(constraint_type='VerticalMotion',
+                                context=context,
+                                distance=0.02,
+                                root_link='base_footprint',
+                                tip_link='hand_palm_link')
+
+        zero_pose.allow_self_collision()
+        zero_pose.plan_and_execute()
 
     def test_retracting_hand(self, zero_pose: HSRTestWrapper):
-        pass
+
+        zero_pose.set_json_goal(constraint_type='TakePose',
+                                pose_keyword='park')
+
+        zero_pose.allow_self_collision()
+        zero_pose.plan_and_execute()
+
+        zero_pose.set_json_goal(constraint_type='Retracting',
+                                distance=0.3,
+                                reference_frame='hand_palm_link',
+                                root_link='map',
+                                tip_link='hand_palm_link')
+
+        zero_pose.allow_self_collision()
+        zero_pose.plan_and_execute()
 
     def test_retracting_base(self, zero_pose: HSRTestWrapper):
-        pass
+        zero_pose.set_json_goal(constraint_type='Retracting',
+                                distance=0.3,
+                                reference_frame='base_footprint',
+                                root_link='map',
+                                tip_link='hand_palm_link')
+
+        zero_pose.allow_self_collision()
+        zero_pose.plan_and_execute()
 
     def test_align_height(self, zero_pose: HSRTestWrapper):
-        pass
+        execute_from_above = [False, True]
 
-    def test_placing(self, zero_pose: HSRTestWrapper):
-        pass
+        for mode in execute_from_above:
+
+            zero_pose.set_json_goal(constraint_type='TakePose',
+                                    pose_keyword='pre_align_height')
+
+            zero_pose.allow_self_collision()
+            zero_pose.plan_and_execute()
+
+            context = {'action': 'grasping', 'from_above': mode}
+
+            target_pose = PoseStamped()
+            target_pose.header.frame_id = 'map'
+            target_pose.pose.position.x = 1
+            target_pose.pose.position.z = 0.7
+
+            zero_pose.set_json_goal(constraint_type='AlignHeight',
+                                    context=context,
+                                    object_name='',
+                                    goal_pose=target_pose,
+                                    object_height=0.1,
+                                    root_link='map',
+                                    tip_link='hand_palm_link')
+
+            zero_pose.allow_self_collision()
+            zero_pose.plan_and_execute()
 
     def test_tilting(self, zero_pose: HSRTestWrapper):
-        pass
+        directions = ['left', 'right']
+
+        for direction in directions:
+            zero_pose.set_json_goal(constraint_type='Tilting',
+                                    direction=direction,
+                                    angle=1.4)
+
+            zero_pose.allow_self_collision()
+            zero_pose.plan_and_execute()
 
     def test_take_pose(self, zero_pose: HSRTestWrapper):
-        pass
+        poses = ['park', 'perceive', 'assistance', 'pre_align_height', 'carry']
+
+        for pose in poses:
+            zero_pose.set_json_goal(constraint_type='TakePose',
+                                    pose_keyword=pose)
+
+            zero_pose.allow_self_collision()
+            zero_pose.plan_and_execute()
 
     def test_mixing(self, zero_pose: HSRTestWrapper):
-        pass
+        #FIXME: Cant use traj_time_in_seconds in standalone mode
+        zero_pose.set_json_goal(constraint_type='Mixing',
+                                mixing_time=20)
+
+        zero_pose.allow_self_collision()
+        zero_pose.plan_and_execute()
 
     def test_joint_rotation_goal_continuous(self, zero_pose: HSRTestWrapper):
-        pass
+        zero_pose.set_json_goal(constraint_type='JointRotationGoalContinuous',
+                                joint_name='arm_roll_joint',
+                                joint_center=0.0,
+                                joint_range=0.2,
+                                trajectory_length=20,
+                                target_speed=1,
+                                period_length=1.0)
+
+        zero_pose.allow_self_collision()
+        zero_pose.plan_and_execute()
 
     def test_keep_rotation_goal(self, zero_pose: HSRTestWrapper):
         pass
-

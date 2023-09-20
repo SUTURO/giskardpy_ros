@@ -1254,10 +1254,10 @@ def check_context_element(name: str,
                           context_type,
                           context):
     if name in context:
-        if isinstance(context['action'], context_type):
-            return context['action'].content
+        if isinstance(context[name], context_type):
+            return context[name].content
         else:
-            return context['action']
+            return context[name]
 
 
 def multiply_vector(vec: Vector3,
