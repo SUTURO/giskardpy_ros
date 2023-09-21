@@ -1077,24 +1077,27 @@ class GiskardWrapper:
                            tilt_angle=tilt_angle,
                            tip_link=tip_link)
 
+    def joint_rotation_continuous(self,
+                                  joint_name: str,
+                                  joint_center: float,
+                                  joint_range: float,
+                                  trajectory_length: float = 20,
+                                  target_speed: float = 1,
+                                  period_length: float = 1.0):
+        self.set_json_goal(constraint_type='JointRotationGoalContinuous',
+                           joint_name=joint_name,
+                           joint_center=joint_center,
+                           joint_range=joint_range,
+                           trajectory_length=trajectory_length,
+                           target_speed=target_speed,
+                           period_length=period_length)
+
     def mixing(self,
-               center: PointStamped,
-               radius: float,
-               scale: float,
-               mixing_time: float = 100,
-               root_link: str = 'map',
-               tip_link: str = 'hand_palm_link',
-               velocity: float = 0.1,
+               mixing_time=20,
                weight: float = WEIGHT_ABOVE_CA):
 
         self.set_json_goal(constraint_type='Mixing',
-                           center=center,
-                           radius=radius,
-                           scale=scale,
                            mixing_time=mixing_time,
-                           root_link=root_link,
-                           tip_link=tip_link,
-                           velocity=velocity,
                            weight=weight)
 
     def open_environment(self,
