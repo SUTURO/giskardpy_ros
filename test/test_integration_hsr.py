@@ -14,6 +14,8 @@ from giskardpy.configs.qp_controller_config import QPControllerConfig
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
 
+from giskardpy.goals.suturo import ContextActionModes, ContextTypes
+
 
 class HSRTestWrapper(GiskardTestWrapper):
     default_pose = {
@@ -446,7 +448,10 @@ class TestAddObject:
 
 class TestSUTURO:
     def test_sequence_goal(self, zero_pose: HSRTestWrapper):
-        pass
+        motion_sequence = {}
+
+        zero_pose.set_json_goal(constraint_type='SequenceGoal',
+                                motion_sequence=motion_sequence)
 
     def test_reaching(self, zero_pose: HSRTestWrapper):
         pass
@@ -461,7 +466,6 @@ class TestSUTURO:
 
         for from_above_mode in from_above_modes:
             for vertical_align_mode in vertical_align_modes:
-
                 zero_pose.set_json_goal(constraint_type='GraspObject',
                                         goal_pose=target_pose,
                                         from_above=from_above_mode,
@@ -479,7 +483,8 @@ class TestSUTURO:
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
-        context = {'action': 'grasping'}
+        action = ContextTypes.context_action.value(content=ContextActionModes.grasping.value)
+        context = {'action': action}
         zero_pose.set_json_goal(constraint_type='VerticalMotion',
                                 context=context,
                                 distance=0.02,
@@ -520,14 +525,15 @@ class TestSUTURO:
         execute_from_above = [False, True]
 
         for mode in execute_from_above:
-
             zero_pose.set_json_goal(constraint_type='TakePose',
                                     pose_keyword='pre_align_height')
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
 
-            context = {'action': 'grasping', 'from_above': mode}
+            action = ContextTypes.context_action.value(content=ContextActionModes.grasping.value)
+            from_above = ContextTypes.context_from_above.value(content=mode)
+            context = {'action': action, 'from_above': from_above}
 
             target_pose = PoseStamped()
             target_pose.header.frame_id = 'map'
@@ -567,7 +573,7 @@ class TestSUTURO:
             zero_pose.plan_and_execute()
 
     def test_mixing(self, zero_pose: HSRTestWrapper):
-        #FIXME: Cant use traj_time_in_seconds in standalone mode
+        # FIXME: Cant use traj_time_in_seconds in standalone mode
         zero_pose.set_json_goal(constraint_type='Mixing',
                                 mixing_time=20)
 
@@ -575,6 +581,7 @@ class TestSUTURO:
         zero_pose.plan_and_execute()
 
     def test_joint_rotation_goal_continuous(self, zero_pose: HSRTestWrapper):
+        # FIXME: Cant use traj_time_in_seconds in standalone mode
         zero_pose.set_json_goal(constraint_type='JointRotationGoalContinuous',
                                 joint_name='arm_roll_joint',
                                 joint_center=0.0,
@@ -587,4 +594,16 @@ class TestSUTURO:
         zero_pose.plan_and_execute()
 
     def test_keep_rotation_goal(self, zero_pose: HSRTestWrapper):
-        pass
+
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position.x = 1
+        base_goal.pose.position.y = -1
+        base_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi / 2, [0, 0, 1]))
+        zero_pose.set_cart_goal(base_goal, 'base_footprint')
+
+        zero_pose.set_json_goal(constraint_type='KeepRotationGoal',
+                                tip_link='hand_palm_link')
+
+        zero_pose.allow_self_collision()
+        zero_pose.plan_and_execute()
