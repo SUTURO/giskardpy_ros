@@ -95,11 +95,11 @@ class SequenceGoal(Goal):
     def __init__(self,
                  motion_sequence: [Dict]):
         """
-        Current solution to execute Goals in a sequence. The Goals will be executed one by one in the given order.
+        Execute Goals in a sequence. The Goals will be executed one by one in the given order.
 
-        :param motion_sequence: Future Dictionary to structure the goals with 'goal_type_seq': kwargs_seq
-        :param goal_type_seq: List of Goals to execute. Send a List of goal names as strings, these will be parsed in ros_msg_to_goal
-        :param kwargs_seq: List of Goal arguments. Needs to be sent as: [first_goal_arguments, second_goal_arguments, ...]
+        :param motion_sequence: List of Dictionaries in which one dictionary contains the goal name as key and
+                                its arguments as parameter_value_pair (Dictionary) as value.
+                                The List has to contain at least two goals
         """
 
         super().__init__()
@@ -143,9 +143,6 @@ class SequenceGoal(Goal):
                 constraint.quadratic_weight = constraint.quadratic_weight * expr
 
                 all_exprs = all_exprs * expr
-
-            # self.add_debug_expr(self.goal_summary[goal_number].__str__(),
-            #                    all_exprs)
 
             print(self.eq_weights[goal_number])
 
@@ -260,20 +257,21 @@ class Reaching(ObjectGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  suffix: str = ''):
         """
-        Concludes Reaching type goals.
-        Executes them depending on the given context action.
-        Examples for context action: grasping, placing or pouring
+            Concludes Reaching type goals.
+            Executes them depending on the given context action.
+            Context is a dictionary in an action is given as well as situational parameters.
+            All available context Messages are found in the Enum 'ContxtTypes'
 
-        :param context: Context of this goal. Contains information about action and the gripper alignment
-        :param object_name: Name of the object to use. Optional as long as goal_pose and object_size are filled instead
-        :param object_shape: Shape of the object to manipulate. Edit object size when having a sphere or cylinder
-        :param goal_pose: Goal pose for the object. Alternative if no object name is given.
-        :param object_size: Given object size. Alternative if no object name is given.
-        :param root_link: Current root Link
-        :param tip_link: Current tip link
-        :param velocity: Desired velocity of this goal
-        :param weight: weight of this goal
-        :param suffix: Only relevant for SequenceGoal interns
+            :param context: Context of this goal. Contains information about action and situational parameters
+            :param object_name: Name of the object to use. Optional as long as goal_pose and object_size are filled instead
+            :param object_shape: Shape of the object to manipulate. Edit object size when having a sphere or cylinder
+            :param goal_pose: Goal pose for the object. Alternative if no object name is given.
+            :param object_size: Given object size. Alternative if no object name is given.
+            :param root_link: Current root Link
+            :param tip_link: Current tip link
+            :param velocity: Desired velocity of this goal
+            :param weight: weight of this goal
+            :param suffix: Only relevant for SequenceGoal interns
         """
         super().__init__()
         self.context = context
@@ -409,6 +407,23 @@ class GraspObject(ObjectGoal):
                  velocity: float = 0.2,
                  weight: float = WEIGHT_ABOVE_CA,
                  suffix: str = ''):
+        """
+            Concludes Reaching type goals.
+            Executes them depending on the given context action.
+            Context is a dictionary in an action is given as well as situational parameters.
+            All available context Messages are found in the Enum 'ContxtTypes'
+
+            :param goal_pose: Goal pose for the object.
+            :param frontal_offset: Optional parameter to pass a specific offset
+            :param from_above: States if the gripper should be aligned frontal or from above
+            :param align_vertical: States if the gripper should be rotated.
+            :param reference_frame_alignment: Reference frame to align with. Is usually either an object link or 'base_footprint'
+            :param root_link: Current root Link
+            :param tip_link: Current tip link
+            :param velocity: Desired velocity of this goal
+            :param weight: weight of this goal
+            :param suffix: Only relevant for SequenceGoal interns
+        """
         super().__init__()
         self.goal_pose = goal_pose
 
@@ -520,6 +535,14 @@ class VerticalMotion(ObjectGoal):
                  suffix: str = ''):
         """
         Move the tip link vertical according to the given context.
+
+        :param context: Same parameter as in the goal 'Reaching'
+        :param distance: Optional parameter to adjust the distance to move.
+        :param root_link: Current root Link
+        :param tip_link: Current tip link
+        :param velocity: Desired velocity of this goal
+        :param weight: weight of this goal
+        :param suffix: Only relevant for SequenceGoal interns
         """
 
         super().__init__()
@@ -610,6 +633,15 @@ class Retracting(ObjectGoal):
         """
         Retract the tip link from the current position by the given distance.
         The exact direction is based on the given reference frame.
+
+        :param object_name: Unused parameter that exists because cram throws errors when calling a goal without a parameter
+        :param distance: Optional parameter to adjust the distance to move.
+        :param reference_frame: Reference axis from which should be retracted. Is usually 'base_footprint' or 'hand_palm_link'
+        :param root_link: Current root Link
+        :param tip_link: Current tip link
+        :param velocity: Desired velocity of this goal
+        :param weight: weight of this goal
+        :param suffix: Only relevant for SequenceGoal interns
 
         """
         super().__init__()
@@ -702,14 +734,15 @@ class AlignHeight(ObjectGoal):
         """
         Align the tip link with the given goal_pose to prepare for further action (e.g. grasping or placing)
 
+        :param context: Same parameter as in the goal 'Reaching'
         :param object_name: name of the object if added to world
         :param goal_pose: final destination pose
-        :param object_height: height of the target object
-        :param root_link: name of the root link of the kin chain
-        :param tip_link: name of the tip link of the kin chain
-        :param velocity: m/s
-        :param weight: default WEIGHT_ABOVE_CA
-        :param suffix: additional naming to avoid goals with same name (used for SequenceGoals)
+        :param object_height: height of the target object. Used as additional offset.
+        :param root_link: Current root Link
+        :param tip_link: Current tip link
+        :param velocity: Desired velocity of this goal
+        :param weight: weight of this goal
+        :param suffix: Only relevant for SequenceGoal interns
         """
 
         super().__init__()
@@ -820,15 +853,31 @@ class AlignHeight(ObjectGoal):
 class GraspCarefully(ForceSensorGoal):
     def __init__(self,
                  goal_pose: PoseStamped,
-                 reference_frame_alignment: Optional[str] = None,
                  frontal_offset: float = 0.0,
                  from_above: bool = False,
                  align_vertical: bool = False,
+                 reference_frame_alignment: Optional[str] = None,
                  root_link: Optional[str] = None,
                  tip_link: Optional[str] = None,
                  velocity: float = 0.02,
                  weight: float = WEIGHT_ABOVE_CA,
                  suffix: str = ''):
+        """
+        Same as GraspObject but with force sensor to avoid bumping into things (e.g. door for door opening).
+
+        :param goal_pose: Goal pose for the object.
+        :param frontal_offset: Optional parameter to pass a specific offset
+        :param from_above: States if the gripper should be aligned frontal or from above
+        :param align_vertical: States if the gripper should be rotated.
+        :param reference_frame_alignment: Reference frame to align with. Is usually either an object link or 'base_footprint'
+        :param root_link: Current root Link
+        :param tip_link: Current tip link
+        :param velocity: Desired velocity of this goal
+        :param weight: weight of this goal
+        :param suffix: Only relevant for SequenceGoal interns
+
+        """
+
         super().__init__()
 
         self.suffix = suffix
@@ -875,12 +924,25 @@ class Placing(ForceSensorGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  suffix: str = ''):
 
+        """
+        Place an object using the force-/torque-sensor.
+
+        :param context: Context similar to 'Reaching'. Only uses 'from_above' and 'align_vertical' as variables
+        :param goal_pose: Goal pose for the object.
+        :param root_link: Current root Link
+        :param tip_link: Current tip link
+        :param velocity: Desired velocity of this goal
+        :param weight: weight of this goal
+        :param suffix: Only relevant for SequenceGoal interns
+        """
+
         self.goal_pose = goal_pose
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
 
         self.from_above = check_context_element('from_above', ContextFromAbove, context)
+        self.align_vertical = check_context_element('align_vertical', ContextAlignVertical, context)
 
         super().__init__()
 
@@ -895,6 +957,7 @@ class Placing(ForceSensorGoal):
 
         self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                  from_above=self.from_above,
+                                                 align_vertical=self.align_vertical,
                                                  root_link=self.root_link.short_name,
                                                  tip_link=self.tip_link.short_name,
                                                  velocity=self.velocity,
@@ -943,6 +1006,16 @@ class Tilting(Goal):
                  angle: Optional[float] = None,
                  tip_link: str = 'wrist_roll_joint',
                  suffix: str = ''):
+        """
+        Tilts the given tip link into one direction by a given angle.
+
+        :param direction: Direction in which to rotate the joint.
+        :param angle: Amount how much the joint should be moved
+        :param tip_link: The joint that should rotate. Default ensures correct usage for pouring.
+        :param suffix: Only relevant for SequenceGoal interns
+
+        """
+
         super().__init__()
 
         max_angle = -2.0
@@ -977,6 +1050,13 @@ class TakePose(Goal):
     def __init__(self,
                  pose_keyword: str,
                  suffix: str = ''):
+        """
+        Get into a predefined pose with a given keyword.
+        Used to get into complete poses. To move only specific joints use 'JointPositionList'
+
+        :param pose_keyword: Keyword for the given poses
+        :param suffix: Only relevant for SequenceGoal interns
+        """
         super().__init__()
 
         if pose_keyword == 'park':
@@ -1065,6 +1145,13 @@ class Mixing(Goal):
                  mixing_time: float = 20,
                  weight: float = WEIGHT_ABOVE_CA,
                  suffix: str = ''):
+        """
+        Simple Mixing motion.
+
+        :param mixing_time: States how long this goal should be executed.
+        :param weight: weight of this goal
+        :param suffix: Only relevant for SequenceGoal interns
+        """
         super().__init__()
 
         self.weight = weight
@@ -1109,6 +1196,18 @@ class JointRotationGoalContinuous(Goal):
                  target_speed: float = 1,
                  period_length: float = 1.0,
                  suffix: str = ''):
+
+        """
+        Rotate a joint continuously around a center. The execution time and speed is variable.
+
+        :param joint_name: joint name that should be rotated
+        :param joint_center: Center of the rotation point
+        :param joint_range: Range of the rotational movement. Note that this is calculated + and - joint_center.
+        :param trajectory_length: length of this goal in seconds.
+        :param target_speed: execution speed of this goal. Adjust when the trajectory is not executed right
+        :param period_length: length of the period that should be executed. Adjust when the trajectory is not executed right.
+        :param suffix:
+        """
         super().__init__()
         self.joint = self.world.search_for_joint_name(joint_name)
         self.target_speed = target_speed
@@ -1143,6 +1242,14 @@ class KeepRotationGoal(Goal):
                  tip_link: str,
                  weight: float = WEIGHT_ABOVE_CA,
                  suffix: str = ''):
+        """
+        Use this if a specific link should not rotate during a goal execution. Typically used for the hand.
+
+        :param tip_link: link that shall keep its rotation
+        :param weight: weight of this goal
+        :param suffix: Only relevant for SequenceGoal interns
+        """
+
         super().__init__()
 
         self.tip_link = tip_link
@@ -1180,6 +1287,8 @@ class PushButton(ForceSensorGoal):
         self.velocity = velocity
         self.weight = weight
         self.suffix = suffix
+
+        "Not a SUTURO Goal. Currently used for Donbot pushing a button in retail lab."
 
         super().__init__()
 
@@ -1220,35 +1329,6 @@ class PushButton(ForceSensorGoal):
         return joint_states
 
 
-class CheckForce(ForceSensorGoal):
-    def __init__(self,
-                 waiting_time: float = 3):
-        super().__init__()
-
-        self.add_constraints_of_goal(JointRotationGoalContinuous(joint_name='head_pan_joint',
-                                                                 joint_center=0.0,
-                                                                 joint_range=0.1,
-                                                                 trajectory_length=waiting_time,
-                                                                 target_speed=0.02,
-                                                                 suffix=''))
-
-    def make_constraints(self):
-        pass
-
-    def __str__(self) -> str:
-        return super().__str__()
-
-    def goal_cancel_condition(self):
-        y_force_threshold = 0.0
-
-        expression = lambda sensor_values: m.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
-
-        return expression
-
-    def recovery(self) -> Dict:
-        pass
-
-
 def check_context_element(name: str,
                           context_type,
                           context):
@@ -1263,5 +1343,4 @@ def multiply_vector(vec: Vector3,
                     number: int):
     return Vector3(vec.x * number, vec.y * number, vec.z * number)
 
-# TODO: Make PR of recursive parsing (ros_msg_to_goal, python_interface, garden for moved clean up(?))
 # TODO: Make CartesianOrientation from two alignplanes
