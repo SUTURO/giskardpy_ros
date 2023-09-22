@@ -458,18 +458,18 @@ class TestSUTURO:
 
     def test_grasp_object(self, zero_pose: HSRTestWrapper):
         from_above_modes = [False, True]
-        vertical_align_modes = [False, True]
+        align_vertical_modes = [False, True]
 
         target_pose = PoseStamped()
         target_pose.pose.position.x = 1
         target_pose.pose.position.z = 0.7
 
         for from_above_mode in from_above_modes:
-            for vertical_align_mode in vertical_align_modes:
+            for align_vertical_mode in align_vertical_modes:
                 zero_pose.set_json_goal(constraint_type='GraspObject',
                                         goal_pose=target_pose,
                                         from_above=from_above_mode,
-                                        vertical_align=vertical_align_mode,
+                                        align_vertical=align_vertical_mode,
                                         root_link='map',
                                         tip_link='hand_palm_link')
 

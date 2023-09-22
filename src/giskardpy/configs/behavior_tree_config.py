@@ -126,7 +126,7 @@ class StandAloneBTConfig(BehaviorTreeConfig):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=False, add_to_control_loop=True)
         self.add_tf_publisher(include_prefix=True, mode=TfPublishingModes.all)
         # self.add_trajectory_plotter()
-        # self.add_debug_marker_publisher()
+        self.add_debug_marker_publisher()
         if self.planning_sleep is not None:
             self.add_sleeper(self.planning_sleep)
 
@@ -138,6 +138,8 @@ class OpenLoopBTConfig(BehaviorTreeConfig):
 
     def setup(self):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=True, add_to_control_loop=False)
+        self.add_debug_trajectory_plotter()
+        #self.add_trajectory_plotter()
         if self.planning_sleep is not None:
             self.add_sleeper(self.planning_sleep)
 
