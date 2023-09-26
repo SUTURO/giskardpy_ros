@@ -43,8 +43,11 @@ class MonitorForceSensor(GiskardBehavior):
         self.cancel_condition = False
 
         # Data
-        self.whole_data = {'unfiltered': [],
-                           'filtered': []}
+        self.filtered_data = {}
+        self.filtered_derivatives = {}
+        self.current_data = {}
+        self.whole_data = {'unfiltered': [WrenchStamped()],
+                           'filtered': [WrenchStamped()]}
 
         # Filter
         self.prev_values = None
@@ -178,6 +181,30 @@ class MonitorForceSensor(GiskardBehavior):
         self.prev_values.append(data_compensated)
         self.prev_values.pop(0)
 
+        self.filtered_data = {'stamp': filtered_data.header.stamp,
+                              'seq': filtered_data.header.seq,
+                              'x_force': filtered_data.wrench.force.x,
+                              'y_force': filtered_data.wrench.force.y,
+                              'z_force': filtered_data.wrench.force.z,
+                              'x_torque': filtered_data.wrench.torque.x,
+                              'y_torque': filtered_data.wrench.torque.y,
+                              'z_torque': filtered_data.wrench.torque.z}
+
+        self.filtered_derivatives = {'stamp': filtered_data.header.stamp,
+                                     'seq': filtered_data.header.seq,
+                                     'x_force': filtered_data.wrench.force.x - self.whole_data['filtered'][
+                                         -1].wrench.force.x,
+                                     'y_force': filtered_data.wrench.force.y - self.whole_data['filtered'][
+                                         -1].wrench.force.y,
+                                     'z_force': filtered_data.wrench.force.z - self.whole_data['filtered'][
+                                         -1].wrench.force.z,
+                                     'x_torque': filtered_data.wrench.torque.x - self.whole_data['filtered'][
+                                         -1].wrench.torque.x,
+                                     'y_torque': filtered_data.wrench.torque.y - self.whole_data['filtered'][
+                                         -1].wrench.torque.y,
+                                     'z_torque': filtered_data.wrench.torque.z - self.whole_data['filtered'][
+                                         -1].wrench.torque.z}
+
         self.whole_data['unfiltered'].append(data_compensated)
         self.whole_data['filtered'].append(filtered_data)
 
@@ -185,29 +212,17 @@ class MonitorForceSensor(GiskardBehavior):
         """
         place with frontal grasping: force: -x, torque: y
         """
-
-        filtered_data = self.whole_data['filtered'][-1]
-
-        filtered_dict = {'x_force': filtered_data.wrench.force.x,
-                         'y_force': filtered_data.wrench.force.y,
-                         'z_force': filtered_data.wrench.force.z,
-                         'x_torque': filtered_data.wrench.torque.x,
-                         'y_torque': filtered_data.wrench.torque.y,
-                         'z_torque': filtered_data.wrench.torque.z}
-
-
         # FIXME: condition for norm (np.linag.norm)
 
-        condition_triggered = self.condition(filtered_dict)
+        condition_triggered = self.condition(self.filtered_data, self.filtered_derivatives)
 
         if condition_triggered:
-            self.plugin_canceled = (True, filtered_data.header.stamp, filtered_data.header.seq)
+            self.plugin_canceled = (True, self.filtered_data['stamp'], self.filtered_data['seq'])
 
             if self.cancel:
                 logging.loginfo(f'tree cycle:  {self.tree_manager.tree.count}')
 
                 self.cancel_condition = True
-
 
     @catch_and_raise_to_blackboard
     @profile
@@ -216,13 +231,11 @@ class MonitorForceSensor(GiskardBehavior):
         self.save_data()
 
         if self.cancel_condition:
-
             logging.loginfo('goal canceled')
 
             raise GiskardException()
 
         return self.continue_plugin_state
-
 
     def recover(self):
 
@@ -298,7 +311,6 @@ class MonitorForceSensor(GiskardBehavior):
                      ws.wrench.force.x, ws.wrench.force.y, ws.wrench.force.z,
                      ws.wrench.torque.x, ws.wrench.torque.y, ws.wrench.torque.z]
                     for ws in self.whole_data[current_type]]
-
 
             with open(os.path.expanduser(standard_path + current_type + '.csv'), 'w') as csv_file:
                 writer = csv.writer(csv_file)

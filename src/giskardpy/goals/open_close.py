@@ -73,10 +73,13 @@ class Open(ForceSensorGoal):
         #x_torque_threshold = 0.0
         #x_torque_condition = lambda sensor_values: math.isclose(sensor_values['x_torque'], x_torque_threshold, abs_tol=0.3)
 
-        expression = (lambda sensor_values:
+        expression = (lambda sensor_values, sensor_derivatives:
                       (math.isclose(sensor_values['x_force'], 0.0, abs_tol=0.2)) and
                       (math.isclose(sensor_values['y_force'], 0.0, abs_tol=0.2)) and
-                      (math.isclose(sensor_values['z_force'], 0.0, abs_tol=0.2)))
+                      (math.isclose(sensor_values['z_force'], 0.0, abs_tol=0.2)) and
+                      (math.isclose(sensor_derivatives['x_force'], 0.0, abs_tol=0.2)) and
+                      (math.isclose(sensor_derivatives['y_force'], 0.0, abs_tol=0.2)) and
+                      (math.isclose(sensor_derivatives['z_force'], 0.0, abs_tol=0.2)))
 
         return expression
 

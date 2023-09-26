@@ -850,7 +850,7 @@ class GraspCarefully(ForceSensorGoal):
     def goal_cancel_condition(self):
         force_threshold = 5.0
 
-        expression = (lambda sensor_values:
+        expression = (lambda sensor_values, _:
                       (abs(sensor_values['x_force']) >= force_threshold) or
                       (abs(sensor_values['y_force']) >= force_threshold) or
                       (abs(sensor_values['z_force']) >= force_threshold))
@@ -926,7 +926,7 @@ class Placing(ForceSensorGoal):
 
             z_force_threshold = 1.0
 
-            expression = (lambda sensor_values:
+            expression = (lambda sensor_values, _:
                           (sensor_values[self.forward_force] >= z_force_threshold))
             # or
             # (sensor_values[self.sideway_torque] >= y_torque_threshold))
@@ -935,7 +935,7 @@ class Placing(ForceSensorGoal):
             x_force_threshold = 0.0
             y_torque_threshold = 0.15
 
-            expression = (lambda sensor_values:
+            expression = (lambda sensor_values, _:
                           (sensor_values[self.upwards_force] <= x_force_threshold) or
                           (sensor_values[self.sideway_torque] >= y_torque_threshold))
 
@@ -1265,7 +1265,7 @@ class PushButton(ForceSensorGoal):
 
     def goal_cancel_condition(self):
         z_force_threshold = 3.0
-        expression = lambda sensor_values: abs(sensor_values[self.forward_force]) >= z_force_threshold
+        expression = lambda sensor_values, _: abs(sensor_values[self.forward_force]) >= z_force_threshold
 
         return expression
 
