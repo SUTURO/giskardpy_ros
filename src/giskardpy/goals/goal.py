@@ -851,7 +851,7 @@ class ForceSensorGoal(Goal):
             self.arm_trajectory_publisher.publish(traj)
 
     def clean_up(self):
-        self.recover(self.recovery())
+        self.recover(self.recovery_modifier())
 
         try:
             self.behaviour.wrench_compensated_subscriber.unregister()
