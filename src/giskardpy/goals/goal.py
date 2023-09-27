@@ -859,6 +859,5 @@ class ForceSensorGoal(Goal):
         except:
             logging.logwarn(f'Subscriber does not exist in {self.behaviour.name}')
 
-        time.sleep(0.2)
         tree = self.tree_manager
         tree.remove_node(self.behaviour.name)
