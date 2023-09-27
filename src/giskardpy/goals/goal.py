@@ -742,7 +742,6 @@ class ForceSensorGoal(Goal):
         super().__init__()
 
         robot_name = self.world.robot_name
-
         self.arm_trajectory_publisher = None
 
         if robot_name == 'hsrb':
@@ -851,7 +850,8 @@ class ForceSensorGoal(Goal):
             self.arm_trajectory_publisher.publish(traj)
 
     def clean_up(self):
-        self.recover(self.recovery_modifier())
+        if self.control_mode == self.control_mode.open_loop:
+            self.recover(self.recovery_modifier())
 
         try:
             self.behaviour.wrench_compensated_subscriber.unregister()
