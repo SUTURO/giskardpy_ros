@@ -100,7 +100,7 @@ class MonitorForceSensor(GiskardBehavior):
         self.wrench_compensated_subscriber = rospy.Subscriber(wrench_topic, WrenchStamped,
                                                               self.get_rospy_data)
 
-        if self.control_mode == self.control_mode.open_loop:
+        '''if self.control_mode == self.control_mode.open_loop:
             # initialize ROS publisher
             if arm_trajectory_topic is not None:
                 self.arm_trajectory_publisher = rospy.Publisher(arm_trajectory_topic,
@@ -136,7 +136,7 @@ class MonitorForceSensor(GiskardBehavior):
                         if c.name == 'omni_base_controller' and c.state == 'running':
                             running2 = True
 
-                print('running')
+                print('running')'''
 
         return True
 
@@ -237,7 +237,7 @@ class MonitorForceSensor(GiskardBehavior):
 
         return self.continue_plugin_state
 
-    def recover(self):
+    '''def recover(self):
 
         joint_modify: Dict = self.recovery
 
@@ -296,7 +296,7 @@ class MonitorForceSensor(GiskardBehavior):
             traj.points = [p]
 
             # publish ROS message
-            self.base_pub.publish(traj)
+            self.base_pub.publish(traj)'''
 
     def save_data(self):
 
