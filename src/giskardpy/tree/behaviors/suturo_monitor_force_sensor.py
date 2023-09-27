@@ -31,23 +31,22 @@ from scipy.signal import butter, lfilter
 class MonitorForceSensor(GiskardBehavior):
 
     @profile
-    def __init__(self, name, condition, recovery):
+    def __init__(self, name, condition, wrench_topic):
         super().__init__(name)
 
         self.name = name
-        self.robot_name = self.world.robot_name
         self.rospack = rospkg.RosPack()
 
         self.condition = condition
-        self.recovery = recovery
+        self.wrench_topic = wrench_topic
         self.cancel_condition = False
 
         # Data
         self.filtered_data = {}
         self.filtered_derivatives = {}
         self.current_data = {}
-        self.whole_data = {'unfiltered': [WrenchStamped()],
-                           'filtered': [WrenchStamped()]}
+        self.whole_data = {'unfiltered': [],
+                           'filtered': []}
 
         # Filter
         self.prev_values = None
@@ -81,71 +80,18 @@ class MonitorForceSensor(GiskardBehavior):
     @profile
     def setup(self, timeout):
 
-        if self.robot_name == 'hsrb':
-            controller_list_topic = '/hsrb/controller_manager/list_controllers'
-            wrench_topic = '/hsrb/wrist_wrench/compensated'
-            arm_trajectory_topic = '/hsrb/arm_trajectory_controller/command'
-            base_trajectory_topic = '/hsrb/omni_base_controller/command'
-
-        elif self.robot_name == 'iai_donbot':
-            controller_list_topic = None
-            wrench_topic = '/kms40_driver/wrench'
-            arm_trajectory_topic = '/scaled_pos_joint_traj_controller/command'
-            base_trajectory_topic = None  # Does not work yet: '/whole_body_controller/base'
-
-        else:
-            logging.logerr(f'{self.robot_name} is not supported')
-            raise GiskardException()
-
-        self.wrench_compensated_subscriber = rospy.Subscriber(wrench_topic, WrenchStamped,
+        self.wrench_compensated_subscriber = rospy.Subscriber(self.wrench_topic, WrenchStamped,
                                                               self.get_rospy_data)
-
-        '''if self.control_mode == self.control_mode.open_loop:
-            # initialize ROS publisher
-            if arm_trajectory_topic is not None:
-                self.arm_trajectory_publisher = rospy.Publisher(arm_trajectory_topic,
-                                                                trajectory_msgs.msg.JointTrajectory, queue_size=10)
-
-                # wait to establish connection between the controller
-                while self.arm_trajectory_publisher.get_num_connections() == 0:
-                    logging.logwarn(f'connecting to {arm_trajectory_topic}')
-                    rospy.sleep(0.1)
-
-            if base_trajectory_topic is not None:
-                self.base_pub = rospy.Publisher(base_trajectory_topic,
-                                                trajectory_msgs.msg.JointTrajectory, queue_size=10)
-
-                # wait to establish connection between the controller
-                while self.base_pub.get_num_connections() == 0:
-                    logging.logwarn(f'connecting to {base_trajectory_topic}')
-                    rospy.sleep(0.1)
-
-            # make sure the controller is running
-            if controller_list_topic is not None:
-                rospy.wait_for_service(controller_list_topic)
-                list_controllers = (
-                    rospy.ServiceProxy(controller_list_topic,
-                                       controller_manager_msgs.srv.ListControllers))
-
-                running1, running2 = False, False
-                while running1 is False or running2 is False:
-                    rospy.sleep(0.1)
-                    for c in list_controllers().controller:
-                        if c.name == 'arm_trajectory_controller' and c.state == 'running':
-                            running1 = True
-                        if c.name == 'omni_base_controller' and c.state == 'running':
-                            running2 = True
-
-                print('running')'''
-
         return True
 
     @profile
     def get_rospy_data(self,
                        data_compensated: WrenchStamped):
         if self.init_data:
-            self.prev_values = [data_compensated] * (self.order + 1)
             self.init_data = False
+            self.prev_values = [data_compensated] * (self.order + 1)
+            self.whole_data = {'unfiltered': [data_compensated],
+                               'filtered': [data_compensated]}
 
         self.add_data(data_compensated)
 
@@ -237,66 +183,6 @@ class MonitorForceSensor(GiskardBehavior):
 
         return self.continue_plugin_state
 
-    '''def recover(self):
-
-        joint_modify: Dict = self.recovery
-
-        arm_joint_names = ['arm_lift_joint', 'arm_flex_joint',
-                           'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint']
-
-        odom_joint_names = ["odom_x", "odom_y", "odom_t"]
-
-        if any(x in joint_modify for x in arm_joint_names):
-            arm_joint_positions = []
-            for joint_name in arm_joint_names:
-                join_state_position = self.world.state.get(self.world.search_for_joint_name(joint_name)).position
-
-                if joint_name in joint_modify:
-                    mod = joint_modify.get(joint_name)
-                else:
-                    mod = 0.0
-
-                arm_joint_positions.append(join_state_position + mod)
-
-            # fill ROS message
-            traj = trajectory_msgs.msg.JointTrajectory()
-            traj.joint_names = arm_joint_names
-
-            trajectory_point = trajectory_msgs.msg.JointTrajectoryPoint()
-            trajectory_point.positions = arm_joint_positions
-            trajectory_point.velocities = [0, 0, 0, 0, 0]
-            trajectory_point.time_from_start = rospy.Duration(1)
-            traj.points = [trajectory_point]
-
-            # publish ROS message
-            self.arm_trajectory_publisher.publish(traj)
-
-        if any(x in joint_modify for x in odom_joint_names):
-            c_T_o = w.TransMatrix(
-                self.god_map.evaluate_expr(self.world.joints['hsrb/brumbrum'].parent_T_child)).to_position()
-
-            odom_joint_positions = c_T_o.compile().fast_call(
-                self.god_map.get_values(c_T_o.compile().str_params)).tolist()[:3]
-
-            odom_positions = []
-            for index, names in enumerate(odom_joint_names):
-                if names in joint_modify:
-                    mod = joint_modify.get(names)
-                else:
-                    mod = 0.0
-                odom_positions.append(odom_joint_positions[index] + mod)
-
-            # Send data
-            traj = trajectory_msgs.msg.JointTrajectory()
-            traj.joint_names = odom_joint_names
-            p = trajectory_msgs.msg.JointTrajectoryPoint()
-            p.positions = odom_positions
-            p.velocities = [0, 0, 0]
-            p.time_from_start = rospy.Duration(5)
-            traj.points = [p]
-
-            # publish ROS message
-            self.base_pub.publish(traj)'''
 
     def save_data(self):
 

@@ -941,7 +941,7 @@ class Placing(ForceSensorGoal):
 
         return expression
 
-    def recovery(self) -> Dict:
+    def recovery_modifier(self) -> Dict:
         joint_states = {'arm_lift_joint': 0.03}
 
         return joint_states
@@ -1270,8 +1270,8 @@ class PushButton(ForceSensorGoal):
         return expression
 
     # Move back after pushing the button
-    def recovery(self) -> Dict:
-        joint_states = {'odom_x': -0.05}
+    def recovery_modifier(self) -> Dict:
+        joint_states = {}
 
         return joint_states
 
