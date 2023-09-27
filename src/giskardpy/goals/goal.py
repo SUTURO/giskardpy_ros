@@ -762,7 +762,7 @@ class ForceSensorGoal(Goal):
         recover = self.recovery()
         tree = self.god_map.get_data(identifier=identifier.tree_manager)
 
-        self.behaviour = MonitorForceSensor('Monitor_Force', conditions, recover)
+        self.behaviour = MonitorForceSensor('monitor force', conditions, recover)
 
         if self.control_mode == self.control_mode.open_loop:
             tree.insert_node(self.behaviour, 'monitor execution', 2)
@@ -794,4 +794,4 @@ class ForceSensorGoal(Goal):
             logging.logwarn(f'Subscriber does not exist in {self.behaviour.name}')
         time.sleep(0.2)
         tree = self.tree_manager
-        tree.remove_node('Monitor_Force')
+        tree.remove_node(self.behaviour.name)
