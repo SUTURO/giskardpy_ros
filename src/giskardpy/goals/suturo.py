@@ -290,7 +290,7 @@ class Reaching(ObjectGoal):
         self.from_above = check_context_element('from_above', ContextFromAbove, self.context)
         self.align_vertical = check_context_element('align_vertical', ContextAlignVertical, self.context)
         self.radius = 0.0
-        self.careful = True
+        self.careful = False
         self.object_in_world = goal_pose is None
 
         # Get object geometry from name
