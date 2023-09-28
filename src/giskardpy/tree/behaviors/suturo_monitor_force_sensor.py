@@ -58,10 +58,6 @@ class MonitorForceSensor(GiskardBehavior):
         # Subscriber
         self.wrench_compensated_subscriber = None
 
-        # Publisher
-        self.base_pub = None
-        self.arm_trajectory_publisher = None
-
         if self.control_mode == self.control_mode.open_loop:
             self.continue_plugin_state = Status.FAILURE
         elif self.control_mode == self.control_mode.close_loop:
@@ -182,7 +178,6 @@ class MonitorForceSensor(GiskardBehavior):
             raise GiskardException()
 
         return self.continue_plugin_state
-
 
     def save_data(self):
 

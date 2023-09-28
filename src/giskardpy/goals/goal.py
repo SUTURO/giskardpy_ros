@@ -790,7 +790,6 @@ class ForceSensorGoal(Goal):
     def goal_cancel_condition(self):
         pass
 
-    @abc.abstractmethod
     def recovery_modifier(self) -> Dict:
         return {}
 
