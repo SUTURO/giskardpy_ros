@@ -165,6 +165,7 @@ catkin_install_python(PROGRAMS
 	scripts/tools/collision_matrix_tool.py
 	scripts/iai_robots/boxy/boxy_standalone.py
 	scripts/iai_robots/donbot/donbot.py
+	scripts/iai_robots/donbot/donbot_real_time.py
 	scripts/iai_robots/donbot/donbot_standalone.py
 	scripts/iai_robots/hsr/hsr_standalone.py
 	scripts/iai_robots/hsr/iai_hsr.py
