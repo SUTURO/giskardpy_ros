@@ -64,15 +64,6 @@ class Open(ForceSensorGoal):
 
     def goal_cancel_condition(self):
 
-        #y_force_threshold = 0.0
-        #y_force_condition = lambda sensor_values: math.isclose(sensor_values['y_force'], y_force_threshold, abs_tol=0.3)
-
-        #z_force_threshold = 0.0
-        #z_force_condition = lambda sensor_values: math.isclose(sensor_values['z_force'], z_force_threshold, abs_tol=0.3)
-
-        #x_torque_threshold = 0.0
-        #x_torque_condition = lambda sensor_values: math.isclose(sensor_values['x_torque'], x_torque_threshold, abs_tol=0.3)
-
         expression = (lambda sensor_values, sensor_derivatives:
                       (math.isclose(sensor_values['x_force'], 0.0, abs_tol=0.2)) and
                       (math.isclose(sensor_values['y_force'], 0.0, abs_tol=0.2)) and
@@ -83,7 +74,7 @@ class Open(ForceSensorGoal):
 
         return expression
 
-    def recovery(self) -> Dict:
+    def recovery_modifier(self) -> Dict:
         recover = {}
 
         return recover

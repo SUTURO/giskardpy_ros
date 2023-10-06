@@ -15,11 +15,11 @@ class SendResult(ActionServerBehavior):
         Blackboard().set('exception', None)  # FIXME move this to reset?
         result = self.god_map.get_data(identifier.result_message)
 
-        try:
+        '''try:
             tree = self.tree_manager
-            tree.remove_node('Monitor_Force')
+            tree.remove_node('monitor force')
         except:
-            print('monitor force did not exist')
+            print('monitor force did not exist')'''
 
         if result.error_codes[-1] == MoveResult.PREEMPTED:
             logging.logerr('Goal preempted')
