@@ -1090,7 +1090,6 @@ class GiskardWrapper:
                          tip_group: Optional[str] = None,
                          environment_group: Optional[str] = None,
                          goal_joint_state: Optional[float] = None,
-                         velocity: float = 0.2,
                          weight: float = WEIGHT_ABOVE_CA):
 
         self.set_json_goal(constraint_type='Open',
@@ -1099,7 +1098,6 @@ class GiskardWrapper:
                            tip_group=tip_group,
                            environment_group=environment_group,
                            goal_joint_state=goal_joint_state,
-                           velocity=velocity,
                            weight=weight)
 
     def push_button(self,
