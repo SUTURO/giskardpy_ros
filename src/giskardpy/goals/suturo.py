@@ -180,7 +180,9 @@ class MoveGripper(Goal):
                  suffix=''):
         """
         Open / CLose Gripper.
-        Current implementation is not final and might be replaced with a follow joint trajectory connection.
+        Current implementation is only a workaround for manipulation to work with the gripper
+        and a follow joint trajectory connection was not helpful.
+        For whole plans, Planning should open the gripper by themselves
 
         :param gripper_state: keyword to state the gripper. Possible options: 'open', 'neutral', 'close'
         """
@@ -231,11 +233,6 @@ class MoveGripper(Goal):
 
     def make_constraints(self):
         pass
-
-    def trigger(self):
-        # todo vllt kriegt man mit einem trigger call in einer expr es hin in seq goals zu öffnen
-        # if irgendwas dann trigger
-        return 0
 
     def __str__(self) -> str:
         s = super().__str__()
@@ -946,54 +943,6 @@ class Placing(ForceSensorGoal):
 
         return joint_states
 
-class DonbotGripper(Goal):
-    # _gripper_controller = actionlib.SimpleActionClient('/wsg_50_driver/goal_position',
-    #                                                    PositionCmd)
-
-    # _gripper_controller = rospy.Publisher(name='/wsg_50_driver/goal_position', data_class=PositionCmd, queue_size=10)
-
-    def __init__(self,
-                 gripper_state: str,
-                 suffix=''):
-
-        super().__init__()
-
-        self.suffix = suffix
-        self.gripper_state = gripper_state
-
-        if self.gripper_state == 'open':
-            self.set_gripper_joint_position(position=100.0)
-
-        elif self.gripper_state == 'close':
-            self.set_gripper_joint_position(position=0.0)
-
-        elif self.gripper_state == 'neutral':
-            self.set_gripper_joint_position(0.5)
-
-    def set_gripper_joint_position(self, position):
-        """
-        Sets the gripper joint to the given  position
-        :param position: goal position of the joint -0.105 to 1.239 rad
-        :return: error_code of FollowJointTrajectoryResult
-        """
-        # pos = max(min(1.239, position), -0.105)
-        goal = None # PositionCmd()
-        goal.pos = position
-        goal.speed = 0.0
-        goal.force = 100
-        self._gripper_controller.publish(goal)
-
-    def make_constraints(self):
-        pass
-
-    def trigger(self):
-        # todo vllt kriegt man mit einem trigger call in einer expr es hin in seq goals zu öffnen
-        # if irgendwas dann trigger
-        return 0
-
-    def __str__(self) -> str:
-        s = super().__str__()
-        return f'{s}_suffix:{self.suffix}'
 
 class Tilting(Goal):
     def __init__(self,
@@ -1322,6 +1271,50 @@ class PushButton(ForceSensorGoal):
         joint_states = {}
 
         return joint_states
+
+
+class DonbotGripper(Goal):
+    def __init__(self,
+                 gripper_state: str,
+                 suffix=''):
+        """
+        Open / Close Gripper for donbot.
+        Not relevant for suturo.
+        """
+
+        super().__init__()
+
+        self.suffix = suffix
+        self.gripper_state = gripper_state
+
+        if self.gripper_state == 'open':
+            self.set_gripper_joint_position(position=100.0)
+
+        elif self.gripper_state == 'close':
+            self.set_gripper_joint_position(position=0.0)
+
+        elif self.gripper_state == 'neutral':
+            self.set_gripper_joint_position(0.5)
+
+    def set_gripper_joint_position(self, position):
+        """
+        Sets the gripper joint to the given  position
+        :param position: goal position of the joint -0.105 to 1.239 rad
+        :return: error_code of FollowJointTrajectoryResult
+        """
+        # pos = max(min(1.239, position), -0.105)
+        goal = None # PositionCmd()
+        goal.pos = position
+        goal.speed = 0.0
+        goal.force = 100
+        self._gripper_controller.publish(goal)
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        s = super().__str__()
+        return f'{s}_suffix:{self.suffix}'
 
 
 def check_context_element(name: str,
