@@ -478,31 +478,15 @@ class GiskardWrapper:
         """
         constraint = Constraint()
         constraint.type = constraint_type
-        # TODO parse recursively
         for k, v in kwargs.copy().items():
             if v is None:
                 del kwargs[k]
             else:
-                kwargs[k] = self.parse_messages(v)
+                kwargs[k] = convert_ros_message_to_dictionary(v)
         kwargs = replace_prefix_name_with_str(kwargs)
         constraint.parameter_value_pair = json.dumps(kwargs)
         self.cmd_seq[-1].constraints.append(constraint)
 
-    def parse_messages(self,
-                       val):
-
-        if isinstance(val, List):
-            for i, element in enumerate(val):
-                val[i] = self.parse_messages(element)
-
-        elif isinstance(val, Dict):
-            for k, v in val.copy().items():
-                val[k] = self.parse_messages(v)
-
-        elif isinstance(val, Message):
-            return convert_ros_message_to_dictionary(val)
-
-        return val
 
     def _set_collision_entries(self, collisions: List[CollisionEntry]):
         """
@@ -979,8 +963,9 @@ class GiskardWrapper:
                  object_shape: str,
                  goal_pose: Optional[PoseStamped] = None,
                  object_size: Optional[Vector3] = None,
-                 root_link: Optional[str] = 'map',
-                 tip_link: Optional[str] = 'hand_palm_link'):
+                 root_link: str = 'map',
+                 tip_link: str = 'hand_palm_link',
+                 velocity: float = 0.2):
 
         self.set_json_goal(constraint_type='Reaching',
                            context=context,
@@ -989,29 +974,24 @@ class GiskardWrapper:
                            goal_pose=goal_pose,
                            object_size=object_size,
                            root_link=root_link,
+                           tip_link=tip_link,
+                           velocity=velocity)
+
+    def placing(self,
+                context,
+                goal_pose: PoseStamped,
+                tip_link: str = 'hand_palm_link'):
+
+        self.set_json_goal(constraint_type='Placing',
+                           context=context,
+                           goal_pose=goal_pose,
                            tip_link=tip_link)
 
-    def place_object(self,
-                     goal_pose: PoseStamped,
-                     object_height: float,
-                     radius: Optional[float] = 0.0,
-                     root_link: Optional[str] = 'map',
-                     tip_link: Optional[str] = 'hand_gripper_tool_frame',
-                     from_above: Optional[bool] = False):
-
-        self.set_json_goal(constraint_type='PlaceObject',
-                           goal_pose=goal_pose,
-                           object_height=object_height,
-                           radius=radius,
-                           root_link=root_link,
-                           tip_link=tip_link,
-                           from_above=from_above)
-
-    def lift_object(self,
-                    context: str,
-                    distance: Optional[float] = 0.02,
-                    root_link: Optional[str] = 'base_link',
-                    tip_link: Optional[str] = 'hand_palm_link'):
+    def vertical_motion(self,
+                        context: str,
+                        distance: float = 0.02,
+                        root_link: str = 'base_link',
+                        tip_link: str = 'hand_palm_link'):
 
         self.set_json_goal(constraint_type='VerticalMotion',
                            context=context,
@@ -1021,11 +1001,11 @@ class GiskardWrapper:
 
     def retract(self,
                 object_name: str,
-                distance: Optional[float] = 0.1,
-                reference_frame: Optional[str] = 'base_link',
-                root_link: Optional[str] = 'map',
-                tip_link: Optional[str] = 'base_link',
-                velocity: Optional[float] = 0.2):
+                distance: float = 0.1,
+                reference_frame: str = 'base_link',
+                root_link: str = 'map',
+                tip_link: str = 'base_link',
+                velocity: float = 0.2):
 
         self.set_json_goal(constraint_type='Retracting',
                            object_name=object_name,
@@ -1039,14 +1019,16 @@ class GiskardWrapper:
                      context,
                      object_name: str,
                      goal_pose: PoseStamped,
-                     height: float,
-                     tip_link: Optional[str] = 'hand_gripper_tool_frame'):
+                     object_height: float,
+                     root_link: str = 'map',
+                     tip_link: str = 'hand_gripper_tool_frame'):
 
         self.set_json_goal(constraint_type='AlignHeight',
                            context=context,
                            object_name=object_name,
                            goal_pose=goal_pose,
-                           object_height=height,
+                           object_height=object_height,
+                           root_link=root_link,
                            tip_link=tip_link)
 
     def sequence_goal(self,
@@ -1063,63 +1045,52 @@ class GiskardWrapper:
                            **kwargs)
 
     def take_pose(self,
-                  pose_keyword: Optional[str] = None,
-                  head_pan_joint: Optional[float] = None,
-                  head_tilt_joint: Optional[float] = None,
-                  arm_lift_joint: Optional[float] = None,
-                  arm_flex_joint: Optional[float] = None,
-                  arm_roll_joint: Optional[float] = None,
-                  wrist_flex_joint: Optional[float] = None,
-                  wrist_roll_joint: Optional[float] = None):
+                  pose_keyword: str):
 
         self.set_json_goal(constraint_type='TakePose',
-                           pose_keyword=pose_keyword,
-                           head_pan_joint=head_pan_joint,
-                           head_tilt_joint=head_tilt_joint,
-                           arm_lift_joint=arm_lift_joint,
-                           arm_flex_joint=arm_flex_joint,
-                           arm_roll_joint=arm_roll_joint,
-                           wrist_flex_joint=wrist_flex_joint,
-                           wrist_roll_joint=wrist_roll_joint)
+                           pose_keyword=pose_keyword)
 
     def tilting(self,
                 tilt_direction: Optional[str] = None,
                 tilt_angle: Optional[float] = None,
-                tip_link: Optional[str] = 'wrist_roll_joint',
+                tip_link: str = 'wrist_roll_joint',
                 ):
 
         self.set_json_goal(constraint_type='Tilting',
-                           tilt_direction=tilt_direction,
+                           direction=tilt_direction,
                            tilt_angle=tilt_angle,
                            tip_link=tip_link)
 
+    def joint_rotation_continuous(self,
+                                  joint_name: str,
+                                  joint_center: float,
+                                  joint_range: float,
+                                  trajectory_length: float = 20,
+                                  target_speed: float = 1,
+                                  period_length: float = 1.0):
+        self.set_json_goal(constraint_type='JointRotationGoalContinuous',
+                           joint_name=joint_name,
+                           joint_center=joint_center,
+                           joint_range=joint_range,
+                           trajectory_length=trajectory_length,
+                           target_speed=target_speed,
+                           period_length=period_length)
+
     def mixing(self,
-               center: PointStamped,
-               radius: float,
-               scale: float,
-               mixing_time: Optional[float] = 100,
-               root_link: Optional[str] = 'map',
-               tip_link: Optional[str] = 'hand_palm_link',
-               velocity: Optional[float] = 0.1,
-               weight: Optional[float] = WEIGHT_ABOVE_CA):
+               mixing_time=20,
+               weight: float = WEIGHT_ABOVE_CA):
 
         self.set_json_goal(constraint_type='Mixing',
-                           center=center,
-                           radius=radius,
-                           scale=scale,
                            mixing_time=mixing_time,
-                           root_link=root_link,
-                           tip_link=tip_link,
-                           velocity=velocity,
                            weight=weight)
 
     def open_environment(self,
-             tip_link: str,
-             environment_link: str,
-             tip_group: Optional[str] = None,
-             environment_group: Optional[str] = None,
-             goal_joint_state: Optional[float] = None,
-             weight: float = WEIGHT_ABOVE_CA):
+                         tip_link: str,
+                         environment_link: str,
+                         tip_group: Optional[str] = None,
+                         environment_group: Optional[str] = None,
+                         goal_joint_state: Optional[float] = None,
+                         weight: float = WEIGHT_ABOVE_CA):
 
         self.set_json_goal(constraint_type='Open',
                            tip_link=tip_link,
@@ -1129,12 +1100,11 @@ class GiskardWrapper:
                            goal_joint_state=goal_joint_state,
                            weight=weight)
 
-    def rotational_mixing(self,
-                          mixing_time,
-                          scale: Optional[float] = 1.0):
-
-        self.set_json_goal(constraint_type='Mixing1',
-                           mixing_time=mixing_time,
-                           scale=scale)
-
-
+    def push_button(self,
+                    goal_pose,
+                    tip_link,
+                    velocity):
+        self.set_json_goal(constraint_type='PushButton',
+                           goal_pose=goal_pose,
+                           tip_link=tip_link,
+                           velocity=velocity)

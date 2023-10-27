@@ -11,7 +11,7 @@ from py_trees import Status
 
 import giskardpy.identifier as identifier
 from giskard_msgs.msg import MoveCmd, CollisionEntry
-from giskardpy.configs.data_types import CollisionCheckerLib
+from giskardpy.configs.collision_avoidance_config import CollisionCheckerLib
 from giskardpy.exceptions import UnknownConstraintException, InvalidGoalException, \
     ConstraintInitalizationException, GiskardException
 from giskardpy.goals.align_planes import AlignPlanes
@@ -49,7 +49,7 @@ class RosMsgToGoal(GetGoal):
         move_cmd = self.god_map.get_data(identifier.next_move_goal)  # type: MoveCmd
         if not move_cmd:
             return Status.FAILURE
-        self.get_god_map().set_data(identifier.goals, {})
+        self.god_map.set_data(identifier.goals, {})
         try:
             self.parse_constraints(move_cmd)
         except AttributeError:
@@ -72,15 +72,8 @@ class RosMsgToGoal(GetGoal):
 
     @profile
     def parse_constraints(self, cmd: MoveCmd):
-        # MoveCmd: constraint = Goal
-
-        # MoveSeq: [constraints] = goals: [Goal] -> for single_goal in [Goal] -> SequenceGoal(goals) single_goal(single_goal.params))
-
         for constraint in itertools.chain(cmd.constraints):
             try:
-                if constraint.type == 'AvoidJointLimits':
-                    continue
-
                 loginfo(f'Adding constraint of type: \'{constraint.type}\'')
                 C = self.allowed_constraint_types[constraint.type]
             except KeyError:
@@ -103,8 +96,10 @@ class RosMsgToGoal(GetGoal):
                 params = self.replace_jsons_with_ros_messages(parsed_json)
 
                 if issubclass(C, SequenceGoal):
-                    params['goal_type_seq'] = [self.allowed_constraint_types[x] for x in list(params['motion_sequence'].keys())]
-                    params['kwargs_seq'] = list(params['motion_sequence'].values())
+                    sequence = []
+                    for goals in params['motion_sequence']:
+                        sequence.append({self.allowed_constraint_types[k]: v for k, v in goals.items()})
+                    params['motion_sequence'] = sequence
 
                 c: Goal = C(**params)
                 c._save_self_on_god_map()
@@ -119,7 +114,7 @@ class RosMsgToGoal(GetGoal):
                 raise e
 
     def replace_jsons_with_ros_messages(self, d):
-        # TODO parse recursively
+        # TODO make PR!!!!
 
         if isinstance(d, list):
             for i, element in enumerate(d):
@@ -152,33 +147,30 @@ class RosMsgToGoal(GetGoal):
 
     def collision_entries_to_collision_matrix(self, collision_entries: List[CollisionEntry]):
         self.collision_scene.sync()
-        max_distances = self.make_max_distances()
+        collision_check_distances = self.create_collision_check_distances()
         # ignored_collisions = self.collision_scene.ignored_self_collion_pairs
         collision_matrix = self.collision_scene.collision_goals_to_collision_matrix(deepcopy(collision_entries),
-                                                                                    max_distances)
+                                                                                    collision_check_distances)
         return collision_matrix
 
-    def make_max_distances(self) -> Dict[Tuple[PrefixName, PrefixName], float]:
-        default_distance = {}
-        # fixme this default is buggy, but it doesn't get triggered
+    def create_collision_check_distances(self) -> Dict[PrefixName, float]:
         for robot_name in self.robot_names:
             collision_avoidance_config = self.collision_avoidance_configs[robot_name]
             external_distances = collision_avoidance_config.external_collision_avoidance
             self_distances = collision_avoidance_config.self_collision_avoidance
-            default_distance[robot_name] = collision_avoidance_config.cal_max_param('soft_threshold')
 
-        max_distances = defaultdict(lambda: default_distance)
+        max_distances = {}
         # override max distances based on external distances dict
         for robot in self.collision_scene.robots:
             for link_name in robot.link_names_with_collisions:
                 try:
                     controlled_parent_joint = self.world.get_controlled_parent_joint_of_link(link_name)
-                    distance = external_distances[controlled_parent_joint].soft_threshold
-                    for child_link_name in self.world.get_directly_controlled_child_links_with_collisions(
-                            controlled_parent_joint):
-                        max_distances[child_link_name] = distance
-                except KeyError:
-                    pass
+                except KeyError as e:
+                    continue  # this happens when the root link of a robot has a collision model
+                distance = external_distances[controlled_parent_joint].soft_threshold
+                for child_link_name in self.world.get_directly_controlled_child_links_with_collisions(
+                        controlled_parent_joint):
+                    max_distances[child_link_name] = distance
 
         for link_name in self_distances:
             distance = self_distances[link_name].soft_threshold
@@ -231,7 +223,7 @@ class RosMsgToGoal(GetGoal):
             for link_a_o, link_b_o in self.world.groups[robot_name].possible_collision_combinations():
                 link_a_o, link_b_o = self.world.sort_links(link_a_o, link_b_o)
                 try:
-                    if (link_a_o, link_b_o) in self.collision_scene.black_list:
+                    if (link_a_o, link_b_o) in self.collision_scene.self_collision_matrix:
                         continue
                     link_a, link_b = self.world.compute_chain_reduced_to_controlled_joints(link_a_o, link_b_o,
                                                                                            fixed_joints)

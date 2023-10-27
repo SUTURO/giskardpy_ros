@@ -1,5 +1,6 @@
 from __future__ import division
 
+import math
 from typing import Optional, Dict
 
 from giskardpy.goals.cartesian_goals import CartesianPose
@@ -8,7 +9,7 @@ from giskardpy.goals.joint_goals import JointPosition
 from giskardpy import casadi_wrapper as w
 
 
-class Open(Goal):
+class Open(ForceSensorGoal):
     def __init__(self,
                  tip_link: str,
                  environment_link: str,
@@ -30,11 +31,6 @@ class Open(Goal):
         """
         super().__init__()
 
-        try:
-            tip_link = self.world.search_for_link_name('hand_gripper_tool_frame').short_name
-        except:
-            tip_link = self.world.search_for_link_name('hand_palm_link').short_name
-
         self.weight = weight
         self.tip_link = self.world.search_for_link_name(tip_link, tip_group)
         self.handle_link = self.world.search_for_link_name(environment_link, environment_group)
@@ -46,7 +42,8 @@ class Open(Goal):
         if goal_joint_state is None:
             goal_joint_state = max_position
         else:
-            goal_joint_state = min(max_position, goal_joint_state)
+            # goal_joint_state = min(max_position, goal_joint_state)
+            goal_joint_state = goal_joint_state
 
         self.add_constraints_of_goal(CartesianPose(root_link=environment_link,
                                                    root_group=environment_group,
@@ -65,19 +62,19 @@ class Open(Goal):
     def __str__(self):
         return f'{super().__str__()}/{self.tip_link}/{self.handle_link}'
 
-    def goal_cancel_condition(self) -> [(str, str, w.Expression)]:
+    def goal_cancel_condition(self):
 
-        z_force_threshold = w.Expression(0.0)
-        z_force_condition = ['z_force', '>=', z_force_threshold]
+        expression = (lambda sensor_values, sensor_derivatives:
+                      (math.isclose(sensor_values['x_force'], 0.0, abs_tol=0.2)) and
+                      (math.isclose(sensor_values['y_force'], 0.0, abs_tol=0.2)) and
+                      (math.isclose(sensor_values['z_force'], 0.0, abs_tol=0.2)) and
+                      (math.isclose(sensor_derivatives['x_force'], 0.0, abs_tol=0.2)) and
+                      (math.isclose(sensor_derivatives['y_force'], 0.0, abs_tol=0.2)) and
+                      (math.isclose(sensor_derivatives['z_force'], 0.0, abs_tol=0.2)))
 
-        y_torque_threshold = w.Expression(0.0)
-        y_torque_condition = ['y_torque', '<=', y_torque_threshold]
+        return expression
 
-        expressions = [z_force_condition, y_torque_condition]
-
-        return expressions
-
-    def recovery(self) -> Dict:
+    def recovery_modifier(self) -> Dict:
         recover = {}
 
         return recover

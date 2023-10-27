@@ -51,9 +51,9 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
                  goal_time_tolerance: float = 1, state_topic: Optional[str] = None, fill_velocity_values: bool = True,
                  path_tolerance: Dict[Derivatives, float] = None):
         self.group_name = group_name
+        self.delay = rospy.Duration(0)
         self.namespace = action_namespace
-        self.action_namespace = action_namespace + '/follow_joint_trajectory'
-
+        self.action_namespace = action_namespace #+ '/follow_joint_trajectory'
         GiskardBehavior.__init__(self, str(self))
         self.min_deadline: rospy.Time
         self.max_deadline: rospy.Time
@@ -136,15 +136,17 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
     @profile
     def initialise(self):
         super().initialise()
-        trajectory = self.get_god_map().get_data(identifier.trajectory)
+        self.delay = self.god_map.get_data(identifier.time_delay)
+        trajectory = self.god_map.get_data(identifier.trajectory)
         goal = FollowJointTrajectoryGoal()
-        sample_period = self.get_god_map().get_data(identifier.sample_period)
+        sample_period = self.god_map.get_data(identifier.sample_period)
         start_time = self.god_map.get_data(identifier.tracking_start_time)
         fill_velocity_values = self.god_map.get_data(identifier.fill_trajectory_velocity_values)
         if fill_velocity_values is None:
             fill_velocity_values = self.fill_velocity_values
         goal.trajectory = trajectory.to_msg(sample_period, start_time, self.controlled_joints,
                                             fill_velocity_values)
+
         if self.path_tolerance is not None:
             for i, joint_name in enumerate(goal.trajectory.joint_names):
                 jt = JointTolerance()
@@ -153,12 +155,13 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
                 jt.velocity = self.path_tolerance[Derivatives.velocity]
                 jt.acceleration = self.path_tolerance[Derivatives.acceleration]
                 goal.path_tolerance.append(jt)
+
         self.action_goal = goal
         deadline = self.action_goal.trajectory.header.stamp + \
                    self.action_goal.trajectory.points[-1].time_from_start + \
                    self.action_goal.goal_time_tolerance
-        self.min_deadline = deadline - self.goal_time_tolerance
-        self.max_deadline = deadline + self.goal_time_tolerance
+        self.min_deadline = deadline - self.goal_time_tolerance + self.delay
+        self.max_deadline = deadline + self.goal_time_tolerance + self.delay
         self.cancel_tries = 0
 
     @catch_and_raise_to_blackboard

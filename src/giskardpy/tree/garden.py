@@ -1,11 +1,14 @@
 from __future__ import annotations
+
+from enum import Enum
+from typing import Type, TypeVar, Union, Dict, List, Optional, Any
+
 import inspect
 import abc
 from abc import ABC
 from collections import defaultdict
 from copy import copy
 from time import time
-from typing import Type, TypeVar, Union, Dict, List, Optional, Any
 
 import numpy as np
 import py_trees
@@ -19,7 +22,7 @@ from sortedcontainers import SortedList
 import giskardpy
 from giskard_msgs.msg import MoveAction, MoveFeedback
 from giskardpy import identifier
-from giskardpy.configs.data_types import CollisionCheckerLib, TfPublishingModes
+from giskardpy.configs.collision_avoidance_config import CollisionCheckerLib
 from giskardpy.exceptions import DuplicateNameException, BehaviorTreeException
 from giskardpy.god_map import GodMap
 from giskardpy.my_types import PrefixName, Derivatives
@@ -27,7 +30,6 @@ from giskardpy.tree.behaviors.debug_marker_publisher import DebugMarkerPublisher
 from giskardpy.tree.behaviors.append_zero_velocity import SetZeroVelocity
 from giskardpy.tree.behaviors.cleanup import CleanUp, CleanUpPlanning, CleanUpBaseController
 from giskardpy.tree.behaviors.collision_checker import CollisionChecker
-from giskardpy.tree.behaviors.collision_marker import CollisionMarker
 from giskardpy.tree.behaviors.collision_scene_updater import CollisionSceneUpdater
 from giskardpy.tree.behaviors.commands_remaining import CommandsRemaining
 from giskardpy.tree.behaviors.evaluate_debug_expressions import EvaluateDebugExpressions
@@ -69,17 +71,19 @@ from giskardpy.tree.behaviors.set_tracking_start_time import SetTrackingStartTim
 from giskardpy.tree.behaviors.setup_base_traj_constraints import SetDriveGoals
 from giskardpy.tree.behaviors.suturo_gripper_handler import SuturoGripperHandler
 from giskardpy.tree.behaviors.suturo_world_syncroniser import SuturoWorldSynchroniser
+from giskardpy.tree.behaviors.sleep import Sleep
 from giskardpy.tree.behaviors.sync_configuration import SyncConfiguration
 from giskardpy.tree.behaviors.sync_configuration2 import SyncConfiguration2
 from giskardpy.tree.behaviors.sync_odometry import SyncOdometry, SyncOdometryNoLock
 from giskardpy.tree.behaviors.sync_tf_frames import SyncTfFrames
-from giskardpy.tree.behaviors.tf_publisher import TFPublisher
+from giskardpy.tree.behaviors.tf_publisher import TFPublisher, TfPublishingModes
 from giskardpy.tree.behaviors.time import TimePlugin
 from giskardpy.tree.behaviors.time_real import RosTime
 from giskardpy.tree.behaviors.visualization import VisualizationBehavior
 from giskardpy.tree.behaviors.world_updater import WorldUpdater
 from giskardpy.tree.composites.async_composite import AsyncBehavior
 from giskardpy.tree.composites.better_parallel import ParallelPolicy, Parallel
+from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils import logging
 from giskardpy.utils.utils import create_path
 from giskardpy.utils.utils import get_all_classes_in_package
@@ -234,6 +238,8 @@ def search_for(lines, function_name):
 class TreeManager(ABC):
     god_map = GodMap()
     tree_nodes: Dict[str, ManagerNode]
+    tick_rate: float = 0.05
+    control_mode = ControlModes.none
 
     @profile
     def __init__(self, tree=None):
@@ -253,9 +259,8 @@ class TreeManager(ABC):
         # self.render()
 
     def live(self):
-        sleeper = rospy.Rate(1 / self.god_map.get_data(identifier.tree_tick_rate))
+        sleeper = rospy.Rate(1 / self.tick_rate)
         logging.loginfo('giskard is ready')
-        t = time()
         while not rospy.is_shutdown():
             try:
                 self.tick()
@@ -268,10 +273,15 @@ class TreeManager(ABC):
         self.tree.tick()
 
     @abc.abstractmethod
-    def configure_visualization_marker(self,
-                                       add_to_sync: Optional[bool] = None,
-                                       add_to_planning: Optional[bool] = None,
-                                       add_to_control_loop: Optional[bool] = None):
+    def add_visualization_marker_behavior(self,
+                                          add_to_sync: Optional[bool] = None,
+                                          add_to_planning: Optional[bool] = None,
+                                          add_to_control_loop: Optional[bool] = None,
+                                          use_decomposed_meshes: bool = True):
+        ...
+
+    @abc.abstractmethod
+    def add_sleeper(self, time: float):
         ...
 
     @abc.abstractmethod
@@ -296,7 +306,7 @@ class TreeManager(ABC):
         ...
 
     @abc.abstractmethod
-    def add_joint_velocity_group_controllers(self, namespaces: List[str]):
+    def add_joint_velocity_group_controllers(self, namespaces: str):
         ...
 
     @abc.abstractmethod
@@ -596,27 +606,27 @@ def generate_pydot_graph(root, visibility_level):
                     original_c = c.original
                 else:
                     original_c = c
-                # if isinstance(original_c, GiskardBehavior) and not isinstance(original_c, AsyncBehavior):
-                #     function_names = ['__init__', 'setup', 'initialise', 'update']
-                #     function_name_padding = 20
-                #     entry_name_padding = 8
-                #     number_padding = function_name_padding - entry_name_padding
-                #     if hasattr(original_c, '__times'):
-                #         time_dict = original_c.__times
-                #     else:
-                #         time_dict = {}
-                #     for function_name in function_names:
-                #         if function_name in time_dict:
-                #             times = time_dict[function_name]
-                #             average_time = np.average(times)
-                #             total_time = np.sum(times)
-                #             if total_time > 1:
-                #                 color = 'red'
-                #             proposed_dot_name += f'\n{function_name.ljust(function_name_padding, "-")}' \
-                #                                  f'\n{"  avg".ljust(entry_name_padding)}{f"={average_time:.3}".ljust(number_padding)}' \
-                #                                  f'\n{"  sum".ljust(entry_name_padding)}{f"={total_time:.3}".ljust(number_padding)}'
-                #         else:
-                #             proposed_dot_name += f'\n{function_name.ljust(function_name_padding, "-")}'
+                if isinstance(original_c, GiskardBehavior) and not isinstance(original_c, AsyncBehavior):
+                    function_names = ['__init__', 'setup', 'initialise', 'update']
+                    function_name_padding = 20
+                    entry_name_padding = 8
+                    number_padding = function_name_padding - entry_name_padding
+                    if hasattr(original_c, '__times'):
+                        time_dict = original_c.__times
+                    else:
+                        time_dict = {}
+                    for function_name in function_names:
+                        if function_name in time_dict:
+                            times = time_dict[function_name]
+                            average_time = np.average(times)
+                            total_time = np.sum(times)
+                            if total_time > 1:
+                                color = 'red'
+                            proposed_dot_name += f'\n{function_name.ljust(function_name_padding, "-")}' \
+                                                 f'\n{"  avg".ljust(entry_name_padding)}{f"={average_time:.3}".ljust(number_padding)}' \
+                                                 f'\n{"  sum".ljust(entry_name_padding)}{f"={total_time:.3}".ljust(number_padding)}'
+                        else:
+                            proposed_dot_name += f'\n{function_name.ljust(function_name_padding, "-")}'
 
                 while proposed_dot_name in names:
                     proposed_dot_name = proposed_dot_name + "*"
@@ -638,6 +648,7 @@ class StandAlone(TreeManager):
     closed_loop_control_name: str = 'closed loop control'
     plan_postprocessing_name: str = 'plan postprocessing'
     planning2_name: str = 'planning II'
+    control_mode = ControlModes.standalone
 
     def grow_giskard(self):
         root = Sequence('Giskard')
@@ -646,6 +657,7 @@ class StandAlone(TreeManager):
         root.add_child(NewTrajectory('NewTrajectory'))
         root.add_child(self.grow_process_goal())
         root.add_child(SendResult('send result', self.action_server_name, MoveAction))
+        root.add_child(GoalCleanUp('clean up goals'))
         return root
 
     def grow_wait_for_goal(self):
@@ -727,28 +739,31 @@ class StandAlone(TreeManager):
         plan_postprocessing.add_child(running_is_success(TimePlugin)('increase time plan post processing'))
         plan_postprocessing.add_child(SetZeroVelocity('set zero vel 1'))
         plan_postprocessing.add_child(running_is_success(LogTrajPlugin)('log post processing'))
-        plan_postprocessing.add_child(GoalCleanUp('clean up goals'))
         return plan_postprocessing
 
-    def configure_visualization_marker(self,
-                                       add_to_sync: Optional[bool] = None,
-                                       add_to_planning: Optional[bool] = None,
-                                       add_to_control_loop: Optional[bool] = None):
+    def add_sleeper(self, time: float):
+        sleep_node = success_is_running(Sleep)('sleeper', time)
+        self.insert_node_behind_node_of_type(self.closed_loop_control_name, ControllerPlugin, sleep_node)
+
+    def add_visualization_marker_behavior(self,
+                                          add_to_sync: Optional[bool] = None,
+                                          add_to_planning: Optional[bool] = None,
+                                          add_to_control_loop: Optional[bool] = None,
+                                          use_decomposed_meshes: bool = True):
         if add_to_sync is not None and add_to_sync:
-            self.insert_node(VisualizationBehavior('visualization'), self.sync_name)
+            self.insert_node(VisualizationBehavior('visualization',
+                                                   use_decomposed_meshes=use_decomposed_meshes), self.sync_name)
         if add_to_planning is not None and add_to_planning:
-            self.insert_node(success_is_failure(VisualizationBehavior)('visualization'), self.planning2_name, 2)
-            self.insert_node(anything_is_success(VisualizationBehavior)('visualization'),
+            self.insert_node(success_is_failure(VisualizationBehavior)('visualization',
+                                                                       use_decomposed_meshes=use_decomposed_meshes),
+                             self.planning2_name, 2)
+            self.insert_node(anything_is_success(VisualizationBehavior)('visualization',
+                                                                        use_decomposed_meshes=use_decomposed_meshes),
                              self.plan_postprocessing_name)
-            if self.god_map.get_data(identifier.collision_checker) != CollisionCheckerLib.none:
-                self.insert_node(success_is_failure(CollisionMarker)('collision marker'), self.planning2_name, 2)
-                self.insert_node(anything_is_success(CollisionMarker)('collision marker'),
-                                 self.plan_postprocessing_name)
         if add_to_control_loop is not None and add_to_control_loop:
-            self.insert_node(success_is_running(VisualizationBehavior)('visualization'), self.closed_loop_control_name)
-            if self.god_map.get_data(identifier.collision_checker) != CollisionCheckerLib.none:
-                self.insert_node(success_is_running(CollisionMarker)('collision marker'),
-                                 self.closed_loop_control_name)
+            self.insert_node(success_is_running(VisualizationBehavior)('visualization',
+                                                                       use_decomposed_meshes=use_decomposed_meshes),
+                             self.closed_loop_control_name)
 
     def configure_max_trajectory_length(self, enabled: bool, length: float):
         nodes = self.get_nodes_of_type(MaxTrajectoryLength)
@@ -765,7 +780,7 @@ class StandAlone(TreeManager):
         NotImplementedError(f'stand alone mode doesn\'t support {current_function_name}.')
 
     def add_follow_joint_traj_action_server(self, namespace: str, state_topic: str, group_name: str,
-                                            fill_velocity_values: bool):
+                                            fill_velocity_values: bool, path_tolerance: Dict[Derivatives, float] = None):
         # todo new abstract decorator that uses this as default implementation
         current_function_name = inspect.currentframe().f_code.co_name
         NotImplementedError(f'stand alone mode doesn\'t support {current_function_name}.')
@@ -859,6 +874,7 @@ class OpenLoop(StandAlone):
     move_robots_name = 'move robots'
     execution_name = 'execution'
     base_closed_loop_control_name = 'base sequence'
+    control_mode = ControlModes.open_loop
 
     def add_follow_joint_traj_action_server(self, namespace: str, state_topic: str, group_name: str,
                                             fill_velocity_values: bool, path_tolerance: Dict[Derivatives, float] = None):
@@ -869,9 +885,12 @@ class OpenLoop(StandAlone):
     def add_base_traj_action_server(self, cmd_vel_topic: str, track_only_velocity: bool = False,
                                     joint_name: PrefixName = None):
         # todo handle if this is called twice
-        self.insert_node_behind_node_of_type(self.execution_name, SetTrackingStartTime, CleanUpBaseController('CleanUpBaseController', clear_markers=False))
-        self.insert_node_behind_node_of_type(self.execution_name, SetTrackingStartTime, InitQPController('InitQPController for base'))
-        self.insert_node_behind_node_of_type(self.execution_name, SetTrackingStartTime, SetDriveGoals('SetupBaseTrajConstraints'))
+        self.insert_node_behind_node_of_type(self.execution_name, SetTrackingStartTime,
+                                             CleanUpBaseController('CleanUpBaseController', clear_markers=False))
+        self.insert_node_behind_node_of_type(self.execution_name, SetTrackingStartTime,
+                                             InitQPController('InitQPController for base'))
+        self.insert_node_behind_node_of_type(self.execution_name, SetTrackingStartTime,
+                                             SetDriveGoals('SetupBaseTrajConstraints'))
 
         real_time_tracking = AsyncBehavior(self.base_closed_loop_control_name)
         self.insert_node(real_time_tracking, self.move_robots_name)
@@ -920,7 +939,7 @@ class OpenLoop(StandAlone):
     def grow_Synchronize(self):
         sync = Sequence('Synchronize')
         # sync.add_child(SuturoWorldSynchroniser('poll world'))
-        sync.add_child(SuturoGripperHandler('gripper_handler'))
+        # sync.add_child(SuturoGripperHandler('gripper_handler'))
         sync.add_child(WorldUpdater('update world'))
         sync.add_child(SyncTfFrames('sync tf frames3'))
         # hardware_config: HardwareConfig = self.god_map.get_data(identifier.hardware_config)
@@ -940,6 +959,7 @@ class OpenLoop(StandAlone):
         execution.add_child(SetTrackingStartTime('start start time'))
         execution.add_child(self.grow_monitor_execution())
         execution.add_child(SetZeroVelocity('set zero vel 2'))
+        execution.add_child(GoalCleanUp('clean up goals'))
         return execution
 
     def grow_monitor_execution(self):
@@ -989,6 +1009,7 @@ class OpenLoop(StandAlone):
 
 
 class ClosedLoop(OpenLoop):
+    control_mode = ControlModes.close_loop
 
     def add_joint_velocity_controllers(self, namespaces: List[str]):
         behavior = JointVelController(namespaces=namespaces)

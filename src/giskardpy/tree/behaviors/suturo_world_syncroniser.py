@@ -19,7 +19,7 @@ except:
 # import pydevd_pycharm
 # pydevd_pycharm.settrace('localhost', port=1234, stdoutToServer=True, stderrToServer=True, suspend=False)
 
-
+#FiXME delete if not used at the end of project
 class SuturoWorldSynchroniser(GiskardBehavior):
     """
     Receive updates and add objects newly added into the world to synchronise world states.

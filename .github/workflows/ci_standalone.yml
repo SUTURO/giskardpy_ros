@@ -36,6 +36,7 @@ jobs:
       test1: test/test_integration_hsr.py::TestJointGoals
       test2: test/test_integration_hsr.py::TestCollisionAvoidanceGoals
       test3: test/test_integration_hsr.py::TestConstraints
+      test4: test/test_integration_hsr.py::TestConstraints
   donbot:
     needs: [ build_dependencies ]
     uses: ./.github/workflows/reusable_robot_ci.yml

@@ -1,7 +1,7 @@
 from typing import Union
 
 from giskardpy import identifier
-from giskardpy.configs.data_types import SupportedQPSolver
+from giskardpy.configs.qp_controller_config import SupportedQPSolver
 from giskardpy.goals.goal import Goal, NonMotionGoal
 from giskardpy.tree.behaviors.max_trajectory_length import MaxTrajectoryLength
 from giskardpy.utils import logging
@@ -43,7 +43,7 @@ class SetMaxTrajLength(NonMotionGoal):
                  new_length: int):
         """
         Overwrites Giskard trajectory length limit for planning.
-        If the trajectory is longer than new_length, Giskard will prempt the goal.
+        If the trajectory is longer than new_length, Giskard will preempt the goal.
         :param new_length: in seconds
         """
         super().__init__()

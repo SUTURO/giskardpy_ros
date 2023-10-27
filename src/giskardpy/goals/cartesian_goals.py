@@ -71,7 +71,8 @@ class CartesianPosition(Goal):
         #v.scale(weight/1000)
         #self.add_debug_expr('weight', v)
 
-        # self.add_debug_expr('ca', r_P_g)
+        self.add_debug_expr('position', w.norm(r_P_c))
+        self.add_debug_expr('position_goal', w.norm(r_P_g))
 
         self.add_point_goal_constraints(frame_P_goal=r_P_g,
                                         frame_P_current=r_P_c,
@@ -81,14 +82,6 @@ class CartesianPosition(Goal):
     def __str__(self):
         s = super().__str__()
         return f'{s}/{self.root_link}/{self.tip_link}_suffix:{self.suffix}'
-
-    def distance_to_goal(self) -> w.Expression:
-        goal = w.Expression(w.Point3(self.goal_point))
-        current = w.Expression(self.get_fk(self.root_link, self.tip_link).to_position())
-
-        dist = w.Expression(self.weight * (w.euclidean_distance(current, goal)))
-
-        return dist
 
 
 class CartesianOrientation(Goal):
@@ -159,13 +152,6 @@ class CartesianOrientation(Goal):
     def __str__(self):
         s = super().__str__()
         return f'{s}/{self.root_link}/{self.tip_link}_suffix:{self.suffix}'
-
-    def distance_to_goal(self) -> w.Expression:
-        goal = w.RotationMatrix(self.goal_orientation)
-        current = self.get_fk(self.root_link, self.tip_link).to_rotation()
-
-        dist = w.Expression()
-        return dist
 
 
 class CartesianPositionStraight(Goal):
