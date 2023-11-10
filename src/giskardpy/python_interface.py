@@ -1,6 +1,7 @@
 import json
 from typing import Dict, Tuple, Optional, Union, List
 
+import numpy as np
 import actionlib
 import geometry_msgs.msg
 import rospy
@@ -25,6 +26,9 @@ from giskardpy.exceptions import DuplicateNameException, UnknownGroupException
 from giskardpy.goals.goal import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.my_types import goal_parameter
+from giskardpy.utils import tfwrapper
+from giskardpy.utils.math import normalize
+from giskardpy.utils.tfwrapper import pose_stamped_to_np, np_to_pose
 from giskardpy.utils.utils import position_dict_to_joint_states, convert_ros_message_to_dictionary, \
     replace_prefix_name_with_str
 
@@ -1132,3 +1136,30 @@ class GiskardWrapper:
         if object_pose.header.frame_id != "map":
             rospy.loginfo("Wrong Frame")
             return
+
+        mth = tfwrapper.lookup_pose('map', 'hrsb/hand_palm_link')
+
+        mx_mth = pose_stamped_to_np(mth)
+        v_mph = mx_mth[:, 3]
+
+        mx_mto = pose_stamped_to_np(object_pose)
+        v_mpo = mx_mto[:, 3]
+
+        v_ho = v_mpo - v_mph
+        v_z_ho_normed = normalize(v_ho)
+
+        v_x_ho = np.array([1, 0, 0, 0])
+
+        v_y_ho = np.cross(v_x_ho, v_z_ho_normed)
+
+        mx_hto = np.array([v_x_ho, v_y_ho, v_z_ho_normed, [0, 0, 0, 1]])
+
+        goal_pose = np_to_pose(mx_hto)
+        goal = PoseStamped()
+        goal.pose = goal_pose
+        goal.header.frame_id = "map"
+        goal.header.stamp = rospy.Time.now()
+
+        set_cart_goal(goal_pose= goal, root_link='map', tip_link='hsrb/hand_palm_link')
+
+        plan_and_execute(wait=True)
