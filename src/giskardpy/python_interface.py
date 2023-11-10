@@ -1,11 +1,14 @@
 import json
 from typing import Dict, Tuple, Optional, Union, List
 
+import actionlib
 import geometry_msgs.msg
 import rospy
 from actionlib import SimpleActionClient
+from actionlib_msgs.msg import GoalStatus
 from genpy import Message
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from rospy import ServiceException
 from sensor_msgs.msg import JointState
 from shape_msgs.msg import SolidPrimitive
@@ -1108,3 +1111,24 @@ class GiskardWrapper:
                            goal_pose=goal_pose,
                            tip_link=tip_link,
                            velocity=velocity)
+
+    def move_base(self, target_pose: PoseStamped):
+        cli = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
+
+        cli.wait_for_server()
+
+        goal = MoveBaseGoal()
+        goal.target_pose = target_pose
+
+        cli.send_goal(goal)
+
+        cli.wait_for_result()
+
+        action_state = cli.get_state()
+        if action_state == GoalStatus.SUCCEEDED:
+            rospy.loginfo("Navigation Succeeded")
+
+    def poke_stuff(self, object_pose: PoseStamped):
+        if object_pose.header.frame_id != "map":
+            rospy.loginfo("Wrong Frame")
+            return
