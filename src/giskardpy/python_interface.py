@@ -27,7 +27,7 @@ from giskardpy.goals.goal import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.my_types import goal_parameter
 from giskardpy.utils import tfwrapper
-from giskardpy.utils.math import normalize
+from giskardpy.utils.math import normalize, my_cross
 from giskardpy.utils.tfwrapper import pose_stamped_to_np, np_to_pose
 from giskardpy.utils.utils import position_dict_to_joint_states, convert_ros_message_to_dictionary, \
     replace_prefix_name_with_str
@@ -1137,29 +1137,28 @@ class GiskardWrapper:
             rospy.loginfo("Wrong Frame")
             return
 
-        mth = tfwrapper.lookup_pose('map', 'hrsb/hand_palm_link')
+        m_T_h = tfwrapper.lookup_pose('map', 'hand_palm_link')
 
-        mx_mth = pose_stamped_to_np(mth)
-        v_mph = mx_mth[:, 3]
+        m_T_h = pose_stamped_to_np(m_T_h)
+        m_P_h = m_T_h[:, 3]
 
-        mx_mto = pose_stamped_to_np(object_pose)
-        v_mpo = mx_mto[:, 3]
+        m_T_o = pose_stamped_to_np(object_pose)
+        m_P_o = m_T_o[:, 3]
 
-        v_ho = v_mpo - v_mph
-        v_z_ho_normed = normalize(v_ho)
+        z_n = m_P_o - m_P_h
+        z_m = normalize(z_n)
 
-        v_x_ho = np.array([1, 0, 0, 0])
+        x_m = np.array([0, 0, 1, 0])
 
-        v_y_ho = np.cross(v_x_ho, v_z_ho_normed)
+        y_m = my_cross(x_m, z_m)
+        y_m = [y_m[0], y_m[1], y_m[2], 0]
 
-        mx_hto = np.array([v_x_ho, v_y_ho, v_z_ho_normed, [0, 0, 0, 1]])
+        m_T_h = np.column_stack((x_m, y_m, z_m, m_P_o))
 
-        goal_pose = np_to_pose(mx_hto)
+        goal_pose = np_to_pose(m_T_h)
         goal = PoseStamped()
         goal.pose = goal_pose
         goal.header.frame_id = "map"
         goal.header.stamp = rospy.Time.now()
-
-        set_cart_goal(goal_pose= goal, root_link='map', tip_link='hsrb/hand_palm_link')
-
-        plan_and_execute(wait=True)
+        rospy.loginfo(goal)
+        self.set_cart_goal(goal_pose= goal, root_link='map', tip_link='hand_palm_link')
