@@ -1148,7 +1148,7 @@ class GiskardWrapper:
         z_n = m_P_o - m_P_h
         z_m = normalize(z_n)
 
-        x_m = np.array([0, 0, 1, 0])
+        x_m = np.array([-1, 0, 0, 0])
 
         y_m = my_cross(x_m, z_m)
         y_m = [y_m[0], y_m[1], y_m[2], 0]
@@ -1156,6 +1156,7 @@ class GiskardWrapper:
         m_T_h = np.column_stack((x_m, y_m, z_m, m_P_o))
 
         goal_pose = np_to_pose(m_T_h)
+        print(m_T_h)
         goal = PoseStamped()
         goal.pose = goal_pose
         goal.header.frame_id = "map"
