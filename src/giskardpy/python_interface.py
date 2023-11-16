@@ -1165,15 +1165,11 @@ class GiskardWrapper:
         z_m = normalize(z_n)
 
         y_m = np.array([0, 0, 1, 0])
-        #x_m = np.array([0, 0, 1, 0])
 
         x_m = my_cross(y_m, z_m)
         x_m = [x_m[0], x_m[1], x_m[2], 0]
-        #y_m = my_cross(x_m, z_m)
-        #y_m = [y_m[0], y_m[1], y_m[2], 0]
 
         m_T_h = np.column_stack((x_m, y_m, z_m, m_P_o))
-        #m_T_h = np.column_stack((x_m, y_m, z_m, m_P_o))
 
         goal_pose = np_to_pose(m_T_h)
         goal = PoseStamped()
