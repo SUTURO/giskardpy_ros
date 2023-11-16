@@ -1161,10 +1161,18 @@ class GiskardWrapper:
         m_T_h = np.column_stack((x_m, y_m, z_m, m_P_o))
 
         goal_pose = np_to_pose(m_T_h)
-        print(m_T_h)
         goal = PoseStamped()
         goal.pose = goal_pose
         goal.header.frame_id = "map"
         goal.header.stamp = rospy.Time.now()
+
+        # Startstellung für Anfang der Bewegung
+        self.set_joint_goal({
+            'arm_lift_joint': 0.3,
+            'wrist_flex_joint': -1.5,
+            'arm_flex_joint': 0,
+            'arm_roll_joint': 0
+        })
+
         rospy.loginfo(goal)
         self.set_cart_goal(goal_pose= goal, root_link='map', tip_link='hand_palm_link')
