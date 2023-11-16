@@ -1137,6 +1137,17 @@ class GiskardWrapper:
             'head_tilt_joint':-0.4
         })
 
+    def setup_arm(self):
+        # Startstellung für Anfang der Bewegung
+        self.set_joint_goal({
+            'arm_lift_joint': 0.5,
+            'wrist_flex_joint': -1.5,
+            'arm_flex_joint': 0,
+            'arm_roll_joint': 0
+        })
+
+        self.plan_and_execute(wait=True)
+
     def poke_stuff(self, object_pose: PoseStamped):
         if object_pose.header.frame_id != "map":
             rospy.loginfo("Wrong Frame")
@@ -1169,14 +1180,6 @@ class GiskardWrapper:
         goal.pose = goal_pose
         goal.header.frame_id = "map"
         goal.header.stamp = rospy.Time.now()
-
-        # Startstellung für Anfang der Bewegung
-        self.set_joint_goal({
-            'arm_lift_joint': 0.5,
-            'wrist_flex_joint': -1.5,
-            'arm_flex_joint': 0,
-            'arm_roll_joint': 0
-        })
 
         rospy.loginfo(goal)
         self.set_cart_goal(goal_pose= goal, root_link='map', tip_link='hand_palm_link')
