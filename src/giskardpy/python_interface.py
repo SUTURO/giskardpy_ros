@@ -1132,6 +1132,11 @@ class GiskardWrapper:
         if action_state == GoalStatus.SUCCEEDED:
             rospy.loginfo("Navigation Succeeded")
 
+    def lower_head(self):
+        self.set_joint_goal({
+            'head_tilt_joint':-0.4
+        })
+
     def poke_stuff(self, object_pose: PoseStamped):
         if object_pose.header.frame_id != "map":
             rospy.loginfo("Wrong Frame")
