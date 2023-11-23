@@ -181,7 +181,7 @@ class MoveGripper(Goal):
         """
         Open / CLose Gripper.
         Current implementation is only a workaround for manipulation to work with the gripper
-        and a follow joint trajectory connection was not helpful.
+        and a follow joint, trajectory connection was not helpful.
         For whole plans, Planning should open the gripper by themselves
 
         :param gripper_state: keyword to state the gripper. Possible options: 'open', 'neutral', 'close'
@@ -255,7 +255,7 @@ class Reaching(ObjectGoal):
             Concludes Reaching type goals.
             Executes them depending on the given context action.
             Context is a dictionary in an action is given as well as situational parameters.
-            All available context Messages are found in the Enum 'ContxtTypes'
+            All available context Messages are found in the Enum 'ContextTypes'
 
             :param context: Context of this goal. Contains information about action and situational parameters
             :param object_name: Name of the object to use. Optional as long as goal_pose and object_size are filled instead
@@ -380,7 +380,7 @@ class GraspObject(ObjectGoal):
             Concludes Reaching type goals.
             Executes them depending on the given context action.
             Context is a dictionary in an action is given as well as situational parameters.
-            All available context Messages are found in the Enum 'ContxtTypes'
+            All available context Messages are found in the Enum 'ContextTypes'
 
             :param goal_pose: Goal pose for the object.
             :param frontal_offset: Optional parameter to pass a specific offset
@@ -926,7 +926,7 @@ class Placing(ForceSensorGoal):
             expression = (lambda sensor_values, _:
                           (sensor_values[self.forward_force] >= z_force_threshold))
             # or
-            # (sensor_values[self.sideway_torque] >= y_torque_threshold))
+            # ((sensor_values[self.sideway_torque] >= y_torque_threshold))
 
         else:
             x_force_threshold = 0.0
@@ -1331,4 +1331,4 @@ def multiply_vector(vec: Vector3,
                     number: int):
     return Vector3(vec.x * number, vec.y * number, vec.z * number)
 
-# TODO: Make CartesianOrientation from two alignplanes
+# TODO: Make Cartesian Orientation from two alignplanes
