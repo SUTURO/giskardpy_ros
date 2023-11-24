@@ -1153,6 +1153,14 @@ class GiskardWrapper:
         _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
                                                                    GripperApplyEffortAction)
 
+        try:
+            if not _gripper_apply_force_client.wait_for_server(rospy.Duration(
+                    10)):
+                raise Exception('/hsrb/gripper_controller/grasp does not exist')
+        except Exception as e:
+            rospy.logerr(e)
+            return
+
         rospy.loginfo("Closing gripper with force: {}".format(force))
         f = force  # max(min(0.8, force), 0.2)
         goal = GripperApplyEffortGoal()
@@ -1167,6 +1175,13 @@ class GiskardWrapper:
         """
         _gripper_controller = actionlib.SimpleActionClient('/hsrb/gripper_controller/follow_joint_trajectory',
                                                            FollowJointTrajectoryAction)
+
+        # Wait for connection
+        try:
+            if not _gripper_controller.wait_for_server(rospy.Duration(10)):
+                raise Exception('/hsrb/gripper_controller/follow_joint_trajectory does not exist')
+        except Exception as e:
+            rospy.logerr(e)
 
         pos = max(min(1.239, position), -0.105)
         goal = FollowJointTrajectoryGoal()
