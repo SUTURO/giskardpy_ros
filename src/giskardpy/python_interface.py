@@ -494,7 +494,6 @@ class GiskardWrapper:
         constraint.parameter_value_pair = json.dumps(kwargs)
         self.cmd_seq[-1].constraints.append(constraint)
 
-
     def _set_collision_entries(self, collisions: List[CollisionEntry]):
         """
         Adds collision entries to the current goal
@@ -1116,18 +1115,18 @@ class GiskardWrapper:
                            tip_link=tip_link,
                            velocity=velocity)
 
-def move_base(self, target_pose: PoseStamped):
-    cli = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
+    def move_base(self, target_pose: PoseStamped):
+        cli = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
 
-    cli.wait_for_server()
+        cli.wait_for_server()
 
-    goal = MoveBaseGoal()
-    goal.target_pose = target_pose
+        goal = MoveBaseGoal()
+        goal.target_pose = target_pose
 
-    cli.send_goal(goal)
+        cli.send_goal(goal)
 
-    cli.wait_for_result()
+        cli.wait_for_result()
 
-    action_state = cli.get_state()
-    if action_state == GoalStatus.SUCCEEDED:
-        rospy.loginfo("Navigation Succeeded")
+        action_state = cli.get_state()
+        if action_state == GoalStatus.SUCCEEDED:
+            rospy.loginfo("Navigation Succeeded")
