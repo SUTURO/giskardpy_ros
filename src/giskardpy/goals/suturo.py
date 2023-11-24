@@ -200,7 +200,6 @@ class MoveGripper(NonMotionGoal):
             self.close_gripper_force(-0.8)
 
         elif self.gripper_state == 'neutral':
-
             self.set_gripper_joint_position(0.5)
 
     def close_gripper_force(self, force=0.8):
