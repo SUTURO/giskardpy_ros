@@ -1194,16 +1194,16 @@ class GiskardWrapper:
         goal.trajectory.points = [p]
         _gripper_controller.send_goal(goal)
 
-    def real_time_pointer(self, tip_link, initial_goal, root_link, pointing_axis):
+    def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis, endless_mode):
         """
         Wrapper for RealTimePointing and EndlessMode,
         which is used for person live-tracking.
         """
-        if identifier.endless_mode:
+        if endless_mode:
             self.set_json_goal(constraint_type='EndlessMode')
 
         self.set_json_goal(constraint_type='RealTimePointing',
                            tip_link=tip_link,
-                           goal_point=initial_goal,
+                           topic_name=topic_name,
                            root_link=root_link,
                            pointing_axis=pointing_axis)
