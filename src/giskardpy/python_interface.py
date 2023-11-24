@@ -25,6 +25,7 @@ from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse, Regist
 from giskard_msgs.srv import RegisterGroupResponse
 from giskard_msgs.srv import UpdateWorld, UpdateWorldRequest, UpdateWorldResponse, GetGroupInfo, \
     GetGroupNames, RegisterGroup
+from giskardpy import identifier
 from giskardpy.exceptions import DuplicateNameException, UnknownGroupException
 from giskardpy.goals.goal import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.model.utils import make_world_body_box
@@ -1177,3 +1178,17 @@ class GiskardWrapper:
         p.time_from_start = rospy.Time(1)
         goal.trajectory.points = [p]
         _gripper_controller.send_goal(goal)
+
+    def real_time_pointer(self, tip_link, initial_goal, root_link, pointing_axis):
+        """
+        Wrapper for RealTimePointing and EndlessMode,
+        which is used for person live-tracking.
+        """
+        if identifier.endless_mode:
+            self.set_json_goal(constraint_type='EndlessMode')
+
+        self.set_json_goal(constraint_type='RealTimePointing',
+                           tip_link=tip_link,
+                           goal_point=initial_goal,
+                           root_link=root_link,
+                           pointing_axis=pointing_axis)
