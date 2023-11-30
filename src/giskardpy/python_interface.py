@@ -1137,14 +1137,22 @@ class GiskardWrapper:
         if action_state == GoalStatus.SUCCEEDED:
             rospy.loginfo("Navigation Succeeded")
 
-    def open_gripper(self):
-        self.move_gripper_force(0.8)
+    def change_gripper_state(self, gripper_state):
+        """
+        Rework proposal for the gripper,
+        could later also be refitted to accommodate
+        object specific gripping forces.
+        Thanks for python for introducing something as basic as
+        switch-statements as late as your 3.10 release...(we're on 3.8)
+        """
+        if gripper_state == 'open':
+            self.move_gripper_force(0.8)
 
-    def close_gripper(self):
-        self.move_gripper_force(-0.8)
+        elif gripper_state == 'close':
+            self.move_gripper_force(-0.8)
 
-    def neutral_gripper(self):
-        self.set_gripper_joint_position(0.5)
+        elif gripper_state == 'neutral':
+            self.move_gripper_force(0.5)
 
     def move_gripper_force(self, force: float = 0.8):
         """
