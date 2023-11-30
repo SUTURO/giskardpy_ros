@@ -1146,15 +1146,15 @@ class GiskardWrapper:
         switch-statements as late as your 3.10 release...(we're on 3.8)
         """
         if gripper_state == 'open':
-            self.move_gripper_force(0.8)
+            self._move_gripper_force(0.8)
 
         elif gripper_state == 'close':
-            self.move_gripper_force(-0.8)
+            self._move_gripper_force(-0.8)
 
         elif gripper_state == 'neutral':
-            self.move_gripper_force(0.5)
+            self._set_gripper_joint_position(0.5)
 
-    def move_gripper_force(self, force: float = 0.8):
+    def _move_gripper_force(self, force: float = 0.8):
         """
         Closes the gripper with the given force.
         :param force: force to grasp with should be between 0.2 and 0.8 (N)
@@ -1177,7 +1177,7 @@ class GiskardWrapper:
         goal.effort = f
         _gripper_apply_force_client.send_goal(goal)
 
-    def set_gripper_joint_position(self, position):
+    def _set_gripper_joint_position(self, position):
         """
         Sets the gripper joint to the given  position
         :param position: goal position of the joint -0.105 to 1.239 rad
