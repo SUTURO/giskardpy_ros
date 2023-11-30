@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from giskardpy.configs.collision_avoidance_config import CollisionAvoidanceConfig
     from giskardpy.configs.world_config import WorldConfig
-    from giskardpy.tree.control_modes import ControlModes
+    from giskardpy.configs.behavior_tree_config import ControlModes
     from giskardpy.model.collision_world_syncer import CollisionWorldSynchronizer, CollisionCheckerLib
     from giskardpy.tree.garden import TreeManager
     from giskardpy.model.world import WorldTree

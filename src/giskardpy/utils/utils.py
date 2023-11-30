@@ -368,6 +368,14 @@ def make_pose_from_parts(pose, frame_id, position, orientation):
         pose.pose.orientation = Quaternion(*(orientation if orientation is not None else [0, 0, 0, 1]))
     return pose
 
+def convert_ros_message_to_dictionary(message) -> dict:
+
+    if isinstance(message, list):
+        for i, element in enumerate(message):
+            message[i] = convert_ros_message_to_dictionary(element)
+    elif isinstance(message, dict):
+        for k, v in message.copy().items():
+            message[k] = convert_ros_message_to_dictionary(v)
 
 def convert_ros_message_to_dictionary(message) -> dict:
 

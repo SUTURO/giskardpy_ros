@@ -4,8 +4,7 @@ from typing import Optional
 from giskardpy import identifier
 from giskardpy.god_map import GodMap
 from giskardpy.tree.behaviors.tf_publisher import TfPublishingModes
-from giskardpy.tree.control_modes import ControlModes
-from giskardpy.tree.garden import OpenLoop, ClosedLoop, StandAlone, TreeManager
+from giskardpy.tree.garden import OpenLoop, ClosedLoop, StandAlone, ControlModes, TreeManager
 
 
 class BehaviorTreeConfig(ABC):
@@ -116,19 +115,28 @@ class BehaviorTreeConfig(ABC):
         """
         self.tree_manager.add_tf_publisher(include_prefix=include_prefix, tf_topic=tf_topic, mode=mode)
 
+    def add_js_publisher(self, include_prefix: bool = True, js_topic: str = 'joint_states'):
+        """
+        Publishes joint states for Giskard's internal state.
+        """
+        self.tree_manager.add_js_publisher(include_prefix=include_prefix, js_topic=js_topic)
+
 
 class StandAloneBTConfig(BehaviorTreeConfig):
-    def __init__(self, planning_sleep: Optional[float] = None):
+    def __init__(self, planning_sleep: Optional[float] = None, publish_js=False):
         super().__init__(ControlModes.standalone)
         self.planning_sleep = planning_sleep
+        self.publish_js = publish_js
 
     def setup(self):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=False, add_to_control_loop=True)
         self.add_tf_publisher(include_prefix=True, mode=TfPublishingModes.all)
         # self.add_trajectory_plotter()
-        self.add_debug_marker_publisher()
+        # self.add_debug_marker_publisher()
         if self.planning_sleep is not None:
             self.add_sleeper(self.planning_sleep)
+        if self.publish_js:
+            self.add_js_publisher(include_prefix=False, js_topic='joint_states')
 
 
 class OpenLoopBTConfig(BehaviorTreeConfig):
@@ -138,8 +146,6 @@ class OpenLoopBTConfig(BehaviorTreeConfig):
 
     def setup(self):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=True, add_to_control_loop=False)
-        self.add_debug_trajectory_plotter()
-        #self.add_trajectory_plotter()
         if self.planning_sleep is not None:
             self.add_sleeper(self.planning_sleep)
 
@@ -150,5 +156,4 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
 
     def setup(self):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_planning=False, add_to_control_loop=False)
-        self.add_debug_marker_publisher()
         #self.add_qp_data_publisher(publish_xdot=True, publish_lb=True, publish_ub=True)

@@ -19,7 +19,7 @@ from giskardpy.goals.suturo import ContextActionModes, ContextTypes
 
 class HSRTestWrapper(GiskardTestWrapper):
     default_pose = {
-        'arm_flex_joint': 0.0,
+        'arm_flex_joint': -0.03,
         'arm_lift_joint': 0.0,
         'arm_roll_joint': 0.0,
         'head_pan_joint': 0.0,
@@ -36,7 +36,7 @@ class HSRTestWrapper(GiskardTestWrapper):
             giskard = Giskard(world_config=WorldWithHSRConfig(),
                               collision_avoidance_config=HSRCollisionAvoidanceConfig(),
                               robot_interface_config=HSRStandaloneInterface(),
-                              behavior_tree_config=StandAloneBTConfig(),
+                              behavior_tree_config=StandAloneBTConfig(publish_js=True,),
                               qp_controller_config=QPControllerConfig())
         super().__init__(giskard)
         self.gripper_group = 'gripper'
@@ -191,11 +191,11 @@ class TestJointGoals:
 
     def test_mimic_joints4(self, zero_pose: HSRTestWrapper):
         ll, ul = zero_pose.world.get_joint_velocity_limits('hsrb/arm_lift_joint')
-        assert ll == -0.2
-        assert ul == 0.2
+        assert ll == -0.15
+        assert ul == 0.15
         ll, ul = zero_pose.world.get_joint_velocity_limits('hsrb/torso_lift_joint')
-        assert ll == -0.1
-        assert ul == 0.1
+        assert ll == -0.075
+        assert ul == 0.075
         joint_goal = {'torso_lift_joint': 0.25}
         zero_pose.set_joint_goal(joint_goal, check=False)
         zero_pose.allow_all_collisions()

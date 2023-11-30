@@ -81,6 +81,7 @@ from giskardpy.tree.behaviors.time import TimePlugin
 from giskardpy.tree.behaviors.time_real import RosTime
 from giskardpy.tree.behaviors.visualization import VisualizationBehavior
 from giskardpy.tree.behaviors.world_updater import WorldUpdater
+from giskardpy.tree.behaviors.publish_joint_states import PublishJointState
 from giskardpy.tree.composites.async_composite import AsyncBehavior
 from giskardpy.tree.composites.better_parallel import ParallelPolicy, Parallel
 from giskardpy.tree.control_modes import ControlModes
@@ -125,6 +126,13 @@ def anything_is_failure(cls: T) -> T:
 
 def behavior_is_instance_of(obj: Any, type_: Type) -> bool:
     return isinstance(obj, type_) or hasattr(obj, 'original') and isinstance(obj.original, type_)
+
+
+class ControlModes(Enum):
+    none = -1
+    open_loop = 1
+    close_loop = 2
+    standalone = 3
 
 
 class ManagerNode:
@@ -354,6 +362,10 @@ class TreeManager(ABC):
     @abc.abstractmethod
     def add_tf_publisher(self, include_prefix: bool = False, tf_topic: str = 'tf',
                          mode: TfPublishingModes = TfPublishingModes.attached_and_world_objects):
+        ...
+
+    @abc.abstractmethod
+    def add_js_publisher(self, include_prefix: bool = False, js_topic: str = 'tf'):
         ...
 
     def setup(self, timeout=30):
@@ -868,6 +880,12 @@ class StandAlone(TreeManager):
                          mode: TfPublishingModes = TfPublishingModes.attached_and_world_objects):
         node = TFPublisher('publish tf', mode=mode, tf_topic=tf_topic, include_prefix=include_prefix)
         self.insert_node(node, self.sync_name)
+
+    def add_js_publisher(self, include_prefix: bool = False, js_topic: str = 'joint_states'):
+        node = PublishJointState('publish js', js_topic=js_topic, use_prefix=include_prefix)
+        self.insert_node(node, self.closed_loop_control_name)
+        node2 = running_is_success(PublishJointState)('publish js', js_topic=js_topic, use_prefix=include_prefix)
+        self.insert_node(node2, self.sync_name)
 
 
 class OpenLoop(StandAlone):

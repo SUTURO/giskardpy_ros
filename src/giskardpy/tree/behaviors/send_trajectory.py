@@ -47,13 +47,12 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
 
     @record_time
     @profile
-    def __init__(self, action_namespace: str, group_name: str,
-                 goal_time_tolerance: float = 1, state_topic: Optional[str] = None, fill_velocity_values: bool = True,
+    def __init__(self, action_namespace: str, state_topic: str, group_name: str,
+                 goal_time_tolerance: float = 1, fill_velocity_values: bool = True,
                  path_tolerance: Dict[Derivatives, float] = None):
         self.group_name = group_name
         self.delay = rospy.Duration(0)
-        self.namespace = action_namespace
-        self.action_namespace = action_namespace #+ '/follow_joint_trajectory'
+        self.action_namespace = action_namespace
         GiskardBehavior.__init__(self, str(self))
         self.min_deadline: rospy.Time
         self.max_deadline: rospy.Time

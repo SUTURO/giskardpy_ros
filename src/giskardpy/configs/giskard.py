@@ -5,7 +5,7 @@ from typing import Optional, List
 from py_trees import Blackboard
 
 from giskardpy import identifier
-from giskardpy.configs.behavior_tree_config import BehaviorTreeConfig, OpenLoopBTConfig
+from giskardpy.configs.behavior_tree_config import BehaviorTreeConfig, ControlModes, OpenLoopBTConfig
 from giskardpy.configs.collision_avoidance_config import CollisionAvoidanceConfig, DisableCollisionAvoidanceConfig
 from giskardpy.configs.qp_controller_config import QPControllerConfig
 from giskardpy.configs.robot_interface_config import RobotInterfaceConfig
@@ -14,7 +14,6 @@ from giskardpy.exceptions import GiskardException
 from giskardpy.goals.goal import Goal
 from giskardpy.god_map import GodMap
 from giskardpy.god_map_user import GodMapWorshipper
-from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils import logging
 from giskardpy.utils.utils import resolve_ros_iris, get_all_classes_in_package
 

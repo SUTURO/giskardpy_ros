@@ -114,8 +114,6 @@ class RosMsgToGoal(GetGoal):
                 raise e
 
     def replace_jsons_with_ros_messages(self, d):
-        # TODO make PR!!!!
-
         if isinstance(d, list):
             for i, element in enumerate(d):
                 d[i] = self.replace_jsons_with_ros_messages(element)

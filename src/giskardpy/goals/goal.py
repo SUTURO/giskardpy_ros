@@ -17,6 +17,12 @@ from giskardpy.utils import logging
 
 if TYPE_CHECKING:
     from giskardpy.tree.control_modes import ControlModes
+from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
+
+from giskardpy.god_map_user import GodMapWorshipper
+
+if TYPE_CHECKING:
+    from giskardpy.configs.behavior_tree_config import ControlModes
 
 import giskardpy.identifier as identifier
 import giskardpy.utils.tfwrapper as tf
@@ -261,13 +267,14 @@ class Goal(GodMapWorshipper, ABC):
 
     @profile
     def get_constraints(self) -> Tuple[Dict[str, EqualityConstraint],
-    Dict[str, InequalityConstraint],
-    Dict[str, DerivativeInequalityConstraint],
-    Dict[str, Union[w.Symbol, float]]]:
+                                       Dict[str, InequalityConstraint],
+                                       Dict[str, DerivativeInequalityConstraint],
+                                       Dict[str, Union[w.Symbol, float]]]:
         self._equality_constraints = OrderedDict()
         self._inequality_constraints = OrderedDict()
         self._derivative_constraints = OrderedDict()
         self._debug_expressions = OrderedDict()
+
         for sub_goal in self._sub_goals:
             sub_goal._save_self_on_god_map()
             equality_constraints, inequality_constraints, derivative_constraints, debug_expressions = \
@@ -280,7 +287,7 @@ class Goal(GodMapWorshipper, ABC):
 
         self.make_constraints()
         return self._equality_constraints, self._inequality_constraints, self._derivative_constraints, \
-            self._debug_expressions
+               self._debug_expressions
 
     def add_constraints_of_goal(self, goal: Goal):
         self._sub_goals.append(goal)

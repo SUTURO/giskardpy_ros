@@ -4,11 +4,11 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
 from giskardpy import identifier
+from giskardpy.configs.behavior_tree_config import ControlModes
 from giskardpy.exceptions import GiskardException
 from giskardpy.god_map import GodMap
 from giskardpy.model.world import WorldTree
 from giskardpy.my_types import my_string, PrefixName, Derivatives
-from giskardpy.tree.control_modes import ControlModes
 from giskardpy.tree.garden import TreeManager
 
 
