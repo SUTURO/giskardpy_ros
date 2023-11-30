@@ -49,7 +49,8 @@ from giskardpy.qp.qp_controller import available_solvers
 from giskardpy.tree.behaviors.plot_debug_expressions import PlotDebugExpressions
 from giskardpy.tree.behaviors.plot_trajectory import PlotTrajectory
 from giskardpy.tree.behaviors.visualization import VisualizationBehavior
-from giskardpy.tree.garden import TreeManager, ControlModes
+from giskardpy.tree.garden import TreeManager
+from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils import logging, utils
 from giskardpy.utils.math import compare_poses
 from giskardpy.utils.utils import msg_to_list, resolve_ros_iris

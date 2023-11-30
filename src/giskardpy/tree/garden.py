@@ -128,13 +128,6 @@ def behavior_is_instance_of(obj: Any, type_: Type) -> bool:
     return isinstance(obj, type_) or hasattr(obj, 'original') and isinstance(obj.original, type_)
 
 
-class ControlModes(Enum):
-    none = -1
-    open_loop = 1
-    close_loop = 2
-    standalone = 3
-
-
 class ManagerNode:
     node: GiskardBehavior
     parent: ManagerNode

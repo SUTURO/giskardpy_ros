@@ -4,7 +4,8 @@ from typing import Optional
 from giskardpy import identifier
 from giskardpy.god_map import GodMap
 from giskardpy.tree.behaviors.tf_publisher import TfPublishingModes
-from giskardpy.tree.garden import OpenLoop, ClosedLoop, StandAlone, ControlModes, TreeManager
+from giskardpy.tree.garden import OpenLoop, ClosedLoop, StandAlone, TreeManager
+from giskardpy.tree.control_modes import ControlModes
 
 
 class BehaviorTreeConfig(ABC):
