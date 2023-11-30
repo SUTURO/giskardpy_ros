@@ -367,7 +367,7 @@ class TestCollisionAvoidanceGoals:
 
     def test_self_collision_avoidance2(self, zero_pose: HSRTestWrapper):
         js = {
-            'arm_flex_joint': 0.0,
+            'arm_flex_joint': -0.03,
             'arm_lift_joint': 0.0,
             'arm_roll_joint': -1.52,
             'head_pan_joint': -0.09,
