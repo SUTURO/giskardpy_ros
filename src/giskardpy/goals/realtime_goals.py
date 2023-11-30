@@ -30,6 +30,7 @@ class RealTimePointing(Pointing):
                          goal_point=initial_goal,
                          root_link=root_link,
                          pointing_axis=pointing_axis)
+
         self.sub = rospy.Subscriber(topic_name, PointStamped, self.cb)
 
     def cb(self, data: PointStamped):
