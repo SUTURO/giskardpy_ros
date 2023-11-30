@@ -28,9 +28,9 @@ class WorldWithHSRConfig(WorldConfig):
         self.set_default_limits({Derivatives.velocity: 1,
                                  Derivatives.acceleration: np.inf,
                                  Derivatives.jerk: 30})
-        #self.add_empty_link(self.map_name)
-        #self.add_6dof_joint(parent_link=self.map_name, child_link=self.odom_link_name,
-        #                    joint_name=self.localization_joint_name)
+        self.add_empty_link(self.map_name)
+        self.add_6dof_joint(parent_link=self.map_name, child_link=self.odom_link_name,
+                            joint_name=self.localization_joint_name)
         self.add_empty_link(self.odom_link_name)
         self.add_robot_from_parameter_server()
         root_link_name = self.get_root_link_of_group(self.robot_group_name)
@@ -109,9 +109,9 @@ class HSRVelocityInterface(RobotInterfaceConfig):
         self.drive_joint_name = drive_joint_name
 
     def setup(self):
-        # self.sync_6dof_joint_with_tf_frame(joint_name=self.localization_joint_name,
-        #                                    tf_parent_frame=self.map_name,
-        #                                    tf_child_frame=self.odom_link_name)
+        self.sync_6dof_joint_with_tf_frame(joint_name=self.localization_joint_name,
+                                           tf_parent_frame=self.map_name,
+                                           tf_child_frame=self.odom_link_name)
         self.sync_joint_state_topic('/hsrb/joint_states')
         self.sync_odometry_topic('/hsrb/odom', self.drive_joint_name)
 
@@ -138,9 +138,9 @@ class HSRJointTrajInterfaceConfig(RobotInterfaceConfig):
         self.drive_joint_name = drive_joint_name
 
     def setup(self):
-        #self.sync_6dof_joint_with_tf_frame(joint_name=self.localization_joint_name,
-        #                                   tf_parent_frame=self.map_name,
-        #                                   tf_child_frame=self.odom_link_name)
+        self.sync_6dof_joint_with_tf_frame(joint_name=self.localization_joint_name,
+                                           tf_parent_frame=self.map_name,
+                                           tf_child_frame=self.odom_link_name)
         self.sync_joint_state_topic('/hsrb/joint_states')
         self.sync_odometry_topic('/hsrb/odom', self.drive_joint_name)
 
