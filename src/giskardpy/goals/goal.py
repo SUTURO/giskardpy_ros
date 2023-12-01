@@ -23,7 +23,7 @@ from giskardpy.god_map_user import GodMapWorshipper
 import giskardpy.identifier as identifier
 import giskardpy.utils.tfwrapper as tf
 from giskard_msgs.msg import Constraint as Constraint_msg
-from giskardpy import casadi_wrapper as w
+from giskardpy import casadi_wrapper as w, profile
 from giskardpy.casadi_wrapper import symbol_expr_float
 from giskardpy.exceptions import ConstraintInitalizationException, GiskardException, UnknownGroupException
 from giskardpy.god_map import GodMap
