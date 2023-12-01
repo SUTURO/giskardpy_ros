@@ -1208,6 +1208,10 @@ class GiskardWrapper:
         goal.trajectory.points = [p]
         _gripper_controller.send_goal(goal)
 
+    def get_control_mode(self) -> str:
+        rep: TriggerResponse = self.get_control_mode_srv.call(TriggerRequest())
+        return rep.message
+
     def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis, endless_mode):
         """
         Wrapper for RealTimePointing and EndlessMode,

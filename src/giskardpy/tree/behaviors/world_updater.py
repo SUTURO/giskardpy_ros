@@ -8,6 +8,7 @@ from xml.etree.ElementTree import ParseError
 import rospy
 from py_trees import Status
 from py_trees.meta import running_is_success
+from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
 from tf2_py import TransformException
 from visualization_msgs.msg import MarkerArray, Marker
 
@@ -89,8 +90,17 @@ class WorldUpdater(GiskardBehavior):
         self.get_group_info = rospy.Service('~get_group_info', GetGroupInfo, self.get_group_info_cb)
         self.register_groups = rospy.Service('~register_groups', RegisterGroup, self.register_groups_cb)
         self.dye_group = rospy.Service('~dye_group', DyeGroup, self.dye_group)
+        self.get_control_mode = rospy.Service('~get_control_mode', Trigger, self.get_control_mode_cb)
         # self.dump_state_srv = rospy.Service('~dump_state', Trigger, self.dump_state_cb)
         return super(WorldUpdater, self).setup(timeout)
+
+    def get_control_mode_cb(self, req: TriggerRequest) -> TriggerResponse:
+        control_mode = self.god_map.get_data(identifier.control_mode)
+        res = TriggerResponse()
+        res.success = True
+        res.message = control_mode
+        return res
+
 
     def dye_group(self, req: DyeGroupRequest):
         res = DyeGroupResponse()
