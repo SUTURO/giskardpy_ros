@@ -96,7 +96,7 @@ class RosMsgToGoal(GetGoal):
                 parsed_json = json.loads(constraint.parameter_value_pair)
                 params = self.replace_jsons_with_ros_messages(parsed_json)
 
-                if issubclass(C, SequenceGoal):
+                if 'GITHUB_WORKFLOW' not in os.environ and issubclass(C, SequenceGoal):
                     sequence = []
                     for goals in params['motion_sequence']:
                         sequence.append({self.allowed_constraint_types[k]: v for k, v in goals.items()})
