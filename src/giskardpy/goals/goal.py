@@ -15,14 +15,10 @@ from giskardpy.god_map_user import GodMapWorshipper
 # from giskardpy.tree.garden import success_is_failure
 from giskardpy.utils import logging
 
-if TYPE_CHECKING:
-    from giskardpy.tree.control_modes import ControlModes
+from giskardpy.tree.control_modes import ControlModes
 from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
 
 from giskardpy.god_map_user import GodMapWorshipper
-
-if TYPE_CHECKING:
-    from giskardpy.configs.behavior_tree_config import ControlModes
 
 import giskardpy.identifier as identifier
 import giskardpy.utils.tfwrapper as tf
