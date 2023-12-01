@@ -13,6 +13,7 @@ from rospy import ServiceException
 from sensor_msgs.msg import JointState
 from shape_msgs.msg import SolidPrimitive
 
+from giskardpy.tree.control_modes import ControlModes
 from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
 
 if 'GITHUB_WORKFLOW' not in os.environ:
@@ -1147,23 +1148,20 @@ class GiskardWrapper:
         """
         if self.is_standalone():
             if gripper_state == gripper_types.OPEN:
-                # TODO: Gripper Positions für open erstellen
                 self.set_joint_goal({
-                    'arm_flex_joint': 0.0
+                    'hand_motor_joint': 1.2
                 })
                 self.plan_and_execute()
 
             elif gripper_state == gripper_types.CLOSE:
-                # TODO: Gripper Positions für close erstellen
                 self.set_joint_goal({
-                    'arm_flex_joint': 0.0
+                    'hand_motor_joint': 0.0
                 })
                 self.plan_and_execute()
 
             elif gripper_state == gripper_types.NEUTRAL:
-                # TODO: Gripper Positions für neutral erstellen
                 self.set_joint_goal({
-                    'arm_flex_joint': 0.0
+                    'hand_motor_joint': 0.6
                 })
                 self.plan_and_execute()
         else:
@@ -1226,15 +1224,12 @@ class GiskardWrapper:
         goal.trajectory.points = [p]
         _gripper_controller.send_goal(goal)
 
-    def get_control_mode(self) -> str:
+    def get_control_mode(self) -> ControlModes:
         rep: TriggerResponse = self.get_control_mode_srv.call(TriggerRequest())
-        return rep.message
+        return ControlModes[rep.message]
 
     def is_standalone(self) -> bool:
-        if self.get_control_mode() == 'standalone':
-            return True
-        else:
-            return False
+        return self.get_control_mode() == ControlModes.standalone
 
     def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis, endless_mode):
         """

@@ -8,6 +8,8 @@ from xml.etree.ElementTree import ParseError
 import rospy
 from py_trees import Status
 from py_trees.meta import running_is_success
+
+from giskardpy.tree.control_modes import ControlModes
 from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
 from tf2_py import TransformException
 from visualization_msgs.msg import MarkerArray, Marker
@@ -98,7 +100,7 @@ class WorldUpdater(GiskardBehavior):
         control_mode = self.god_map.get_data(identifier.control_mode)
         res = TriggerResponse()
         res.success = True
-        res.message = control_mode
+        res.message = str(control_mode).split('.')[1]
         return res
 
 
