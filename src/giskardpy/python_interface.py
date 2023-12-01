@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Dict, Tuple, Optional, Union, List
 
 import numpy as np
@@ -14,7 +15,9 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from rospy import ServiceException
 from sensor_msgs.msg import JointState
 from shape_msgs.msg import SolidPrimitive
-from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
+from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
+if 'GITHUB_WORKFLOW' not in os.environ:
+    from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
 from trajectory_msgs.msg import JointTrajectoryPoint
 from visualization_msgs.msg import MarkerArray
 
@@ -50,6 +53,7 @@ class GiskardWrapper:
             self._register_groups_srv = rospy.ServiceProxy(f'{node_name}/register_groups', RegisterGroup)
             self._marker_pub = rospy.Publisher('visualization_marker_array', MarkerArray, queue_size=10)
             self.dye_group_srv = rospy.ServiceProxy(f'{node_name}/dye_group', DyeGroup)
+            self.get_control_mode_srv = rospy.ServiceProxy(f'{node_name}/get_control_mode', Trigger)
             rospy.wait_for_service(f'{node_name}/update_world')
             self._client.wait_for_server()
         self.collisions = []

@@ -6,9 +6,11 @@ from typing import Optional, List, Dict
 import actionlib
 import numpy as np
 import rospy
+import os
 from control_msgs.msg import FollowJointTrajectoryGoal, FollowJointTrajectoryAction
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
-from tmc_control_msgs.msg import GripperApplyEffortGoal, GripperApplyEffortAction
+if 'GITHUB_WORKFLOW' not in os.environ:
+    from tmc_control_msgs.msg import GripperApplyEffortGoal, GripperApplyEffortAction
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 import giskardpy.utils.tfwrapper as tf
