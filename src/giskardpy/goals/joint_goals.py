@@ -4,7 +4,7 @@ from typing import Dict, Optional, List
 
 from geometry_msgs.msg import PoseStamped
 
-from giskardpy import casadi_wrapper as w, identifier
+from giskardpy import casadi_wrapper as w, identifier, profile
 from giskardpy.tree.control_modes import ControlModes
 from giskardpy.exceptions import ConstraintException, ConstraintInitalizationException
 from giskardpy.goals.goal import Goal, WEIGHT_BELOW_CA, NonMotionGoal, WEIGHT_ABOVE_CA
