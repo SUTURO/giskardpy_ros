@@ -1,20 +1,20 @@
+import os
 from copy import deepcopy
 from enum import Enum
-from pprint import pprint
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 
 import actionlib
 import numpy as np
 import rospy
-import os
 from control_msgs.msg import FollowJointTrajectoryGoal, FollowJointTrajectoryAction
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
+
 if 'GITHUB_WORKFLOW' not in os.environ:
     from tmc_control_msgs.msg import GripperApplyEffortGoal, GripperApplyEffortAction
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 import giskardpy.utils.tfwrapper as tf
-from giskardpy import casadi_wrapper as w, identifier
+from giskardpy import casadi_wrapper as w
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
 from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal, NonMotionGoal
@@ -23,11 +23,9 @@ from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, Cyl
 from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
-import math as m
 
-if 'GITHUB_WORKFLOW' not in os.environ:
-    from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, ContextObjectShape, \
-        ContextAlignVertical
+from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, ContextObjectShape, \
+    ContextAlignVertical
 
 
 class ContextTypes(Enum):
@@ -358,6 +356,7 @@ class Reaching(ObjectGoal):
                                                      velocity=self.velocity,
                                                      weight=self.weight,
                                                      suffix=self.suffix))
+
     def make_constraints(self):
         pass
 
@@ -1142,7 +1141,6 @@ class JointRotationGoalContinuous(Goal):
                  target_speed: float = 1,
                  period_length: float = 1.0,
                  suffix: str = ''):
-
         """
         Rotate a joint continuously around a center. The execution time and speed is variable.
 
@@ -1305,7 +1303,7 @@ class DonbotGripper(Goal):
         :return: error_code of FollowJointTrajectoryResult
         """
         # pos = max(min(1.239, position), -0.105)
-        goal = None # PositionCmd()
+        goal = None  # PositionCmd()
         goal.pos = position
         goal.speed = 0.0
         goal.force = 100

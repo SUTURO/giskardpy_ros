@@ -99,6 +99,12 @@ jobs:
           path: 'ros_ws/src/iai_maps'
           repository: code-iai/iai_maps
           ref: master
+      - name: Checkout suturo_resources
+        uses: actions/checkout@v3
+        with:
+          path: 'ros_ws/src/suturo_resources'
+          repository: SUTURO/suturo_resources
+          ref: robocup
       # install robots -------------------------------------------------------------------------------------------------
       - if: ${{ inputs.robot == 'hsr' }}
         name: Checkout hsr_description
