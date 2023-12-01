@@ -1,8 +1,8 @@
-from enum import StrEnum, unique
+from enum import unique, Enum
 
 
 @unique
-class gripper_types(StrEnum):
+class gripper_types(Enum):
     OPEN = 'open'
     CLOSE = 'close'
     NEUTRAL = 'neutral'
