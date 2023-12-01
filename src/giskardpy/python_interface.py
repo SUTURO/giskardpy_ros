@@ -1248,3 +1248,10 @@ class GiskardWrapper:
                            topic_name=topic_name,
                            root_link=root_link,
                            pointing_axis=pointing_axis)
+
+    def continuous_pointing_head(self):
+        tip_V_pointing_axis: Vector3Stamped = Vector3Stamped()
+        tip_V_pointing_axis.header.frame_id = 'head_center_camera_frame'
+        tip_V_pointing_axis.vector.z = 1
+
+        self.real_time_pointer(root_link='map', tip_link='head_center_camera_frame', topic_name='human_pose', endless_mode=True, pointing_axis=tip_V_pointing_axis)
