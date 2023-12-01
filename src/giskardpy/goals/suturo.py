@@ -24,8 +24,9 @@ from giskardpy.qp.constraint import EqualityConstraint
 from giskardpy.utils.logging import loginfo, logwarn
 from giskardpy.utils.math import inverse_frame
 
-from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, ContextObjectShape, \
-    ContextAlignVertical
+if 'GITHUB_WORKFLOW' not in os.environ:
+    from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, ContextObjectShape, \
+        ContextAlignVertical
 
 
 class ContextTypes(Enum):

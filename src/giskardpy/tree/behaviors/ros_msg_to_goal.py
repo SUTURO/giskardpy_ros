@@ -17,7 +17,8 @@ from giskardpy.exceptions import UnknownConstraintException, InvalidGoalExceptio
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.collision_avoidance import SelfCollisionAvoidance, ExternalCollisionAvoidance
 from giskardpy.goals.goal import Goal
-from giskardpy.goals.suturo import SequenceGoal
+if 'GITHUB_WORKFLOW' not in os.environ:
+    from giskardpy.goals.suturo import SequenceGoal
 from giskardpy.my_types import PrefixName
 from giskardpy.tree.behaviors.get_goal import GetGoal
 from giskardpy.utils.logging import loginfo
