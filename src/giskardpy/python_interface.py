@@ -1139,10 +1139,11 @@ class GiskardWrapper:
     def change_gripper_state(self, gripper_state):
         """
         Rework proposal for the gripper,
-        could later also be refitted to accommodate
-        object specific gripping forces.
+        Now uses Enums via suturo_types.py, which in case of this function acts
+        as a list of possible gripping commands. This also makes it possible
+        to add gripping forces for specific object types.
         Thanks for python for introducing something as basic as
-        switch-statements as late as your 3.10 release...(we're on 3.8)
+        switch-statements as late as your 3.10 release...
         """
         if self.is_standalone():
             if gripper_state == gripper_types.OPEN:
