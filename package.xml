@@ -21,6 +21,7 @@
   <exec_depend>rospy</exec_depend>
   <exec_depend>giskard_msgs</exec_depend>
   <exec_depend>control_msgs</exec_depend>
+  <exec_depend>controller_manager_msgs</exec_depend>
   <exec_depend>rqt_py_trees</exec_depend>
 
   <exec_depend>py_trees</exec_depend>
