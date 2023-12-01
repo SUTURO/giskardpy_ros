@@ -33,7 +33,7 @@ from giskardpy.model.utils import make_world_body_box
 from giskardpy.my_types import goal_parameter
 from giskardpy.utils.utils import position_dict_to_joint_states, convert_ros_message_to_dictionary, \
     replace_prefix_name_with_str
-
+from giskardpy.suturo_types import gripper_types
 
 class GiskardWrapper:
     last_feedback: MoveFeedback = None
@@ -1145,34 +1145,34 @@ class GiskardWrapper:
         switch-statements as late as your 3.10 release...(we're on 3.8)
         """
         if self.is_standalone():
-            if gripper_state == 'open':
+            if gripper_state == gripper_types.OPEN:
                 # TODO: Gripper Positions für open erstellen
                 self.set_joint_goal({
                     'arm_flex_joint': 0.0
                 })
                 self.plan_and_execute()
 
-            elif gripper_state == 'close':
+            elif gripper_state == gripper_types.CLOSE:
                 # TODO: Gripper Positions für close erstellen
                 self.set_joint_goal({
                     'arm_flex_joint': 0.0
                 })
                 self.plan_and_execute()
 
-            elif gripper_state == 'neutral':
+            elif gripper_state == gripper_types.NEUTRAL:
                 # TODO: Gripper Positions für neutral erstellen
                 self.set_joint_goal({
                     'arm_flex_joint': 0.0
                 })
                 self.plan_and_execute()
         else:
-            if gripper_state == 'open':
+            if gripper_state == gripper_types.OPEN:
                 self._move_gripper_force(0.8)
 
-            elif gripper_state == 'close':
+            elif gripper_state == gripper_types.CLOSE:
                 self._move_gripper_force(-0.8)
 
-            elif gripper_state == 'neutral':
+            elif gripper_state == gripper_types.NEUTRAL:
                 self._set_gripper_joint_position(0.5)
 
     def _move_gripper_force(self, force: float = 0.8):
