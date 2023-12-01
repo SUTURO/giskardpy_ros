@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 from typing import Optional
 
@@ -5,7 +6,6 @@ import numpy as np
 import pytest
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped
 from numpy import pi
-from reportlab.lib.pdfencrypt import os_urandom
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
 from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
@@ -14,7 +14,6 @@ from giskardpy.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldW
 from giskardpy.configs.qp_controller_config import QPControllerConfig
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
-import os
 
 if 'GITHUB_WORKFLOW' not in os.environ:
     from giskardpy.goals.suturo import ContextActionModes, ContextTypes
@@ -39,7 +38,7 @@ class HSRTestWrapper(GiskardTestWrapper):
             giskard = Giskard(world_config=WorldWithHSRConfig(),
                               collision_avoidance_config=HSRCollisionAvoidanceConfig(),
                               robot_interface_config=HSRStandaloneInterface(),
-                              behavior_tree_config=StandAloneBTConfig(publish_js=True,),
+                              behavior_tree_config=StandAloneBTConfig(publish_js=True, ),
                               qp_controller_config=QPControllerConfig())
         super().__init__(giskard)
         self.gripper_group = 'gripper'
