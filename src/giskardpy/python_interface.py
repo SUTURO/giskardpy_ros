@@ -2,20 +2,19 @@ import json
 import os
 from typing import Dict, Tuple, Optional, Union, List
 
-import numpy as np
 import actionlib
-import geometry_msgs.msg
 import rospy
 from actionlib import SimpleActionClient
 from actionlib_msgs.msg import GoalStatus
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
-from genpy import Message
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from rospy import ServiceException
 from sensor_msgs.msg import JointState
 from shape_msgs.msg import SolidPrimitive
+
 from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
+
 if 'GITHUB_WORKFLOW' not in os.environ:
     from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -28,14 +27,10 @@ from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse, Regist
 from giskard_msgs.srv import RegisterGroupResponse
 from giskard_msgs.srv import UpdateWorld, UpdateWorldRequest, UpdateWorldResponse, GetGroupInfo, \
     GetGroupNames, RegisterGroup
-from giskardpy import identifier
 from giskardpy.exceptions import DuplicateNameException, UnknownGroupException
 from giskardpy.goals.goal import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.my_types import goal_parameter
-from giskardpy.utils import tfwrapper
-from giskardpy.utils.math import normalize, my_cross
-from giskardpy.utils.tfwrapper import pose_stamped_to_np, np_to_pose
 from giskardpy.utils.utils import position_dict_to_joint_states, convert_ros_message_to_dictionary, \
     replace_prefix_name_with_str
 
@@ -1149,14 +1144,36 @@ class GiskardWrapper:
         Thanks for python for introducing something as basic as
         switch-statements as late as your 3.10 release...(we're on 3.8)
         """
-        if gripper_state == 'open':
-            self._move_gripper_force(0.8)
+        if self.is_standalone():
+            if gripper_state == 'open':
+                # TODO: Gripper Positions für open erstellen
+                self.set_joint_goal({
+                    'arm_flex_joint': 0.0
+                })
+                self.plan_and_execute()
 
-        elif gripper_state == 'close':
-            self._move_gripper_force(-0.8)
+            elif gripper_state == 'close':
+                # TODO: Gripper Positions für close erstellen
+                self.set_joint_goal({
+                    'arm_flex_joint': 0.0
+                })
+                self.plan_and_execute()
 
-        elif gripper_state == 'neutral':
-            self._set_gripper_joint_position(0.5)
+            elif gripper_state == 'neutral':
+                # TODO: Gripper Positions für neutral erstellen
+                self.set_joint_goal({
+                    'arm_flex_joint': 0.0
+                })
+                self.plan_and_execute()
+        else:
+            if gripper_state == 'open':
+                self._move_gripper_force(0.8)
+
+            elif gripper_state == 'close':
+                self._move_gripper_force(-0.8)
+
+            elif gripper_state == 'neutral':
+                self._set_gripper_joint_position(0.5)
 
     def _move_gripper_force(self, force: float = 0.8):
         """
@@ -1211,6 +1228,12 @@ class GiskardWrapper:
     def get_control_mode(self) -> str:
         rep: TriggerResponse = self.get_control_mode_srv.call(TriggerRequest())
         return rep.message
+
+    def is_standalone(self) -> bool:
+        if self.get_control_mode() == 'standalone':
+            return True
+        else:
+            return False
 
     def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis, endless_mode):
         """
