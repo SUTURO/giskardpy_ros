@@ -1147,31 +1147,31 @@ class GiskardWrapper:
         switch-statements as late as your 3.10 release...
         """
         if self.is_standalone():
-            if gripper_state == gripper_types.OPEN:
+            if gripper_state == gripper_types.OPEN.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 1.2
                 })
                 self.plan_and_execute()
 
-            elif gripper_state == gripper_types.CLOSE:
+            elif gripper_state == gripper_types.CLOSE.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 0.0
                 })
                 self.plan_and_execute()
 
-            elif gripper_state == gripper_types.NEUTRAL:
+            elif gripper_state == gripper_types.NEUTRAL.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 0.6
                 })
                 self.plan_and_execute()
         else:
-            if gripper_state == gripper_types.OPEN:
+            if gripper_state == gripper_types.OPEN.value:
                 self._move_gripper_force(0.8)
 
-            elif gripper_state == gripper_types.CLOSE:
+            elif gripper_state == gripper_types.CLOSE.value:
                 self._move_gripper_force(-0.8)
 
-            elif gripper_state == gripper_types.NEUTRAL:
+            elif gripper_state == gripper_types.NEUTRAL.value:
                 self._set_gripper_joint_position(0.5)
 
     def _move_gripper_force(self, force: float = 0.8):
