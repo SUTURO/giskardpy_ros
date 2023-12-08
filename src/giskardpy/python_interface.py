@@ -34,7 +34,7 @@ from giskardpy.model.utils import make_world_body_box
 from giskardpy.my_types import goal_parameter
 from giskardpy.utils.utils import position_dict_to_joint_states, convert_ros_message_to_dictionary, \
     replace_prefix_name_with_str
-from giskardpy.suturo_types import gripper_types
+from giskardpy.suturo_types import GripperTypes
 
 class GiskardWrapper:
     last_feedback: MoveFeedback = None
@@ -1150,19 +1150,19 @@ class GiskardWrapper:
         :param gripper_state: the state that the gripper shall asume
         """
         if self.is_standalone():
-            if gripper_state == gripper_types.OPEN.value:
+            if gripper_state == GripperTypes.OPEN.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 1.2
                 })
                 self.plan_and_execute()
 
-            elif gripper_state == gripper_types.CLOSE.value:
+            elif gripper_state == GripperTypes.CLOSE.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 0.0
                 })
                 self.plan_and_execute()
 
-            elif gripper_state == gripper_types.NEUTRAL.value:
+            elif gripper_state == GripperTypes.NEUTRAL.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 0.6
                 })
@@ -1170,13 +1170,13 @@ class GiskardWrapper:
             else:
                 rospy.logwarn("gripper_state {} not found".format(gripper_state))
         else:
-            if gripper_state == gripper_types.OPEN.value:
+            if gripper_state == GripperTypes.OPEN.value:
                 self._move_gripper_force(0.8)
 
-            elif gripper_state == gripper_types.CLOSE.value:
+            elif gripper_state == GripperTypes.CLOSE.value:
                 self._move_gripper_force(-0.8)
 
-            elif gripper_state == gripper_types.NEUTRAL.value:
+            elif gripper_state == GripperTypes.NEUTRAL.value:
                 self._set_gripper_joint_position(0.5)
             else:
                 rospy.logwarn("gripper_state {} not found".format(gripper_state))
