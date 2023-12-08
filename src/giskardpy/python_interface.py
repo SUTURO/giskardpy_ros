@@ -1122,6 +1122,10 @@ class GiskardWrapper:
                            velocity=velocity)
 
     def move_base(self, target_pose: PoseStamped):
+        """
+        moving the hsr through the move_base interface from Toyota
+        :param target_pose: the pose where robot moves to
+        """
         cli = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
 
         cli.wait_for_server()
@@ -1143,8 +1147,7 @@ class GiskardWrapper:
         Now uses Enums via suturo_types.py, which in case of this function acts
         as a list of possible gripping commands. This also makes it possible
         to add gripping forces for specific object types.
-        Thanks for python for introducing something as basic as
-        switch-statements as late as your 3.10 release...
+        :param gripper_state: the state that the gripper shall asume
         """
         if self.is_standalone():
             if gripper_state == gripper_types.OPEN.value:
@@ -1229,6 +1232,10 @@ class GiskardWrapper:
         _gripper_controller.send_goal(goal)
 
     def get_control_mode(self) -> ControlModes:
+        """
+        returns the ControlMode of Giskard
+        :return: ControlModes
+        """
         rep: TriggerResponse = self.get_control_mode_srv.call(TriggerRequest())
         return ControlModes[rep.message]
 
@@ -1250,6 +1257,9 @@ class GiskardWrapper:
                            pointing_axis=pointing_axis)
 
     def continuous_pointing_head(self):
+        """
+        Uses real_time_pointer for continuous tracking of a human_pose.
+        """
         tip_V_pointing_axis: Vector3Stamped = Vector3Stamped()
         tip_V_pointing_axis.header.frame_id = 'head_center_camera_frame'
         tip_V_pointing_axis.vector.z = 1
