@@ -1137,7 +1137,7 @@ class GiskardWrapper:
         if action_state == GoalStatus.SUCCEEDED:
             rospy.loginfo("Navigation Succeeded")
 
-    def change_gripper_state(self, gripper_state):
+    def change_gripper_state(self, gripper_state: str):
         """
         Rework proposal for the gripper,
         Now uses Enums via suturo_types.py, which in case of this function acts
@@ -1164,6 +1164,8 @@ class GiskardWrapper:
                     'hand_motor_joint': 0.6
                 })
                 self.plan_and_execute()
+            else:
+                rospy.logwarn("gripper_state {} not found".format(gripper_state))
         else:
             if gripper_state == gripper_types.OPEN.value:
                 self._move_gripper_force(0.8)
@@ -1173,6 +1175,8 @@ class GiskardWrapper:
 
             elif gripper_state == gripper_types.NEUTRAL.value:
                 self._set_gripper_joint_position(0.5)
+            else:
+                rospy.logwarn("gripper_state {} not found".format(gripper_state))
 
     def _move_gripper_force(self, force: float = 0.8):
         """
