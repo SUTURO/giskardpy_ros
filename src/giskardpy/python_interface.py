@@ -34,7 +34,7 @@ from giskardpy.model.utils import make_world_body_box
 from giskardpy.my_types import goal_parameter
 from giskardpy.utils.utils import position_dict_to_joint_states, convert_ros_message_to_dictionary, \
     replace_prefix_name_with_str
-from giskardpy.suturo_types import gripper_types
+from giskardpy.suturo_types import GripperTypes
 
 class GiskardWrapper:
     last_feedback: MoveFeedback = None
@@ -1122,6 +1122,10 @@ class GiskardWrapper:
                            velocity=velocity)
 
     def move_base(self, target_pose: PoseStamped):
+        """
+        moving the hsr through the move_base interface from Toyota
+        :param target_pose: the pose where robot moves to
+        """
         cli = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
 
         cli.wait_for_server()
@@ -1137,42 +1141,45 @@ class GiskardWrapper:
         if action_state == GoalStatus.SUCCEEDED:
             rospy.loginfo("Navigation Succeeded")
 
-    def change_gripper_state(self, gripper_state):
+    def change_gripper_state(self, gripper_state: str):
         """
         Rework proposal for the gripper,
         Now uses Enums via suturo_types.py, which in case of this function acts
         as a list of possible gripping commands. This also makes it possible
         to add gripping forces for specific object types.
-        Thanks for python for introducing something as basic as
-        switch-statements as late as your 3.10 release...
+        :param gripper_state: the state that the gripper shall asume
         """
         if self.is_standalone():
-            if gripper_state == gripper_types.OPEN:
+            if gripper_state == GripperTypes.OPEN.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 1.2
                 })
                 self.plan_and_execute()
 
-            elif gripper_state == gripper_types.CLOSE:
+            elif gripper_state == GripperTypes.CLOSE.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 0.0
                 })
                 self.plan_and_execute()
 
-            elif gripper_state == gripper_types.NEUTRAL:
+            elif gripper_state == GripperTypes.NEUTRAL.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 0.6
                 })
                 self.plan_and_execute()
+            else:
+                rospy.logwarn("gripper_state {} not found".format(gripper_state))
         else:
-            if gripper_state == gripper_types.OPEN:
+            if gripper_state == GripperTypes.OPEN.value:
                 self._move_gripper_force(0.8)
 
-            elif gripper_state == gripper_types.CLOSE:
+            elif gripper_state == GripperTypes.CLOSE.value:
                 self._move_gripper_force(-0.8)
 
-            elif gripper_state == gripper_types.NEUTRAL:
+            elif gripper_state == GripperTypes.NEUTRAL.value:
                 self._set_gripper_joint_position(0.5)
+            else:
+                rospy.logwarn("gripper_state {} not found".format(gripper_state))
 
     def _move_gripper_force(self, force: float = 0.8):
         """
@@ -1225,6 +1232,10 @@ class GiskardWrapper:
         _gripper_controller.send_goal(goal)
 
     def get_control_mode(self) -> ControlModes:
+        """
+        returns the ControlMode of Giskard
+        :return: ControlModes
+        """
         rep: TriggerResponse = self.get_control_mode_srv.call(TriggerRequest())
         return ControlModes[rep.message]
 
@@ -1239,15 +1250,22 @@ class GiskardWrapper:
         if endless_mode:
             self.set_json_goal(constraint_type='EndlessMode')
 
-        self.set_json_goal(constraint_type='RealTimePointing',
+        self.set_json_goal(constraint_type='RealTimePointingPose',
                            tip_link=tip_link,
                            topic_name=topic_name,
                            root_link=root_link,
                            pointing_axis=pointing_axis)
 
     def continuous_pointing_head(self):
+        """
+        Uses real_time_pointer for continuous tracking of a human_pose.
+        """
         tip_V_pointing_axis: Vector3Stamped = Vector3Stamped()
         tip_V_pointing_axis.header.frame_id = 'head_center_camera_frame'
         tip_V_pointing_axis.vector.z = 1
 
-        self.real_time_pointer(root_link='map', tip_link='head_center_camera_frame', topic_name='human_pose', endless_mode=True, pointing_axis=tip_V_pointing_axis)
+        self.real_time_pointer(root_link='map',
+                               tip_link='head_center_camera_frame',
+                               topic_name='human_pose',
+                               endless_mode=True,
+                               pointing_axis=tip_V_pointing_axis)

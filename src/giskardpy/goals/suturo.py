@@ -1019,7 +1019,7 @@ class TakePose(Goal):
             head_tilt_joint = -0.65
             arm_lift_joint = 0.25
             arm_flex_joint = 0.0
-            arm_roll_joint = -1.5
+            arm_roll_joint = 1.5
             wrist_flex_joint = -1.5
             wrist_roll_joint = 0.0
 
@@ -1071,7 +1071,6 @@ class TakePose(Goal):
             'arm_roll_joint': arm_roll_joint,
             'wrist_flex_joint': wrist_flex_joint,
             'wrist_roll_joint': wrist_roll_joint}
-
         self.goal_state = joint_states
         self.suffix = suffix
 
