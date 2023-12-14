@@ -66,9 +66,9 @@ class RealTimePointingPose(Pointing):
         point_data.header = data.header
         # FIXME: Should be removed after Perception fixed frame_id to be without "/" in front or fixed otherwise
         try:
-            point_data.header.frame_id = data.header.frame_id.replace("/", "")
+            point_data.header.frame_id = point_data.header.frame_id.replace("/", "")
         except:
-            rospy.loginfo("Error, frame_id not set")
+            rospy.loginfo(f'Error, frame_id not set. {data.header.frame_id}, {data}')
             return
         point_data = self.transform_msg(self.root, point_data)
         self.root_P_goal_point = point_data
