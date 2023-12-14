@@ -1250,7 +1250,7 @@ class GiskardWrapper:
         if endless_mode:
             self.set_json_goal(constraint_type='EndlessMode')
 
-        self.set_json_goal(constraint_type='RealTimePointing',
+        self.set_json_goal(constraint_type='RealTimePointingPose',
                            tip_link=tip_link,
                            topic_name=topic_name,
                            root_link=root_link,
