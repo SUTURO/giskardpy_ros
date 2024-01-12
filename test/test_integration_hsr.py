@@ -18,8 +18,8 @@ from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
 import giskardpy.utils.tfwrapper as tf
 
-if 'GITHUB_WORKFLOW' not in os.environ:
-    from giskardpy.goals.suturo import ContextActionModes, ContextTypes
+#if 'GITHUB_WORKFLOW' not in os.environ:
+#    from giskardpy.goals.suturo import ContextActionModes, ContextTypes
 
 
 class HSRTestWrapper(GiskardTestWrapper):
@@ -455,7 +455,7 @@ class TestAddObject:
         zero_pose.set_joint_goal({'arm_flex_joint': -0.7})
         zero_pose.plan_and_execute()
 
-
+# FIXME: SuTuRo-Tests funktionieren mit dem neuen Monitoring nicht. Auf das neue Monitoring umstellen.
 class TestSUTURO:
     def test_sequence_goal(self, zero_pose: HSRTestWrapper):
         motion_sequence = {}

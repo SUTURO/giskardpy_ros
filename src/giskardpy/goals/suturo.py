@@ -17,7 +17,8 @@ import giskardpy.utils.tfwrapper as tf
 from giskardpy import casadi_wrapper as w
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, ForceSensorGoal, NonMotionGoal
+from giskardpy.goals.goal import Goal, ForceSensorGoal, NonMotionGoal
+from giskardpy.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.qp.constraint import EqualityConstraint

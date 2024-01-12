@@ -1,20 +1,15 @@
 from __future__ import division
 
-from typing import Optional, List
 import math
 from typing import Optional, Dict
 
+import giskardpy.casadi_wrapper as cas
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
-from giskardpy.goals.goal import Goal
-from giskardpy.monitors.monitors import ExpressionMonitor
-from giskardpy.tasks.task import WEIGHT_BELOW_CA, WEIGHT_ABOVE_CA, Task
+from giskardpy.goals.goal import Goal, ForceSensorGoal
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.god_map import god_map
-import giskardpy.casadi_wrapper as cas
-from giskardpy.goals.cartesian_goals import CartesianPose
-from giskardpy.goals.goal import Goal, WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA, ForceSensorGoal
-from giskardpy.goals.joint_goals import JointPosition
-from giskardpy import casadi_wrapper as w
+from giskardpy.tasks.task import WEIGHT_ABOVE_CA
+from giskardpy.tasks.task import WEIGHT_BELOW_CA
 
 
 class Open(ForceSensorGoal):
