@@ -1,15 +1,25 @@
 from typing import Dict, Optional, List, Tuple
 
-from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped
+import actionlib
+import rospy
+from actionlib_msgs.msg import GoalStatus
+from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from std_srvs.srv import TriggerRequest, TriggerResponse
+from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
+from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+from trajectory_msgs.msg import JointTrajectoryPoint
 
 from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal
 from giskard_msgs.srv import UpdateWorldResponse, DyeGroupResponse, GetGroupInfoResponse, RegisterGroupResponse
 from giskardpy.goals.cartesian_goals import CartesianPose
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.monitors.joint_monitors import JointGoalReached
+from giskardpy.suturo_types import GripperTypes
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.data_types import goal_parameter
 from giskardpy.python_interface.python_interface import GiskardWrapper
+from giskardpy.tree.control_modes import ControlModes
 
 
 class OldGiskardWrapper(GiskardWrapper):
@@ -851,3 +861,310 @@ class OldGiskardWrapper(GiskardWrapper):
         Resets the world to what it was when Giskard was launched.
         """
         return self.world.clear(timeout=timeout)
+
+    def move_gripper(self,
+                     gripper_state: str):
+
+        self.set_json_goal(constraint_type='MoveGripper',
+                           gripper_state=gripper_state)
+
+    def reaching(self,
+                 context,
+                 object_name: str,
+                 object_shape: str,
+                 goal_pose: Optional[PoseStamped] = None,
+                 object_size: Optional[Vector3] = None,
+                 root_link: str = 'map',
+                 tip_link: str = 'hand_palm_link',
+                 velocity: float = 0.2):
+
+        self.set_json_goal(constraint_type='Reaching',
+                           context=context,
+                           object_name=object_name,
+                           object_shape=object_shape,
+                           goal_pose=goal_pose,
+                           object_size=object_size,
+                           root_link=root_link,
+                           tip_link=tip_link,
+                           velocity=velocity)
+
+    def placing(self,
+                context,
+                goal_pose: PoseStamped,
+                tip_link: str = 'hand_palm_link'):
+
+        self.set_json_goal(constraint_type='Placing',
+                           context=context,
+                           goal_pose=goal_pose,
+                           tip_link=tip_link)
+
+    def vertical_motion(self,
+                        context: str,
+                        distance: float = 0.02,
+                        root_link: str = 'base_link',
+                        tip_link: str = 'hand_palm_link'):
+
+        self.set_json_goal(constraint_type='VerticalMotion',
+                           context=context,
+                           distance=distance,
+                           root_link=root_link,
+                           tip_link=tip_link)
+
+    def retract(self,
+                object_name: str,
+                distance: float = 0.1,
+                reference_frame: str = 'base_link',
+                root_link: str = 'map',
+                tip_link: str = 'base_link',
+                velocity: float = 0.2):
+
+        self.set_json_goal(constraint_type='Retracting',
+                           object_name=object_name,
+                           distance=distance,
+                           reference_frame=reference_frame,
+                           root_link=root_link,
+                           tip_link=tip_link,
+                           velocity=velocity)
+
+    def align_height(self,
+                     context,
+                     object_name: str,
+                     goal_pose: PoseStamped,
+                     object_height: float,
+                     root_link: str = 'map',
+                     tip_link: str = 'hand_gripper_tool_frame'):
+
+        self.set_json_goal(constraint_type='AlignHeight',
+                           context=context,
+                           object_name=object_name,
+                           goal_pose=goal_pose,
+                           object_height=object_height,
+                           root_link=root_link,
+                           tip_link=tip_link)
+
+    def sequence_goal(self,
+                      motion_sequence):
+
+        self.set_json_goal(constraint_type='SequenceGoal',
+                           motion_sequence=motion_sequence)
+
+    def test_goal(self,
+                  goal_name: str,
+                  **kwargs):
+
+        self.set_json_goal(constraint_type=goal_name,
+                           **kwargs)
+
+    def take_pose(self,
+                  pose_keyword: str):
+
+        self.set_json_goal(constraint_type='TakePose',
+                           pose_keyword=pose_keyword)
+
+    def tilting(self,
+                tilt_direction: Optional[str] = None,
+                tilt_angle: Optional[float] = None,
+                tip_link: str = 'wrist_roll_joint',
+                ):
+
+        self.set_json_goal(constraint_type='Tilting',
+                           direction=tilt_direction,
+                           tilt_angle=tilt_angle,
+                           tip_link=tip_link)
+
+    def joint_rotation_continuous(self,
+                                  joint_name: str,
+                                  joint_center: float,
+                                  joint_range: float,
+                                  trajectory_length: float = 20,
+                                  target_speed: float = 1,
+                                  period_length: float = 1.0):
+        self.set_json_goal(constraint_type='JointRotationGoalContinuous',
+                           joint_name=joint_name,
+                           joint_center=joint_center,
+                           joint_range=joint_range,
+                           trajectory_length=trajectory_length,
+                           target_speed=target_speed,
+                           period_length=period_length)
+
+    def mixing(self,
+               mixing_time=20,
+               weight: float = WEIGHT_ABOVE_CA):
+
+        self.set_json_goal(constraint_type='Mixing',
+                           mixing_time=mixing_time,
+                           weight=weight)
+
+    def open_environment(self,
+                         tip_link: str,
+                         environment_link: str,
+                         tip_group: Optional[str] = None,
+                         environment_group: Optional[str] = None,
+                         goal_joint_state: Optional[float] = None,
+                         weight: float = WEIGHT_ABOVE_CA):
+
+        self.set_json_goal(constraint_type='Open',
+                           tip_link=tip_link,
+                           environment_link=environment_link,
+                           tip_group=tip_group,
+                           environment_group=environment_group,
+                           goal_joint_state=goal_joint_state,
+                           weight=weight)
+
+    def push_button(self,
+                    goal_pose,
+                    tip_link,
+                    velocity):
+        self.set_json_goal(constraint_type='PushButton',
+                           goal_pose=goal_pose,
+                           tip_link=tip_link,
+                           velocity=velocity)
+
+    def move_base(self, target_pose: PoseStamped):
+        """
+        moving the hsr through the move_base interface from Toyota
+        :param target_pose: the pose where robot moves to
+        """
+        cli = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
+
+        cli.wait_for_server()
+
+        goal = MoveBaseGoal()
+        goal.target_pose = target_pose
+
+        cli.send_goal(goal)
+
+        cli.wait_for_result()
+
+        action_state = cli.get_state()
+        if action_state == GoalStatus.SUCCEEDED:
+            rospy.loginfo("Navigation Succeeded")
+
+    def change_gripper_state(self, gripper_state: str):
+        """
+        Rework proposal for the gripper,
+        Now uses Enums via suturo_types.py, which in case of this function acts
+        as a list of possible gripping commands. This also makes it possible
+        to add gripping forces for specific object types.
+        :param gripper_state: the state that the gripper shall asume
+        """
+        if self.is_standalone():
+            if gripper_state == GripperTypes.OPEN.value:
+                self.set_joint_goal({
+                    'hand_motor_joint': 1.2
+                })
+                self.plan_and_execute()
+
+            elif gripper_state == GripperTypes.CLOSE.value:
+                self.set_joint_goal({
+                    'hand_motor_joint': 0.0
+                })
+                self.plan_and_execute()
+
+            elif gripper_state == GripperTypes.NEUTRAL.value:
+                self.set_joint_goal({
+                    'hand_motor_joint': 0.6
+                })
+                self.plan_and_execute()
+            else:
+                rospy.logwarn("gripper_state {} not found".format(gripper_state))
+        else:
+            if gripper_state == GripperTypes.OPEN.value:
+                self._move_gripper_force(0.8)
+
+            elif gripper_state == GripperTypes.CLOSE.value:
+                self._move_gripper_force(-0.8)
+
+            elif gripper_state == GripperTypes.NEUTRAL.value:
+                self._set_gripper_joint_position(0.5)
+            else:
+                rospy.logwarn("gripper_state {} not found".format(gripper_state))
+
+    def _move_gripper_force(self, force: float = 0.8):
+        """
+        Closes the gripper with the given force.
+        :param force: force to grasp with should be between 0.2 and 0.8 (N)
+        :return: applied effort
+        """
+        _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
+                                                                   GripperApplyEffortAction)
+
+        try:
+            if not _gripper_apply_force_client.wait_for_server(rospy.Duration(
+                    10)):
+                raise Exception('/hsrb/gripper_controller/grasp does not exist')
+        except Exception as e:
+            rospy.logerr(e)
+            return
+
+        rospy.loginfo("Closing gripper with force: {}".format(force))
+        f = force  # max(min(0.8, force), 0.2)
+        goal = GripperApplyEffortGoal()
+        goal.effort = f
+        _gripper_apply_force_client.send_goal(goal)
+
+    def _set_gripper_joint_position(self, position):
+        """
+        Sets the gripper joint to the given  position
+        :param position: goal position of the joint -0.105 to 1.239 rad
+        :return: error_code of FollowJointTrajectoryResult
+        """
+        _gripper_controller = actionlib.SimpleActionClient('/hsrb/gripper_controller/follow_joint_trajectory',
+                                                           FollowJointTrajectoryAction)
+
+        # Wait for connection
+        try:
+            if not _gripper_controller.wait_for_server(rospy.Duration(10)):
+                raise Exception('/hsrb/gripper_controller/follow_joint_trajectory does not exist')
+        except Exception as e:
+            rospy.logerr(e)
+
+        pos = max(min(1.239, position), -0.105)
+        goal = FollowJointTrajectoryGoal()
+        goal.trajectory.joint_names = [u'hand_motor_joint']
+        p = JointTrajectoryPoint()
+        p.positions = [pos]
+        p.velocities = [0]
+        p.effort = [0.1]
+        p.time_from_start = rospy.Time(1)
+        goal.trajectory.points = [p]
+        _gripper_controller.send_goal(goal)
+
+    def get_control_mode(self) -> ControlModes:
+        """
+        returns the ControlMode of Giskard
+        :return: ControlModes
+        """
+        rep: TriggerResponse = self.get_control_mode_srv.call(TriggerRequest())
+        return ControlModes[rep.message]
+
+    def is_standalone(self) -> bool:
+        return self.get_control_mode() == ControlModes.standalone
+
+    def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis, endless_mode):
+        """
+        Wrapper for RealTimePointing and EndlessMode,
+        which is used for person live-tracking.
+        """
+        if endless_mode:
+            self.set_json_goal(constraint_type='EndlessMode')
+
+        self.set_json_goal(constraint_type='RealTimePointingPose',
+                           tip_link=tip_link,
+                           topic_name=topic_name,
+                           root_link=root_link,
+                           pointing_axis=pointing_axis)
+
+    def continuous_pointing_head(self):
+        """
+        Uses real_time_pointer for continuous tracking of a human_pose.
+        """
+        tip_V_pointing_axis: Vector3Stamped = Vector3Stamped()
+        tip_V_pointing_axis.header.frame_id = 'head_center_camera_frame'
+        tip_V_pointing_axis.vector.z = 1
+
+        self.real_time_pointer(root_link='map',
+                               tip_link='head_center_camera_frame',
+                               topic_name='human_pose',
+                               endless_mode=True,
+                               pointing_axis=tip_V_pointing_axis)
