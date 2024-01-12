@@ -1,38 +1,29 @@
 import traceback
+
 from py_trees import Status
 
 from giskard_msgs.msg import MoveGoal
 from giskardpy.exceptions import InvalidGoalException
 from giskardpy.goals.base_traj_follower import BaseTrajFollower
-from giskardpy.monitors.monitors import TimeAbove, LocalMinimumReached
-from giskardpy.monitors.payload_monitors import EndMotion
 from giskardpy.god_map import god_map
 from giskardpy.model.joints import OmniDrive, DiffDrive
+from giskardpy.monitors.monitors import TimeAbove, LocalMinimumReached
+from giskardpy.monitors.payload_monitors import EndMotion
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
-import os
-import giskardpy.identifier as identifier
-from giskard_msgs.msg import MoveCmd, CollisionEntry
-from giskardpy.configs.collision_avoidance_config import CollisionCheckerLib
-from giskardpy.exceptions import UnknownConstraintException, InvalidGoalException, \
-    ConstraintInitalizationException, GiskardException
-from giskardpy.goals.align_planes import AlignPlanes
-from giskardpy.goals.collision_avoidance import SelfCollisionAvoidance, ExternalCollisionAvoidance
-from giskardpy.goals.goal import Goal
-if 'GITHUB_WORKFLOW' not in os.environ:
-    from giskardpy.goals.suturo import SequenceGoal
-from giskardpy.my_types import PrefixName
-from giskardpy.tree.behaviors.get_goal import GetGoal
+
 from giskardpy.utils.logging import loginfo
 from giskardpy.utils.decorators import catch_and_raise_to_blackboard, record_time
 from giskardpy.utils.utils import get_ros_msgs_constant_name_by_value
 import giskardpy.casadi_wrapper as cas
+
 
 def end_motion_in_move_goal(move_goal: MoveGoal) -> bool:
     for monitor in move_goal.monitors:
         if monitor.monitor_class == EndMotion.__name__:
             return True
     return False
+
 
 class ParseActionGoal(GiskardBehavior):
     @record_time
@@ -64,6 +55,7 @@ class ParseActionGoal(GiskardBehavior):
     def sanity_check(self, move_goal: MoveGoal):
         if not end_motion_in_move_goal(move_goal):
             logging.logwarn(f'No {EndMotion.__name__} monitor.')
+
 
 class SetExecutionMode(GiskardBehavior):
     @record_time

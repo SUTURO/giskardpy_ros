@@ -1,48 +1,27 @@
 from __future__ import annotations
 
 import abc
-import time
 from abc import ABC
-from collections import OrderedDict
-from typing import Optional, Tuple, Dict, List, Union
-from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
+from typing import Dict, List, Union
 
 import controller_manager_msgs
+#import giskardpy.identifier as identifier
 import rospy
 import trajectory_msgs
 from geometry_msgs.msg import Vector3
 
-from giskardpy.god_map_user import GodMapWorshipper
+import giskardpy.casadi_wrapper as cas
+from giskardpy.data_types import PrefixName, Derivatives
+from giskardpy.exceptions import GiskardException
+from giskardpy.exceptions import GoalInitalizationException
+from giskardpy.god_map import god_map
+from giskardpy.model.joints import OneDofJoint
+from giskardpy.monitors.monitors import ExpressionMonitor
+from giskardpy.tasks.task import Task
+from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
 # from giskardpy.tree.garden import success_is_failure
 from giskardpy.utils import logging
-
-from giskardpy.tree.control_modes import ControlModes
-from typing import Optional, Tuple, Dict, List, Union, Callable, TYPE_CHECKING
-
-from giskardpy.god_map_user import GodMapWorshipper
-
-from giskardpy.monitors.monitors import ExpressionMonitor, Monitor
-from giskardpy.god_map import god_map
-from giskardpy.tasks.task import Task
 from giskardpy.utils.utils import string_shortener
-import giskardpy.casadi_wrapper as cas
-from giskardpy.exceptions import GoalInitalizationException
-import giskardpy.identifier as identifier
-import giskardpy.utils.tfwrapper as tf
-from giskard_msgs.msg import Constraint as Constraint_msg
-from giskardpy import casadi_wrapper as w, profile
-from giskardpy.casadi_wrapper import symbol_expr_float
-from giskardpy.exceptions import ConstraintInitalizationException, GiskardException, UnknownGroupException
-from giskardpy.god_map import GodMap
-from giskardpy.model.joints import OneDofJoint
-from giskardpy.data_types import PrefixName, Derivatives
-from giskardpy.qp.constraint import InequalityConstraint, EqualityConstraint, DerivativeInequalityConstraint, \
-    ManipulabilityConstraint
-import giskardpy.casadi_wrapper as cas
-from giskardpy.model.world import WorldTree
-from giskardpy.my_types import my_string, transformable_message, PrefixName, Derivatives
-from giskardpy.qp.constraint import InequalityConstraint, EqualityConstraint, DerivativeInequalityConstraint
-from giskardpy.tree.behaviors.suturo_monitor_force_sensor import MonitorForceSensor
 
 
 class Goal(ABC):
@@ -156,8 +135,8 @@ class Goal(ABC):
         Creates an expressions that computes the total derivative of expr
         """
         return cas.total_derivative(expr,
-                                  self.joint_position_symbols,
-                                  self.joint_velocity_symbols)
+                                    self.joint_position_symbols,
+                                    self.joint_velocity_symbols)
 
     @property
     def joint_position_symbols(self) -> List[Union[cas.Symbol, float]]:
