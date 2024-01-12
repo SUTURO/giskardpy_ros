@@ -40,14 +40,6 @@ class Goal(ABC):
         self.tasks = []
         self.name = name
 
-    def formatted_name(self, quoted: bool = False) -> str:
-        formatted_name = string_shortener(original_str=self.name,
-                                          max_lines=4,
-                                          max_line_length=25)
-        if quoted:
-            return '"' + formatted_name + '"'
-        return formatted_name
-
         self.standard_forward, self.standard_left, self.standard_up = None, None, None
         self.gripper_forward, self.gripper_left, self.gripper_up = None, None, None
         self.base_forward, self.base_left, self.base_up = None, None, None
@@ -83,6 +75,14 @@ class Goal(ABC):
             self.base_up = Vector3(x=0, y=0, z=1)
 
             self.gripper_tool_frame = 'gripper_tool_frame'
+
+    def formatted_name(self, quoted: bool = False) -> str:
+        formatted_name = string_shortener(original_str=self.name,
+                                          max_lines=4,
+                                          max_line_length=25)
+        if quoted:
+            return '"' + formatted_name + '"'
+        return formatted_name
 
     def clean_up(self):
         pass
