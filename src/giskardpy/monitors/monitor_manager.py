@@ -50,8 +50,8 @@ class MonitorManager:
     def __init__(self):
         self.monitors = []
         self.allowed_monitor_types = {}
-        self.allowed_monitor_types.update(get_all_classes_in_package(package_name='giskardpy.monitors',
-                                                                     parent_class=Monitor))
+        for path in god_map.giskard.monitor_package_paths:
+            self.allowed_monitor_types.update(get_all_classes_in_package(path, Monitor))
         self.state_history = []
         self.substitution_values = {}
         self.triggers = {}
@@ -60,11 +60,9 @@ class MonitorManager:
     def evaluate_expression(self, node):
         if isinstance(node, ast.BoolOp):
             if isinstance(node.op, ast.And):
-                return cas.logic_and(self.evaluate_expression(node.values[0]),
-                                     self.evaluate_expression(node.values[1]))
+                return cas.logic_and(*[self.evaluate_expression(x) for x in node.values])
             elif isinstance(node.op, ast.Or):
-                return cas.logic_or(self.evaluate_expression(node.values[0]),
-                                    self.evaluate_expression(node.values[1]))
+                return cas.logic_or(*[self.evaluate_expression(x) for x in node.values])
         elif isinstance(node, ast.UnaryOp):
             if isinstance(node.op, ast.Not):
                 return cas.logic_not(self.evaluate_expression(node.operand))
@@ -123,6 +121,22 @@ class MonitorManager:
                 return monitor
         raise GiskardException('No monitor found.')
 
+    def format_condition(self, condition: cas.Expression) -> str:
+        """
+        Takes a logical expression, replaces the state symbols with monitor names and formats it nicely.
+        """
+        free_symbols = condition.free_symbols()
+        if not free_symbols:
+            return str(cas.is_true(condition))
+        condition = str(condition)
+        state_to_monitor_map = {str(x): f'\'{self.get_monitor_from_state_expr(x).name}\'' for x in free_symbols}
+        state_to_monitor_map['&&'] = '\nand '
+        state_to_monitor_map['||'] = '\nor '
+        state_to_monitor_map['!'] = 'not '
+        for state_str, monitor_name in state_to_monitor_map.items():
+            condition = condition.replace(state_str, monitor_name)
+        return condition
+
     @profile
     def compile_monitor_state_updater(self):
         monitor_state = cas.Expression(self.get_state_expression_symbols())
@@ -158,7 +172,7 @@ class MonitorManager:
             if isinstance(monitor, ExpressionMonitor):
                 monitor.compile()
                 state_f = cas.if_eq(life_cycle_state_symbol, int(TaskState.running),
-                                    if_result=monitor.get_expression(),
+                                    if_result=monitor.expression,
                                     else_result=state_symbol)
             else:
                 state_f = state_symbol  # if payload monitor, copy last state

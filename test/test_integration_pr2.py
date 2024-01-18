@@ -15,8 +15,7 @@ from shape_msgs.msg import SolidPrimitive
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
 import giskardpy.utils.tfwrapper as tf
-from giskard_msgs.msg import MoveResult, WorldBody, CollisionEntry
-from giskard_msgs.srv import UpdateWorldResponse, UpdateWorldRequest
+from giskard_msgs.msg import WorldBody, CollisionEntry, WorldGoal, GiskardError
 from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy.configs.giskard import Giskard
 from giskardpy.configs.iai_robots.pr2 import PR2CollisionAvoidance, PR2StandaloneInterface, WorldWithPR2Config
@@ -162,7 +161,8 @@ class PR2TestWrapper(GiskardTestWrapper):
             giskard = Giskard(world_config=WorldWithPR2Config(drive_joint_name=drive_joint_name),
                               robot_interface_config=PR2StandaloneInterface(drive_joint_name=drive_joint_name),
                               collision_avoidance_config=PR2CollisionAvoidance(drive_joint_name=drive_joint_name),
-                              behavior_tree_config=StandAloneBTConfig(debug_mode=True),
+                              behavior_tree_config=StandAloneBTConfig(debug_mode=True,
+                                                                      max_simulation_hz=100),
                               qp_controller_config=QPControllerConfig())
         super().__init__(giskard)
         self.robot = god_map.world.groups[self.robot_name]
@@ -325,11 +325,8 @@ class TestJointGoals:
             'l_wrist_flex_joint': -0.1,
             'l_wrist_roll_joint': -6.062015047706399,
         }
-        # zero_pose.set_joint_goal(js)
-        # zero_pose.add_joint_goal_monitor('asdf', goal_state=js, threshold=0.005, crucial=False)
         zero_pose.set_joint_goal(goal_state=js)
         zero_pose.allow_all_collisions()
-        # zero_pose.set_json_goal('EnableVelocityTrajectoryTracking', enabled=True)
         zero_pose.plan_and_execute()
 
     def test_joint_goal_projection(self, zero_pose: PR2TestWrapper):
@@ -868,9 +865,10 @@ class TestMonitors:
         kitchen_setup.execute(add_local_minimum_reached=False)
 
     def test_sleep(self, zero_pose: PR2TestWrapper):
+        alternator = zero_pose.monitors.add_alternator()
         sleep1 = zero_pose.monitors.add_sleep(1, name='sleep1')
         print1 = zero_pose.monitors.add_print(message=f'{sleep1} done', start_condition=sleep1)
-        sleep2 = zero_pose.monitors.add_sleep(1.5, name='sleep2', start_condition=print1)
+        sleep2 = zero_pose.monitors.add_sleep(1.5, name='sleep2', start_condition=f'{print1} or not {sleep1}')
         zero_pose.motion_goals.allow_all_collisions()
 
         right_monitor = zero_pose.monitors.add_joint_position(zero_pose.better_pose_right,
@@ -886,15 +884,32 @@ class TestMonitors:
         zero_pose.motion_goals.add_joint_position(zero_pose.better_pose_left,
                                                   name='left pose',
                                                   end_condition=left_monitor)
-        local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=f'{right_monitor} and {left_monitor}')
 
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position.x = 2
+        base_goal.pose.orientation.w = 1
+        base_monitor = zero_pose.monitors.add_cartesian_pose(root_link='map',
+                                                             tip_link='base_footprint',
+                                                             goal_pose=base_goal)
+
+        zero_pose.motion_goals.add_cartesian_pose(root_link='map',
+                                                  tip_link='base_footprint',
+                                                  goal_pose=base_goal,
+                                                  hold_condition=f'not {alternator}',
+                                                  end_condition=base_monitor)
+
+        local_min = zero_pose.monitors.add_local_minimum_reached(stay_true=False)
         end = zero_pose.monitors.add_end_motion(start_condition=' and '.join([local_min,
                                                                               sleep2,
                                                                               right_monitor,
-                                                                              left_monitor]))
+                                                                              left_monitor,
+                                                                              base_monitor]))
         zero_pose.monitors.add_max_trajectory_length(120)
         zero_pose.execute(add_local_minimum_reached=False)
         assert god_map.trajectory.length_in_seconds > 6
+        current_pose = god_map.world.compute_fk_pose(root='map', tip='base_footprint')
+        compare_poses(current_pose.pose, base_goal.pose)
 
     def test_hold_monitors(self, zero_pose: PR2TestWrapper):
         sleep = zero_pose.monitors.add_sleep(0.5)
@@ -999,10 +1014,10 @@ class TestMonitors:
         collision_entry.type = CollisionEntry.AVOID_COLLISION
         collision_entry.distance = -1
 
-        fake_table_setup.avoid_all_collisions(end_condition=monitor1)
+        fake_table_setup.motion_goals.avoid_all_collisions(end_condition=monitor1)
 
-        fake_table_setup.allow_all_collisions(start_condition=monitor1)
-        fake_table_setup.avoid_collision(group1='pr2', group2='pr2', start_condition=monitor1)
+        fake_table_setup.motion_goals.allow_all_collisions(start_condition=monitor1)
+        fake_table_setup.motion_goals.avoid_collision(group1='pr2', group2='pr2', start_condition=monitor1)
         fake_table_setup.monitors.add_end_motion(start_condition=end_monitor)
 
         fake_table_setup.execute(add_local_minimum_reached=False)
@@ -1040,7 +1055,7 @@ class TestConstraints:
     def test_VelocityLimitUnreachableException(self, zero_pose: PR2TestWrapper):
         zero_pose.set_prediction_horizon(prediction_horizon=7)
         zero_pose.set_joint_goal(zero_pose.better_pose)
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.VELOCITY_LIMIT_UNREACHABLE)
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.VELOCITY_LIMIT_UNREACHABLE)
 
     def test_SetPredictionHorizon11(self, zero_pose: PR2TestWrapper):
         default_prediction_horizon = god_map.qp_controller_config.prediction_horizon
@@ -1060,12 +1075,12 @@ class TestConstraints:
         base_goal.pose.orientation.w = 1
         zero_pose.set_max_traj_length(new_length)
         zero_pose.set_cart_goal(base_goal, tip_link='base_footprint', root_link='map')
-        result = zero_pose.plan_and_execute(expected_error_code=MoveResult.MAX_TRAJECTORY_LENGTH)
+        result = zero_pose.plan_and_execute(expected_error_code=GiskardError.MAX_TRAJECTORY_LENGTH)
         dt = god_map.qp_controller_config.sample_period
         np.testing.assert_almost_equal(len(result.trajectory.points) * dt, new_length + dt * 2)
 
         zero_pose.set_cart_goal(base_goal, tip_link='base_footprint', root_link='map')
-        result = zero_pose.plan_and_execute(expected_error_code=MoveResult.MAX_TRAJECTORY_LENGTH)
+        result = zero_pose.plan_and_execute(expected_error_code=GiskardError.MAX_TRAJECTORY_LENGTH)
         dt = god_map.qp_controller_config.sample_period
         assert len(result.trajectory.points) * dt > new_length + 1
 
@@ -1508,6 +1523,10 @@ class TestConstraints:
         goal_angle = np.pi / 4
         handle_frame_id = 'sink_area_dish_washer_door_handle'
         handle_name = 'sink_area_dish_washer_door_handle'
+        kitchen_setup.register_group('dishwasher', root_link_name='sink_area_dish_washer_main',
+                                     root_link_group_name=kitchen_setup.default_env_name)
+        kitchen_setup.register_group('handle', root_link_name=handle_name,
+                                     root_link_group_name=kitchen_setup.default_env_name)
         bar_axis = Vector3Stamped()
         bar_axis.header.frame_id = handle_frame_id
         bar_axis.vector.y = 1
@@ -1587,25 +1606,25 @@ class TestConstraints:
         goal_state = {'r_elbow_flex_joint': -1.0}
         kwargs = {'goal_state': goal_state}
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='jointpos', **kwargs)
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.UNKNOWN_GOAL)
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.UNKNOWN_GOAL)
 
     def test_python_code_in_constraint_type(self, zero_pose: PR2TestWrapper):
         goal_state = {'r_elbow_flex_joint': -1.0}
         kwargs = {'goal_state': goal_state}
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='print("muh")', **kwargs)
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.UNKNOWN_GOAL)
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.UNKNOWN_GOAL)
 
     def test_wrong_params1(self, zero_pose: PR2TestWrapper):
         goal_state = {5432: 'muh'}
         kwargs = {'goal_state': goal_state}
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='JointPositionList', **kwargs)
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.GOAL_INITIALIZATION_ERROR)
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.GOAL_INITIALIZATION_ERROR)
 
     def test_wrong_params2(self, zero_pose: PR2TestWrapper):
         goal_state = {'r_elbow_flex_joint': 'muh'}
         kwargs = {'goal_state': goal_state}
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='JointPositionList', **kwargs)
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.GOAL_INITIALIZATION_ERROR)
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.GOAL_INITIALIZATION_ERROR)
 
     # def test_align_planes2(self, zero_pose: PR2TestWrapper):
     #     # FIXME, what should I do with opposite vectors?
@@ -2066,7 +2085,7 @@ class TestCartGoals:
         zero_pose.set_cart_goal(goal_pose=p,
                                 tip_link='base_footprint',
                                 root_link='map')
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.LOCAL_MINIMUM)
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.LOCAL_MINIMUM)
 
     def test_cart_goal_1eef2(self, zero_pose: PR2TestWrapper):
         # zero_pose.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
@@ -2188,257 +2207,6 @@ class TestCartGoals:
         zero_pose.plan_and_execute()
 
 
-# class TestShaking(object):
-#     def test_wiggle_prismatic_joint_neglectable_shaking(self, kitchen_setup: PR2TestWrapper):
-#         # FIXME
-#         sample_period = kitchen_setup.god_map.get_data(identifier.sample_period)
-#         frequency_range = kitchen_setup.god_map.get_data(identifier.frequency_range)
-#         amplitude_threshold = kitchen_setup.god_map.get_data(identifier.amplitude_threshold)
-#         max_detectable_freq = int(1 / (2 * sample_period))
-#         min_wiggle_frequency = int(frequency_range * max_detectable_freq)
-#         while np.fmod(min_wiggle_frequency, 5.0) != 0.0:
-#             min_wiggle_frequency += 1
-#         distance_between_frequencies = 5
-#
-#         for i, t in enumerate([('torso_lift_joint', 0.05), ('odom_x_joint', 0.5)]):  # max vel: 0.015 and 0.5
-#             for f in range(min_wiggle_frequency, max_detectable_freq, distance_between_frequencies):
-#                 target_freq = float(f)
-#                 joint = t[0]
-#                 goal = t[1]
-#                 kitchen_setup.set_json_goal('JointPositionPrismatic',
-#                                             joint_name=joint,
-#                                             goal=0.0,
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#                 kitchen_setup.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-#                 kitchen_setup.set_json_goal('ShakyJointPositionRevoluteOrPrismatic',
-#                                             joint_name=joint,
-#                                             noise_amplitude=amplitude_threshold - 0.05,
-#                                             goal=goal,
-#                                             frequency=target_freq
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#
-#     def test_wiggle_revolute_joint_neglectable_shaking(self, kitchen_setup: PR2TestWrapper):
-#         # FIXME
-#         sample_period = kitchen_setup.god_map.get_data(identifier.sample_period)
-#         frequency_range = kitchen_setup.god_map.get_data(identifier.frequency_range)
-#         amplitude_threshold = kitchen_setup.god_map.get_data(identifier.amplitude_threshold)
-#         max_detectable_freq = int(1 / (2 * sample_period))
-#         min_wiggle_frequency = int(frequency_range * max_detectable_freq)
-#         while np.fmod(min_wiggle_frequency, 5.0) != 0.0:
-#             min_wiggle_frequency += 1
-#         distance_between_frequencies = 5
-#
-#         for i, joint in enumerate(['r_wrist_flex_joint', 'head_pan_joint']):  # max vel: 1.0 and 0.5
-#             for f in range(min_wiggle_frequency, max_detectable_freq, distance_between_frequencies):
-#                 target_freq = float(f)
-#                 kitchen_setup.set_json_goal('JointPositionRevolute',
-#                                             joint_name=joint,
-#                                             goal=0.0,
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#                 kitchen_setup.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-#                 kitchen_setup.set_json_goal('ShakyJointPositionRevoluteOrPrismatic',
-#                                             joint_name=joint,
-#                                             noise_amplitude=amplitude_threshold - 0.05,
-#                                             goal=-1.0,
-#                                             frequency=target_freq
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#
-#     def test_wiggle_continuous_joint_neglectable_shaking(self, kitchen_setup: PR2TestWrapper):
-#         sample_period = kitchen_setup.god_map.get_data(identifier.sample_period)
-#         frequency_range = kitchen_setup.god_map.get_data(identifier.frequency_range)
-#         amplitude_threshold = kitchen_setup.god_map.get_data(identifier.amplitude_threshold)
-#         max_detectable_freq = int(1 / (2 * sample_period))
-#         min_wiggle_frequency = int(frequency_range * max_detectable_freq)
-#         while np.fmod(min_wiggle_frequency, 5.0) != 0.0:
-#             min_wiggle_frequency += 1
-#         distance_between_frequencies = 5
-#
-#         for continuous_joint in ['l_wrist_roll_joint', 'r_forearm_roll_joint']:  # max vel. of 1.0 and 1.0
-#             for f in range(min_wiggle_frequency, max_detectable_freq, distance_between_frequencies):
-#                 kitchen_setup.set_json_goal('JointPositionContinuous',
-#                                             joint_name=continuous_joint,
-#                                             goal=5.0,
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#                 target_freq = float(f)
-#                 kitchen_setup.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-#                 kitchen_setup.set_json_goal('ShakyJointPositionContinuous',
-#                                             joint_name=continuous_joint,
-#                                             goal=-5.0,
-#                                             noise_amplitude=amplitude_threshold - 0.05,
-#                                             frequency=target_freq
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#
-#     def test_wiggle_revolute_joint_shaking(self, kitchen_setup: PR2TestWrapper):
-#         sample_period = kitchen_setup.god_map.get_data(identifier.sample_period)
-#         frequency_range = kitchen_setup.god_map.get_data(identifier.frequency_range)
-#         max_detectable_freq = int(1 / (2 * sample_period))
-#         min_wiggle_frequency = int(frequency_range * max_detectable_freq)
-#         while np.fmod(min_wiggle_frequency, 5.0) != 0.0:
-#             min_wiggle_frequency += 1
-#         distance_between_frequencies = 5
-#
-#         for joint in ['head_pan_joint', 'r_wrist_flex_joint']:  # max vel: 1.0 and 0.5
-#             for f in range(min_wiggle_frequency, max_detectable_freq, distance_between_frequencies):
-#                 kitchen_setup.set_json_goal('JointPositionRevolute',
-#                                             joint_name=joint,
-#                                             goal=0.5,
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#                 target_freq = float(f)
-#                 kitchen_setup.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-#                 kitchen_setup.set_json_goal('ShakyJointPositionRevoluteOrPrismatic',
-#                                             joint_name=joint,
-#                                             goal=0.0,
-#                                             frequency=target_freq
-#                                             )
-#                 r = kitchen_setup.plan_and_execute(expected_error_codes=[MoveResult.SHAKING])
-#                 assert len(r.error_codes) != 0
-#                 error_code = r.error_codes[0]
-#                 assert error_code == MoveResult.SHAKING
-#                 error_message = r.error_messages[0]
-#                 freqs_str = re.findall("[0-9]+\.[0-9]+ hertz", error_message)
-#                 assert any(map(lambda f_str: float(f_str[:-6]) == target_freq, freqs_str))
-#
-#     def test_wiggle_prismatic_joint_shaking(self, kitchen_setup: PR2TestWrapper):
-#         sample_period = kitchen_setup.god_map.get_data(identifier.sample_period)
-#         frequency_range = kitchen_setup.god_map.get_data(identifier.frequency_range)
-#         max_detectable_freq = int(1 / (2 * sample_period))
-#         min_wiggle_frequency = int(frequency_range * max_detectable_freq)
-#         while np.fmod(min_wiggle_frequency, 5.0) != 0.0:
-#             min_wiggle_frequency += 1
-#         distance_between_frequencies = 5
-#
-#         for joint in ['odom_x_joint']:  # , 'torso_lift_joint']: # max vel: 0.015 and 0.5
-#             for f in range(min_wiggle_frequency, max_detectable_freq, distance_between_frequencies):
-#                 kitchen_setup.set_json_goal('JointPositionPrismatic',
-#                                             joint_name=joint,
-#                                             goal=0.02,
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#                 target_freq = float(f)
-#                 kitchen_setup.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-#                 kitchen_setup.set_json_goal('ShakyJointPositionRevoluteOrPrismatic',
-#                                             joint_name=joint,
-#                                             goal=0.0,
-#                                             frequency=target_freq
-#                                             )
-#                 r = kitchen_setup.plan_and_execute(expected_error_codes=[MoveResult.SHAKING])
-#                 assert len(r.error_codes) != 0
-#                 error_code = r.error_codes[0]
-#                 assert error_code == MoveResult.SHAKING
-#                 error_message = r.error_messages[0]
-#                 freqs_str = re.findall("[0-9]+\.[0-9]+ hertz", error_message)
-#                 assert any(map(lambda f_str: float(f_str[:-6]) == target_freq, freqs_str))
-#
-#     def test_wiggle_continuous_joint_shaking(self, kitchen_setup: PR2TestWrapper):
-#         sample_period = kitchen_setup.god_map.get_data(identifier.sample_period)
-#         frequency_range = kitchen_setup.god_map.get_data(identifier.frequency_range)
-#         max_detectable_freq = int(1 / (2 * sample_period))
-#         min_wiggle_frequency = int(frequency_range * max_detectable_freq)
-#         while np.fmod(min_wiggle_frequency, 5.0) != 0.0:
-#             min_wiggle_frequency += 1
-#         distance_between_frequencies = 5
-#
-#         for continuous_joint in ['l_wrist_roll_joint', 'r_forearm_roll_joint']:  # max vel. of 1.0 and 1.0
-#             for f in range(min_wiggle_frequency, max_detectable_freq, distance_between_frequencies):
-#                 kitchen_setup.set_json_goal('JointPositionContinuous',
-#                                             joint_name=continuous_joint,
-#                                             goal=5.0,
-#                                             )
-#                 kitchen_setup.plan_and_execute()
-#                 target_freq = float(f)
-#                 kitchen_setup.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-#                 kitchen_setup.set_json_goal('ShakyJointPositionContinuous',
-#                                             joint_name=continuous_joint,
-#                                             goal=-5.0,
-#                                             frequency=target_freq
-#                                             )
-#                 r = kitchen_setup.plan_and_execute(expected_error_codes=[MoveResult.SHAKING])
-#                 assert len(r.error_codes) != 0
-#                 error_code = r.error_codes[0]
-#                 assert error_code == MoveResult.SHAKING
-#                 error_message = r.error_messages[0]
-#                 freqs_str = re.findall("[0-9]+\.[0-9]+ hertz", error_message)
-#                 assert any(map(lambda f_str: float(f_str[:-6]) == target_freq, freqs_str))
-#
-#     def test_only_revolute_joint_shaking(self, kitchen_setup: PR2TestWrapper):
-#         sample_period = kitchen_setup.god_map.get_data(identifier.sample_period)
-#         frequency_range = kitchen_setup.god_map.get_data(identifier.frequency_range)
-#         amplitude_threshold = kitchen_setup.god_map.get_data(identifier.amplitude_threshold)
-#         max_detectable_freq = int(1 / (2 * sample_period))
-#         min_wiggle_frequency = int(frequency_range * max_detectable_freq)
-#         while np.fmod(min_wiggle_frequency, 5.0) != 0.0:
-#             min_wiggle_frequency += 1
-#         distance_between_frequencies = 5
-#
-#         for revolute_joint in ['r_wrist_flex_joint', 'head_pan_joint']:  # max vel. of 1.0 and 1.0
-#             for f in range(min_wiggle_frequency, max_detectable_freq, distance_between_frequencies):
-#                 target_freq = float(f)
-#
-#                 if f == min_wiggle_frequency:
-#                     kitchen_setup.set_json_goal('JointPositionRevolute',
-#                                                 joint_name=revolute_joint,
-#                                                 goal=0.0,
-#                                                 )
-#                     kitchen_setup.plan_and_execute()
-#
-#                 kitchen_setup.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-#                 kitchen_setup.set_json_goal('ShakyJointPositionRevoluteOrPrismatic',
-#                                             joint_name=revolute_joint,
-#                                             goal=0.0,
-#                                             noise_amplitude=amplitude_threshold + 0.02,
-#                                             frequency=target_freq
-#                                             )
-#                 r = kitchen_setup.plan_and_execute(expected_error_codes=[MoveResult.SHAKING])
-#                 assert len(r.error_codes) != 0
-#                 error_code = r.error_codes[0]
-#                 assert error_code == MoveResult.SHAKING
-#                 error_message = r.error_messages[0]
-#                 freqs_str = re.findall("[0-9]+\.[0-9]+ hertz", error_message)
-#                 assert any(map(lambda f_str: float(f_str[:-6]) == target_freq, freqs_str))
-#
-#     def test_only_revolute_joint_neglectable_shaking(self, kitchen_setup: PR2TestWrapper):
-#         # FIXME
-#         sample_period = kitchen_setup.god_map.get_data(identifier.sample_period)
-#         frequency_range = kitchen_setup.god_map.get_data(identifier.frequency_range)
-#         amplitude_threshold = kitchen_setup.god_map.get_data(identifier.amplitude_threshold)
-#         max_detectable_freq = int(1 / (2 * sample_period))
-#         min_wiggle_frequency = int(frequency_range * max_detectable_freq)
-#         while np.fmod(min_wiggle_frequency, 5.0) != 0.0:
-#             min_wiggle_frequency += 1
-#         distance_between_frequencies = 5
-#
-#         for revolute_joint in ['r_wrist_flex_joint', 'head_pan_joint']:  # max vel. of 1.0 and 0.5
-#             for f in range(min_wiggle_frequency, max_detectable_freq, distance_between_frequencies):
-#                 target_freq = float(f)
-#                 if f == min_wiggle_frequency:
-#                     kitchen_setup.set_json_goal('JointPositionRevolute',
-#                                                 joint_name=revolute_joint,
-#                                                 goal=0.0,
-#                                                 )
-#                     kitchen_setup.plan_and_execute()
-#                 kitchen_setup.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-#                 kitchen_setup.set_json_goal('ShakyJointPositionRevoluteOrPrismatic',
-#                                             joint_name=revolute_joint,
-#                                             goal=0.0,
-#                                             noise_amplitude=amplitude_threshold - 0.02,
-#                                             frequency=target_freq
-#                                             )
-#                 r = kitchen_setup.plan_and_execute()
-#                 if any(map(lambda c: c == MoveResult.SHAKING, r.error_codes)):
-#                     error_message = r.error_messages[0]
-#                     freqs_str = re.findall("[0-9]+\.[0-9]+ hertz", error_message)
-#                     assert all(map(lambda f_str: float(f_str[:-6]) != target_freq, freqs_str))
-#                 else:
-#                     assert True
-
-
 class TestWorldManipulation:
 
     def test_save_graph_pdf(self, kitchen_setup):
@@ -2548,7 +2316,7 @@ class TestWorldManipulation:
         p.pose.orientation = Quaternion(0.0, 0.0, 0.47942554, 0.87758256)
         zero_pose.add_box_to_world(object_name, size=(1, 1, 1), pose=p)
         zero_pose.add_box_to_world(object_name, size=(1, 1, 1), pose=p,
-                                   expected_error_code=UpdateWorldResponse.DUPLICATE_GROUP_ERROR)
+                                   expected_error_code=GiskardError.DUPLICATE_NAME)
 
     def test_add_remove_sphere(self, zero_pose: PR2TestWrapper):
         object_name = 'muh'
@@ -2622,21 +2390,20 @@ class TestWorldManipulation:
         p.pose.position = Point(0.1, 0, 0)
         p.pose.orientation = Quaternion(0, 0, 0, 1)
         zero_pose.add_mesh_to_world(object_name, mesh='package://giskardpy/test/urdfs/meshes/muh.obj', pose=p,
-                                    expected_error_code=UpdateWorldResponse.CORRUPT_MESH_ERROR)
+                                    expected_error_code=GiskardError.CORRUPT_MESH)
 
     def test_add_attach_detach_remove_add(self, zero_pose: PR2TestWrapper):
-        timeout = 1
         object_name = 'muh'
         p = PoseStamped()
         p.header.frame_id = 'map'
         p.pose.position = Point(1.2, 0, 1.6)
         p.pose.orientation = Quaternion(0.0, 0.0, 0.47942554, 0.87758256)
-        zero_pose.add_box_to_world(object_name, size=(1, 1, 1), pose=p, timeout=timeout)
+        zero_pose.add_box_to_world(object_name, size=(1, 1, 1), pose=p)
         internal_object_name = god_map.world.search_for_link_name(object_name)
-        zero_pose.update_parent_link_of_group(object_name, parent_link=zero_pose.r_tip, timeout=timeout)
-        zero_pose.detach_group(object_name, timeout=timeout)
-        zero_pose.remove_group(object_name, timeout=timeout)
-        zero_pose.add_box_to_world(object_name, size=(1, 1, 1), pose=p, timeout=timeout)
+        zero_pose.update_parent_link_of_group(object_name, parent_link=zero_pose.r_tip)
+        zero_pose.detach_group(object_name)
+        zero_pose.remove_group(object_name)
+        zero_pose.add_box_to_world(object_name, size=(1, 1, 1), pose=p)
 
     def test_attach_to_kitchen(self, kitchen_setup: PR2TestWrapper):
         object_name = 'muh'
@@ -2677,7 +2444,7 @@ class TestWorldManipulation:
         p.pose.orientation = Quaternion(0.0, 0.0, 0.47942554, 0.87758256)
         zero_pose.add_box_to_world(group_name, size=(1, 1, 1), pose=p)
         p.pose.position = Point(1, 0, 0)
-        zero_pose.update_group_pose('asdf', p, expected_error_code=UpdateWorldResponse.UNKNOWN_GROUP_ERROR)
+        zero_pose.update_group_pose('asdf', p, expected_error_code=GiskardError.UNKNOWN_GROUP)
         zero_pose.update_group_pose(group_name, p)
 
     def test_update_group_pose2(self, zero_pose: PR2TestWrapper):
@@ -2688,7 +2455,7 @@ class TestWorldManipulation:
         p.pose.orientation = Quaternion(0.0, 0.0, 0.47942554, 0.87758256)
         zero_pose.add_box_to_world(group_name, size=(1, 1, 1), pose=p, parent_link='r_gripper_tool_frame')
         p.pose.position = Point(1, 0, 0)
-        zero_pose.update_group_pose('asdf', p, expected_error_code=UpdateWorldResponse.UNKNOWN_GROUP_ERROR)
+        zero_pose.update_group_pose('asdf', p, expected_error_code=GiskardError.UNKNOWN_GROUP)
         zero_pose.update_group_pose(group_name, p)
         zero_pose.set_joint_goal(zero_pose.better_pose)
         zero_pose.allow_all_collisions()
@@ -2726,13 +2493,13 @@ class TestWorldManipulation:
                                    size=(0.1, 0.02, 0.02),
                                    pose=p,
                                    parent_link='muh',
-                                   expected_error_code=UpdateWorldResponse.UNKNOWN_LINK_ERROR)
+                                   expected_error_code=GiskardError.UNKNOWN_LINK)
 
     def test_reattach_unknown_object(self, zero_pose: PR2TestWrapper):
         zero_pose.update_parent_link_of_group('muh',
                                               parent_link='',
                                               parent_link_group='',
-                                              expected_response=UpdateWorldResponse.UNKNOWN_GROUP_ERROR)
+                                              expected_response=GiskardError.UNKNOWN_GROUP)
 
     def test_add_remove_box(self, zero_pose: PR2TestWrapper):
         object_name = 'muh'
@@ -2746,37 +2513,49 @@ class TestWorldManipulation:
         zero_pose.remove_group(object_name)
 
     def test_invalid_update_world(self, zero_pose: PR2TestWrapper):
-        req = UpdateWorldRequest()
-        req.timeout = 500
+        req = WorldGoal()
         req.body = WorldBody()
         req.pose = PoseStamped()
         req.parent_link = zero_pose.r_tip
         req.operation = 42
-        assert zero_pose.world._update_world_srv.call(req).error_codes == UpdateWorldResponse.INVALID_OPERATION
+        assert zero_pose.world._send_goal_and_wait(req).error.code == GiskardError.INVALID_WORLD_OPERATION
 
     def test_remove_unkown_group(self, zero_pose: PR2TestWrapper):
-        zero_pose.remove_group('muh', expected_response=UpdateWorldResponse.UNKNOWN_GROUP_ERROR)
+        zero_pose.remove_group('muh', expected_response=GiskardError.UNKNOWN_GROUP)
 
     def test_corrupt_shape_error(self, zero_pose: PR2TestWrapper):
         p = PoseStamped()
         p.header.frame_id = 'base_link'
-        req = UpdateWorldRequest()
+        req = WorldGoal()
         req.body = WorldBody(type=WorldBody.PRIMITIVE_BODY,
                              shape=SolidPrimitive(type=42))
         req.pose = PoseStamped()
         req.pose.header.frame_id = 'map'
         req.parent_link = 'base_link'
-        req.operation = UpdateWorldRequest.ADD
-        assert zero_pose.world._update_world_srv.call(req).error_codes == UpdateWorldResponse.CORRUPT_SHAPE_ERROR
+        req.operation = WorldGoal.ADD
+        assert zero_pose.world._send_goal_and_wait(req).error.code == GiskardError.CORRUPT_SHAPE
+
+    def test_busy(self, zero_pose: PR2TestWrapper):
+        p = PoseStamped()
+        p.header.frame_id = 'base_link'
+        req = WorldGoal()
+        req.body = WorldBody(type=WorldBody.PRIMITIVE_BODY,
+                             shape=SolidPrimitive(type=42))
+        req.pose = PoseStamped()
+        req.pose.header.frame_id = 'map'
+        req.parent_link = 'base_link'
+        req.operation = WorldGoal.ADD
+        zero_pose.world._client.send_goal_and_wait(req)
+        zero_pose.world._client.send_goal_and_wait(req)
 
     def test_tf_error(self, zero_pose: PR2TestWrapper):
-        req = UpdateWorldRequest()
+        req = WorldGoal()
         req.body = WorldBody(type=WorldBody.PRIMITIVE_BODY,
                              shape=SolidPrimitive(type=1))
         req.pose = PoseStamped()
         req.parent_link = 'base_link'
-        req.operation = UpdateWorldRequest.ADD
-        assert zero_pose.world._update_world_srv.call(req).error_codes == UpdateWorldResponse.TF_ERROR
+        req.operation = WorldGoal.ADD
+        assert zero_pose.world._send_goal_and_wait(req).error.code == GiskardError.TRANSFORM_ERROR
 
     def test_unsupported_options(self, kitchen_setup: PR2TestWrapper):
         wb = WorldBody()
@@ -2787,12 +2566,12 @@ class TestWorldManipulation:
         pose.pose.orientation = Quaternion(w=1)
         wb.type = WorldBody.URDF_BODY
 
-        req = UpdateWorldRequest()
+        req = WorldGoal()
         req.body = wb
         req.pose = pose
         req.parent_link = 'base_link'
-        req.operation = UpdateWorldRequest.ADD
-        assert kitchen_setup.world._update_world_srv.call(req).error_codes == UpdateWorldResponse.CORRUPT_URDF_ERROR
+        req.operation = WorldGoal.ADD
+        assert kitchen_setup.world._send_goal_and_wait(req).error.code == GiskardError.CORRUPT_URDF
 
 
 class TestSelfCollisionAvoidance:
@@ -2850,6 +2629,26 @@ class TestSelfCollisionAvoidance:
         zero_pose.check_cpi_geq(zero_pose.get_l_gripper_links(), 0.048)
         zero_pose.check_cpi_geq([attached_link_name], 0.048)
         zero_pose.detach_group(attached_link_name)
+
+    def test_box_overlapping_with_gripper(self, better_pose: PR2TestWrapper):
+        box_name = 'muh'
+        box_pose = PoseStamped()
+        box_pose.header.frame_id = 'r_gripper_tool_frame'
+        box_pose.pose.orientation.w = 1
+        better_pose.add_box(name=box_name,
+                            size=(0.2, 0.1, 0.1),
+                            pose=box_pose,
+                            parent_link='r_gripper_tool_frame')
+
+        rospy.loginfo('Set a Cartesian goal for the box')
+        box_goal = PoseStamped()
+        box_goal.header.frame_id = box_name
+        box_goal.pose.position.x = -0.5
+        box_goal.pose.orientation.w = 1
+        better_pose.set_cart_goal(goal_pose=box_goal,
+                                  tip_link=box_name,
+                                  root_link='map')
+        better_pose.execute()
 
     def test_allow_self_collision_in_arm(self, zero_pose: PR2TestWrapper):
         goal_js = {
@@ -2996,7 +2795,7 @@ class TestSelfCollisionAvoidance:
         zero_pose.set_cart_goal(p, zero_pose.l_tip, 'base_footprint')
         zero_pose.allow_all_collisions()
         zero_pose.execute()
-        zero_pose.execute(expected_error_code=MoveResult.SELF_COLLISION_VIOLATED)
+        zero_pose.execute(expected_error_code=GiskardError.SELF_COLLISION_VIOLATED)
 
 
 class TestCollisionAvoidanceGoals:
@@ -3094,15 +2893,15 @@ class TestCollisionAvoidanceGoals:
         pose.pose.position = Point(2, 0, 0)
         pose.pose.orientation = Quaternion(w=1)
         kitchen_setup.teleport_base(pose)
-        kitchen_setup.plan_and_execute(expected_error_code=MoveResult.HARD_CONSTRAINTS_VIOLATED)
+        kitchen_setup.plan_and_execute(expected_error_code=GiskardError.HARD_CONSTRAINTS_VIOLATED)
 
     def test_unknown_group1(self, box_setup: PR2TestWrapper):
         box_setup.avoid_collision(min_distance=0.05, group1='muh')
-        box_setup.plan_and_execute(MoveResult.UNKNOWN_GROUP)
+        box_setup.plan_and_execute(GiskardError.UNKNOWN_GROUP)
 
     def test_unknown_group2(self, box_setup: PR2TestWrapper):
         box_setup.avoid_collision(group2='muh')
-        box_setup.plan_and_execute(MoveResult.UNKNOWN_GROUP)
+        box_setup.plan_and_execute(GiskardError.UNKNOWN_GROUP)
 
     def test_base_link_in_collision(self, zero_pose: PR2TestWrapper):
         zero_pose.allow_self_collision()

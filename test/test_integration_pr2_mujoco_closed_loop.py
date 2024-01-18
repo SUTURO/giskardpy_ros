@@ -11,11 +11,11 @@ from std_srvs.srv import Trigger
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
 import giskardpy.utils.tfwrapper as tf
-from giskard_msgs.msg import MoveResult, MoveGoal
+from giskard_msgs.msg import MoveResult, MoveGoal, GiskardError
 from giskardpy.configs.behavior_tree_config import ClosedLoopBTConfig
 from giskardpy.configs.giskard import Giskard
 from giskardpy.configs.iai_robots.pr2 import PR2CollisionAvoidance, PR2VelocityMujocoInterface, WorldWithPR2Config
-from giskardpy.configs.qp_controller_config import QPControllerConfig
+from giskardpy.configs.qp_controller_config import QPControllerConfig, SupportedQPSolver
 from giskardpy.data_types import JointStates
 from giskardpy.god_map import god_map
 from giskardpy.tasks.task import WEIGHT_BELOW_CA
@@ -60,7 +60,7 @@ class PR2TestWrapperMujoco(PR2TestWrapper):
                           collision_avoidance_config=PR2CollisionAvoidance(),
                           robot_interface_config=PR2VelocityMujocoInterface(),
                           behavior_tree_config=ClosedLoopBTConfig(debug_mode=True),
-                          qp_controller_config=QPControllerConfig())
+                          qp_controller_config=QPControllerConfig(qp_solver=SupportedQPSolver.gurobi))
         super().__init__(giskard)
 
     def reset_base(self):
@@ -78,7 +78,7 @@ class PR2TestWrapperMujoco(PR2TestWrapper):
         self.move_base(goal_pose)
 
     def reset(self):
-        # self.mujoco_reset()
+        self.mujoco_reset()
         super().reset()
 
 
@@ -216,7 +216,7 @@ class TestMoveBaseGoals:
         #                         laser_topic_name='/laser',
         #                         height_for_camera_target=1.5)
         # zero_pose.allow_all_collisions()
-        # zero_pose.plan_and_execute(expected_error_codes=[MoveResult.PREEMPTED], stop_after=10)
+        # zero_pose.plan_and_execute(expected_error_codes=[GiskardError.PREEMPTED], stop_after=10)
         #
         # zero_pose.set_json_goal('CarryMyBullshit',
         #                         camera_link='head_mount_kinect_rgb_optical_frame',
@@ -224,7 +224,7 @@ class TestMoveBaseGoals:
         #                         clear_path=True,
         #                         height_for_camera_target=1.5)
         # zero_pose.allow_all_collisions()
-        # zero_pose.plan_and_execute(expected_error_codes=[MoveResult.PREEMPTED], stop_after=10)
+        # zero_pose.plan_and_execute(expected_error_codes=[GiskardError.PREEMPTED], stop_after=10)
 
         zero_pose.set_json_goal('CarryMyBullshit',
                                 camera_link='head_mount_kinect_rgb_optical_frame',
@@ -232,15 +232,15 @@ class TestMoveBaseGoals:
                                 laser_frame_id='base_laser_link',
                                 height_for_camera_target=1.5)
         zero_pose.allow_all_collisions()
-        # zero_pose.plan_and_execute(expected_error_codes=[MoveResult.PREEMPTED], stop_after=30)
-        zero_pose.plan_and_execute(expected_error_codes=[MoveResult.ERROR])
+        # zero_pose.plan_and_execute(expected_error_codes=[GiskardError.PREEMPTED], stop_after=30)
+        zero_pose.plan_and_execute(expected_error_codes=[GiskardError.ERROR])
 
         # zero_pose.set_json_goal('CarryMyBullshit',
         #                         camera_link='head_mount_kinect_rgb_optical_frame',
         #                         laser_topic_name='/laser',
         #                         drive_back=True)
         # zero_pose.allow_all_collisions()
-        # zero_pose.plan_and_execute(expected_error_codes=[MoveResult.PREEMPTED], stop_after=10)
+        # zero_pose.plan_and_execute(expected_error_codes=[GiskardError.PREEMPTED], stop_after=10)
 
         zero_pose.set_json_goal('CarryMyBullshit',
                                 camera_link='head_mount_kinect_rgb_optical_frame',
@@ -378,11 +378,11 @@ class TestConstraints:
     def test_SetSeedConfiguration_execute(self, zero_pose: PR2TestWrapper):
         zero_pose.set_seed_configuration(seed_configuration=zero_pose.better_pose)
         zero_pose.set_joint_goal(zero_pose.default_pose)
-        zero_pose.execute(expected_error_code=MoveResult.CONSTRAINT_INITIALIZATION_ERROR)
+        zero_pose.execute(expected_error_code=GiskardError.GOAL_INITIALIZATION_ERROR)
 
     def test_SetSeedConfiguration_execute2(self, zero_pose: PR2TestWrapper):
         zero_pose.set_seed_configuration(seed_configuration=zero_pose.better_pose)
-        zero_pose.execute(expected_error_code=MoveResult.CONSTRAINT_INITIALIZATION_ERROR)
+        zero_pose.execute(expected_error_code=GiskardError.CONSTRAINT_INITIALIZATION_ERROR)
 
     def test_SetSeedConfiguration_project(self, zero_pose: PR2TestWrapper):
         zero_pose.set_seed_configuration(seed_configuration=zero_pose.better_pose)
@@ -549,7 +549,7 @@ class TestActionServerEvents:
         p.pose.orientation = Quaternion(0, 0, 0, 1)
         zero_pose.set_cart_goal(goal_pose=p, tip_link='base_footprint', root_link='map')
         zero_pose.allow_all_collisions()
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.PREEMPTED, stop_after=1)
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.PREEMPTED, stop_after=1)
 
     def test_interrupt2(self, zero_pose: PR2TestWrapper):
         p = PoseStamped()
@@ -558,29 +558,15 @@ class TestActionServerEvents:
         p.pose.orientation = Quaternion(0, 0, 0, 1)
         zero_pose.set_cart_goal(goal_pose=p, tip_link='base_footprint', root_link='map')
         zero_pose.allow_all_collisions()
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.PREEMPTED, stop_after=6)
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.PREEMPTED, stop_after=6)
 
     def test_undefined_type(self, zero_pose: PR2TestWrapper):
         zero_pose.allow_all_collisions()
-        zero_pose.send_goal(goal_type=MoveGoal.UNDEFINED, expected_error_code=MoveResult.INVALID_GOAL)
+        zero_pose.send_goal(goal_type=MoveGoal.UNDEFINED, expected_error_code=GiskardError.INVALID_GOAL)
 
     def test_empty_goal(self, zero_pose: PR2TestWrapper):
         zero_pose.cmd_seq = []
-        zero_pose.plan_and_execute(expected_error_code=MoveResult.INVALID_GOAL)
-
-
-# kernprof -lv py.test -s test/test_integration_pr2.py
-# time: [1-9][1-9]*.[1-9]* s
-# import pytest
-# pytest.main(['-s', __file__ + '::TestJointGoals::test_joint_goal2'])
-# pytest.main(['-s', __file__ + '::TestConstraints::test_open_dishwasher_apartment'])
-# pytest.main(['-s', __file__ + '::TestConstraints::test_bowl_and_cup'])
-# pytest.main(['-s', __file__ + '::TestCollisionAvoidanceGoals::test_avoid_collision_go_around_corner'])
-# pytest.main(['-s', __file__ + '::TestCollisionAvoidanceGoals::test_avoid_collision_box_between_boxes'])
-# pytest.main(['-s', __file__ + '::TestCollisionAvoidanceGoals::test_avoid_self_collision'])
-# pytest.main(['-s', __file__ + '::TestCollisionAvoidanceGoals::test_avoid_collision_at_kitchen_corner'])
-# pytest.main(['-s', __file__ + '::TestWayPoints::test_waypoints2'])
-# pytest.main(['-s', __file__ + '::TestCartGoals::test_keep_position3'])
+        zero_pose.plan_and_execute(expected_error_code=GiskardError.INVALID_GOAL)
 
 
 class TestManipulability:
@@ -593,7 +579,19 @@ class TestManipulability:
         zero_pose.allow_all_collisions()
         zero_pose.set_cart_goal(p, zero_pose.r_tip, 'map')
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=MaxManipulability.__name__,
-                                  root_link='torso_lift_link',
-                                  tip_link='r_gripper_tool_frame'
-                                  )
+                                               root_link='torso_lift_link',
+                                               tip_link='r_gripper_tool_frame')
         zero_pose.plan_and_execute()
+
+# kernprof -lv py.test -s test/test_integration_pr2.py
+# time: [1-9][1-9]*.[1-9]* s
+# import pytest
+# pytest.main(['-s', __file__ + '::TestJointGoals::test_joint_goal'])
+# pytest.main(['-s', __file__ + '::TestConstraints::test_open_dishwasher_apartment'])
+# pytest.main(['-s', __file__ + '::TestConstraints::test_bowl_and_cup'])
+# pytest.main(['-s', __file__ + '::TestCollisionAvoidanceGoals::test_avoid_collision_go_around_corner'])
+# pytest.main(['-s', __file__ + '::TestCollisionAvoidanceGoals::test_avoid_collision_box_between_boxes'])
+# pytest.main(['-s', __file__ + '::TestCollisionAvoidanceGoals::test_avoid_self_collision'])
+# pytest.main(['-s', __file__ + '::TestCollisionAvoidanceGoals::test_avoid_collision_at_kitchen_corner'])
+# pytest.main(['-s', __file__ + '::TestWayPoints::test_waypoints2'])
+# pytest.main(['-s', __file__ + '::TestCartGoals::test_keep_position3'])

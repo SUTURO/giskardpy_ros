@@ -183,12 +183,7 @@ class NonMotionGoal(Goal):
     """
     Inherit from this goal, if the goal does not add any constraints.
     """
-
-    def make_constraints(self):
-        pass
-
-    def _task_sanity_check(self):
-        pass
+    pass
 
 
 class ForceSensorGoal(Goal):

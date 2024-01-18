@@ -165,12 +165,12 @@ catkin_install_python(PROGRAMS
 	scripts/tools/collision_matrix_tool.py
 	scripts/iai_robots/boxy/boxy_standalone.py
 	scripts/iai_robots/donbot/donbot.py
-	scripts/iai_robots/donbot/donbot_real_time.py
 	scripts/iai_robots/donbot/donbot_standalone.py
 	scripts/iai_robots/hsr/hsr_standalone.py
 	scripts/iai_robots/hsr/iai_hsr.py
 	scripts/iai_robots/hsr/iai_hsr_real_time.py
 	scripts/iai_robots/pr2/iai_pr2.py
+	scripts/iai_robots/pr2/pr2_mujoco.py
 	scripts/iai_robots/pr2/pr2_standalone.py
 	scripts/iai_robots/stretch/stretch_standalone.py
 	scripts/iai_robots/tiago/tiago_standalone.py
@@ -184,6 +184,7 @@ catkin_install_python(PROGRAMS
 	scripts/tools/move_base_simple_goal_diff_drive.py
 	scripts/tools/print_joint_state.py
 	scripts/examples/python_interface_example.py
+	scripts/examples/old_python_interface_example.py
 	scripts/upload_env.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 

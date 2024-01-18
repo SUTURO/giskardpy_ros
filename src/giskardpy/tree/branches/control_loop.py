@@ -1,3 +1,5 @@
+from typing import Optional
+
 from giskardpy.god_map import god_map
 from giskardpy.tree.behaviors.collision_checker import CollisionChecker
 from giskardpy.tree.behaviors.evaluate_debug_expressions import EvaluateDebugExpressions
@@ -31,8 +33,9 @@ class ControlLoop(AsyncBehavior):
     send_controls: SendControls
     log_traj: LogTrajPlugin
 
-    def __init__(self, name: str = 'control_loop', log_traj: bool = True):
-        super().__init__(name)
+    def __init__(self, name: str = 'control_loop', log_traj: bool = True, max_hz: Optional[float] = None):
+        name = f'{name}\nmax_hz: {max_hz}'
+        super().__init__(name, max_hz=max_hz)
         self.publish_state = success_is_running(PublishState)('publish state 2')
         self.projection_synchronization = success_is_running(Synchronization)()
         self.check_monitors = CheckMonitors()
@@ -45,7 +48,7 @@ class ControlLoop(AsyncBehavior):
         self.send_controls = success_is_running(SendControls)()
         self.closed_loop_synchronization = success_is_running(Synchronization)()
 
-        self.add_child(failure_is_running(GoalCanceled)('goal canceled', god_map.giskard.action_server_name))
+        self.add_child(failure_is_running(GoalCanceled)(god_map.move_action_server))
 
         if god_map.is_collision_checking_enabled():
             self.add_child(CollisionChecker('collision checker'))

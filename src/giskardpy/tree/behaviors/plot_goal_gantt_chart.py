@@ -32,7 +32,7 @@ class PlotGanttChart(GiskardBehavior):
         num_tasks = task_plot_filter.tolist().count(True)
         num_bars = num_monitors + num_tasks
 
-        figure_height = num_bars * 0.3
+        figure_height = 0.7 + num_bars * 0.19
         plt.figure(figsize=(god_map.time * 0.25 + 5, figure_height))
 
         self.plot_history(task_history, tasks, task_plot_filter)
@@ -105,7 +105,7 @@ class PlotGanttChart(GiskardBehavior):
         try:
             goals = list(god_map.motion_goal_manager.motion_goals.values())
             monitors = god_map.monitor_manager.monitors
-            file_name = god_map.giskard.tmp_folder + f'gantt_charts/goal_{god_map.goal_id}.pdf'
+            file_name = god_map.giskard.tmp_folder + f'gantt_charts/goal_{god_map.move_action_server.goal_id}.pdf'
             self.plot_gantt_chart(goals, monitors, file_name)
         except Exception as e:
             logging.logwarn(f'Failed to create goal gantt chart: {e}.')
