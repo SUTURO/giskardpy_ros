@@ -5,6 +5,8 @@ import rospy
 from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+
+from giskardpy.god_map import god_map
 from std_srvs.srv import TriggerRequest, TriggerResponse
 from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
 from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
@@ -651,11 +653,11 @@ class OldGiskardWrapper(GiskardWrapper):
         :param parent_link_group: Name of the group in which Giskard will search for parent_link
         :return: Response message of the service call
         """
-        return self.world.add_box(name=name,
-                                  size=size,
-                                  pose=pose,
-                                  parent_link=parent_link,
-                                  parent_link_group=parent_link_group)
+        return god_map.world.add_box(name=name,
+                                     size=size,
+                                     pose=pose,
+                                     parent_link=parent_link,
+                                     parent_link_group=parent_link_group)
 
     def add_sphere(self,
                    name: str,
@@ -666,11 +668,11 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         See add_box.
         """
-        return self.world.add_sphere(name=name,
-                                     radius=radius,
-                                     pose=pose,
-                                     parent_link=parent_link,
-                                     parent_link_group=parent_link_group)
+        return god_map.world.add_sphere(name=name,
+                                        radius=radius,
+                                        pose=pose,
+                                        parent_link=parent_link,
+                                        parent_link_group=parent_link_group)
 
     def add_mesh(self,
                  name: str,
@@ -684,12 +686,12 @@ class OldGiskardWrapper(GiskardWrapper):
         :param mesh: path to the mesh location, can be ros package path, e.g.,
                         package://giskardpy/test/urdfs/meshes/bowl_21.obj
         """
-        return self.world.add_mesh(name=name,
-                                   mesh=mesh,
-                                   scale=scale,
-                                   pose=pose,
-                                   parent_link=parent_link,
-                                   parent_link_group=parent_link_group)
+        return god_map.world.add_mesh(name=name,
+                                      mesh=mesh,
+                                      scale=scale,
+                                      pose=pose,
+                                      parent_link=parent_link,
+                                      parent_link_group=parent_link_group)
 
     def add_cylinder(self,
                      name: str,
@@ -701,19 +703,19 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         See add_box.
         """
-        return self.world.add_cylinder(name=name,
-                                       height=height,
-                                       radius=radius,
-                                       pose=pose,
-                                       parent_link=parent_link,
-                                       parent_link_group=parent_link_group)
+        return god_map.world.add_cylinder(name=name,
+                                          height=height,
+                                          radius=radius,
+                                          pose=pose,
+                                          parent_link=parent_link,
+                                          parent_link_group=parent_link_group)
 
     def remove_group(self, name: str) -> WorldResult:
         """
         Removes a group and all links and joints it contains from the world.
         Be careful, you can remove parts of the robot like that.
         """
-        return self.world.remove_group(name=name)
+        return god_map.world.remove_group(name=name)
 
     def update_parent_link_of_group(self,
                                     name: str,
@@ -727,15 +729,15 @@ class OldGiskardWrapper(GiskardWrapper):
         :param parent_link_group: if parent_link is not unique, search in this group for matches.
         :return: result message
         """
-        return self.world.update_parent_link_of_group(name=name,
-                                                      parent_link=parent_link,
-                                                      parent_link_group=parent_link_group)
+        return god_map.world.update_parent_link_of_group(name=name,
+                                                         parent_link=parent_link,
+                                                         parent_link_group=parent_link_group)
 
     def detach_group(self, object_name: str):
         """
         A wrapper for update_parent_link_of_group which set parent_link to the root link of the world.
         """
-        return self.world.detach_group(oname=object_name)
+        return god_map.world.detach_group(oname=object_name)
 
     def add_urdf(self,
                  name: str,
@@ -754,36 +756,36 @@ class OldGiskardWrapper(GiskardWrapper):
         :param js_topic: Giskard will listen on that topic for joint states and update the urdf accordingly
         :return: response message
         """
-        return self.world.add_urdf(name=name,
-                                   urdf=urdf,
-                                   pose=pose,
-                                   js_topic=js_topic,
-                                   parent_link=parent_link,
-                                   parent_link_group=parent_link_group)
+        return god_map.world.add_urdf(name=name,
+                                      urdf=urdf,
+                                      pose=pose,
+                                      js_topic=js_topic,
+                                      parent_link=parent_link,
+                                      parent_link_group=parent_link_group)
 
     def dye_group(self, group_name: str, rgba: Tuple[float, float, float, float]) -> DyeGroupResponse:
         """
         Change the color of the ghost for this particular group.
         """
-        return self.world.dye_group(group_name=group_name, rgba=rgba)
+        return god_map.world.dye_group(group_name=group_name, rgba=rgba)
 
     def get_group_names(self) -> List[str]:
         """
         Returns the names of every group in the world.
         """
-        return self.world.get_group_names()
+        return god_map.world.get_group_names()
 
     def get_group_info(self, group_name: str) -> GetGroupInfoResponse:
         """
         Returns the joint state, joint state topic and pose of a group.
         """
-        return self.world.get_group_info(group_name=group_name)
+        return god_map.world.get_group_info(group_name=group_name)
 
     def get_controlled_joints(self, group_name: str) -> List[str]:
         """
         Returns all joints of a group that are flagged as controlled.
         """
-        return self.world.get_controlled_joints(group_name=group_name)
+        return god_map.world.get_controlled_joints(group_name=group_name)
 
     def update_group_pose(self, group_name: str, new_pose: PoseStamped) -> WorldResult:
         """
@@ -792,7 +794,7 @@ class OldGiskardWrapper(GiskardWrapper):
         :param new_pose: New pose of the group
         :return: Giskard's reply
         """
-        return self.world.update_group_pose(group_name=group_name, new_pose=new_pose)
+        return god_map.world.update_group_pose(group_name=group_name, new_pose=new_pose)
 
     def register_group(self, new_group_name: str, root_link_name: str,
                        root_link_group_name: str) -> WorldResult:
@@ -811,13 +813,13 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         Resets the world to what it was when Giskard was launched.
         """
-        return self.world.clear()
+        return god_map.world.clear()
 
     def move_gripper(self,
                      gripper_state: str):
 
-        self.set_json_goal(constraint_type='MoveGripper',
-                           gripper_state=gripper_state)
+        self.motion_goals.add_motion_goal(constraint_type='MoveGripper',
+                                          gripper_state=gripper_state)
 
     def reaching(self,
                  context,
@@ -829,25 +831,25 @@ class OldGiskardWrapper(GiskardWrapper):
                  tip_link: str = 'hand_palm_link',
                  velocity: float = 0.2):
 
-        self.set_json_goal(constraint_type='Reaching',
-                           context=context,
-                           object_name=object_name,
-                           object_shape=object_shape,
-                           goal_pose=goal_pose,
-                           object_size=object_size,
-                           root_link=root_link,
-                           tip_link=tip_link,
-                           velocity=velocity)
+        self.motion_goals.add_motion_goal(constraint_type='Reaching',
+                                          context=context,
+                                          object_name=object_name,
+                                          object_shape=object_shape,
+                                          goal_pose=goal_pose,
+                                          object_size=object_size,
+                                          root_link=root_link,
+                                          tip_link=tip_link,
+                                          velocity=velocity)
 
     def placing(self,
                 context,
                 goal_pose: PoseStamped,
                 tip_link: str = 'hand_palm_link'):
 
-        self.set_json_goal(constraint_type='Placing',
-                           context=context,
-                           goal_pose=goal_pose,
-                           tip_link=tip_link)
+        self.motion_goals.add_motion_goal(constraint_type='Placing',
+                                          context=context,
+                                          goal_pose=goal_pose,
+                                          tip_link=tip_link)
 
     def vertical_motion(self,
                         context: str,
@@ -855,11 +857,11 @@ class OldGiskardWrapper(GiskardWrapper):
                         root_link: str = 'base_link',
                         tip_link: str = 'hand_palm_link'):
 
-        self.set_json_goal(constraint_type='VerticalMotion',
-                           context=context,
-                           distance=distance,
-                           root_link=root_link,
-                           tip_link=tip_link)
+        self.motion_goals.add_motion_goal(constraint_type='VerticalMotion',
+                                          context=context,
+                                          distance=distance,
+                                          root_link=root_link,
+                                          tip_link=tip_link)
 
     def retract(self,
                 object_name: str,
@@ -869,13 +871,13 @@ class OldGiskardWrapper(GiskardWrapper):
                 tip_link: str = 'base_link',
                 velocity: float = 0.2):
 
-        self.set_json_goal(constraint_type='Retracting',
-                           object_name=object_name,
-                           distance=distance,
-                           reference_frame=reference_frame,
-                           root_link=root_link,
-                           tip_link=tip_link,
-                           velocity=velocity)
+        self.motion_goals.add_motion_goal(constraint_type='Retracting',
+                                          object_name=object_name,
+                                          distance=distance,
+                                          reference_frame=reference_frame,
+                                          root_link=root_link,
+                                          tip_link=tip_link,
+                                          velocity=velocity)
 
     def align_height(self,
                      context,
@@ -885,32 +887,32 @@ class OldGiskardWrapper(GiskardWrapper):
                      root_link: str = 'map',
                      tip_link: str = 'hand_gripper_tool_frame'):
 
-        self.set_json_goal(constraint_type='AlignHeight',
-                           context=context,
-                           object_name=object_name,
-                           goal_pose=goal_pose,
-                           object_height=object_height,
-                           root_link=root_link,
-                           tip_link=tip_link)
+        self.motion_goals.add_motion_goal(constraint_type='AlignHeight',
+                                          context=context,
+                                          object_name=object_name,
+                                          goal_pose=goal_pose,
+                                          object_height=object_height,
+                                          root_link=root_link,
+                                          tip_link=tip_link)
 
     def sequence_goal(self,
                       motion_sequence):
 
-        self.set_json_goal(constraint_type='SequenceGoal',
-                           motion_sequence=motion_sequence)
+        self.motion_goals.add_motion_goal(constraint_type='SequenceGoal',
+                                          motion_sequence=motion_sequence)
 
     def test_goal(self,
                   goal_name: str,
                   **kwargs):
 
-        self.set_json_goal(constraint_type=goal_name,
-                           **kwargs)
+        self.motion_goals.add_motion_goal(constraint_type=goal_name,
+                                          **kwargs)
 
     def take_pose(self,
                   pose_keyword: str):
 
-        self.set_json_goal(constraint_type='TakePose',
-                           pose_keyword=pose_keyword)
+        self.motion_goals.add_motion_goal(constraint_type='TakePose',
+                                          pose_keyword=pose_keyword)
 
     def tilting(self,
                 tilt_direction: Optional[str] = None,
@@ -918,10 +920,10 @@ class OldGiskardWrapper(GiskardWrapper):
                 tip_link: str = 'wrist_roll_joint',
                 ):
 
-        self.set_json_goal(constraint_type='Tilting',
-                           direction=tilt_direction,
-                           tilt_angle=tilt_angle,
-                           tip_link=tip_link)
+        self.motion_goals.add_motion_goal(constraint_type='Tilting',
+                                          direction=tilt_direction,
+                                          tilt_angle=tilt_angle,
+                                          tip_link=tip_link)
 
     def joint_rotation_continuous(self,
                                   joint_name: str,
@@ -930,21 +932,21 @@ class OldGiskardWrapper(GiskardWrapper):
                                   trajectory_length: float = 20,
                                   target_speed: float = 1,
                                   period_length: float = 1.0):
-        self.set_json_goal(constraint_type='JointRotationGoalContinuous',
-                           joint_name=joint_name,
-                           joint_center=joint_center,
-                           joint_range=joint_range,
-                           trajectory_length=trajectory_length,
-                           target_speed=target_speed,
-                           period_length=period_length)
+        self.motion_goals.add_motion_goal(constraint_type='JointRotationGoalContinuous',
+                                          joint_name=joint_name,
+                                          joint_center=joint_center,
+                                          joint_range=joint_range,
+                                          trajectory_length=trajectory_length,
+                                          target_speed=target_speed,
+                                          period_length=period_length)
 
     def mixing(self,
                mixing_time=20,
                weight: float = WEIGHT_ABOVE_CA):
 
-        self.set_json_goal(constraint_type='Mixing',
-                           mixing_time=mixing_time,
-                           weight=weight)
+        self.motion_goals.add_motion_goal(constraint_type='Mixing',
+                                          mixing_time=mixing_time,
+                                          weight=weight)
 
     def open_environment(self,
                          tip_link: str,
@@ -954,22 +956,22 @@ class OldGiskardWrapper(GiskardWrapper):
                          goal_joint_state: Optional[float] = None,
                          weight: float = WEIGHT_ABOVE_CA):
 
-        self.set_json_goal(constraint_type='Open',
-                           tip_link=tip_link,
-                           environment_link=environment_link,
-                           tip_group=tip_group,
-                           environment_group=environment_group,
-                           goal_joint_state=goal_joint_state,
-                           weight=weight)
+        self.motion_goals.add_motion_goal(constraint_type='Open',
+                                          tip_link=tip_link,
+                                          environment_link=environment_link,
+                                          tip_group=tip_group,
+                                          environment_group=environment_group,
+                                          goal_joint_state=goal_joint_state,
+                                          weight=weight)
 
     def push_button(self,
                     goal_pose,
                     tip_link,
                     velocity):
-        self.set_json_goal(constraint_type='PushButton',
-                           goal_pose=goal_pose,
-                           tip_link=tip_link,
-                           velocity=velocity)
+        self.motion_goals.add_motion_goal(constraint_type='PushButton',
+                                          goal_pose=goal_pose,
+                                          tip_link=tip_link,
+                                          velocity=velocity)
 
     def move_base(self, target_pose: PoseStamped):
         """
@@ -997,7 +999,7 @@ class OldGiskardWrapper(GiskardWrapper):
         Now uses Enums via suturo_types.py, which in case of this function acts
         as a list of possible gripping commands. This also makes it possible
         to add gripping forces for specific object types.
-        :param gripper_state: the state that the gripper shall asume
+        :param gripper_state: the state that the gripper shall assume
         """
         if self.is_standalone():
             if gripper_state == GripperTypes.OPEN.value:
@@ -1098,13 +1100,13 @@ class OldGiskardWrapper(GiskardWrapper):
         which is used for person live-tracking.
         """
         if endless_mode:
-            self.set_json_goal(constraint_type='EndlessMode')
+            self.motion_goals.add_motion_goal(constraint_type='EndlessMode')
 
-        self.set_json_goal(constraint_type='RealTimePointingPose',
-                           tip_link=tip_link,
-                           topic_name=topic_name,
-                           root_link=root_link,
-                           pointing_axis=pointing_axis)
+        self.motion_goals.add_motion_goal(constraint_type='RealTimePointingPose',
+                                          tip_link=tip_link,
+                                          topic_name=topic_name,
+                                          root_link=root_link,
+                                          pointing_axis=pointing_axis)
 
     def continuous_pointing_head(self):
         """

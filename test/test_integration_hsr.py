@@ -13,13 +13,12 @@ from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy.configs.giskard import Giskard
 from giskardpy.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
 from giskardpy.configs.qp_controller_config import QPControllerConfig
+from giskardpy.goals.suturo import ContextTypes, ContextActionModes
 from giskardpy.god_map import god_map
+from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
 import giskardpy.utils.tfwrapper as tf
-
-#if 'GITHUB_WORKFLOW' not in os.environ:
-#    from giskardpy.goals.suturo import ContextActionModes, ContextTypes
 
 
 class HSRTestWrapper(GiskardTestWrapper):
@@ -106,6 +105,35 @@ def box_setup(zero_pose: HSRTestWrapper) -> HSRTestWrapper:
     p.pose.orientation.w = 1
     zero_pose.add_box_to_world(name='box', size=(1, 1, 1), pose=p)
     return zero_pose
+
+# TODO: TestForceMonitor in richtigen Test "konvertieren"
+class TestForceMonitor:
+
+    def test_force_monitor(self, zero_pose: HSRTestWrapper):
+        sleep = zero_pose.monitors.add_sleep(2.5)
+        force_torque = zero_pose.monitors.add_monitor(monitor_class=Payload_Force.__name__, name=Payload_Force.__name__,
+                                                      start_condition='')
+
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position.x = 1
+        base_goal.pose.orientation.w = 1
+        goal_reached = zero_pose.monitors.add_cartesian_pose(goal_pose=base_goal,
+                                                             tip_link='base_footprint',
+                                                             root_link='map',
+                                                             name='goal reached')
+
+        zero_pose.motion_goals.add_cartesian_pose(goal_pose=base_goal,
+                                                  tip_link='base_footprint',
+                                                  root_link='map',
+                                                  hold_condition=force_torque,
+                                                  end_condition=f'{goal_reached} and {sleep}')
+        local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=goal_reached)
+
+        end = zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        zero_pose.motion_goals.allow_all_collisions()
+        zero_pose.set_max_traj_length(100)
+        zero_pose.execute(add_local_minimum_reached=False)
 
 
 class TestJointGoals:
@@ -332,7 +360,7 @@ class TestConstraints:
         kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
                                               environment_link=handle_name,
                                               goal_joint_state=1.5)
-        # kitchen_setup.set_json_goal('AvoidJointLimits', percentage=40)
+        # kitchen_setup.motion_goals.add_motion_goal('AvoidJointLimits', percentage=40)
         kitchen_setup.allow_all_collisions()
         # kitchen_setup.add_json_goal('AvoidJointLimits')
         kitchen_setup.execute()
@@ -347,7 +375,7 @@ class TestConstraints:
                                               environment_link=handle_name,
                                               goal_joint_state=0)
         kitchen_setup.allow_all_collisions()
-        # kitchen_setup.set_json_goal('AvoidJointLimits', percentage=40)
+        # kitchen_setup.motion_goals.add_motion_goal('AvoidJointLimits', percentage=40)
 
         kitchen_setup.execute(add_local_minimum_reached=False)
 
@@ -455,13 +483,10 @@ class TestAddObject:
         zero_pose.set_joint_goal({'arm_flex_joint': -0.7})
         zero_pose.plan_and_execute()
 
-# FIXME: SuTuRo-Tests funktionieren mit dem neuen Monitoring nicht. Auf das neue Monitoring umstellen.
-class TestSUTURO:
-    def test_sequence_goal(self, zero_pose: HSRTestWrapper):
-        motion_sequence = {}
 
-        zero_pose.set_json_goal(constraint_type='SequenceGoal',
-                                motion_sequence=motion_sequence)
+# FIXME: SuTuRo-Tests funktionieren mit dem neuen Monitoring nicht. Auf das neue Monitoring umstellen.
+# TODO: SuTuRo-Tests in richtige Test "konvertieren" (also nutzung von asserts usw.)
+class TestSUTURO:
 
     def test_reaching(self, zero_pose: HSRTestWrapper):
         pass
@@ -476,57 +501,57 @@ class TestSUTURO:
 
         for from_above_mode in from_above_modes:
             for align_vertical_mode in align_vertical_modes:
-                zero_pose.set_json_goal(constraint_type='GraspObject',
-                                        goal_pose=target_pose,
-                                        from_above=from_above_mode,
-                                        align_vertical=align_vertical_mode,
-                                        root_link='map',
-                                        tip_link='hand_palm_link')
+                zero_pose.motion_goals.add_motion_goal(constraint_type='GraspObject',
+                                                       goal_pose=target_pose,
+                                                       from_above=from_above_mode,
+                                                       align_vertical=align_vertical_mode,
+                                                       root_link='map',
+                                                       tip_link='hand_palm_link')
 
                 zero_pose.allow_self_collision()
                 zero_pose.plan_and_execute()
 
     def test_vertical_motion_up(self, zero_pose: HSRTestWrapper):
-        zero_pose.set_json_goal(constraint_type='TakePose',
-                                pose_keyword='park')
+        zero_pose.motion_goals.add_motion_goal(constraint_type='TakePose',
+                                               pose_keyword='park')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
         action = ContextTypes.context_action.value(content=ContextActionModes.grasping.value)
         context = {'action': action}
-        zero_pose.set_json_goal(constraint_type='VerticalMotion',
-                                context=context,
-                                distance=0.02,
-                                root_link='base_footprint',
-                                tip_link='hand_palm_link')
+        zero_pose.motion_goals.add_motion_goal(constraint_type='VerticalMotion',
+                                               context=context,
+                                               distance=0.02,
+                                               root_link='base_footprint',
+                                               tip_link='hand_palm_link')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
     def test_retracting_hand(self, zero_pose: HSRTestWrapper):
 
-        zero_pose.set_json_goal(constraint_type='TakePose',
-                                pose_keyword='park')
+        zero_pose.motion_goals.add_motion_goal(constraint_type='TakePose',
+                                               pose_keyword='park')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
-        zero_pose.set_json_goal(constraint_type='Retracting',
-                                distance=0.3,
-                                reference_frame='hand_palm_link',
-                                root_link='map',
-                                tip_link='hand_palm_link')
+        zero_pose.motion_goals.add_motion_goal(constraint_type='Retracting',
+                                               distance=0.3,
+                                               reference_frame='hand_palm_link',
+                                               root_link='map',
+                                               tip_link='hand_palm_link')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
     def test_retracting_base(self, zero_pose: HSRTestWrapper):
-        zero_pose.set_json_goal(constraint_type='Retracting',
-                                distance=0.3,
-                                reference_frame='base_footprint',
-                                root_link='map',
-                                tip_link='hand_palm_link')
+        zero_pose.motion_goals.add_motion_goal(constraint_type='Retracting',
+                                               distance=0.3,
+                                               reference_frame='base_footprint',
+                                               root_link='map',
+                                               tip_link='hand_palm_link')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
@@ -535,8 +560,8 @@ class TestSUTURO:
         execute_from_above = [False, True]
 
         for mode in execute_from_above:
-            zero_pose.set_json_goal(constraint_type='TakePose',
-                                    pose_keyword='pre_align_height')
+            zero_pose.motion_goals.add_motion_goal(constraint_type='TakePose',
+                                                   pose_keyword='pre_align_height')
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
@@ -550,13 +575,13 @@ class TestSUTURO:
             target_pose.pose.position.x = 1
             target_pose.pose.position.z = 0.7
 
-            zero_pose.set_json_goal(constraint_type='AlignHeight',
-                                    context=context,
-                                    object_name='',
-                                    goal_pose=target_pose,
-                                    object_height=0.1,
-                                    root_link='map',
-                                    tip_link='hand_palm_link')
+            zero_pose.motion_goals.add_motion_goal(constraint_type='AlignHeight',
+                                                   context=context,
+                                                   object_name='',
+                                                   goal_pose=target_pose,
+                                                   object_height=0.1,
+                                                   root_link='map',
+                                                   tip_link='hand_palm_link')
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
@@ -565,9 +590,9 @@ class TestSUTURO:
         directions = ['left', 'right']
 
         for direction in directions:
-            zero_pose.set_json_goal(constraint_type='Tilting',
-                                    direction=direction,
-                                    angle=1.4)
+            zero_pose.motion_goals.add_motion_goal(constraint_type='Tilting',
+                                                   direction=direction,
+                                                   angle=1.4)
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
@@ -576,29 +601,29 @@ class TestSUTURO:
         poses = ['park', 'perceive', 'assistance', 'pre_align_height', 'carry']
 
         for pose in poses:
-            zero_pose.set_json_goal(constraint_type='TakePose',
-                                    pose_keyword=pose)
+            zero_pose.motion_goals.add_motion_goal(constraint_type='TakePose',
+                                                   pose_keyword=pose)
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
 
     def test_mixing(self, zero_pose: HSRTestWrapper):
         # FIXME: Cant use traj_time_in_seconds in standalone mode
-        zero_pose.set_json_goal(constraint_type='Mixing',
-                                mixing_time=20)
+        zero_pose.motion_goals.add_motion_goal(constraint_type='Mixing',
+                                               mixing_time=20)
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
     def test_joint_rotation_goal_continuous(self, zero_pose: HSRTestWrapper):
         # FIXME: Cant use traj_time_in_seconds in standalone mode
-        zero_pose.set_json_goal(constraint_type='JointRotationGoalContinuous',
-                                joint_name='arm_roll_joint',
-                                joint_center=0.0,
-                                joint_range=0.2,
-                                trajectory_length=20,
-                                target_speed=1,
-                                period_length=1.0)
+        zero_pose.motion_goals.add_motion_goal(constraint_type='JointRotationGoalContinuous',
+                                               joint_name='arm_roll_joint',
+                                               joint_center=0.0,
+                                               joint_range=0.2,
+                                               trajectory_length=20,
+                                               target_speed=1,
+                                               period_length=1.0)
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
@@ -612,8 +637,8 @@ class TestSUTURO:
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi / 2, [0, 0, 1]))
         zero_pose.set_cart_goal(base_goal, 'base_footprint')
 
-        zero_pose.set_json_goal(constraint_type='KeepRotationGoal',
-                                tip_link='hand_palm_link')
+        zero_pose.motion_goals.add_motion_goal(constraint_type='KeepRotationGoal',
+                                               tip_link='hand_palm_link')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()

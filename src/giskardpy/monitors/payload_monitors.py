@@ -7,6 +7,7 @@ import numpy as np
 import rospy
 
 from giskard_msgs.msg import MoveResult, GiskardError
+from giskardpy import profile
 from giskardpy.exceptions import GiskardException, MonitorInitalizationException
 from giskardpy.monitors.monitors import Monitor
 from giskardpy.god_map import god_map
@@ -22,13 +23,7 @@ class PayloadMonitor(Monitor, ABC):
                  run_call_in_thread: bool,
                  name: Optional[str] = None,
                  stay_true: bool = True,
-                 start_condition: cas.Expression = cas.TrueSymbol):
-        """
-        A monitor which executes its __call__ function when start_condition becomes True.
-        Subclass this and implement __init__ and __call__. The __call__ method should change self.state to True when
-        it's done.
-        :param run_call_in_thread: if True, calls __call__ in a separate thread. Use for expensive operations
-        """
+                 start_condition: cas.Expression = cas.TrueSymbol,):
         self.state = False
         self.run_call_in_thread = run_call_in_thread
         super().__init__(name=name, start_condition=start_condition, stay_true=stay_true)
@@ -149,8 +144,6 @@ class UpdateParentLinkOfGroup(WorldUpdatePayloadMonitor):
                  parent_link_group: Optional[str] = '',
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol):
-        if not god_map.is_standalone():
-            raise MonitorInitalizationException(f'This monitor can only be used in standalone mode.')
         self.group_name = group_name
         self.new_parent_link = god_map.world.search_for_link_name(parent_link, parent_link_group)
         super().__init__(name=name, start_condition=start_condition)
