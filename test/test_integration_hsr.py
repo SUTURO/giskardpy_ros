@@ -13,12 +13,16 @@ from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy.configs.giskard import Giskard
 from giskardpy.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
 from giskardpy.configs.qp_controller_config import QPControllerConfig
-from giskardpy.goals.suturo import ContextTypes, ContextActionModes
 from giskardpy.god_map import god_map
+from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
+from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
 from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
 import giskardpy.utils.tfwrapper as tf
+
+if 'GITHUB_WORKFLOW' not in os.environ:
+    from giskardpy.goals.suturo import ContextActionModes, ContextTypes
 
 
 class HSRTestWrapper(GiskardTestWrapper):
@@ -47,6 +51,10 @@ class HSRTestWrapper(GiskardTestWrapper):
         # self.l_gripper = rospy.ServiceProxy('l_gripper_simulator/set_joint_states', SetJointState)
         self.odom_root = 'odom'
         self.robot = god_map.world.groups[self.robot_name]
+
+
+    def low_level_interface(self):
+        return super(OldGiskardWrapper, self)
 
     def move_base(self, goal_pose):
         self.set_cart_goal(goal_pose, tip_link='base_footprint', root_link=god_map.world.root_link_name)
@@ -133,6 +141,36 @@ class TestForceMonitor:
         end = zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
         zero_pose.motion_goals.allow_all_collisions()
         zero_pose.set_max_traj_length(100)
+        zero_pose.execute(add_local_minimum_reached=False)
+
+
+class TestLidarMonitor:
+
+    def test_lidar_monitor(self, zero_pose: HSRTestWrapper):
+        sleep = zero_pose.monitors.add_sleep(seconds=2.5)
+        lidar = zero_pose.monitors.add_monitor(monitor_class=LidarPayloadMonitor.__name__, name=LidarPayloadMonitor.__name__ + 'Test',
+                                               start_condition='', topic='/hokuyo_back/most_intense')
+
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position.x = 1
+        base_goal.pose.orientation.w = 1
+        goal_reached = zero_pose.monitors.add_cartesian_pose(goal_pose=base_goal,
+                                                             tip_link='base_footprint',
+                                                             root_link='map',
+                                                             name='goal reached')
+
+        zero_pose.motion_goals.add_cartesian_pose(goal_pose=base_goal,
+                                                  tip_link='base_footprint',
+                                                  root_link='map',
+                                                  hold_condition=lidar,
+                                                  end_condition=f'{goal_reached} and {sleep}')
+
+        local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=goal_reached)
+
+        end = zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        zero_pose.motion_goals.allow_all_collisions()
+        zero_pose.set_max_traj_length(150)
         zero_pose.execute(add_local_minimum_reached=False)
 
 

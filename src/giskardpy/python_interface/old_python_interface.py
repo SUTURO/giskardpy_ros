@@ -12,17 +12,12 @@ from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoa
 from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectoryPoint
 
-from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal
-from giskard_msgs.srv import UpdateWorldResponse, DyeGroupResponse, GetGroupInfoResponse, RegisterGroupResponse
-from giskardpy.goals.cartesian_goals import CartesianPose
-from giskardpy.goals.joint_goals import JointPositionList
-from giskardpy.monitors.joint_monitors import JointGoalReached
-from giskardpy.suturo_types import GripperTypes
-from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
 from giskardpy.python_interface.python_interface import GiskardWrapper
+from giskardpy.suturo_types import GripperTypes
+from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.tree.control_modes import ControlModes
 
 
