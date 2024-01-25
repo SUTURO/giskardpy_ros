@@ -8,6 +8,7 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vect
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
+from giskardpy import identifier
 from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy.configs.giskard import Giskard
 from giskardpy.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
@@ -462,107 +463,51 @@ class TestSUTURO:
         from_above_modes = [False, True]
         align_vertical_modes = [False, True]
 
-        grasp_state_1 = {'base_f_bumper_joint': 0.0,
-                         'base_b_bumper_joint': 0.0,
-                         'base_roll_joint': 0.0,
-                         'base_r_drive_wheel_joint': 0.0,
-                         'base_l_drive_wheel_joint': 0.0,
-                         'base_r_passive_wheel_x_frame_joint': 0.0,
-                         'base_r_passive_wheel_y_frame_joint': 0.0,
-                         'base_r_passive_wheel_z_joint': 0.0,
-                         'base_l_passive_wheel_x_frame_joint': 0.0,
-                         'base_l_passive_wheel_y_frame_joint': 0.0,
-                         'base_l_passive_wheel_z_joint': 0.0,
-                         'arm_lift_joint': 0.0,
-                         'head_pan_joint': 0.0,
-                         'head_tilt_joint': 0.0,
-                         'arm_flex_joint': -0.03,
-                         'arm_roll_joint': 0.0,
-                         'wrist_flex_joint': 0.0,
-                         'wrist_roll_joint': 0.0,
-                         'wrist_ft_sensor_frame_joint': 0.0,
-                         'hand_motor_joint': 0.0,
-                         'hand_l_spring_proximal_joint': 0.0,
-                         'hand_r_spring_proximal_joint': 0.0
-                         }
+        grasp_pose_1 = PoseStamped()
+        grasp_pose_1.header.frame_id = 'map'
+        grasp_pose_1.pose.position.x = 1.0701112670482553
+        grasp_pose_1.pose.position.y = 0.0001316214338790437
+        grasp_pose_1.pose.position.z = 0.6900203701423123
+        grasp_pose_1.pose.orientation.x = 0.7071167396552901
+        grasp_pose_1.pose.orientation.y = 6.533426136710821e-05
+        grasp_pose_1.pose.orientation.z = 0.7070968173260486
+        grasp_pose_1.pose.orientation.w = -5.619679601192823e-05
 
-        grasp_state_2 = {'base_f_bumper_joint': 0.0,
-                         'base_b_bumper_joint': 0.0,
-                         'base_roll_joint': 0.0,
-                         'base_r_drive_wheel_joint': 0.0,
-                         'base_l_drive_wheel_joint': 0.0,
-                         'base_r_passive_wheel_x_frame_joint': 0.0,
-                         'base_r_passive_wheel_y_frame_joint': 0.0,
-                         'base_r_passive_wheel_z_joint': 0.0,
-                         'base_l_passive_wheel_x_frame_joint': 0.0,
-                         'base_l_passive_wheel_y_frame_joint': 0.0,
-                         'base_l_passive_wheel_z_joint': 0.0,
-                         'arm_lift_joint': 0.3671473281457923,
-                         'head_pan_joint': 0.0,
-                         'head_tilt_joint': 0.0,
-                         'arm_flex_joint': -1.5711471307616014,
-                         'arm_roll_joint': 0.47898162174731024,
-                         'wrist_flex_joint': 0.00036353943350806903,
-                         'wrist_roll_joint': -0.4789945099053839,
-                         'wrist_ft_sensor_frame_joint': 0.0,
-                         'hand_motor_joint': 0.0,
-                         'hand_l_spring_proximal_joint': 0.0,
-                         'hand_r_spring_proximal_joint': 0.0
-                         }
+        grasp_pose_2 = PoseStamped()
+        grasp_pose_2.header.frame_id = 'map'
+        grasp_pose_2.pose.position.x = 1.0699999955917536
+        grasp_pose_2.pose.position.y = 1.1264868679568747e-05
+        grasp_pose_2.pose.position.z = 0.6900040048607661
+        grasp_pose_2.pose.orientation.x = -0.49989060882740377
+        grasp_pose_2.pose.orientation.y = 0.50010930896272
+        grasp_pose_2.pose.orientation.z = -0.49972084003542927
+        grasp_pose_2.pose.orientation.w = 0.5002790624534303
 
-        grasp_state_3 = {'base_f_bumper_joint': 0.0,
-                         'base_b_bumper_joint': 0.0,
-                         'base_roll_joint': 0.0,
-                         'base_r_drive_wheel_joint': 0.0,
-                         'base_l_drive_wheel_joint': 0.0,
-                         'base_r_passive_wheel_x_frame_joint': 0.0,
-                         'base_r_passive_wheel_y_frame_joint': 0.0,
-                         'base_r_passive_wheel_z_joint': 0.0,
-                         'base_l_passive_wheel_x_frame_joint': 0.0,
-                         'base_l_passive_wheel_y_frame_joint': 0.0,
-                         'base_l_passive_wheel_z_joint': 0.0,
-                         'arm_lift_joint': 0.35499460635228863,
-                         'head_pan_joint': 0.0,
-                         'head_tilt_joint': 0.0,
-                         'arm_flex_joint': -1.5707961792689478,
-                         'arm_roll_joint': 1.264772618216127,
-                         'wrist_flex_joint': -1.0268531773442597e-07,
-                         'wrist_roll_joint': 0.3068006311428355,
-                         'wrist_ft_sensor_frame_joint': 0.0,
-                         'hand_motor_joint': 0.0,
-                         'hand_l_spring_proximal_joint': 0.0,
-                         'hand_r_spring_proximal_joint': 0.0
-                         }
+        grasp_pose_3 = PoseStamped()
+        grasp_pose_3.header.frame_id = 'map'
+        grasp_pose_3.pose.position.x = 1.0000098440969631
+        grasp_pose_3.pose.position.y = -5.5826046789126e-07
+        grasp_pose_3.pose.position.z = 0.6299900562082916
+        grasp_pose_3.pose.orientation.x = 0.9999997719507597
+        grasp_pose_3.pose.orientation.y = 0.0006753489230108196
+        grasp_pose_3.pose.orientation.z = -1.064646728699401e-06
+        grasp_pose_3.pose.orientation.w = -1.0617940975076199e-06
 
-        grasp_state_4 = {'base_f_bumper_joint': 0.0,
-                         'base_b_bumper_joint': 0.0,
-                         'base_roll_joint': 0.0,
-                         'base_r_drive_wheel_joint': 0.0,
-                         'base_l_drive_wheel_joint': 0.0,
-                         'base_r_passive_wheel_x_frame_joint': 0.0,
-                         'base_r_passive_wheel_y_frame_joint': 0.0,
-                         'base_r_passive_wheel_z_joint': 0.0,
-                         'base_l_passive_wheel_x_frame_joint': 0.0,
-                         'base_l_passive_wheel_y_frame_joint': 0.0,
-                         'base_l_passive_wheel_z_joint': 0.0,
-                         'arm_lift_joint': 0.5052436252327192,
-                         'head_pan_joint': 0.0,
-                         'head_tilt_joint': 0.0,
-                         'arm_flex_joint': -1.5700821117629957,
-                         'arm_roll_joint': 2.1228404271392933e-06,
-                         'wrist_flex_joint': -1.5715126718662986,
-                         'wrist_roll_joint': -0.0010267229144409191,
-                         'wrist_ft_sensor_frame_joint': 0.0,
-                         'hand_motor_joint': 0.0,
-                         'hand_l_spring_proximal_joint': 0.0,
-                         'hand_r_spring_proximal_joint': 0.0
-                         }
+        grasp_pose_4 = PoseStamped()
+        grasp_pose_4.header.frame_id = 'map'
+        grasp_pose_4.pose.position.x = 0.9999945694917095
+        grasp_pose_4.pose.position.y = 4.234772015936794e-05
+        grasp_pose_4.pose.position.z = 0.6300246315623539
+        grasp_pose_4.pose.orientation.x = -0.7068005682823383
+        grasp_pose_4.pose.orientation.y = 0.7074128615379971
+        grasp_pose_4.pose.orientation.z = -2.5258894636704497e-06
+        grasp_pose_4.pose.orientation.w = -7.953924864631972e-08
 
         grasp_states = {
-            (False, False): grasp_state_1,
-            (False, True): grasp_state_2,
-            (True, False): grasp_state_3,
-            (True, True): grasp_state_4,
+            (False, False): grasp_pose_1,
+            (False, True): grasp_pose_2,
+            (True, False): grasp_pose_3,
+            (True, True): grasp_pose_4,
         }
 
         target_pose = PoseStamped()
@@ -579,19 +524,24 @@ class TestSUTURO:
                                         tip_link='hand_palm_link')
 
                 zero_pose.allow_self_collision()
-                traj = zero_pose.plan_and_execute().trajectory
+                zero_pose.plan_and_execute()
+                m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+                         compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
-                for i, p in enumerate(traj.points):
-                    js = {joint_name: position for joint_name, position in zip(traj.joint_names, p.positions)}
-                    try:
-                        zero_pose.compare_joint_state(js, grasp_states[from_above_mode, align_vertical_mode])
-                        break
-                    except AssertionError:
-                        pass
-                else:  # if no break
-                    assert False
+                compare_poses(m_P_g.pose, grasp_states[from_above_mode, align_vertical_mode].pose)
 
     def test_vertical_motion_up(self, zero_pose: HSRTestWrapper):
+
+        vertical_motion_pose = PoseStamped()
+        vertical_motion_pose.header.frame_id = 'map'
+        vertical_motion_pose.pose.position.x = 0.17102731790942596
+        vertical_motion_pose.pose.position.y = -0.13231521471220506
+        vertical_motion_pose.pose.position.z = 0.7119274770524749
+        vertical_motion_pose.pose.orientation.x = 0.5067617681482114
+        vertical_motion_pose.pose.orientation.y = -0.45782201564184877
+        vertical_motion_pose.pose.orientation.z = 0.5271017946406412
+        vertical_motion_pose.pose.orientation.w = 0.5057224638312487
+
         zero_pose.set_json_goal(constraint_type='TakePose',
                                 pose_keyword='park')
 
@@ -609,7 +559,22 @@ class TestSUTURO:
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
+        m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+                 compute_fk_pose('map', 'hand_gripper_tool_frame'))
+
+        compare_poses(m_P_g.pose, vertical_motion_pose.pose)
+
     def test_retracting_hand(self, zero_pose: HSRTestWrapper):
+
+        retracting_hand_pose = PoseStamped()
+        retracting_hand_pose.header.frame_id = 'map'
+        retracting_hand_pose.pose.position.x = 0.14963260254170513
+        retracting_hand_pose.pose.position.y = 0.16613649117825122
+        retracting_hand_pose.pose.position.z = 0.6717532654948288
+        retracting_hand_pose.pose.orientation.x = 0.5066648708788183
+        retracting_hand_pose.pose.orientation.y = -0.45792002831875167
+        retracting_hand_pose.pose.orientation.z = 0.5270228996549048
+        retracting_hand_pose.pose.orientation.w = 0.5058130282241059
 
         zero_pose.set_json_goal(constraint_type='TakePose',
                                 pose_keyword='park')
@@ -626,7 +591,23 @@ class TestSUTURO:
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
+        m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+                 compute_fk_pose('map', 'hand_gripper_tool_frame'))
+
+        compare_poses(m_P_g.pose, retracting_hand_pose.pose)
+
     def test_retracting_base(self, zero_pose: HSRTestWrapper):
+
+        retraction_base_pose = PoseStamped()
+        retraction_base_pose.header.frame_id = 'map'
+        retraction_base_pose.pose.position.x = -0.12533144864637413
+        retraction_base_pose.pose.position.y = 0.07795010184370622
+        retraction_base_pose.pose.position.z = 0.894730930853242
+        retraction_base_pose.pose.orientation.x = 0.014859073808224462
+        retraction_base_pose.pose.orientation.y = -0.00015418547016511882
+        retraction_base_pose.pose.orientation.z = 0.9998893945231346
+        retraction_base_pose.pose.orientation.w = -0.0006187669689175172
+
         zero_pose.set_json_goal(constraint_type='Retracting',
                                 distance=0.3,
                                 reference_frame='base_footprint',
@@ -635,6 +616,11 @@ class TestSUTURO:
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
+
+        m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+                 compute_fk_pose('map', 'hand_gripper_tool_frame'))
+
+        compare_poses(m_P_g.pose, retraction_base_pose.pose)
 
     def test_align_height(self, zero_pose: HSRTestWrapper):
         execute_from_above = [False, True]
@@ -680,12 +666,75 @@ class TestSUTURO:
     def test_take_pose(self, zero_pose: HSRTestWrapper):
         poses = ['park', 'perceive', 'assistance', 'pre_align_height', 'carry']
 
+        park_pose = PoseStamped()
+        park_pose.header.frame_id = 'map'
+        park_pose.pose.position.x = 0.1710261260244742
+        park_pose.pose.position.y = -0.13231889092341187
+        park_pose.pose.position.z = 0.6919283778314267
+        park_pose.pose.orientation.x = 0.5067619888164565
+        park_pose.pose.orientation.y = -0.45782179605285284
+        park_pose.pose.orientation.z = 0.5271015813648557
+        park_pose.pose.orientation.w = 0.5057226637915272
+
+        perceive_pose = PoseStamped()
+        perceive_pose.header.frame_id = 'map'
+        perceive_pose.pose.position.x = 0.1710444625574895
+        perceive_pose.pose.position.y = 0.2883150465871069
+        perceive_pose.pose.position.z = 0.9371745637108605
+        perceive_pose.pose.orientation.x = -0.5063851509844108
+        perceive_pose.pose.orientation.y = -0.457448402898974
+        perceive_pose.pose.orientation.z = -0.527458211023338
+        perceive_pose.pose.orientation.w = 0.5060660758949697
+
+        assistance_pose = PoseStamped()
+        assistance_pose.header.frame_id = 'map'
+        assistance_pose.pose.position.x = 0.18333071333185327
+        assistance_pose.pose.position.y = -0.1306120975368269
+        assistance_pose.pose.position.z = 0.7050680498627263
+        assistance_pose.pose.orientation.x = 0.024667116882362873
+        assistance_pose.pose.orientation.y = -0.6819662708507778
+        assistance_pose.pose.orientation.z = 0.7305124281436971
+        assistance_pose.pose.orientation.w = -0.025790135598626814
+
+        pre_align_height_pose = PoseStamped()
+        pre_align_height_pose.header.frame_id = 'map'
+        pre_align_height_pose.pose.position.x = 0.36718508844870135
+        pre_align_height_pose.pose.position.y = 0.07818733568602311
+        pre_align_height_pose.pose.position.z = 0.6872325515876044
+        pre_align_height_pose.pose.orientation.x = 0.6925625964573222
+        pre_align_height_pose.pose.orientation.y = 0.0008342119786388634
+        pre_align_height_pose.pose.orientation.z = 0.7213572801204168
+        pre_align_height_pose.pose.orientation.w = 0.0001688074098573283
+
+        carry_pose = PoseStamped()
+        carry_pose.header.frame_id = 'map'
+        carry_pose.pose.position.x = 0.4997932992635221
+        carry_pose.pose.position.y = 0.06601541592028287
+        carry_pose.pose.position.z = 0.6519470331487148
+        carry_pose.pose.orientation.x = 0.49422863353080027
+        carry_pose.pose.orientation.y = 0.5199402328561551
+        carry_pose.pose.orientation.z = 0.4800020391690775
+        carry_pose.pose.orientation.w = 0.5049735185624021
+
+        assert_poses = {
+            'park': park_pose.pose,
+            'perceive': perceive_pose.pose,
+            'assistance': assistance_pose.pose,
+            'pre_align_height': pre_align_height_pose.pose,
+            'carry': carry_pose.pose
+        }
+
         for pose in poses:
             zero_pose.set_json_goal(constraint_type='TakePose',
                                     pose_keyword=pose)
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
+
+            m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+                     compute_fk_pose('map', 'hand_gripper_tool_frame'))
+
+            compare_poses(m_P_g.pose, assert_poses[pose])
 
     def test_mixing(self, zero_pose: HSRTestWrapper):
         # FIXME: Cant use traj_time_in_seconds in standalone mode
@@ -710,6 +759,16 @@ class TestSUTURO:
 
     def test_keep_rotation_goal(self, zero_pose: HSRTestWrapper):
 
+        keep_rotation_pose = PoseStamped()
+        keep_rotation_pose.header.frame_id = 'map'
+        keep_rotation_pose.pose.position.x = 0.9402845292991675
+        keep_rotation_pose.pose.position.y = -0.7279803708852316
+        keep_rotation_pose.pose.position.z = 0.8994121023446626
+        keep_rotation_pose.pose.orientation.x = 0.015000397751939919
+        keep_rotation_pose.pose.orientation.y = -2.1716350146486636e-07
+        keep_rotation_pose.pose.orientation.z = 0.999887487627967
+        keep_rotation_pose.pose.orientation.w = 1.2339723016403797e-05
+
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 1
@@ -722,3 +781,8 @@ class TestSUTURO:
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
+
+        m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+                 compute_fk_pose('map', 'hand_gripper_tool_frame'))
+
+        compare_poses(m_P_g.pose, keep_rotation_pose.pose)
