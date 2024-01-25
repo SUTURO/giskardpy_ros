@@ -462,6 +462,109 @@ class TestSUTURO:
         from_above_modes = [False, True]
         align_vertical_modes = [False, True]
 
+        grasp_state_1 = {'base_f_bumper_joint': 0.0,
+                         'base_b_bumper_joint': 0.0,
+                         'base_roll_joint': 0.0,
+                         'base_r_drive_wheel_joint': 0.0,
+                         'base_l_drive_wheel_joint': 0.0,
+                         'base_r_passive_wheel_x_frame_joint': 0.0,
+                         'base_r_passive_wheel_y_frame_joint': 0.0,
+                         'base_r_passive_wheel_z_joint': 0.0,
+                         'base_l_passive_wheel_x_frame_joint': 0.0,
+                         'base_l_passive_wheel_y_frame_joint': 0.0,
+                         'base_l_passive_wheel_z_joint': 0.0,
+                         'arm_lift_joint': 0.0,
+                         'head_pan_joint': 0.0,
+                         'head_tilt_joint': 0.0,
+                         'arm_flex_joint': -0.03,
+                         'arm_roll_joint': 0.0,
+                         'wrist_flex_joint': 0.0,
+                         'wrist_roll_joint': 0.0,
+                         'wrist_ft_sensor_frame_joint': 0.0,
+                         'hand_motor_joint': 0.0,
+                         'hand_l_spring_proximal_joint': 0.0,
+                         'hand_r_spring_proximal_joint': 0.0
+                         }
+
+        grasp_state_2 = {'base_f_bumper_joint': 0.0,
+                         'base_b_bumper_joint': 0.0,
+                         'base_roll_joint': 0.0,
+                         'base_r_drive_wheel_joint': 0.0,
+                         'base_l_drive_wheel_joint': 0.0,
+                         'base_r_passive_wheel_x_frame_joint': 0.0,
+                         'base_r_passive_wheel_y_frame_joint': 0.0,
+                         'base_r_passive_wheel_z_joint': 0.0,
+                         'base_l_passive_wheel_x_frame_joint': 0.0,
+                         'base_l_passive_wheel_y_frame_joint': 0.0,
+                         'base_l_passive_wheel_z_joint': 0.0,
+                         'arm_lift_joint': 0.3671473281457923,
+                         'head_pan_joint': 0.0,
+                         'head_tilt_joint': 0.0,
+                         'arm_flex_joint': -1.5711471307616014,
+                         'arm_roll_joint': 0.47898162174731024,
+                         'wrist_flex_joint': 0.00036353943350806903,
+                         'wrist_roll_joint': -0.4789945099053839,
+                         'wrist_ft_sensor_frame_joint': 0.0,
+                         'hand_motor_joint': 0.0,
+                         'hand_l_spring_proximal_joint': 0.0,
+                         'hand_r_spring_proximal_joint': 0.0
+                         }
+
+        grasp_state_3 = {'base_f_bumper_joint': 0.0,
+                         'base_b_bumper_joint': 0.0,
+                         'base_roll_joint': 0.0,
+                         'base_r_drive_wheel_joint': 0.0,
+                         'base_l_drive_wheel_joint': 0.0,
+                         'base_r_passive_wheel_x_frame_joint': 0.0,
+                         'base_r_passive_wheel_y_frame_joint': 0.0,
+                         'base_r_passive_wheel_z_joint': 0.0,
+                         'base_l_passive_wheel_x_frame_joint': 0.0,
+                         'base_l_passive_wheel_y_frame_joint': 0.0,
+                         'base_l_passive_wheel_z_joint': 0.0,
+                         'arm_lift_joint': 0.35499460635228863,
+                         'head_pan_joint': 0.0,
+                         'head_tilt_joint': 0.0,
+                         'arm_flex_joint': -1.5707961792689478,
+                         'arm_roll_joint': 1.264772618216127,
+                         'wrist_flex_joint': -1.0268531773442597e-07,
+                         'wrist_roll_joint': 0.3068006311428355,
+                         'wrist_ft_sensor_frame_joint': 0.0,
+                         'hand_motor_joint': 0.0,
+                         'hand_l_spring_proximal_joint': 0.0,
+                         'hand_r_spring_proximal_joint': 0.0
+                         }
+
+        grasp_state_4 = {'base_f_bumper_joint': 0.0,
+                         'base_b_bumper_joint': 0.0,
+                         'base_roll_joint': 0.0,
+                         'base_r_drive_wheel_joint': 0.0,
+                         'base_l_drive_wheel_joint': 0.0,
+                         'base_r_passive_wheel_x_frame_joint': 0.0,
+                         'base_r_passive_wheel_y_frame_joint': 0.0,
+                         'base_r_passive_wheel_z_joint': 0.0,
+                         'base_l_passive_wheel_x_frame_joint': 0.0,
+                         'base_l_passive_wheel_y_frame_joint': 0.0,
+                         'base_l_passive_wheel_z_joint': 0.0,
+                         'arm_lift_joint': 0.5052436252327192,
+                         'head_pan_joint': 0.0,
+                         'head_tilt_joint': 0.0,
+                         'arm_flex_joint': -1.5700821117629957,
+                         'arm_roll_joint': 2.1228404271392933e-06,
+                         'wrist_flex_joint': -1.5715126718662986,
+                         'wrist_roll_joint': -0.0010267229144409191,
+                         'wrist_ft_sensor_frame_joint': 0.0,
+                         'hand_motor_joint': 0.0,
+                         'hand_l_spring_proximal_joint': 0.0,
+                         'hand_r_spring_proximal_joint': 0.0
+                         }
+
+        grasp_states = {
+            (False, False): grasp_state_1,
+            (False, True): grasp_state_2,
+            (True, False): grasp_state_3,
+            (True, True): grasp_state_4,
+        }
+
         target_pose = PoseStamped()
         target_pose.pose.position.x = 1
         target_pose.pose.position.z = 0.7
@@ -476,7 +579,17 @@ class TestSUTURO:
                                         tip_link='hand_palm_link')
 
                 zero_pose.allow_self_collision()
-                zero_pose.plan_and_execute()
+                traj = zero_pose.plan_and_execute().trajectory
+
+                for i, p in enumerate(traj.points):
+                    js = {joint_name: position for joint_name, position in zip(traj.joint_names, p.positions)}
+                    try:
+                        zero_pose.compare_joint_state(js, grasp_states[from_above_mode, align_vertical_mode])
+                        break
+                    except AssertionError:
+                        pass
+                else:  # if no break
+                    assert False
 
     def test_vertical_motion_up(self, zero_pose: HSRTestWrapper):
         zero_pose.set_json_goal(constraint_type='TakePose',
