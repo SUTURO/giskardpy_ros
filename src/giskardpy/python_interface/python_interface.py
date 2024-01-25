@@ -31,7 +31,9 @@ from giskardpy.monitors.joint_monitors import JointGoalReached
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator
 from giskardpy.monitors.payload_monitors import EndMotion, Print, Sleep, CancelMotion, SetMaxTrajectoryLength, \
     UpdateParentLinkOfGroup, PayloadAlternator
+from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import kwargs_to_json
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
 class WorldWrapper:
@@ -39,6 +41,7 @@ class WorldWrapper:
         self._get_group_info_srv = rospy.ServiceProxy(f'{node_name}/get_group_info', GetGroupInfo)
         self._get_group_names_srv = rospy.ServiceProxy(f'{node_name}/get_group_names', GetGroupNames)
         self._dye_group_srv = rospy.ServiceProxy(f'{node_name}/dye_group', DyeGroup)
+        self._control_mode_srv = rospy.ServiceProxy(f'{node_name}/get_control_mode', Trigger)
         self._client = SimpleActionClient(f'{node_name}/update_world', WorldAction)
         self._client.wait_for_server()
         rospy.wait_for_service(self._get_group_names_srv.resolved_name)
@@ -226,6 +229,14 @@ class WorldWrapper:
         req.parent_link = parent_link
         req.parent_link_group = parent_link_group
         return self._send_goal_and_wait(req)
+
+    def get_control_mode(self) -> ControlModes:
+        """
+        returns the ControlMode of Giskard
+        :return: ControlModes
+        """
+        rep: TriggerResponse = self._control_mode_srv.call(TriggerRequest())
+        return ControlModes[rep.message]
 
     def dye_group(self, group_name: str, rgba: Tuple[float, float, float, float]) -> DyeGroupResponse:
         """

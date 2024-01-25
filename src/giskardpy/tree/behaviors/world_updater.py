@@ -83,7 +83,7 @@ class ProcessWorldUpdate(GiskardBehavior):
         self.action_server.result_msg = result
 
     def get_control_mode_cb(self, req: TriggerRequest) -> TriggerResponse:
-        control_mode = god_map.get_data(identifier.control_mode)
+        control_mode = god_map.tree.control_mode
         res = TriggerResponse()
         res.success = True
         res.message = str(control_mode).split('.')[1]

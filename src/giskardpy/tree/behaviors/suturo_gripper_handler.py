@@ -7,7 +7,6 @@ if 'GITHUB_WORKFLOW' not in os.environ:
     from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
 from trajectory_msgs.msg import JointTrajectoryPoint
 
-from giskardpy import identifier
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 
 
@@ -45,8 +44,8 @@ class SuturoGripperHandler(GiskardBehavior):
                                                                 FollowJointTrajectoryAction)
         self._gripper_controller.wait_for_server()
 
-        self.god_map.set_data(identifier=identifier.gripper_controller, value=self.close_gripper_force)
-        self.god_map.set_data(identifier=identifier.gripper_trajectory, value=self.set_gripper_joint_position)
+        # self.god_map.set_data(identifier=identifier.gripper_controller, value=self.close_gripper_force)
+        # self.god_map.set_data(identifier=identifier.gripper_trajectory, value=self.set_gripper_joint_position)
         return True
 
     def close_gripper_force(self, force=0.8):

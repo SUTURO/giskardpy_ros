@@ -1001,19 +1001,19 @@ class OldGiskardWrapper(GiskardWrapper):
                 self.set_joint_goal({
                     'hand_motor_joint': 1.2
                 })
-                self.plan_and_execute()
+                self.execute()
 
             elif gripper_state == GripperTypes.CLOSE.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 0.0
                 })
-                self.plan_and_execute()
+                self.execute()
 
             elif gripper_state == GripperTypes.NEUTRAL.value:
                 self.set_joint_goal({
                     'hand_motor_joint': 0.6
                 })
-                self.plan_and_execute()
+                self.execute()
             else:
                 rospy.logwarn("gripper_state {} not found".format(gripper_state))
         else:
@@ -1078,16 +1078,8 @@ class OldGiskardWrapper(GiskardWrapper):
         goal.trajectory.points = [p]
         _gripper_controller.send_goal(goal)
 
-    def get_control_mode(self) -> ControlModes:
-        """
-        returns the ControlMode of Giskard
-        :return: ControlModes
-        """
-        rep: TriggerResponse = self.get_control_mode_srv.call(TriggerRequest())
-        return ControlModes[rep.message]
-
     def is_standalone(self) -> bool:
-        return self.get_control_mode() == ControlModes.standalone
+        return self.world.get_control_mode() == ControlModes.standalone
 
     def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis, endless_mode):
         """
