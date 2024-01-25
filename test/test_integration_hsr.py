@@ -625,6 +625,31 @@ class TestSUTURO:
     def test_align_height(self, zero_pose: HSRTestWrapper):
         execute_from_above = [False, True]
 
+        align_pose1 = PoseStamped()
+        align_pose1.header.frame_id = 'map'
+        align_pose1.pose.position.x = 0.3670559556308583
+        align_pose1.pose.position.y = 0.00022361096354857893
+        align_pose1.pose.position.z = 0.7728331262049145
+        align_pose1.pose.orientation.x = 0.6930355696535618
+        align_pose1.pose.orientation.y = 0.0002441417024468236
+        align_pose1.pose.orientation.z = 0.720903306535367
+        align_pose1.pose.orientation.w = -0.0002494316878550612
+
+        align_pose2 = PoseStamped()
+        align_pose2.header.frame_id = 'map'
+        align_pose2.pose.position.x = 0.2943309402390854
+        align_pose2.pose.position.y = -0.0004960369085802845
+        align_pose2.pose.position.z = 0.7499314955573722
+        align_pose2.pose.orientation.x = 0.999999932400925
+        align_pose2.pose.orientation.y = 0.0003514656228904682
+        align_pose2.pose.orientation.z = -0.00010802805208618605
+        align_pose2.pose.orientation.w = 3.7968463309867553e-08
+
+        align_states = {
+            (False): align_pose1,
+            (True): align_pose2,
+        }
+
         for mode in execute_from_above:
             zero_pose.set_json_goal(constraint_type='TakePose',
                                     pose_keyword='pre_align_height')
@@ -649,11 +674,42 @@ class TestSUTURO:
                                     root_link='map',
                                     tip_link='hand_palm_link')
 
+
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
+            cord_data = (zero_pose.god_map.get_data(identifier=identifier.world).
+                         compute_fk_pose('map', 'hand_gripper_tool_frame'))
+            print(cord_data)
+            compare_poses(cord_data.pose, align_states[mode].pose)
 
     def test_tilting(self, zero_pose: HSRTestWrapper):
         directions = ['left', 'right']
+
+        #Orientation for tilt_pose 1 needs to be negative despite given parameters being returned as positives...
+        tilt_pose1 = PoseStamped()
+        tilt_pose1.header.frame_id = 'map'
+        tilt_pose1.pose.position.x = 0.1771663040824453
+        tilt_pose1.pose.position.y = 0.0661715969042746
+        tilt_pose1.pose.position.z = 0.9021559562810649
+        tilt_pose1.pose.orientation.x = -0.020064711294612778
+        tilt_pose1.pose.orientation.y = -0.016925676434428844
+        tilt_pose1.pose.orientation.z = -0.7641017533634475
+        tilt_pose1.pose.orientation.w = -0.6445614317850595
+
+        tilt_pose2 = PoseStamped()
+        tilt_pose2.header.frame_id = 'map'
+        tilt_pose2.pose.position.x = 0.20142092490273736
+        tilt_pose2.pose.position.y = 0.08982838099748354
+        tilt_pose2.pose.position.z = 0.9136881478126635
+        tilt_pose2.pose.orientation.x = -0.03680342272084799
+        tilt_pose2.pose.orientation.y = 0.031045346701857702
+        tilt_pose2.pose.orientation.z = -0.7634821386786781
+        tilt_pose2.pose.orientation.w = 0.644031612921931
+
+        tilt_states = {
+            'left': tilt_pose1,
+            'right': tilt_pose2,
+        }
 
         for direction in directions:
             zero_pose.set_json_goal(constraint_type='Tilting',
@@ -662,6 +718,10 @@ class TestSUTURO:
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
+            cord_data = (zero_pose.god_map.get_data(identifier=identifier.world).
+                         compute_fk_pose('map', 'hand_gripper_tool_frame'))
+            print(cord_data)
+            compare_poses(cord_data.pose, tilt_states[direction].pose)
 
     def test_take_pose(self, zero_pose: HSRTestWrapper):
         poses = ['park', 'perceive', 'assistance', 'pre_align_height', 'carry']
