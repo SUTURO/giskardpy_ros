@@ -45,7 +45,6 @@ class AlignPlanes(Goal):
         self.tip = god_map.world.search_for_link_name(tip_link, tip_group)
         self.reference_velocity = reference_velocity
         self.weight = weight
-        self.suffix = suffix
 
         self.tip_V_tip_normal = transform_msg(self.tip, tip_normal)
         self.tip_V_tip_normal.vector = tf.normalize(self.tip_V_tip_normal.vector)

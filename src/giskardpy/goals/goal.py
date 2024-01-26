@@ -175,10 +175,10 @@ class ForceSensorGoal(Goal):
     Inherit from this goal, if the goal should use the Force Sensor.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, name: str):
+        super().__init__(name=name)
 
-        robot_name = self.world.robot_name
+        robot_name = god_map.world.robot_name
         self.arm_trajectory_publisher = None
 
         if robot_name == 'hsrb':
@@ -206,11 +206,11 @@ class ForceSensorGoal(Goal):
                                                                          self.directions.items()]
 
         conditions = self.goal_cancel_condition()
-        tree = self.god_map.get_data(identifier=identifier.tree_manager)
+        tree = god_map.tree
 
         self.behaviour = MonitorForceSensor('monitor force', conditions, self.wrench_topic_name)
 
-        if self.control_mode == self.control_mode.open_loop:
+        if god_map.control_mode == god_map.control_mode.open_loop:
             self.connect_trajectory_publisher()
 
             tree.insert_node(self.behaviour, 'monitor execution', 2)

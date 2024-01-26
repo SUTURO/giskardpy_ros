@@ -14,12 +14,11 @@ from giskardpy.configs.giskard import Giskard
 from giskardpy.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
 from giskardpy.configs.qp_controller_config import QPControllerConfig
 from giskardpy.god_map import god_map
+from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
-from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
-import giskardpy.utils.tfwrapper as tf
 
 if 'GITHUB_WORKFLOW' not in os.environ:
     from giskardpy.goals.suturo import ContextActionModes, ContextTypes
@@ -51,7 +50,6 @@ class HSRTestWrapper(GiskardTestWrapper):
         # self.l_gripper = rospy.ServiceProxy('l_gripper_simulator/set_joint_states', SetJointState)
         self.odom_root = 'odom'
         self.robot = god_map.world.groups[self.robot_name]
-
 
     def low_level_interface(self):
         return super(OldGiskardWrapper, self)
@@ -114,6 +112,7 @@ def box_setup(zero_pose: HSRTestWrapper) -> HSRTestWrapper:
     zero_pose.add_box_to_world(name='box', size=(1, 1, 1), pose=p)
     return zero_pose
 
+
 # TODO: TestForceMonitor in richtigen Test "konvertieren"
 class TestForceMonitor:
 
@@ -148,7 +147,8 @@ class TestLidarMonitor:
 
     def test_lidar_monitor(self, zero_pose: HSRTestWrapper):
         sleep = zero_pose.monitors.add_sleep(seconds=2.5)
-        lidar = zero_pose.monitors.add_monitor(monitor_class=LidarPayloadMonitor.__name__, name=LidarPayloadMonitor.__name__ + 'Test',
+        lidar = zero_pose.monitors.add_monitor(monitor_class=LidarPayloadMonitor.__name__,
+                                               name=LidarPayloadMonitor.__name__ + 'Test',
                                                start_condition='', topic='/hokuyo_back/most_intense')
 
         base_goal = PoseStamped()
@@ -587,7 +587,7 @@ class TestSUTURO:
 
         for from_above_mode in from_above_modes:
             for align_vertical_mode in align_vertical_modes:
-                zero_pose.motion_goals.add_motion_goal(constraint_type='GraspObject',
+                zero_pose.motion_goals.add_motion_goal(motion_goal_class='GraspObject',
                                                        goal_pose=target_pose,
                                                        from_above=from_above_mode,
                                                        align_vertical=align_vertical_mode,
@@ -596,14 +596,12 @@ class TestSUTURO:
 
                 zero_pose.allow_self_collision()
                 zero_pose.plan_and_execute()
-                m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+                m_P_g = (god_map.world.
                          compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
                 compare_poses(m_P_g.pose, grasp_states[from_above_mode, align_vertical_mode].pose)
 
     def test_vertical_motion_up(self, zero_pose: HSRTestWrapper):
-        zero_pose.motion_goals.add_motion_goal(constraint_type='TakePose',
-                                               pose_keyword='park')
 
         vertical_motion_pose = PoseStamped()
         vertical_motion_pose.header.frame_id = 'map'
@@ -615,15 +613,15 @@ class TestSUTURO:
         vertical_motion_pose.pose.orientation.z = 0.5271017946406412
         vertical_motion_pose.pose.orientation.w = 0.5057224638312487
 
-        zero_pose.set_json_goal(constraint_type='TakePose',
-                                pose_keyword='park')
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
+                                               pose_keyword='park')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
         action = ContextTypes.context_action.value(content=ContextActionModes.grasping.value)
         context = {'action': action}
-        zero_pose.motion_goals.add_motion_goal(constraint_type='VerticalMotion',
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class='VerticalMotion',
                                                context=context,
                                                distance=0.02,
                                                root_link='base_footprint',
@@ -632,15 +630,13 @@ class TestSUTURO:
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
-        m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+        m_P_g = (god_map.world.
                  compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
         compare_poses(m_P_g.pose, vertical_motion_pose.pose)
 
     def test_retracting_hand(self, zero_pose: HSRTestWrapper):
 
-        zero_pose.motion_goals.add_motion_goal(constraint_type='TakePose',
-                                               pose_keyword='park')
         retracting_hand_pose = PoseStamped()
         retracting_hand_pose.header.frame_id = 'map'
         retracting_hand_pose.pose.position.x = 0.14963260254170513
@@ -651,32 +647,32 @@ class TestSUTURO:
         retracting_hand_pose.pose.orientation.z = 0.5270228996549048
         retracting_hand_pose.pose.orientation.w = 0.5058130282241059
 
-        zero_pose.set_json_goal(constraint_type='TakePose',
-                                pose_keyword='park')
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
+                                               pose_keyword='park')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
-        zero_pose.motion_goals.add_motion_goal(constraint_type='Retracting',
+        #end_con = zero_pose.monitors.add_cartesian_pose(root_link='map',
+        #                                                tip_link='hand_palm_link',
+        #                                                goal_pose=retracting_hand_pose)
+
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class='Retracting',
                                                distance=0.3,
                                                reference_frame='hand_palm_link',
                                                root_link='map',
-                                               tip_link='hand_palm_link')
+                                               tip_link='hand_palm_link',
+                                               start_condition='')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
-        m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+        m_P_g = (god_map.world.
                  compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
         compare_poses(m_P_g.pose, retracting_hand_pose.pose)
 
     def test_retracting_base(self, zero_pose: HSRTestWrapper):
-        zero_pose.motion_goals.add_motion_goal(constraint_type='Retracting',
-                                               distance=0.3,
-                                               reference_frame='base_footprint',
-                                               root_link='map',
-                                               tip_link='hand_palm_link')
 
         retraction_base_pose = PoseStamped()
         retraction_base_pose.header.frame_id = 'map'
@@ -688,16 +684,16 @@ class TestSUTURO:
         retraction_base_pose.pose.orientation.z = 0.9998893945231346
         retraction_base_pose.pose.orientation.w = -0.0006187669689175172
 
-        zero_pose.set_json_goal(constraint_type='Retracting',
-                                distance=0.3,
-                                reference_frame='base_footprint',
-                                root_link='map',
-                                tip_link='hand_palm_link')
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class='Retracting',
+                                               distance=0.3,
+                                               reference_frame='base_footprint',
+                                               root_link='map',
+                                               tip_link='hand_palm_link')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
-        m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+        m_P_g = (god_map.world.
                  compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
         compare_poses(m_P_g.pose, retraction_base_pose.pose)
@@ -731,7 +727,7 @@ class TestSUTURO:
         }
 
         for mode in execute_from_above:
-            zero_pose.motion_goals.add_motion_goal(constraint_type='TakePose',
+            zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
                                                    pose_keyword='pre_align_height')
 
             zero_pose.allow_self_collision()
@@ -746,7 +742,7 @@ class TestSUTURO:
             target_pose.pose.position.x = 1
             target_pose.pose.position.z = 0.7
 
-            zero_pose.motion_goals.add_motion_goal(constraint_type='AlignHeight',
+            zero_pose.motion_goals.add_motion_goal(motion_goal_class='AlignHeight',
                                                    context=context,
                                                    object_name='',
                                                    goal_pose=target_pose,
@@ -756,9 +752,9 @@ class TestSUTURO:
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
-            cord_data = (zero_pose.god_map.get_data(identifier=identifier.world).
+            cord_data = (god_map.world.
                          compute_fk_pose('map', 'hand_gripper_tool_frame'))
-            print(cord_data)
+
             compare_poses(cord_data.pose, align_states[mode].pose)
 
     def test_tilting(self, zero_pose: HSRTestWrapper):
@@ -791,15 +787,15 @@ class TestSUTURO:
         }
 
         for direction in directions:
-            zero_pose.motion_goals.add_motion_goal(constraint_type='Tilting',
+            zero_pose.motion_goals.add_motion_goal(motion_goal_class='Tilting',
                                                    direction=direction,
                                                    angle=1.4)
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
-            cord_data = (zero_pose.god_map.get_data(identifier=identifier.world).
+            cord_data = (god_map.world.
                          compute_fk_pose('map', 'hand_gripper_tool_frame'))
-            print(cord_data)
+
             compare_poses(cord_data.pose, tilt_states[direction].pose)
 
     def test_take_pose(self, zero_pose: HSRTestWrapper):
@@ -864,13 +860,13 @@ class TestSUTURO:
         }
 
         for pose in poses:
-            zero_pose.motion_goals.add_motion_goal(constraint_type='TakePose',
+            zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
                                                    pose_keyword=pose)
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
 
-            m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+            m_P_g = (god_map.world.
                      compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
             compare_poses(m_P_g.pose, assert_poses[pose])
@@ -879,7 +875,7 @@ class TestSUTURO:
 
     def test_mixing(self, zero_pose: HSRTestWrapper):
         # FIXME: Cant use traj_time_in_seconds in standalone mode
-        zero_pose.motion_goals.add_motion_goal(constraint_type='Mixing',
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class='Mixing',
                                                mixing_time=20)
 
         zero_pose.allow_self_collision()
@@ -888,7 +884,7 @@ class TestSUTURO:
     def test_joint_rotation_goal_continuous(self, zero_pose: HSRTestWrapper):
         # FIXME: Use compare_pose similar to other tests
         # FIXME: Cant use traj_time_in_seconds in standalone mode
-        zero_pose.motion_goals.add_motion_goal(constraint_type='JointRotationGoalContinuous',
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class='JointRotationGoalContinuous',
                                                joint_name='arm_roll_joint',
                                                joint_center=0.0,
                                                joint_range=0.2,
@@ -916,15 +912,15 @@ class TestSUTURO:
         base_goal.pose.position.x = 1
         base_goal.pose.position.y = -1
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi / 2, [0, 0, 1]))
-        zero_pose.set_cart_goal(base_goal, 'base_footprint')
+        zero_pose.set_cart_goal(base_goal, root_link=god_map.world.root_link_name, tip_link='base_footprint')
 
-        zero_pose.motion_goals.add_motion_goal(constraint_type='KeepRotationGoal',
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class='KeepRotationGoal',
                                                tip_link='hand_palm_link')
 
         zero_pose.allow_self_collision()
         zero_pose.plan_and_execute()
 
-        m_P_g = (zero_pose.god_map.get_data(identifier=identifier.world).
+        m_P_g = (god_map.world.
                  compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
         compare_poses(m_P_g.pose, keep_rotation_pose.pose)
