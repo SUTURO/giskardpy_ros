@@ -456,7 +456,7 @@ class TestSUTURO:
         zero_pose.set_json_goal(constraint_type='SequenceGoal',
                                 motion_sequence=motion_sequence)
 
-     # TODO: Actuallly make the reach Test test something
+    # TODO: Actually make the reach Test test something
     def test_reaching(self, zero_pose: HSRTestWrapper):
         pass
 
@@ -647,8 +647,8 @@ class TestSUTURO:
         align_pose2.pose.orientation.w = 3.7968463309867553e-08
 
         align_states = {
-            (False): align_pose1,
-            (True): align_pose2,
+            False: align_pose1,
+            True: align_pose2,
         }
 
         for mode in execute_from_above:
@@ -674,7 +674,6 @@ class TestSUTURO:
                                     object_height=0.1,
                                     root_link='map',
                                     tip_link='hand_palm_link')
-
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
@@ -797,7 +796,8 @@ class TestSUTURO:
 
             compare_poses(m_P_g.pose, assert_poses[pose])
 
-         # TODO: If ever relevant for SuTuRo, add proper Test behaviour
+        # TODO: If ever relevant for SuTuRo, add proper Test behaviour
+
     def test_mixing(self, zero_pose: HSRTestWrapper):
         # FIXME: Cant use traj_time_in_seconds in standalone mode
         zero_pose.set_json_goal(constraint_type='Mixing',
