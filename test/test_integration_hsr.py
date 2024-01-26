@@ -456,6 +456,7 @@ class TestSUTURO:
         zero_pose.set_json_goal(constraint_type='SequenceGoal',
                                 motion_sequence=motion_sequence)
 
+     # TODO: Actuallly make the reach Test test something
     def test_reaching(self, zero_pose: HSRTestWrapper):
         pass
 
@@ -685,7 +686,7 @@ class TestSUTURO:
     def test_tilting(self, zero_pose: HSRTestWrapper):
         directions = ['left', 'right']
 
-        #Orientation for tilt_pose 1 needs to be negative despite given parameters being returned as positives...
+        # Orientation for tilt_pose 1 needs to be negative despite given parameters being returned as positives...
         tilt_pose1 = PoseStamped()
         tilt_pose1.header.frame_id = 'map'
         tilt_pose1.pose.position.x = 0.1771663040824453
@@ -796,6 +797,7 @@ class TestSUTURO:
 
             compare_poses(m_P_g.pose, assert_poses[pose])
 
+         # TODO: If ever relevant for SuTuRo, add proper Test behaviour
     def test_mixing(self, zero_pose: HSRTestWrapper):
         # FIXME: Cant use traj_time_in_seconds in standalone mode
         zero_pose.set_json_goal(constraint_type='Mixing',
@@ -805,6 +807,7 @@ class TestSUTURO:
         zero_pose.plan_and_execute()
 
     def test_joint_rotation_goal_continuous(self, zero_pose: HSRTestWrapper):
+        # FIXME: Use compare_pose similar to other tests
         # FIXME: Cant use traj_time_in_seconds in standalone mode
         zero_pose.set_json_goal(constraint_type='JointRotationGoalContinuous',
                                 joint_name='arm_roll_joint',
