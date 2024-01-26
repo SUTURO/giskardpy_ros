@@ -1,19 +1,14 @@
-import profile
 from copy import deepcopy
 from threading import Thread
 
 import rospy
-from py_trees import Status
-from py_trees.meta import running_is_success
-
-from giskardpy.tree.control_modes import ControlModes
-from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
-from tf2_py import TransformException
-from visualization_msgs.msg import MarkerArray, Marker
-
 from giskard_msgs.msg import WorldResult, WorldGoal, GiskardError
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupNamesRequest, GetGroupInfoResponse, GetGroupInfoRequest, \
     DyeGroupResponse, GetGroupNames, GetGroupInfo, DyeGroup, DyeGroupRequest
+from py_trees import Status
+from tf2_py import TransformException
+from visualization_msgs.msg import MarkerArray
+
 from giskardpy.data_types import JointStates
 from giskardpy.exceptions import UnknownGroupException, \
     GiskardException, TransformException
@@ -24,6 +19,7 @@ from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
 from giskardpy.utils.decorators import record_time
 from giskardpy.utils.tfwrapper import transform_pose
+from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
 
 
 class ProcessWorldUpdate(GiskardBehavior):
@@ -88,7 +84,6 @@ class ProcessWorldUpdate(GiskardBehavior):
         res.success = True
         res.message = str(control_mode).split('.')[1]
         return res
-
 
     def dye_group(self, req: DyeGroupRequest):
         res = DyeGroupResponse()
