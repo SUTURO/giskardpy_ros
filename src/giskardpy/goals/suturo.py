@@ -25,7 +25,6 @@ from giskardpy.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.utils.logging import loginfo, logwarn
-from giskardpy.utils.math import inverse_frame
 
 if 'GITHUB_WORKFLOW' not in os.environ:
     from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, \
@@ -887,7 +886,7 @@ class Tilting(Goal):
                  name: str = None,
                  direction: Optional[str] = None,
                  angle: Optional[float] = None,
-                 tip_link: str = 'wrist_roll_joint',
+                 tip_link: str = 'wrist_flex_joint',
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
                  end_condition: w.Expression = w.TrueSymbol):
@@ -913,11 +912,10 @@ class Tilting(Goal):
         else:
             angle = abs(angle) * -1
 
-        self.wrist_state = angle
+        wrist_state = angle
         self.tip_link = tip_link
 
-        self.goal_state = {'wrist_roll_joint': self.wrist_state,
-                           'arm_roll_joint': 0.0}
+        self.goal_state = {self.tip_link: wrist_state}
 
         self.add_constraints_of_goal(JointPositionList(goal_state=self.goal_state,
                                                        start_condition=start_condition,
