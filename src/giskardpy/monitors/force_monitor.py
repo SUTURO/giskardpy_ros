@@ -12,7 +12,7 @@ from giskardpy.monitors.payload_monitors import PayloadMonitor
 class Payload_Force(PayloadMonitor):
 
     def __init__(self,
-                 topic: string = "/kms40_driver/wrench",
+                 topic: string = "/hsrb/wrist_wrench/compensated",  # use /hsrb/wrist_wrench/compensated for actual robot
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol):
         super().__init__(name=name, stay_true=False, start_condition=start_condition, run_call_in_thread=False)
@@ -26,6 +26,7 @@ class Payload_Force(PayloadMonitor):
 
     def __call__(self):
 
+        # TODO: change Thresholds to assignable values depending on task and add more conditionals for more situations
         force_threshold = 8
         torque_threshold = 0.15
 

@@ -10,6 +10,7 @@ from geometry_msgs.msg import WrenchStamped
 from py_trees import Status
 
 from giskardpy.exceptions import GiskardException
+from giskardpy.god_map import god_map
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
 from giskardpy.utils.decorators import catch_and_raise_to_blackboard
@@ -58,12 +59,12 @@ class MonitorForceSensor(GiskardBehavior):
         # Subscriber
         self.wrench_compensated_subscriber = None
 
-        if self.control_mode == self.control_mode.open_loop:
+        if god_map.control_mode == god_map.control_mode.open_loop:
             self.continue_plugin_state = Status.FAILURE
-        elif self.control_mode == self.control_mode.close_loop:
+        elif god_map.control_mode == god_map.control_mode.close_loop:
             self.continue_plugin_state = Status.RUNNING
         else:
-            logging.logerr(f'{self.control_mode} is not supported')
+            logging.logerr(f'{god_map.control_mode} is not supported')
             raise GiskardException()
 
         # True to print sensor data
@@ -162,7 +163,7 @@ class MonitorForceSensor(GiskardBehavior):
             self.plugin_canceled = (True, self.filtered_data['stamp'], self.filtered_data['seq'])
 
             if self.cancel:
-                logging.loginfo(f'tree cycle:  {self.tree_manager.tree.count}')
+                logging.loginfo(f'tree cycle:  {god_map.tree.count}')
 
                 self.cancel_condition = True
 

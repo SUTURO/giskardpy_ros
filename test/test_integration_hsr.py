@@ -113,7 +113,7 @@ def box_setup(zero_pose: HSRTestWrapper) -> HSRTestWrapper:
     return zero_pose
 
 
-# TODO: TestForceMonitor in richtigen Test "konvertieren"
+# TODO: Further rework force Monitor test; removing unnecessary Code, create more Tests etc.
 class TestForceMonitor:
 
     def test_force_monitor(self, zero_pose: HSRTestWrapper):

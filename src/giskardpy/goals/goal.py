@@ -5,7 +5,7 @@ from abc import ABC
 from typing import Dict, List, Union
 
 import controller_manager_msgs
-#import giskardpy.identifier as identifier
+# import giskardpy.identifier as identifier
 import rospy
 import trajectory_msgs
 from geometry_msgs.msg import Vector3
@@ -175,7 +175,11 @@ class ForceSensorGoal(Goal):
     Inherit from this goal, if the goal should use the Force Sensor.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str,
+                 start_condition: cas.Expression = cas.TrueSymbol,
+                 hold_condition: cas.Expression = cas.FalseSymbol,
+                 end_condition: cas.Expression = cas.TrueSymbol):
+
         super().__init__(name=name)
 
         robot_name = god_map.world.robot_name
@@ -263,7 +267,7 @@ class ForceSensorGoal(Goal):
         if any(x in joint_modifier for x in arm_joint_names):
             arm_joint_positions = []
             for joint_name in arm_joint_names:
-                join_state_position = self.world.state.get(self.world.search_for_joint_name(joint_name)).position
+                join_state_position = god_map.world.state.get(god_map.world.search_for_joint_name(joint_name)).position
 
                 if joint_name in joint_modifier:
                     mod = joint_modifier.get(joint_name)
@@ -286,7 +290,7 @@ class ForceSensorGoal(Goal):
             self.arm_trajectory_publisher.publish(traj)
 
     def clean_up(self):
-        if self.control_mode == self.control_mode.open_loop:
+        if god_map.tree.control_mode == god_map.tree.control_mode.open_loop:
             self.recover(self.recovery_modifier())
 
         try:
@@ -295,5 +299,5 @@ class ForceSensorGoal(Goal):
         except:
             logging.logwarn(f'Subscriber does not exist in {self.behaviour.name}')
 
-        tree = self.tree_manager
+        tree = god_map.tree
         tree.remove_node(self.behaviour.name)
