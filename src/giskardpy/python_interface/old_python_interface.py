@@ -813,7 +813,7 @@ class OldGiskardWrapper(GiskardWrapper):
     def move_gripper(self,
                      gripper_state: str):
 
-        self.motion_goals.add_motion_goal(constraint_type='MoveGripper',
+        self.motion_goals.add_motion_goal(motion_goal_class='MoveGripper',
                                           gripper_state=gripper_state)
 
     def reaching(self,
@@ -826,7 +826,7 @@ class OldGiskardWrapper(GiskardWrapper):
                  tip_link: str = 'hand_palm_link',
                  velocity: float = 0.2):
 
-        self.motion_goals.add_motion_goal(constraint_type='Reaching',
+        self.motion_goals.add_motion_goal(motion_goal_class='Reaching',
                                           context=context,
                                           object_name=object_name,
                                           object_shape=object_shape,
@@ -841,7 +841,7 @@ class OldGiskardWrapper(GiskardWrapper):
                 goal_pose: PoseStamped,
                 tip_link: str = 'hand_palm_link'):
 
-        self.motion_goals.add_motion_goal(constraint_type='Placing',
+        self.motion_goals.add_motion_goal(motion_goal_class='Placing',
                                           context=context,
                                           goal_pose=goal_pose,
                                           tip_link=tip_link)
@@ -852,7 +852,7 @@ class OldGiskardWrapper(GiskardWrapper):
                         root_link: str = 'base_link',
                         tip_link: str = 'hand_palm_link'):
 
-        self.motion_goals.add_motion_goal(constraint_type='VerticalMotion',
+        self.motion_goals.add_motion_goal(motion_goal_class='VerticalMotion',
                                           context=context,
                                           distance=distance,
                                           root_link=root_link,
@@ -866,7 +866,7 @@ class OldGiskardWrapper(GiskardWrapper):
                 tip_link: str = 'base_link',
                 velocity: float = 0.2):
 
-        self.motion_goals.add_motion_goal(constraint_type='Retracting',
+        self.motion_goals.add_motion_goal(motion_goal_class='Retracting',
                                           object_name=object_name,
                                           distance=distance,
                                           reference_frame=reference_frame,
@@ -882,7 +882,7 @@ class OldGiskardWrapper(GiskardWrapper):
                      root_link: str = 'map',
                      tip_link: str = 'hand_gripper_tool_frame'):
 
-        self.motion_goals.add_motion_goal(constraint_type='AlignHeight',
+        self.motion_goals.add_motion_goal(motion_goal_class='AlignHeight',
                                           context=context,
                                           object_name=object_name,
                                           goal_pose=goal_pose,
@@ -893,20 +893,20 @@ class OldGiskardWrapper(GiskardWrapper):
     def sequence_goal(self,
                       motion_sequence):
 
-        self.motion_goals.add_motion_goal(constraint_type='SequenceGoal',
+        self.motion_goals.add_motion_goal(motion_goal_class='SequenceGoal',
                                           motion_sequence=motion_sequence)
 
     def test_goal(self,
                   goal_name: str,
                   **kwargs):
 
-        self.motion_goals.add_motion_goal(constraint_type=goal_name,
+        self.motion_goals.add_motion_goal(motion_goal_class=goal_name,
                                           **kwargs)
 
     def take_pose(self,
                   pose_keyword: str):
 
-        self.motion_goals.add_motion_goal(constraint_type='TakePose',
+        self.motion_goals.add_motion_goal(motion_goal_class='TakePose',
                                           pose_keyword=pose_keyword)
 
     def tilting(self,
@@ -915,7 +915,7 @@ class OldGiskardWrapper(GiskardWrapper):
                 tip_link: str = 'wrist_roll_joint',
                 ):
 
-        self.motion_goals.add_motion_goal(constraint_type='Tilting',
+        self.motion_goals.add_motion_goal(motion_goal_class='Tilting',
                                           direction=tilt_direction,
                                           tilt_angle=tilt_angle,
                                           tip_link=tip_link)
@@ -927,7 +927,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                   trajectory_length: float = 20,
                                   target_speed: float = 1,
                                   period_length: float = 1.0):
-        self.motion_goals.add_motion_goal(constraint_type='JointRotationGoalContinuous',
+        self.motion_goals.add_motion_goal(motion_goal_class='JointRotationGoalContinuous',
                                           joint_name=joint_name,
                                           joint_center=joint_center,
                                           joint_range=joint_range,
@@ -939,7 +939,7 @@ class OldGiskardWrapper(GiskardWrapper):
                mixing_time=20,
                weight: float = WEIGHT_ABOVE_CA):
 
-        self.motion_goals.add_motion_goal(constraint_type='Mixing',
+        self.motion_goals.add_motion_goal(motion_goal_class='Mixing',
                                           mixing_time=mixing_time,
                                           weight=weight)
 
@@ -951,7 +951,7 @@ class OldGiskardWrapper(GiskardWrapper):
                          goal_joint_state: Optional[float] = None,
                          weight: float = WEIGHT_ABOVE_CA):
 
-        self.motion_goals.add_motion_goal(constraint_type='Open',
+        self.motion_goals.add_motion_goal(motion_goal_class='Open',
                                           tip_link=tip_link,
                                           environment_link=environment_link,
                                           tip_group=tip_group,
@@ -963,7 +963,7 @@ class OldGiskardWrapper(GiskardWrapper):
                     goal_pose,
                     tip_link,
                     velocity):
-        self.motion_goals.add_motion_goal(constraint_type='PushButton',
+        self.motion_goals.add_motion_goal(motion_goal_class='PushButton',
                                           goal_pose=goal_pose,
                                           tip_link=tip_link,
                                           velocity=velocity)
@@ -1087,9 +1087,9 @@ class OldGiskardWrapper(GiskardWrapper):
         which is used for person live-tracking.
         """
         if endless_mode:
-            self.motion_goals.add_motion_goal(constraint_type='EndlessMode')
+            self.motion_goals.add_motion_goal(motion_goal_class='EndlessMode')
 
-        self.motion_goals.add_motion_goal(constraint_type='RealTimePointingPose',
+        self.motion_goals.add_motion_goal(motion_goal_class='RealTimePointingPose',
                                           tip_link=tip_link,
                                           topic_name=topic_name,
                                           root_link=root_link,
