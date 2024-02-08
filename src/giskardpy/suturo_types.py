@@ -10,6 +10,7 @@ class GripperTypes(Enum):
 
 # List of Methods that need Thresholds for force_monitor: GraspObjectCarefully, Placing,
 # TODO: Create Enums for every Force and/or Torque sensitive action, to be used in force_monitor.py
+@unique
 class ForceTorqueThresholds(Enum):
     FT_GraspWithCare = 'FTGraspC'
     FT_Placing = 'FTPlace'

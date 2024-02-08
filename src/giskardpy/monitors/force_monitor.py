@@ -13,8 +13,8 @@ from giskardpy.suturo_types import ForceTorqueThresholds
 class Payload_Force(PayloadMonitor):
 
     def __init__(self,
+                 # use /hsrb/wrist_wrench/compensated for actual HSR, for testing feel free to change it
                  topic: string = "/hsrb/wrist_wrench/compensated",
-                 # use /hsrb/wrist_wrench/compensated for actual robot
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol):
         super().__init__(name=name, stay_true=False, start_condition=start_condition, run_call_in_thread=False)

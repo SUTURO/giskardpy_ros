@@ -35,6 +35,7 @@ from giskardpy.monitors.payload_monitors import EndMotion, Print, Sleep, CancelM
 from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import kwargs_to_json
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
+from giskardpy.suturo_types import ForceTorqueThresholds
 
 
 class WorldWrapper:
@@ -1497,21 +1498,54 @@ class GiskardWrapper:
     def _feedback_cb(self, msg: MoveFeedback):
         self.last_feedback = msg
 
-    # SuTuRo Goals start here!
-    def placing(self,
-                context,
-                goal_pose: PoseStamped,
-                tip_link: str = 'hand_palm_link'):
+    # SuTuRo Goals start here! (Only add SuTuRo goals which actually need monitors for stopping conditions etc.)
+    def monitor_placing(self,
+                        context,
+                        goal_pose: PoseStamped,
+                        tip_link: str = 'hand_palm_link'):
 
         sleep = self.monitors.add_sleep(1.5)
         force_torque_trigger = self.monitors.add_monitor(monitor_class=Payload_Force.__name__,
                                                          name=Payload_Force.__name__,
-                                                         start_condition='')
+                                                         start_condition='',
+                                                         threshold_name=ForceTorqueThresholds.FT_Placing.value)
 
         self.motion_goals.add_motion_goal(motion_goal_class='Placing',
                                           context=context,
                                           goal_pose=goal_pose,
                                           tip_link=tip_link,
+                                          end_condition=f'{force_torque_trigger} and {sleep}')
+
+        local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
+        end = self.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        self.monitors.add_max_trajectory_length(100)
+        self.execute()
+
+    def monitor_grasp_carefully(self,
+                                goal_pose: PoseStamped,
+                                frontal_offset: float = 0.0,
+                                from_above: bool = False,
+                                align_vertical: bool = False,
+                                reference_frame_alignment: Optional[str] = None,
+                                root_link: Optional[str] = None,
+                                tip_link: Optional[str] = None,
+                                velocity: float = 0.02):
+
+        sleep = self.monitors.add_sleep(1.5)
+        force_torque_trigger = self.monitors.add_monitor(monitor_class=Payload_Force.__name__,
+                                                         name=Payload_Force.__name__,
+                                                         start_condition='',
+                                                         threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value)
+
+        self.motion_goals.add_motion_goal(motion_goal_class='GraspCarefully',
+                                          goal_pose=goal_pose,
+                                          frontal_offset=frontal_offset,
+                                          from_above=from_above,
+                                          align_vertical=align_vertical,
+                                          reference_frame_alignment=reference_frame_alignment,
+                                          root_link=root_link,
+                                          tip_link=tip_link,
+                                          velocity=velocity,
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
         local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
