@@ -532,8 +532,6 @@ class TestAddObject:
         zero_pose.plan_and_execute()
 
 
-# FIXME: SuTuRo-Tests funktionieren mit dem neuen Monitoring nicht. Auf das neue Monitoring umstellen.
-# TODO: SuTuRo-Tests in richtige Test "konvertieren" (also nutzung von asserts usw.)
 class TestSUTURO:
 
     # TODO: Actually make the reach Test test something

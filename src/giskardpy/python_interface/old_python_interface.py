@@ -1031,7 +1031,7 @@ class OldGiskardWrapper(GiskardWrapper):
     def _move_gripper_force(self, force: float = 0.8):
         """
         Closes the gripper with the given force.
-        :param force: force to grasp with should be between 0.2 and 0.8 (N)
+        :param force: force to grasp which should be between 0.2 and 0.8 (N)
         :return: applied effort
         """
         _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
@@ -1053,7 +1053,7 @@ class OldGiskardWrapper(GiskardWrapper):
 
     def _set_gripper_joint_position(self, position):
         """
-        Sets the gripper joint to the given  position
+        Sets the gripper joint to the given position
         :param position: goal position of the joint -0.105 to 1.239 rad
         :return: error_code of FollowJointTrajectoryResult
         """

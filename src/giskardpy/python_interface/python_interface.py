@@ -27,6 +27,7 @@ from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, PointingAt, \
     VectorsAligned, DistanceToLine
+from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.monitors.joint_monitors import JointGoalReached
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator
 from giskardpy.monitors.payload_monitors import EndMotion, Print, Sleep, CancelMotion, SetMaxTrajectoryLength, \
@@ -1495,3 +1496,25 @@ class GiskardWrapper:
 
     def _feedback_cb(self, msg: MoveFeedback):
         self.last_feedback = msg
+
+    # SuTuRo Goals start here!
+    def placing(self,
+                context,
+                goal_pose: PoseStamped,
+                tip_link: str = 'hand_palm_link'):
+
+        sleep = self.monitors.add_sleep(1.5)
+        force_torque_trigger = self.monitors.add_monitor(monitor_class=Payload_Force.__name__,
+                                                         name=Payload_Force.__name__,
+                                                         start_condition='')
+
+        self.motion_goals.add_motion_goal(motion_goal_class='Placing',
+                                          context=context,
+                                          goal_pose=goal_pose,
+                                          tip_link=tip_link,
+                                          end_condition=f'{force_torque_trigger} and {sleep}')
+
+        local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
+        end = self.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        self.monitors.add_max_trajectory_length(100)
+        self.execute()

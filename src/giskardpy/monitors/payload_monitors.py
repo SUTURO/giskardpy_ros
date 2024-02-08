@@ -182,5 +182,3 @@ class PayloadAlternator(PayloadMonitor):
 
     def __call__(self):
         self.state = np.floor(god_map.time) % self.mod == 0
-
-
