@@ -67,6 +67,9 @@ class WorldConfig(ABC):
     def get_root_link_of_group(self, group_name: str) -> PrefixName:
         return god_map.world.groups[group_name].root_link_name
 
+    def check_for_link_name_of_group(self, group_name: str, link_name: str):
+        return link_name in god_map.world.groups[group_name].link_names
+
     def set_joint_limits(self, limit_map: derivative_map, joint_name: my_string, group_name: Optional[str] = None):
         """
         Set the joint limits for individual joints

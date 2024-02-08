@@ -4,6 +4,7 @@ from giskardpy.configs.collision_avoidance_config import CollisionAvoidanceConfi
 from giskardpy.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
 from giskardpy.configs.world_config import WorldConfig
 from giskardpy.data_types import PrefixName, Derivatives
+from giskardpy.utils import logging
 
 
 class WorldWithHSRConfig(WorldConfig):
@@ -33,6 +34,12 @@ class WorldWithHSRConfig(WorldConfig):
                             joint_name=self.localization_joint_name)
         self.add_empty_link(self.odom_link_name)
         self.add_robot_from_parameter_server()
+
+        if not self.check_for_link_name_of_group(self.robot_group_name, 'hsrb/hand_gripper_tool_frame'):
+            logging.logwarn('Could not find Hand Gripper Tool Frame for robot ' + self.robot_group_name)
+        else:
+            logging.loginfo('Found Hand Gripper Tool Frame for robot ' + self.robot_group_name)
+
         root_link_name = self.get_root_link_of_group(self.robot_group_name)
         self.add_omni_drive_joint(parent_link_name=self.odom_link_name,
                                   child_link_name=root_link_name,
