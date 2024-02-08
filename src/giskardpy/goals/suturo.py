@@ -759,7 +759,6 @@ class GraspCarefully(ForceSensorGoal):
         :param tip_link: Current tip link
         :param velocity: Desired velocity of this goal
         :param weight: weight of this goal
-        :param suffix: Only relevant for SequenceGoal interns
 
         """
         if name is None:
@@ -935,7 +934,6 @@ class TakePose(Goal):
         Used to get into complete poses. To move only specific joints use 'JointPositionList'
 
         :param pose_keyword: Keyword for the given poses
-        :param suffix: Only relevant for SequenceGoal interns
         """
         if name is None:
             name = f'TakePose-{pose_keyword}'
@@ -1028,7 +1026,6 @@ class Mixing(Goal):
 
         :param mixing_time: States how long this goal should be executed.
         :param weight: weight of this goal
-        :param suffix: Only relevant for SequenceGoal interns
         """
         super().__init__()
 
@@ -1085,7 +1082,6 @@ class JointRotationGoalContinuous(Goal):
         :param trajectory_length: length of this goal in seconds.
         :param target_speed: execution speed of this goal. Adjust when the trajectory is not executed right
         :param period_length: length of the period that should be executed. Adjust when the trajectory is not executed right.
-        :param suffix:
         """
         super().__init__()
         self.joint = god_map.world.search_for_joint_name(joint_name)
@@ -1124,7 +1120,6 @@ class KeepRotationGoal(Goal):
 
         :param tip_link: link that shall keep its rotation
         :param weight: weight of this goal
-        :param suffix: Only relevant for SequenceGoal interns
         """
         if name is None:
             name = 'KeepRotationGoal'

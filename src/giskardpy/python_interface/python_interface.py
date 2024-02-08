@@ -209,7 +209,7 @@ class WorldWrapper:
                  parent_link_group: str = '',
                  js_topic: Optional[str] = '') -> WorldResult:
         """
-        Adds a urdf to the world.
+        Adds an urdf to the world.
         :param name: name the group containing the urdf will have.
         :param urdf: urdf as string, no path!
         :param pose: pose of the root link of the new object
@@ -391,7 +391,7 @@ class MotionGoalWrapper:
                         hold_condition: str = '',
                         end_condition: str = ''):
         """
-        Tell Giskard to allow collision between group1 and group2. Use CollisionEntry.ALL to allow collision with all
+        Tell Giskard to allow collision between group1 and group2. Use CollisionEntry. ALL to allow collision with all
         groups.
         :param group1: name of the first group
         :param group2: name of the second group
@@ -413,7 +413,7 @@ class MotionGoalWrapper:
                         hold_condition: str = '',
                         end_condition: str = ''):
         """
-        Tell Giskard to avoid collision between group1 and group2. Use CollisionEntry.ALL to allow collision with all
+        Tell Giskard to avoid collision between group1 and group2. Use CollisionEntry. ALL to allow collision with all
         groups.
         :param min_distance: set this to overwrite the default distances
         :param group1: name of the first group
@@ -1503,7 +1503,10 @@ class GiskardWrapper:
                         context,
                         goal_pose: PoseStamped,
                         tip_link: str = 'hand_palm_link'):
-
+        """
+        adds monitor functionality for the Placing motion goal, goal now stops if force_threshold is overstepped,
+        which means it essentially stops automatically after placing the object.
+        """
         sleep = self.monitors.add_sleep(1.5)
         force_torque_trigger = self.monitors.add_monitor(monitor_class=Payload_Force.__name__,
                                                          name=Payload_Force.__name__,
@@ -1523,14 +1526,16 @@ class GiskardWrapper:
 
     def monitor_grasp_carefully(self,
                                 goal_pose: PoseStamped,
-                                frontal_offset: float = 0.0,
                                 from_above: bool = False,
                                 align_vertical: bool = False,
                                 reference_frame_alignment: Optional[str] = None,
                                 root_link: Optional[str] = None,
-                                tip_link: Optional[str] = None,
-                                velocity: float = 0.02):
-
+                                tip_link: Optional[str] = None):
+        """
+        adds monitor functionality for the GraspCarefully motion goal, goal now stops if force_threshold is overstepped,
+        which means it essentially stops automatically if the HSR for example slips off of a door handle while trying
+        to open doors.
+        """
         sleep = self.monitors.add_sleep(1.5)
         force_torque_trigger = self.monitors.add_monitor(monitor_class=Payload_Force.__name__,
                                                          name=Payload_Force.__name__,
@@ -1539,13 +1544,11 @@ class GiskardWrapper:
 
         self.motion_goals.add_motion_goal(motion_goal_class='GraspCarefully',
                                           goal_pose=goal_pose,
-                                          frontal_offset=frontal_offset,
                                           from_above=from_above,
                                           align_vertical=align_vertical,
                                           reference_frame_alignment=reference_frame_alignment,
                                           root_link=root_link,
                                           tip_link=tip_link,
-                                          velocity=velocity,
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
         local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)

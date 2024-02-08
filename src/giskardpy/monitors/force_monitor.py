@@ -11,7 +11,11 @@ from giskardpy.suturo_types import ForceTorqueThresholds
 
 
 class Payload_Force(PayloadMonitor):
-
+    """
+    The Payload_Force class creates a monitor for the usage of the HSRs Force-Torque Sensor.
+    This makes it possible for goals which use the Force-Torque Sensor to be used with Monitors,
+    specifically to end/finish a goal automatically when a certain Force/Torque Threshold is being passed.
+    """
     def __init__(self,
                  # use /hsrb/wrist_wrench/compensated for actual HSR, for testing feel free to change it
                  topic: string = "/hsrb/wrist_wrench/compensated",
@@ -56,7 +60,8 @@ class Payload_Force(PayloadMonitor):
 
             else:
                 self.state = False
-        # TODO Make another Conditional for Door handling
+        # TODO: Make another conditional for door handling (might be included as part of GraspCarefully,
+        #  in that case Rework that conditional)
         """ If conditional for initial testing purposes
         if abs(self.wrench.wrench.force.z) >= force_threshold or abs(self.wrench.wrench.torque.y) >= torque_threshold:
             self.state = True
