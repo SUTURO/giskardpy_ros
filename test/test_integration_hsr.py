@@ -145,11 +145,15 @@ class TestForceMonitor:
 
 class TestLidarMonitor:
 
+    # Zur Zeit kein automatisch ausführbarer Test
     def test_lidar_monitor(self, zero_pose: HSRTestWrapper):
-        sleep = zero_pose.monitors.add_sleep(seconds=2.5)
         lidar = zero_pose.monitors.add_monitor(monitor_class=LidarPayloadMonitor.__name__,
                                                name=LidarPayloadMonitor.__name__ + 'Test',
-                                               start_condition='', topic='/hokuyo_back/most_intense')
+                                               start_condition='',
+                                               topic='/hokuyo_back/most_intense',
+                                               frame_id='laser_reference_back',
+                                               laser_distance_threshold_width=0.5,
+                                               laser_distance_threshold=0.8)
 
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
@@ -164,13 +168,12 @@ class TestLidarMonitor:
                                                   tip_link='base_footprint',
                                                   root_link='map',
                                                   hold_condition=lidar,
-                                                  end_condition=f'{goal_reached} and {sleep}')
+                                                  end_condition=f'{goal_reached}')
 
         local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=goal_reached)
 
-        end = zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        zero_pose.monitors.add_end_motion(start_condition=f'{local_min}')
         zero_pose.motion_goals.allow_all_collisions()
-        zero_pose.set_max_traj_length(150)
         zero_pose.execute(add_local_minimum_reached=False)
 
 
