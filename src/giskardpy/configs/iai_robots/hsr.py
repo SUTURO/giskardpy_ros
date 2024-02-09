@@ -35,10 +35,12 @@ class WorldWithHSRConfig(WorldConfig):
         self.add_empty_link(self.odom_link_name)
         self.add_robot_from_parameter_server()
 
-        if not self.check_for_link_name_of_group(self.robot_group_name, 'hsrb/hand_gripper_tool_frame'):
-            logging.logwarn('Could not find Hand Gripper Tool Frame for robot ' + self.robot_group_name)
+        try:
+            self.check_for_link_name_of_group(self.robot_group_name, 'hand_gripper_tool_frame')
+        except ValueError as e:
+            logging.logwarn(f'Could not find Hand Gripper Tool Frame for robot {self.robot_group_name}\n Exception: {e}')
         else:
-            logging.loginfo('Found Hand Gripper Tool Frame for robot ' + self.robot_group_name)
+            logging.loginfo(f'Hand Gripper Tool Frame Found')
 
         root_link_name = self.get_root_link_of_group(self.robot_group_name)
         self.add_omni_drive_joint(parent_link_name=self.odom_link_name,

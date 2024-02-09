@@ -9,12 +9,14 @@ import rospy
 from numpy.typing import NDArray
 from std_msgs.msg import ColorRGBA
 
+from giskardpy.exceptions import UnknownLinkException
 from giskardpy.god_map import god_map
 from giskardpy.model.joints import FixedJoint, OmniDrive, DiffDrive, Joint6DOF, OneDofJoint
 from giskardpy.model.links import Link
 from giskardpy.model.utils import robot_name_from_urdf_string
 from giskardpy.model.world import WorldTree
 from giskardpy.data_types import my_string, PrefixName, Derivatives, derivative_map
+from giskardpy.utils import logging
 
 
 class WorldConfig(ABC):
@@ -68,7 +70,10 @@ class WorldConfig(ABC):
         return god_map.world.groups[group_name].root_link_name
 
     def check_for_link_name_of_group(self, group_name: str, link_name: str):
-        return link_name in god_map.world.groups[group_name].link_names
+        if len(god_map.world.groups[group_name].search_for_link_name(link_name)) > 0:
+            return True
+        else:
+            return False
 
     def set_joint_limits(self, limit_map: derivative_map, joint_name: my_string, group_name: Optional[str] = None):
         """
