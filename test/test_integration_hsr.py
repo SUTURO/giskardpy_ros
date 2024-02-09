@@ -17,6 +17,7 @@ from giskardpy.god_map import god_map
 from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
+from giskardpy.suturo_types import ForceTorqueThresholds
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
 
@@ -118,8 +119,10 @@ class TestForceMonitor:
 
     def test_force_monitor(self, zero_pose: HSRTestWrapper):
         sleep = zero_pose.monitors.add_sleep(2.5)
-        force_torque = zero_pose.monitors.add_monitor(monitor_class=Payload_Force.__name__, name=Payload_Force.__name__,
-                                                      start_condition='')
+        force_torque = zero_pose.monitors.add_monitor(monitor_class=Payload_Force.__name__,
+                                                      name=Payload_Force.__name__,
+                                                      start_condition='',
+                                                      threshold_name=ForceTorqueThresholds.FT_Placing.value)
 
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
