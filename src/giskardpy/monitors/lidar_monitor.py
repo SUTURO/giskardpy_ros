@@ -14,7 +14,7 @@ from giskardpy.monitors.payload_monitors import PayloadMonitor
 class LidarPayloadMonitor(PayloadMonitor):
 
     def __init__(self,
-                 topic: string = 'hsrb/base_scan',
+                 topic: str = 'hsrb/base_scan',
                  name: Optional[str] = None,
                  frame_id: Optional[str] = 'base_range_sensor_link',
                  laser_distance_threshold_width: Optional[float] = 0.8,
@@ -22,7 +22,6 @@ class LidarPayloadMonitor(PayloadMonitor):
                  start_condition: cas.Expression = cas.TrueSymbol):
         super().__init__(name=name, stay_true=False, start_condition=start_condition, run_call_in_thread=False)
         self.topic = topic
-        self.data = LaserScan()
         self.laser_scan_analyzer = LaserScanThreshold(laser_frame=frame_id,
                                                       laser_scan_topic=topic,
                                                       laser_distance_threshold_width=laser_distance_threshold_width,
@@ -31,6 +30,14 @@ class LidarPayloadMonitor(PayloadMonitor):
     def __call__(self):
         self.state = self.laser_scan_analyzer.check_collision()
 
+
+class CameraToLaserScan():
+    depth_image_topic = 'hsrb/head_rgbd_sensor/depth_registered/image_raw'
+    depth_image_rect_topic = '/hsrb/head_rgbd_sensor/depth_registered/image_rect_raw'
+    camera_info_topic = '/hsrb/head_rgbd_sensor/depth_registered/camera_info'
+
+    def __init__(self):
+        pass
 
 class LaserScanThreshold:
     thresholds: np.ndarray = None

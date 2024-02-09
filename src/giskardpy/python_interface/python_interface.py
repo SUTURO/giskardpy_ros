@@ -29,13 +29,14 @@ from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, 
     VectorsAligned, DistanceToLine
 from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.monitors.joint_monitors import JointGoalReached
+from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator
 from giskardpy.monitors.payload_monitors import EndMotion, Print, Sleep, CancelMotion, SetMaxTrajectoryLength, \
     UpdateParentLinkOfGroup, PayloadAlternator
+from giskardpy.suturo_types import ForceTorqueThresholds
 from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import kwargs_to_json
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-from giskardpy.suturo_types import ForceTorqueThresholds
 
 
 class WorldWrapper:
@@ -1378,6 +1379,27 @@ class MonitorWrapper:
                                 start_condition=start_condition,
                                 mod=mod)
 
+    def add_payload_lidar(self,
+                          start_condition: str = '',
+                          topic: str = 'hsrb/base_scan',
+                          name: Optional[str] = None,
+                          frame_id: Optional[str] = 'base_range_sensor_link',
+                          laser_distance_threshold_width: Optional[float] = 0.8,
+                          laser_distance_threshold: Optional[float] = 0.5):
+        """
+        A monitor that detects points within a threshold of the robot via laser_scanner.
+        Is True, when a point is detected within the threshold, False otherwise
+        """
+        if name is None:
+            name = LidarPayloadMonitor.__name__ + f'_{topic}'
+        return self.add_monitor(monitor_class=LidarPayloadMonitor.__name__,
+                                name=name,
+                                start_condition=start_condition,
+                                topic=topic,
+                                frame_id=frame_id,
+                                laser_distance_threshold_width=laser_distance_threshold_width,
+                                laser_distance_threshold=laser_distance_threshold)
+
 
 class GiskardWrapper:
     last_feedback: MoveFeedback = None
@@ -1424,6 +1446,18 @@ class GiskardWrapper:
         if not self.monitors.max_trajectory_length_set:
             self.monitors.add_max_trajectory_length()
         self.monitors.max_trajectory_length_set = False
+
+    def add_lidar_hold_condition(self) -> None:
+        """
+        1. Adds a lidar payload monitor and adds it as hold_condition to all previously defined motions goals
+        """
+        lidar_monitor_name = self.monitors.add_payload_lidar(laser_distance_threshold_width=0.3,
+                                                             laser_distance_threshold=0.35)
+        for goal in self.motion_goals._goals:
+            if goal.hold_condition:
+                goal.hold_condition = f'{goal.hold_condition} and {lidar_monitor_name}'
+            else:
+                goal.hold_condition = lidar_monitor_name
 
     @property
     def robot_name(self):
