@@ -3,7 +3,7 @@ import rospy
 from sensor_msgs.msg import Joy
 import numpy as np
 
-from giskardpy.python_interface import GiskardWrapper
+from giskardpy.python_interface.python_interface import GiskardWrapper
 
 from giskardpy.utils import logging
 
