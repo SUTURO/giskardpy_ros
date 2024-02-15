@@ -117,7 +117,7 @@ def box_setup(zero_pose: HSRTestWrapper) -> HSRTestWrapper:
 # TODO: Further rework force Monitor test; removing unnecessary Code, create more Tests etc.
 class TestForceMonitor:
 
-    def test_force_monitor(self, zero_pose: HSRTestWrapper):
+    def test_force_monitor_placing(self, zero_pose: HSRTestWrapper):
         sleep = zero_pose.monitors.add_sleep(2.5)
         force_torque = zero_pose.monitors.add_monitor(monitor_class=Payload_Force.__name__,
                                                       name=Payload_Force.__name__,
@@ -145,6 +145,33 @@ class TestForceMonitor:
         zero_pose.set_max_traj_length(100)
         zero_pose.execute(add_local_minimum_reached=False)
 
+    def test_force_monitor_grasp(self, zero_pose: HSRTestWrapper):
+        sleep = zero_pose.monitors.add_sleep(2.5)
+        force_torque = zero_pose.monitors.add_monitor(monitor_class=Payload_Force.__name__,
+                                                      name=Payload_Force.__name__,
+                                                      start_condition='',
+                                                      threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value)
+
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position.x = 1
+        base_goal.pose.orientation.w = 1
+        goal_reached = zero_pose.monitors.add_cartesian_pose(goal_pose=base_goal,
+                                                             tip_link='base_footprint',
+                                                             root_link='map',
+                                                             name='goal reached')
+
+        zero_pose.motion_goals.add_cartesian_pose(goal_pose=base_goal,
+                                                  tip_link='base_footprint',
+                                                  root_link='map',
+                                                  hold_condition=force_torque,
+                                                  end_condition=f'{goal_reached} and {sleep}')
+        local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=goal_reached)
+
+        end = zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        zero_pose.motion_goals.allow_all_collisions()
+        zero_pose.set_max_traj_length(100)
+        zero_pose.execute(add_local_minimum_reached=False)
 
 class TestLidarMonitor:
 
@@ -360,6 +387,7 @@ class TestCartGoals:
         zero_pose.set_cart_goal(goal_pose=r_goal, tip_link=zero_pose.tip, root_link='map')
         zero_pose.allow_all_collisions()
         zero_pose.plan_and_execute()
+
 
 # FIXME ForceSensorGoal needs to be fixed, before the Tests can be fixed
 # class TestConstraints:

@@ -1,12 +1,13 @@
 import string
 from typing import Optional
-import geometry_msgs
-from geometry_msgs.msg import WrenchStamped
-import giskardpy.casadi_wrapper as cas
-import numpy as np
-import rospy
-import giskardpy.utils.tfwrapper
 
+import geometry_msgs
+import rospy
+from geometry_msgs.msg import WrenchStamped
+
+import giskardpy.casadi_wrapper as cas
+import giskardpy.utils.tfwrapper
+from giskardpy.god_map import god_map
 from giskardpy.monitors.payload_monitors import PayloadMonitor
 from giskardpy.suturo_types import ForceTorqueThresholds
 
@@ -23,6 +24,7 @@ class Payload_Force(PayloadMonitor):
                  topic: string = "/hsrb/wrist_wrench/compensated",
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol,
+                 # threshold_name is needed here for the class to be able to handle the suturo_types appropriately
                  threshold_name: Optional[str] = None):
         super().__init__(name=name, stay_true=False, start_condition=start_condition, run_call_in_thread=False)
         self.threshold_name = threshold_name
@@ -36,21 +38,25 @@ class Payload_Force(PayloadMonitor):
 
     def force_T_map_transform(self):
 
-        vstampF = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header.frame_id, vector=self.wrench.wrench.force)
-        vstampT = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header.frame_id, vector=self.wrench.wrench.torque)
+        vstampF = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header, vector=self.wrench.wrench.force)
+        vstampT = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header, vector=self.wrench.wrench.torque)
 
         force_transformed = giskardpy.utils.tfwrapper.transform_vector(target_frame='map',
                                                                        vector=vstampF,
-                                                                       timeout=5)
+                                                                       timeout=6)
 
         torque_transformed = giskardpy.utils.tfwrapper.transform_vector(target_frame='map',
                                                                         vector=vstampT,
-                                                                        timeout=5)
+                                                                        timeout=6)
+
+        print(force_transformed.vector.x, force_transformed.vector.y, force_transformed.vector.z)
+        print(torque_transformed.vector.x, torque_transformed.vector.y, torque_transformed.vector.z)
 
     def __call__(self):
 
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
-            force_threshold = 5
+
+            force_threshold = 5  # might be negative x or a torque value(?)
 
             if (abs(self.wrench.wrench.force.x) >= force_threshold or
                     abs(self.wrench.wrench.force.y) >= force_threshold or
@@ -63,8 +69,9 @@ class Payload_Force(PayloadMonitor):
                 self.state = False
                 print(f'MISS GWC!')
         elif self.threshold_name == ForceTorqueThresholds.FT_Placing.value:
+            #self.force_T_map_transform()
             force_x_threshold = 0.0
-            force_z_threshold = 1.0
+            force_z_threshold = 2.5  # placing is most likely Z
             torque_y_threshold = 0.15
 
             if abs(self.wrench.wrench.force.z) >= force_z_threshold:  # abs(self.wrench.wrench.torque.y) >= torque_y_threshold
