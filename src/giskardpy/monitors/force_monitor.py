@@ -36,7 +36,7 @@ class Payload_Force(PayloadMonitor):
     def cb(self, data: WrenchStamped):
         self.wrench = data
 
-    def force_T_map_transform(self):
+    def force_T_map_transform(self, picker):
         self.wrench.header.frame_id = god_map.world.search_for_link_name(self.wrench.header.frame_id)
 
         vstampF = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header, vector=self.wrench.wrench.force)
@@ -46,43 +46,51 @@ class Payload_Force(PayloadMonitor):
 
         torque_transformed = god_map.world.transform_vector('map', vstampT)
 
-        print(force_transformed.vector.x, force_transformed.vector.y, force_transformed.vector.z)
-        print(torque_transformed.vector.x, torque_transformed.vector.y, torque_transformed.vector.z)
+        print("Force:", force_transformed.vector.x, force_transformed.vector.y, force_transformed.vector.z)
+        print("Torque:", torque_transformed.vector.x, torque_transformed.vector.y, torque_transformed.vector.z)
+
+        if picker == 1:
+
+            return force_transformed
+
+        elif picker == 2:
+
+            return torque_transformed
 
     def __call__(self):
 
-        if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
+        rob_force = self.force_T_map_transform(1)
+        rob_torque = self.force_T_map_transform(2)
 
-            self.force_T_map_transform()
+        if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
             force_threshold = 5  # might be negative x or a torque value(?)
 
-            if (abs(self.wrench.wrench.force.x) >= force_threshold or
-                    abs(self.wrench.wrench.force.y) >= force_threshold or
-                    abs(self.wrench.wrench.force.z) >= force_threshold):
+            if (abs(rob_force.vector.x) >= force_threshold or
+                    abs(rob_force.vector.y) >= force_threshold or
+                    abs(rob_force.vector.z) >= force_threshold):
 
                 self.state = True
                 print(
-                    f'HIT GWC: {self.wrench.wrench.force.x};{self.wrench.wrench.force.y};{self.wrench.wrench.force.z}')
+                    f'HIT GWC: {rob_force.vector.x};{rob_force.vector.y};{rob_force.vector.z}')
             else:
                 self.state = False
                 print(f'MISS GWC!')
         elif self.threshold_name == ForceTorqueThresholds.FT_Placing.value:
 
-            self.force_T_map_transform()
             force_x_threshold = 0.0
-            force_z_threshold = 2.5  # placing is most likely Z
+            force_z_threshold = 2.0  # placing is most likely Z
             torque_y_threshold = 0.15
 
-            if abs(self.wrench.wrench.force.z) >= force_z_threshold:  # abs(self.wrench.wrench.torque.y) >= torque_y_threshold
+            if abs(rob_force.vector.z) >= force_z_threshold:  # abs(self.wrench.wrench.torque.y) >= torque_y_threshold
 
                 self.state = True
-                print(f'HIT PLACING1: {self.wrench.wrench.force.z}')
-            elif (abs(self.wrench.wrench.force.x) <= force_x_threshold or
-                  abs(self.wrench.wrench.torque.y) >= torque_y_threshold):
+                print(f'HIT PLACING1: {rob_force.vector.z}')
+            elif (abs(rob_force.vector.x) <= force_x_threshold or
+                  abs(rob_torque.vector.y) >= torque_y_threshold):
 
                 self.state = True
-                print(f'HIT PLACING2: {self.wrench.wrench.force.x};{self.wrench.wrench.torque.y}')
+                print(f'HIT PLACING2: {rob_force.vector.x};{rob_torque.vector.y}')
             else:
                 self.state = False
                 print(f'MISS PLACING!')

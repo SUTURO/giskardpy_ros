@@ -116,6 +116,11 @@ def box_setup(zero_pose: HSRTestWrapper) -> HSRTestWrapper:
 
 # TODO: Further rework force Monitor test; removing unnecessary Code, create more Tests etc.
 class TestForceMonitor:
+    """
+    The tests for the force_monitor require rosbags which have been recorded on the
+    /hsrb/wrist_wrench/compensated topic. Since there's no other way to properly
+    simulate the forces produced by the force-torque sensor.
+    """
 
     def test_force_monitor_placing(self, zero_pose: HSRTestWrapper):
         sleep = zero_pose.monitors.add_sleep(2.5)
