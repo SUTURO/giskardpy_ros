@@ -45,8 +45,8 @@ class Payload_Force(PayloadMonitor):
 
         torque_transformed = god_map.world.transform_vector('map', vstampT)
 
-        print("Force:", force_transformed.vector.x, force_transformed.vector.y, force_transformed.vector.z)
-        print("Torque:", torque_transformed.vector.x, torque_transformed.vector.y, torque_transformed.vector.z)
+        # print("Force:", force_transformed.vector.x, force_transformed.vector.y, force_transformed.vector.z)
+        # print("Torque:", torque_transformed.vector.x, torque_transformed.vector.y, torque_transformed.vector.z)
 
         if picker == 1:
 
@@ -63,35 +63,34 @@ class Payload_Force(PayloadMonitor):
 
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
-            force_threshold = 5  # might be y value above 0 (maybe torque above Zero too?)
+            force_threshold = 0.2  # might be y value above 0 (maybe torque above Zero too?)
+            torque_threshold = 0.02
+            # if (abs(rob_force.vector.x) >= force_threshold or
+            #         abs(rob_force.vector.y) >= force_threshold or
+            #         abs(rob_force.vector.z) >= force_threshold):
 
-            if (abs(rob_force.vector.x) >= force_threshold or
-                    abs(rob_force.vector.y) >= force_threshold or
-                    abs(rob_force.vector.z) >= force_threshold):
-
+            if (abs(rob_force.vector.y) > force_threshold or
+                    abs(rob_torque.vector.y) > torque_threshold):
                 self.state = True
-                print(f'HIT GWC: {rob_force.vector.x};{rob_force.vector.y};{rob_force.vector.z}')
+                print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
             else:
                 self.state = False
-                print(f'MISS GWC!')
+                print(f'MISS GWC!: {rob_force.vector.x};{rob_torque.vector.y}')
         elif self.threshold_name == ForceTorqueThresholds.FT_Placing.value:
 
-            force_x_threshold = 0.0
-            force_z_threshold = 2.0  # placing is most likely Z (could be negative x value too)
-            torque_y_threshold = 0.15 # might be negative y torque value (should still be in 0.x value area)
+            force_x_threshold = 10.0
+            # force_z_threshold = 2.0  # placing is most likely Z (could be negative x value too)
+            torque_y_threshold = 4  # might be negative y torque value (should still be in 0.x value area)
 
-            if abs(rob_force.vector.z) >= force_z_threshold:
-
-                self.state = True
-                print(f'HIT PLACING1: {rob_force.vector.z}')
-            elif (abs(rob_force.vector.x) <= force_x_threshold or
-                  abs(rob_torque.vector.y) >= torque_y_threshold):
+            if (abs(rob_force.vector.x) >= force_x_threshold or
+                    abs(rob_torque.vector.y) > torque_y_threshold):
 
                 self.state = True
-                print(f'HIT PLACING2: {rob_force.vector.x};{rob_torque.vector.y}')
+                print(f'HIT PLACING1: {rob_force.vector.x};{rob_torque.vector.y}')
+
             else:
                 self.state = False
-                print(f'MISS PLACING!')
+                print(f'MISS PLACING!: {rob_force.vector.x};{rob_torque.vector.y}')
         # TODO: Make another conditional for door handling (might be included as part of GraspCarefully,
         #  in that case Rework that conditional to handle multiple cases)
         """ If conditional for initial testing purposes
