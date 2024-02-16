@@ -1554,7 +1554,7 @@ class GiskardWrapper:
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
         local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
-        end = self.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        self.monitors.add_end_motion(start_condition=f'{local_min}')
         self.monitors.add_max_trajectory_length(100)
         self.execute()
 
@@ -1586,6 +1586,6 @@ class GiskardWrapper:
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
         local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
-        end = self.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        self.monitors.add_end_motion(start_condition=f'{local_min}')
         self.monitors.add_max_trajectory_length(100)
         self.execute()

@@ -140,7 +140,7 @@ class TestForceMonitor:
                                                   end_condition=f'{goal_reached} and {sleep}')
         local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=goal_reached)
 
-        end = zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        zero_pose.monitors.add_end_motion(start_condition=f'{local_min}')
         zero_pose.motion_goals.allow_all_collisions()
         zero_pose.set_max_traj_length(100)
         zero_pose.execute(add_local_minimum_reached=False)
@@ -168,7 +168,7 @@ class TestForceMonitor:
                                                   end_condition=f'{goal_reached} and {sleep}')
         local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=goal_reached)
 
-        end = zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
+        zero_pose.monitors.add_end_motion(start_condition=f'{local_min}')
         zero_pose.motion_goals.allow_all_collisions()
         zero_pose.set_max_traj_length(100)
         zero_pose.execute(add_local_minimum_reached=False)

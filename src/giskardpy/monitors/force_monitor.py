@@ -37,17 +37,14 @@ class Payload_Force(PayloadMonitor):
         self.wrench = data
 
     def force_T_map_transform(self):
+        self.wrench.header.frame_id = god_map.world.search_for_link_name(self.wrench.header.frame_id)
 
         vstampF = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header, vector=self.wrench.wrench.force)
         vstampT = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header, vector=self.wrench.wrench.torque)
 
-        force_transformed = giskardpy.utils.tfwrapper.transform_vector(target_frame='map',
-                                                                       vector=vstampF,
-                                                                       timeout=6)
+        force_transformed = god_map.world.transform_vector('map', vstampF)
 
-        torque_transformed = giskardpy.utils.tfwrapper.transform_vector(target_frame='map',
-                                                                        vector=vstampT,
-                                                                        timeout=6)
+        torque_transformed = god_map.world.transform_vector('map', vstampT)
 
         print(force_transformed.vector.x, force_transformed.vector.y, force_transformed.vector.z)
         print(torque_transformed.vector.x, torque_transformed.vector.y, torque_transformed.vector.z)
@@ -55,6 +52,8 @@ class Payload_Force(PayloadMonitor):
     def __call__(self):
 
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
+
+            self.force_T_map_transform()
 
             force_threshold = 5  # might be negative x or a torque value(?)
 
@@ -69,7 +68,8 @@ class Payload_Force(PayloadMonitor):
                 self.state = False
                 print(f'MISS GWC!')
         elif self.threshold_name == ForceTorqueThresholds.FT_Placing.value:
-            #self.force_T_map_transform()
+
+            self.force_T_map_transform()
             force_x_threshold = 0.0
             force_z_threshold = 2.5  # placing is most likely Z
             torque_y_threshold = 0.15
