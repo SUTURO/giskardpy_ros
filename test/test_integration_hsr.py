@@ -119,7 +119,7 @@ class TestForceMonitor:
     """
     The tests for the force_monitor require rosbags which have been recorded on the
     /hsrb/wrist_wrench/compensated topic. Since there's no other way to properly
-    simulate the forces produced by the force-torque sensor.
+    simulate/imitate the forces produced by the force-torque sensor.
     """
 
     def test_force_monitor_placing(self, zero_pose: HSRTestWrapper):
@@ -145,7 +145,7 @@ class TestForceMonitor:
                                                   end_condition=f'{goal_reached} and {sleep}')
         local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=goal_reached)
 
-        zero_pose.monitors.add_end_motion(start_condition=f'{local_min}')
+        zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
         zero_pose.motion_goals.allow_all_collisions()
         zero_pose.set_max_traj_length(100)
         zero_pose.execute(add_local_minimum_reached=False)
@@ -173,7 +173,7 @@ class TestForceMonitor:
                                                   end_condition=f'{goal_reached} and {sleep}')
         local_min = zero_pose.monitors.add_local_minimum_reached(start_condition=goal_reached)
 
-        zero_pose.monitors.add_end_motion(start_condition=f'{local_min}')
+        zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {sleep}')
         zero_pose.motion_goals.allow_all_collisions()
         zero_pose.set_max_traj_length(100)
         zero_pose.execute(add_local_minimum_reached=False)

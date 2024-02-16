@@ -8,7 +8,7 @@ class GripperTypes(Enum):
     NEUTRAL = 'neutral'
 
 
-# List of Methods that need Thresholds for force_monitor: GraspObjectCarefully, Placing,
+# List of Methods that need Thresholds for force_monitor: GraspObjectCarefully(might include Doors?), Placing,
 # TODO: Create Enums for every Force and/or Torque sensitive action, to be used in force_monitor.py
 @unique
 class ForceTorqueThresholds(Enum):

@@ -780,6 +780,7 @@ class GraspCarefully(ForceSensorGoal):
                                                  hold_condition=hold_condition,
                                                  end_condition=end_condition))
 
+    # might need to be removed in the future, as soon as the old interface isn't used by anymore
     def goal_cancel_condition(self):
         force_threshold = 5.0
 
@@ -851,6 +852,7 @@ class Placing(ForceSensorGoal):
                                                  hold_condition=hold_condition,
                                                  end_condition=end_condition))
 
+    # might need to be removed in the future, as soon as the old interface isn't in use anymore
     def goal_cancel_condition(self):
 
         if self.from_above:
