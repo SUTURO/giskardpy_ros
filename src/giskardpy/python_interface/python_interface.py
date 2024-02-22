@@ -29,12 +29,11 @@ from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, 
     VectorsAligned, DistanceToLine
 from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.monitors.joint_monitors import JointGoalReached
-from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator, CancelMotion, EndMotion
-from giskardpy.monitors.payload_monitors import Print, Sleep, SetMaxTrajectoryLength, \
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
+from giskardpy.monitors.monitors import EndMotion
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator
-from giskardpy.monitors.payload_monitors import EndMotion, Print, Sleep, CancelMotion, SetMaxTrajectoryLength, \
-    UpdateParentLinkOfGroup, PayloadAlternator
+from giskardpy.monitors.payload_monitors import Print, Sleep, CancelMotion, SetMaxTrajectoryLength, \
+    PayloadAlternator
 from giskardpy.suturo_types import ForceTorqueThresholds
 from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import kwargs_to_json

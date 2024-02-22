@@ -8,7 +8,7 @@ from sensor_msgs.msg import LaserScan
 from visualization_msgs.msg import MarkerArray, Marker
 
 import giskardpy.casadi_wrapper as cas
-from giskardpy.monitors.payload_monitors import PayloadMonitor
+from giskardpy.monitors.monitors import PayloadMonitor
 
 
 class LidarPayloadMonitor(PayloadMonitor):

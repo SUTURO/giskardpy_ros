@@ -7,7 +7,7 @@ from geometry_msgs.msg import WrenchStamped
 
 import giskardpy.casadi_wrapper as cas
 from giskardpy.god_map import god_map
-from giskardpy.monitors.payload_monitors import PayloadMonitor
+from giskardpy.monitors.monitors import PayloadMonitor
 from giskardpy.suturo_types import ForceTorqueThresholds
 
 

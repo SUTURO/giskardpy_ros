@@ -9,7 +9,7 @@ from giskardpy.monitors.monitors import TimeAbove, LocalMinimumReached, EndMotio
 from giskardpy.god_map import god_map
 from giskardpy.model.joints import OmniDrive, DiffDrive
 from giskardpy.monitors.monitors import TimeAbove, LocalMinimumReached
-from giskardpy.monitors.payload_monitors import EndMotion
+from giskardpy.monitors.monitors import EndMotion
 from giskardpy.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils import logging
 
