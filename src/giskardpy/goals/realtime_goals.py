@@ -53,6 +53,10 @@ class RealTimePointingPose(Pointing):
                  root_group: Optional[str] = None,
                  pointing_axis: Vector3Stamped = None,
                  max_velocity: float = 0.3,
+                 name: Optional[str] = None,
+                 start_condition: cas.Expression = cas.TrueSymbol,
+                 hold_condition: cas.Expression = cas.FalseSymbol,
+                 end_condition: cas.Expression = cas.TrueSymbol,
                  weight: float = WEIGHT_BELOW_CA):
         initial_goal = PointStamped()
         initial_goal.header.frame_id = 'base_footprint'
@@ -60,7 +64,11 @@ class RealTimePointingPose(Pointing):
         initial_goal.point.z = 1
         super().__init__(tip_link=tip_link,
                          goal_point=initial_goal,
+                         name=name,
                          root_link=root_link,
+                         start_condition=start_condition,
+                         hold_condition=hold_condition,
+                         end_condition=end_condition,
                          pointing_axis=pointing_axis)
 
         self.sub = rospy.Subscriber(topic_name, PoseStamped, self.cb)
@@ -72,8 +80,8 @@ class RealTimePointingPose(Pointing):
         # FIXME: Should be removed after Perception fixed frame_id to be without "/" in front or fixed otherwise
         try:
             point_data.header.frame_id = point_data.header.frame_id.replace("/", "")
-        except:
-            rospy.loginfo(f'Error, frame_id not set. {data.header.frame_id}, {data}')
+        except Exception as e:
+            rospy.loginfo(f'Error, frame_id not set. {data.header.frame_id}, {data} {e}')
             return
-        point_data = self.transform_msg(self.root, point_data)
+        point_data = transform_msg(self.root, point_data)
         self.root_P_goal_point = point_data

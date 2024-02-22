@@ -6,6 +6,7 @@ from actionlib_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
+from giskardpy.goals.realtime_goals import RealTimePointingPose
 from giskardpy.god_map import god_map
 from std_srvs.srv import TriggerRequest, TriggerResponse
 from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
@@ -26,8 +27,9 @@ class OldGiskardWrapper(GiskardWrapper):
     def __init__(self, node_name: str = 'giskard'):
         super().__init__(node_name, avoid_name_conflict=True)
 
-    def execute(self, wait: bool = True) -> MoveResult:
-        self.add_default_end_motion_conditions()
+    def execute(self, wait: bool = True, add_default: bool = True) -> MoveResult:
+        if add_default:
+            self.add_default_end_motion_conditions()
         return super().execute(wait)
 
     def projection(self, wait: bool = True) -> MoveResult:
@@ -1086,10 +1088,10 @@ class OldGiskardWrapper(GiskardWrapper):
         Wrapper for RealTimePointing and EndlessMode,
         which is used for person live-tracking.
         """
-        if endless_mode:
-            self.motion_goals.add_motion_goal(motion_goal_class='EndlessMode')
+        # if endless_mode:
+        #     self.motion_goals.add_motion_goal(motion_goal_class='EndlessMode')
 
-        self.motion_goals.add_motion_goal(motion_goal_class='RealTimePointingPose',
+        self.motion_goals.add_motion_goal(motion_goal_class=RealTimePointingPose.__name__,
                                           tip_link=tip_link,
                                           topic_name=topic_name,
                                           root_link=root_link,
