@@ -157,12 +157,15 @@ class HSRJointTrajInterfaceConfig(RobotInterfaceConfig):
                                                 fill_velocity_values=True)
         self.add_follow_joint_trajectory_server(namespace='/hsrb/arm_trajectory_controller',
                                                 fill_velocity_values=True)
-        self.add_follow_joint_trajectory_server(namespace='/hsrb/omni_base_controller',
-                                                fill_velocity_values=True,
-                                                path_tolerance={
-                                                    Derivatives.position: 1,
-                                                    Derivatives.velocity: 1,
-                                                    Derivatives.acceleration: 100})
+        self.add_base_cmd_velocity(cmd_vel_topic='/hsrb/command_velocity',
+                                   track_only_velocity=False,
+                                   joint_name=self.drive_joint_name)
+        # self.add_follow_joint_trajectory_server(namespace='/hsrb/omni_base_controller',
+        #                                         fill_velocity_values=True,
+        #                                         path_tolerance={
+        #                                             Derivatives.position: 1,
+        #                                             Derivatives.velocity: 1,
+        #                                             Derivatives.acceleration: 100})
         # self.add_base_cmd_velocity(cmd_vel_topic='/hsrb/command_velocity',
         #                            track_only_velocity=True,
         #                            joint_name=self.drive_joint_name)
