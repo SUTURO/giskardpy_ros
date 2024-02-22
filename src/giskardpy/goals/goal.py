@@ -4,6 +4,11 @@ import abc
 from abc import ABC
 from typing import Dict, List, Union
 
+from giskardpy.monitors.monitors import ExpressionMonitor, Monitor
+from giskardpy.god_map import god_map
+from giskardpy.symbol_manager import symbol_manager
+from giskardpy.tasks.task import Task
+from giskardpy.utils.utils import string_shortener
 import controller_manager_msgs
 # import giskardpy.identifier as identifier
 import rospy
@@ -114,6 +119,13 @@ class Goal(ABC):
         self.connect_hold_condition_to_all_tasks(hold_condition)
         self.connect_end_condition_to_all_tasks(end_condition)
 
+    def get_symbol_for_self_attribute(self, self_attribute_symbol_reference: str) -> cas.Symbol:
+        """
+        Like 'symbol_manager.get_symbol', but automatically prepends the place where the goal is stored on god_map.
+        """
+        return symbol_manager.get_symbol(f'god_map.motion_goal_manager.motion_goals[\'{str(self)}\']'
+                                         f'{self_attribute_symbol_reference}')
+
     def get_expr_velocity(self, expr: cas.Expression) -> cas.Expression:
         """
         Creates an expressions that computes the total derivative of expr
@@ -159,8 +171,11 @@ class Goal(ABC):
         self.tasks.append(task)
         return task
 
-    def add_monitor(self, monitor: ExpressionMonitor) -> None:
-        god_map.monitor_manager.add_expression_monitor(monitor)
+    def add_monitor(self, monitor: Monitor) -> None:
+        if isinstance(monitor, ExpressionMonitor):
+            god_map.monitor_manager.add_expression_monitor(monitor)
+        else:
+            god_map.monitor_manager.add_payload_monitor(monitor)
 
 
 class NonMotionGoal(Goal):

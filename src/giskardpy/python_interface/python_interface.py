@@ -29,6 +29,8 @@ from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, 
     VectorsAligned, DistanceToLine
 from giskardpy.monitors.force_monitor import Payload_Force
 from giskardpy.monitors.joint_monitors import JointGoalReached
+from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator, CancelMotion, EndMotion
+from giskardpy.monitors.payload_monitors import Print, Sleep, SetMaxTrajectoryLength, \
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator
 from giskardpy.monitors.payload_monitors import EndMotion, Print, Sleep, CancelMotion, SetMaxTrajectoryLength, \
@@ -519,6 +521,7 @@ class MotionGoalWrapper:
                            root_group: Optional[str] = None,
                            reference_linear_velocity: Optional[float] = None,
                            reference_angular_velocity: Optional[float] = None,
+                           absolute: bool = False,
                            weight: Optional[float] = None,
                            name: Optional[str] = None,
                            start_condition: str = '',
@@ -535,6 +538,7 @@ class MotionGoalWrapper:
         :param goal_pose: the goal pose
         :param root_group: a group name, where to search for root_link, only required to avoid name conflicts
         :param tip_group: a group name, where to search for tip_link, only required to avoid name conflicts
+        :param absolute: if False, the goal pose is reevaluated if start_condition turns True.
         :param reference_linear_velocity: m/s
         :param reference_angular_velocity: rad/s
         :param weight: None = use default weight
@@ -549,6 +553,7 @@ class MotionGoalWrapper:
                              reference_angular_velocity=reference_angular_velocity,
                              weight=weight,
                              name=name,
+                             absolute=absolute,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
                              end_condition=end_condition,
@@ -866,6 +871,7 @@ class MotionGoalWrapper:
                                   root_group: Optional[str] = None,
                                   reference_velocity: Optional[float] = None,
                                   weight: Optional[float] = None,
+                                  absolute: bool = False,
                                   name: Optional[str] = None,
                                   start_condition: str = '',
                                   hold_condition: str = '',
@@ -879,7 +885,7 @@ class MotionGoalWrapper:
         :param tip_group: if tip link is not unique, you can use this to tell Giskard in which group to search.
         :param root_group: if root link is not unique, you can use this to tell Giskard in which group to search.
         :param reference_velocity: rad/s, approx limit
-        :param max_velocity: rad/s, strict limit, but will slow the system down
+        :param absolute: if False, the goal pose is reevaluated if start_condition turns True.
         """
         self.add_motion_goal(motion_goal_class=CartesianOrientation.__name__,
                              goal_orientation=goal_orientation,
@@ -889,6 +895,7 @@ class MotionGoalWrapper:
                              root_group=root_group,
                              reference_velocity=reference_velocity,
                              weight=weight,
+                             absolute=absolute,
                              name=name,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
@@ -929,6 +936,7 @@ class MotionGoalWrapper:
                                     reference_linear_velocity: Optional[float] = None,
                                     reference_angular_velocity: Optional[float] = None,
                                     weight: Optional[float] = None,
+                                    absolute: bool = False,
                                     name: Optional[str] = None,
                                     start_condition: str = '',
                                     hold_condition: str = '',
@@ -947,6 +955,7 @@ class MotionGoalWrapper:
         :param root_group: a group name, where to search for root_link, only required to avoid name conflicts
         :param reference_linear_velocity: m/s
         :param reference_angular_velocity: rad/s
+        :param absolute: if False, the goal pose is reevaluated if start_condition turns True.
         """
         self.add_motion_goal(motion_goal_class=CartesianPoseStraight.__name__,
                              goal_pose=goal_pose,
@@ -958,6 +967,7 @@ class MotionGoalWrapper:
                              reference_linear_velocity=reference_linear_velocity,
                              reference_angular_velocity=reference_angular_velocity,
                              name=name,
+                             absolute=absolute,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
                              end_condition=end_condition,
@@ -971,6 +981,7 @@ class MotionGoalWrapper:
                                root_group: Optional[str] = None,
                                reference_velocity: Optional[float] = 0.2,
                                weight: Optional[float] = None,
+                               absolute: bool = False,
                                name: Optional[str] = None,
                                start_condition: str = '',
                                hold_condition: str = '',
@@ -985,6 +996,7 @@ class MotionGoalWrapper:
         :param root_group: if root link is not unique, you can use this to tell Giskard in which group to search.
         :param reference_velocity: m/s
         :param weight:
+        :param absolute: if False, the goal pose is reevaluated if start_condition turns True.
         """
         self.add_motion_goal(motion_goal_class=CartesianPosition.__name__,
                              goal_point=goal_point,
@@ -994,6 +1006,7 @@ class MotionGoalWrapper:
                              root_group=root_group,
                              reference_velocity=reference_velocity,
                              weight=weight,
+                             absolute=absolute,
                              name=name,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
@@ -1008,6 +1021,7 @@ class MotionGoalWrapper:
                                         root_group: Optional[str] = None,
                                         reference_velocity: float = None,
                                         weight: Optional[float] = None,
+                                        absolute: bool = False,
                                         name: Optional[str] = None,
                                         start_condition: str = '',
                                         hold_condition: str = '',
@@ -1025,6 +1039,7 @@ class MotionGoalWrapper:
                              reference_velocity=reference_velocity,
                              weight=weight,
                              name=name,
+                             absolute=absolute,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
                              end_condition=end_condition,
@@ -1128,6 +1143,7 @@ class MonitorWrapper:
                            tip_group: Optional[str] = None,
                            position_threshold: float = 0.01,
                            orientation_threshold: float = 0.01,
+                           absolute: bool = False,
                            name: Optional[str] = None,
                            start_condition: str = '',
                            stay_true: bool = True):
@@ -1141,6 +1157,7 @@ class MonitorWrapper:
                                 goal_pose=goal_pose,
                                 root_group=root_group,
                                 tip_group=tip_group,
+                                absolute=absolute,
                                 start_condition=start_condition,
                                 position_threshold=position_threshold,
                                 orientation_threshold=orientation_threshold,
@@ -1153,6 +1170,7 @@ class MonitorWrapper:
                                root_group: Optional[str] = None,
                                tip_group: Optional[str] = None,
                                threshold: float = 0.01,
+                               absolute: bool = False,
                                name: Optional[str] = None,
                                start_condition: str = '',
                                stay_true: bool = True) -> str:
@@ -1166,6 +1184,7 @@ class MonitorWrapper:
                                 goal_point=goal_point,
                                 root_group=root_group,
                                 start_condition=start_condition,
+                                absolute=absolute,
                                 tip_group=tip_group,
                                 threshold=threshold,
                                 stay_true=stay_true)
@@ -1205,6 +1224,7 @@ class MonitorWrapper:
                                   root_group: Optional[str] = None,
                                   tip_group: Optional[str] = None,
                                   threshold: float = 0.01,
+                                  absolute: bool = False,
                                   name: Optional[str] = None,
                                   start_condition: str = '',
                                   stay_true: bool = True):
@@ -1218,6 +1238,7 @@ class MonitorWrapper:
                                 goal_orientation=goal_orientation,
                                 root_group=root_group,
                                 tip_group=tip_group,
+                                absolute=absolute,
                                 start_condition=start_condition,
                                 threshold=threshold,
                                 stay_true=stay_true)
@@ -1295,23 +1316,6 @@ class MonitorWrapper:
                                 start_condition=start_condition,
                                 error_message=error_message,
                                 error_code=error_code)
-
-    def update_parent_link_of_group(self,
-                                    start_condition: str,
-                                    group_name: str,
-                                    parent_link: str,
-                                    parent_link_group: Optional[str] = '',
-                                    name: Optional[str] = None) -> str:
-        """
-        A PayloadMonitor that works like world.update_parent_link_of_group().
-        CAUTION! the model changes will only come into effect, once the motion is finished.
-        """
-        return self.add_monitor(monitor_class=UpdateParentLinkOfGroup.__name__,
-                                name=name,
-                                start_condition=start_condition,
-                                group_name=group_name,
-                                parent_link=parent_link,
-                                parent_link_group=parent_link_group)
 
     def add_max_trajectory_length(self,
                                   max_trajectory_length: Optional[float] = None) -> str:

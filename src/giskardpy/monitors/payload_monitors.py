@@ -7,33 +7,11 @@ import numpy as np
 import rospy
 
 from giskard_msgs.msg import MoveResult, GiskardError
-from giskardpy import profile
 from giskardpy.exceptions import GiskardException, MonitorInitalizationException
-from giskardpy.monitors.monitors import Monitor
+from giskardpy.monitors.monitors import Monitor, PayloadMonitor, CancelMotion
 from giskardpy.god_map import god_map
 from giskardpy.utils import logging
 import giskardpy.casadi_wrapper as cas
-
-
-class PayloadMonitor(Monitor, ABC):
-    state: bool
-    run_call_in_thread: bool
-
-    def __init__(self, *,
-                 run_call_in_thread: bool,
-                 name: Optional[str] = None,
-                 stay_true: bool = True,
-                 start_condition: cas.Expression = cas.TrueSymbol,):
-        self.state = False
-        self.run_call_in_thread = run_call_in_thread
-        super().__init__(name=name, start_condition=start_condition, stay_true=stay_true)
-
-    def get_state(self) -> bool:
-        return self.state
-
-    @abc.abstractmethod
-    def __call__(self):
-        pass
 
 
 class WorldUpdatePayloadMonitor(PayloadMonitor):
@@ -54,45 +32,13 @@ class WorldUpdatePayloadMonitor(PayloadMonitor):
         self.state = True
 
 
-class EndMotion(PayloadMonitor):
-    def __init__(self,
-                 name: Optional[str] = None,
-                 start_condition: cas.Expression = cas.TrueSymbol,):
-        super().__init__(name=name, start_condition=start_condition, run_call_in_thread=False)
-
-    def __call__(self):
-        self.state = True
-
-    def get_state(self) -> bool:
-        return self.state
-
-
-class CancelMotion(PayloadMonitor):
-    def __init__(self,
-                 error_message: str,
-                 error_code: int = GiskardError.ERROR,
-                 name: Optional[str] = None,
-                 start_condition: cas.Expression = cas.TrueSymbol,):
-        super().__init__(name=name, start_condition=start_condition, run_call_in_thread=False)
-        self.error_message = error_message
-        self.error_code = error_code
-
-    @profile
-    def __call__(self):
-        self.state = True
-        raise GiskardException.from_error_code(error_code=self.error_code, error_message=self.error_message)
-
-    def get_state(self) -> bool:
-        return self.state
-
-
 class SetMaxTrajectoryLength(CancelMotion):
     new_length: float
 
     def __init__(self,
                  new_length: Optional[float] = None,
                  name: Optional[str] = None,
-                 start_condition: cas.Expression = cas.TrueSymbol,):
+                 start_condition: cas.Expression = cas.TrueSymbol, ):
         if not (start_condition == cas.TrueSymbol).evaluate():
             raise MonitorInitalizationException(f'Cannot set start_condition for {SetMaxTrajectoryLength.__name__}')
         if new_length is None:
@@ -144,6 +90,8 @@ class UpdateParentLinkOfGroup(WorldUpdatePayloadMonitor):
                  parent_link_group: Optional[str] = '',
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol):
+        if not god_map.is_standalone():
+            raise MonitorInitalizationException(f'This monitor can only be used in standalone mode.')
         self.group_name = group_name
         self.new_parent_link = god_map.world.search_for_link_name(parent_link, parent_link_group)
         super().__init__(name=name, start_condition=start_condition)
