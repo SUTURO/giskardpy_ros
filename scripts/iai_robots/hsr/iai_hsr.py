@@ -12,5 +12,5 @@ if __name__ == '__main__':
     giskard = Giskard(world_config=WorldWithHSRConfig(),
                       collision_avoidance_config=HSRCollisionAvoidanceConfig(),
                       robot_interface_config=HSRJointTrajInterfaceConfig(),
-                      behavior_tree_config=JSConfig(publish_js=True))
+                      behavior_tree_config=JSConfig(publish_free_variables=True))
     giskard.live()

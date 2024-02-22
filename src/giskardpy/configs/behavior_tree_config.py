@@ -213,15 +213,15 @@ class StandAloneBTConfig(BehaviorTreeConfig):
         if self.publish_js:
             self.add_js_publisher()
         if self.publish_free_variables:
-            self.add_free_variable_publisher()
+            self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
             # self.add_js_publisher(include_prefix=False, topic_name='giskard_joint_states')
 
 
 class JSConfig(BehaviorTreeConfig):
-    def __init__(self, planning_sleep: Optional[float] = None, publish_js=False):
+    def __init__(self, planning_sleep: Optional[float] = None, publish_free_variables=False):
         super().__init__(ControlModes.open_loop)
         self.planning_sleep = planning_sleep
-        self.publish_js = publish_js
+        self.publish_free_variables = publish_free_variables
 
     def setup(self):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_control_loop=True) # add_to_planning=False
@@ -232,8 +232,8 @@ class JSConfig(BehaviorTreeConfig):
         # sleeper doesn't exists anymore
         #if self.planning_sleep is not None:
         #    self.add_sleeper(self.planning_sleep)
-        if self.publish_js:
-            self.add_js_publisher(include_prefix=False, topic_name='giskard_joint_states')
+        if self.publish_free_variables:
+            self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
 
 
 class OpenLoopBTConfig(BehaviorTreeConfig):
@@ -270,7 +270,8 @@ class OpenLoopBTConfig(BehaviorTreeConfig):
 
 class ClosedLoopBTConfig(BehaviorTreeConfig):
     def __init__(self, debug_mode: bool = False, control_loop_max_hz: float = 50,
-                 simulation_max_hz: Optional[float] = None):
+                 simulation_max_hz: Optional[float] = None,
+                 publish_free_variables = False):
         """
         The default configuration for Giskard in closed loop mode. Make use to set up the robot interface accordingly.
         :param debug_mode: If True, will publish debug data on topics. This will significantly slow down the control loop.
@@ -281,6 +282,7 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
         if god_map.is_in_github_workflow():
             debug_mode = False
         self.debug_mode = debug_mode
+        self.publish_free_variables = publish_free_variables
 
     def setup(self):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_control_loop=False)
@@ -297,3 +299,5 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
                 # publish_lbA=True,
                 # publish_ubA=True
             )
+        if self.publish_free_variables:
+            self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
