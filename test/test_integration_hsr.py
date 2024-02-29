@@ -14,7 +14,7 @@ from giskardpy.configs.giskard import Giskard
 from giskardpy.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
 from giskardpy.configs.qp_controller_config import QPControllerConfig, SupportedQPSolver
 from giskardpy.god_map import god_map
-from giskardpy.monitors.force_monitor import Payload_Force
+from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
 from giskardpy.suturo_types import ForceTorqueThresholds
@@ -124,8 +124,8 @@ class TestForceMonitor:
 
     def test_force_monitor_grasp(self, zero_pose: HSRTestWrapper):
         sleep = zero_pose.monitors.add_sleep(2.5)
-        force_torque = zero_pose.monitors.add_monitor(monitor_class=Payload_Force.__name__,
-                                                      name=Payload_Force.__name__,
+        force_torque = zero_pose.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                                      name=PayloadForceTorque.__name__,
                                                       start_condition='',
                                                       threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value)
 
@@ -152,8 +152,8 @@ class TestForceMonitor:
 
     def test_force_monitor_placing(self, zero_pose: HSRTestWrapper):
         sleep = zero_pose.monitors.add_sleep(2.5)
-        force_torque = zero_pose.monitors.add_monitor(monitor_class=Payload_Force.__name__,
-                                                      name=Payload_Force.__name__,
+        force_torque = zero_pose.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                                      name=PayloadForceTorque.__name__,
                                                       start_condition='',
                                                       threshold_name=ForceTorqueThresholds.FT_Placing.value)
 
