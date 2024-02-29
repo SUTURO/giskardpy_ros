@@ -15,11 +15,11 @@ class Payload_Force(PayloadMonitor):
     """
     The Payload_Force class creates a monitor for the usage of the HSRs Force-Torque Sensor.
     This makes it possible for goals which use the Force-Torque Sensor to be used with Monitors,
-    specifically to end/hold a goal automatically when a certain Force/Torque Threshold is being passed.
+    specifically to end/hold a goal automatically when a certain Force/Torque Threshold is being surpassed.
     """
 
     def __init__(self,
-                 # use /hsrb/wrist_wrench/compensated for actual HSR, for testing feel free to change
+                 # use /hsrb/wrist_wrench/compensated for actual HSR, for testing feel free to change topic
                  topic: string = "/hsrb/wrist_wrench/compensated",
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol,
@@ -36,6 +36,11 @@ class Payload_Force(PayloadMonitor):
         self.wrench = data
 
     def force_T_map_transform(self, picker):
+        """
+        The force_T_map_transform method is used to transform the Vector data from the
+        force-torque sensor frame into the map frame, so that the axis stay
+        the same, to ensure that the threshold check is actually done on the relevant axis
+        """
         self.wrench.header.frame_id = god_map.world.search_for_link_name(self.wrench.header.frame_id)
 
         vstampF = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header, vector=self.wrench.wrench.force)
@@ -86,13 +91,11 @@ class Payload_Force(PayloadMonitor):
                     abs(rob_torque.vector.y) > torque_y_threshold):
 
                 self.state = True
-                print(f'HIT PLACING1: {rob_force.vector.x};{rob_torque.vector.y}')
+                print(f'HIT PLACING: {rob_force.vector.x};{rob_torque.vector.y}')
 
             else:
                 self.state = False
                 print(f'MISS PLACING!: {rob_force.vector.x};{rob_torque.vector.y}')
-        # TODO: Make another conditional for door handling (might be included as part of GraspCarefully,
-        #  in that case Rework that conditional to handle multiple cases)
         """ If conditional for initial testing purposes
         if abs(self.wrench.wrench.force.z) >= force_threshold or abs(self.wrench.wrench.torque.y) >= torque_threshold:
             self.state = True

@@ -1,6 +1,6 @@
 from enum import unique, Enum
 
-
+# States for the HSRs gripper, is being used only in old_python_interface as of now
 @unique
 class GripperTypes(Enum):
     OPEN = 'open'
