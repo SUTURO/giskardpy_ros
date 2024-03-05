@@ -9,6 +9,7 @@ import giskardpy.casadi_wrapper as cas
 from giskardpy.god_map import god_map
 from giskardpy.monitors.monitors import PayloadMonitor
 from giskardpy.suturo_types import ForceTorqueThresholds
+from giskardpy.utils import logging
 
 
 class PayloadForceTorque(PayloadMonitor):
@@ -19,12 +20,13 @@ class PayloadForceTorque(PayloadMonitor):
     """
 
     def __init__(self,
+                 # threshold_name is needed here for the class to be able to handle the suturo_types appropriately
+                 threshold_name: string,
                  # use /hsrb/wrist_wrench/compensated for actual HSR, for testing feel free to change topic
                  topic: string = "/hsrb/wrist_wrench/compensated",
                  name: Optional[str] = None,
-                 start_condition: cas.Expression = cas.TrueSymbol,
-                 # threshold_name is needed here for the class to be able to handle the suturo_types appropriately
-                 threshold_name: Optional[str] = None):
+                 start_condition: cas.Expression = cas.TrueSymbol):
+
         super().__init__(name=name, stay_true=False, start_condition=start_condition, run_call_in_thread=False)
         self.threshold_name = threshold_name
         self.topic = topic
@@ -96,15 +98,6 @@ class PayloadForceTorque(PayloadMonitor):
             else:
                 self.state = False
                 print(f'MISS PLACING!: {rob_force.vector.x};{rob_torque.vector.y}')
-        """ If conditional for initial testing purposes
-        if abs(self.wrench.wrench.force.z) >= force_threshold or abs(self.wrench.wrench.torque.y) >= torque_threshold:
-            self.state = True
-            print(f' SUCCESS! F_z: {self.wrench.wrench.force.z}')
-            print(f' SUCCESS! T_y: {self.wrench.wrench.torque.y}')
-            print("---------------------------------------------")
-        else:
-            self.state = False
-            print(f'F_z: {self.wrench.wrench.force.z}')
-            print(f'T_y: {self.wrench.wrench.torque.y}')
-            print("---------------------------------------------")
-        """
+
+        elif self.threshold_name != ForceTorqueThresholds.value:
+            logging.logerr("Please only use Values for threshold_name that can be found in ForceTorqueThresholds!!")

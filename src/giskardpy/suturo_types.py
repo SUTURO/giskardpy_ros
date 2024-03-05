@@ -1,5 +1,6 @@
 from enum import unique, Enum
 
+
 # States for the HSRs gripper, is being used only in old_python_interface as of now
 @unique
 class GripperTypes(Enum):
@@ -15,4 +16,3 @@ class ForceTorqueThresholds(Enum):
     FT_GraspWithCare = 'FTGraspC'
     FT_Placing = 'FTPlace'
     FT_Door = 'FTDoor'
-
