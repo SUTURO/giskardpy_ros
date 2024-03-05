@@ -229,7 +229,7 @@ class ForceSensorGoal(Goal):
 
         self.behaviour = MonitorForceSensor('monitor force', conditions, self.wrench_topic_name)
 
-        if god_map.control_mode == god_map.control_mode.open_loop:
+        if tree.control_mode == tree.control_mode.open_loop:
             self.connect_trajectory_publisher()
 
             tree.insert_node(self.behaviour, 'monitor execution', 2)

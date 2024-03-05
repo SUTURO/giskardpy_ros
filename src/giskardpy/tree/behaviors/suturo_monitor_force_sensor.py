@@ -59,12 +59,12 @@ class MonitorForceSensor(GiskardBehavior):
         # Subscriber
         self.wrench_compensated_subscriber = None
 
-        if god_map.control_mode == god_map.control_mode.open_loop:
+        if god_map.tree.control_mode == god_map.tree.control_mode.open_loop:
             self.continue_plugin_state = Status.FAILURE
-        elif god_map.control_mode == god_map.control_mode.close_loop:
+        elif god_map.tree.control_mode == god_map.tree.control_mode.close_loop:
             self.continue_plugin_state = Status.RUNNING
         else:
-            logging.logerr(f'{god_map.control_mode} is not supported')
+            logging.logerr(f'{god_map.tree.control_mode} is not supported')
             raise GiskardException()
 
         # True to print sensor data

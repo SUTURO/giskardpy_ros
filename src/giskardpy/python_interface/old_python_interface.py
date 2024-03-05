@@ -7,7 +7,7 @@ from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vect
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
 from giskardpy.goals.realtime_goals import RealTimePointingPose
-from giskardpy.god_map import god_map
+from giskardpy.goals.suturo import Reaching, Placing, Retracting
 from std_srvs.srv import TriggerRequest, TriggerResponse
 from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
 from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
@@ -650,7 +650,7 @@ class OldGiskardWrapper(GiskardWrapper):
         :param parent_link_group: Name of the group in which Giskard will search for parent_link
         :return: Response message of the service call
         """
-        return god_map.world.add_box(name=name,
+        return self.world.add_box(name=name,
                                      size=size,
                                      pose=pose,
                                      parent_link=parent_link,
@@ -665,7 +665,7 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         See add_box.
         """
-        return god_map.world.add_sphere(name=name,
+        return self.world.add_sphere(name=name,
                                         radius=radius,
                                         pose=pose,
                                         parent_link=parent_link,
@@ -683,7 +683,7 @@ class OldGiskardWrapper(GiskardWrapper):
         :param mesh: path to the mesh location, can be ros package path, e.g.,
                         package://giskardpy/test/urdfs/meshes/bowl_21.obj
         """
-        return god_map.world.add_mesh(name=name,
+        return self.world.add_mesh(name=name,
                                       mesh=mesh,
                                       scale=scale,
                                       pose=pose,
@@ -700,7 +700,7 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         See add_box.
         """
-        return god_map.world.add_cylinder(name=name,
+        return self.world.add_cylinder(name=name,
                                           height=height,
                                           radius=radius,
                                           pose=pose,
@@ -712,7 +712,7 @@ class OldGiskardWrapper(GiskardWrapper):
         Removes a group and all links and joints it contains from the world.
         Be careful, you can remove parts of the robot like that.
         """
-        return god_map.world.remove_group(name=name)
+        return self.world.remove_group(name=name)
 
     def update_parent_link_of_group(self,
                                     name: str,
@@ -726,7 +726,7 @@ class OldGiskardWrapper(GiskardWrapper):
         :param parent_link_group: if parent_link is not unique, search in this group for matches.
         :return: result message
         """
-        return god_map.world.update_parent_link_of_group(name=name,
+        return self.world.update_parent_link_of_group(name=name,
                                                          parent_link=parent_link,
                                                          parent_link_group=parent_link_group)
 
@@ -734,7 +734,7 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         A wrapper for update_parent_link_of_group which set parent_link to the root link of the world.
         """
-        return god_map.world.detach_group(oname=object_name)
+        return self.world.detach_group(oname=object_name)
 
     def add_urdf(self,
                  name: str,
@@ -753,7 +753,7 @@ class OldGiskardWrapper(GiskardWrapper):
         :param js_topic: Giskard will listen on that topic for joint states and update the urdf accordingly
         :return: response message
         """
-        return god_map.world.add_urdf(name=name,
+        return self.world.add_urdf(name=name,
                                       urdf=urdf,
                                       pose=pose,
                                       js_topic=js_topic,
@@ -764,25 +764,25 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         Change the color of the ghost for this particular group.
         """
-        return god_map.world.dye_group(group_name=group_name, rgba=rgba)
+        return self.world.dye_group(group_name=group_name, rgba=rgba)
 
     def get_group_names(self) -> List[str]:
         """
         Returns the names of every group in the world.
         """
-        return god_map.world.get_group_names()
+        return self.world.get_group_names()
 
     def get_group_info(self, group_name: str) -> GetGroupInfoResponse:
         """
         Returns the joint state, joint state topic and pose of a group.
         """
-        return god_map.world.get_group_info(group_name=group_name)
+        return self.world.get_group_info(group_name=group_name)
 
     def get_controlled_joints(self, group_name: str) -> List[str]:
         """
         Returns all joints of a group that are flagged as controlled.
         """
-        return god_map.world.get_controlled_joints(group_name=group_name)
+        return self.world.get_controlled_joints(group_name=group_name)
 
     def update_group_pose(self, group_name: str, new_pose: PoseStamped) -> WorldResult:
         """
@@ -791,7 +791,7 @@ class OldGiskardWrapper(GiskardWrapper):
         :param new_pose: New pose of the group
         :return: Giskard's reply
         """
-        return god_map.world.update_group_pose(group_name=group_name, new_pose=new_pose)
+        return self.world.update_group_pose(group_name=group_name, new_pose=new_pose)
 
     def register_group(self, new_group_name: str, root_link_name: str,
                        root_link_group_name: str) -> WorldResult:
@@ -810,7 +810,7 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         Resets the world to what it was when Giskard was launched.
         """
-        return god_map.world.clear()
+        return self.world.clear()
 
     def move_gripper(self,
                      gripper_state: str):
@@ -828,7 +828,7 @@ class OldGiskardWrapper(GiskardWrapper):
                  tip_link: str = 'hand_palm_link',
                  velocity: float = 0.2):
 
-        self.motion_goals.add_motion_goal(motion_goal_class='Reaching',
+        self.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
                                           context=context,
                                           object_name=object_name,
                                           object_shape=object_shape,
@@ -843,7 +843,7 @@ class OldGiskardWrapper(GiskardWrapper):
                 goal_pose: PoseStamped,
                 tip_link: str = 'hand_palm_link'):
 
-        self.motion_goals.add_motion_goal(motion_goal_class='Placing',
+        self.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
                                           context=context,
                                           goal_pose=goal_pose,
                                           tip_link=tip_link)
@@ -868,7 +868,7 @@ class OldGiskardWrapper(GiskardWrapper):
                 tip_link: str = 'base_link',
                 velocity: float = 0.2):
 
-        self.motion_goals.add_motion_goal(motion_goal_class='Retracting',
+        self.motion_goals.add_motion_goal(motion_goal_class=Retracting.__name__,
                                           object_name=object_name,
                                           distance=distance,
                                           reference_frame=reference_frame,
