@@ -11,7 +11,7 @@ from giskardpy.monitors.monitors import PayloadMonitor
 from giskardpy.suturo_types import ForceTorqueThresholds
 
 
-class Payload_Force(PayloadMonitor):
+class PayloadForceTorque(PayloadMonitor):
     """
     The Payload_Force class creates a monitor for the usage of the HSRs Force-Torque Sensor.
     This makes it possible for goals which use the Force-Torque Sensor to be used with Monitors,

@@ -27,7 +27,7 @@ from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, PointingAt, \
     VectorsAligned, DistanceToLine
-from giskardpy.monitors.force_monitor import Payload_Force
+from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy.monitors.joint_monitors import JointGoalReached
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.monitors.monitors import EndMotion
@@ -1545,8 +1545,8 @@ class GiskardWrapper:
         which means the HSR essentially stops automatically after placing the object.
         """
         sleep = self.monitors.add_sleep(1.5)
-        force_torque_trigger = self.monitors.add_monitor(monitor_class=Payload_Force.__name__,
-                                                         name=Payload_Force.__name__,
+        force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                                         name=PayloadForceTorque.__name__,
                                                          start_condition='',
                                                          threshold_name=ForceTorqueThresholds.FT_Placing.value)
 
@@ -1574,8 +1574,8 @@ class GiskardWrapper:
         to open doors.
         """
         sleep = self.monitors.add_sleep(1.5)
-        force_torque_trigger = self.monitors.add_monitor(monitor_class=Payload_Force.__name__,
-                                                         name=Payload_Force.__name__,
+        force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                                         name=PayloadForceTorque.__name__,
                                                          start_condition='',
                                                          threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value)
 
