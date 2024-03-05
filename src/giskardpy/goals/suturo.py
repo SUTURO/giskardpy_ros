@@ -795,7 +795,7 @@ class GraspCarefully(ForceSensorGoal):
         return {}
 
 
-class Placing(ForceSensorGoal):
+class Placing(ObjectGoal):
 
     def __init__(self,
                  context: {str: ContextTypes},
@@ -830,7 +830,7 @@ class Placing(ForceSensorGoal):
         self.align_vertical = check_context_element('align_vertical', ContextAlignVertical, context)
 
         # FIXME Wenn ForceSensorGoal name hat, dann muss hier name eingefügt werden
-        super().__init__()
+        super().__init__(name=name)
 
         if root_link is None:
             root_link = 'base_footprint'
