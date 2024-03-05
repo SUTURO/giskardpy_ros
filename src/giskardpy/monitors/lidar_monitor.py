@@ -1,4 +1,3 @@
-import string
 from typing import Optional
 
 import numpy as np
@@ -9,6 +8,7 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 import giskardpy.casadi_wrapper as cas
 from giskardpy.monitors.monitors import PayloadMonitor
+from giskardpy.utils import logging
 
 
 class LidarPayloadMonitor(PayloadMonitor):
@@ -77,6 +77,24 @@ class LaserScanThreshold:
                                                    latch=True)
         self.laser_subscriber = rospy.Subscriber(self.laser_scan_topic, LaserScan, self._laser_cb, queue_size=10)
 
+    def _laser_cb(self, data):
+        """
+        Callback function for Laser sensor data. Initializes the thresholds if there are none and calculates closets
+        points to the LaserScanner depending on the thresholds
+        """
+        self.scan = data
+        if self.thresholds is None:
+            self.thresholds = self._calculate_laser_thresholds()
+            if self.thresholds.__len__() > 0:
+                self._publish_laser_thresholds()
+            else:
+                logging.logwarn(f'Length of Thresholds is 0: {self.thresholds}')
+                self.thresholds = None
+                return False
+
+        self.closest_laser_reading, self.closest_laser_left, self.closest_laser_right \
+            = self._calculate_closest_points_in_threshold()
+
     def _calculate_laser_thresholds(self):
         """
         Calculate the Thresholds for the Collision Detection of the Robot
@@ -114,23 +132,11 @@ class LaserScanThreshold:
         thresholds = np.array(thresholds)
         return thresholds
 
-    def _laser_cb(self, data):
-        """
-        Callback function for Laser sensor data. Initializes the thresholds if there are none and calculates closets
-        points to the LaserScanner depending on the thresholds
-        """
-        self.scan = data
-        if self.thresholds is None:
-            self.thresholds = self._calculate_laser_thresholds()
-            self._publish_laser_thresholds()
-        self.closest_laser_reading, self.closest_laser_left, self.closest_laser_right \
-            = self._calculate_closest_points_in_threshold()
-
     def _publish_laser_thresholds(self):
         """
         Publishes the LaserScan-Thresholds as visualisation-marker-array on the topic visualisation_marker_array.
         Includes both the general range of the threshold and the cutout for separating the front and sides of the
-         thresholds.
+        thresholds.
         """
 
         # Creates LaserScan-Threshold-Line, defined by the self.threshold variable
