@@ -41,7 +41,7 @@ class PayloadForceTorque(PayloadMonitor):
         """
         The force_T_map_transform method is used to transform the Vector data from the
         force-torque sensor frame into the map frame, so that the axis stay
-        the same, to ensure that the threshold check is actually done on the relevant axis
+        the same, to ensure that the threshold check is actually done on the relevant axis.
         """
         self.wrench.header.frame_id = god_map.world.search_for_link_name(self.wrench.header.frame_id)
 
@@ -85,19 +85,19 @@ class PayloadForceTorque(PayloadMonitor):
                 print(f'MISS GWC!: {rob_force.vector.x};{rob_torque.vector.y}')
         elif self.threshold_name == ForceTorqueThresholds.FT_Placing.value:
 
-            force_x_threshold = 10.0
-            # force_z_threshold = 2.0  # placing is most likely Z (could be negative x value too)
-            torque_y_threshold = 4  # might be negative y torque value (should still be in 0.x value area)
+            force_x_threshold = 2.34
+            force_z_threshold = 1.0  # placing is most likely Z (could be negative x value too)
+            torque_y_threshold = 0.45  # might be negative y torque value (should still be in 0.x value area)
 
-            if (abs(rob_force.vector.x) >= force_x_threshold or
-                    abs(rob_torque.vector.y) > torque_y_threshold):
+            if (abs(rob_force.vector.x) >= force_x_threshold and
+                    abs(rob_force.vector.z) >= force_z_threshold and
+                    abs(rob_torque.vector.y) >= torque_y_threshold):
 
                 self.state = True
-                print(f'HIT PLACING: {rob_force.vector.x};{rob_torque.vector.y}')
-
+                print(f'HIT PLACING: {rob_force.vector.x};{rob_force.vector.z}')
             else:
                 self.state = False
-                print(f'MISS PLACING!: {rob_force.vector.x};{rob_torque.vector.y}')
+                print(f'MISS PLACING!: {rob_force.vector.x};{rob_force.vector.z}')
 
         elif self.threshold_name != ForceTorqueThresholds.value:
-            logging.logerr("Please only use Values for threshold_name that can be found in ForceTorqueThresholds!!")
+            logging.logerr("Please only use Values for threshold_name that can be found in the ForceTorqueThresholds!!")
