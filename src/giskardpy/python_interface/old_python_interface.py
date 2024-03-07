@@ -841,12 +841,14 @@ class OldGiskardWrapper(GiskardWrapper):
     def placing(self,
                 context,
                 goal_pose: PoseStamped,
-                tip_link: str = 'hand_palm_link'):
+                tip_link: str = 'hand_palm_link',
+                velocity: float = 0.02):
 
         self.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
                                           context=context,
                                           goal_pose=goal_pose,
-                                          tip_link=tip_link)
+                                          tip_link=tip_link,
+                                          velocity=velocity)
 
     def vertical_motion(self,
                         context: str,
