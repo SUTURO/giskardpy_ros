@@ -1539,7 +1539,8 @@ class GiskardWrapper:
     def monitor_placing(self,
                         context,
                         goal_pose: PoseStamped,
-                        tip_link: str = 'hand_palm_link'):
+                        tip_link: str = 'hand_palm_link',
+                        velocity: float = 0.02):
         """
         adds monitor functionality for the Placing motion goal, goal now stops if force_threshold is overstepped,
         which means the HSR essentially stops automatically after placing the object.
@@ -1554,6 +1555,7 @@ class GiskardWrapper:
                                           context=context,
                                           goal_pose=goal_pose,
                                           tip_link=tip_link,
+                                          velocity=velocity,
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
         local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
