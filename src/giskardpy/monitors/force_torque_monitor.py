@@ -20,12 +20,17 @@ class PayloadForceTorque(PayloadMonitor):
     """
 
     def __init__(self,
+                 # is_raw is necessary to switch between the raw and the compensated topic
+                 is_raw: bool,
                  # threshold_name is needed here for the class to be able to handle the suturo_types appropriately
                  threshold_name: string,
-                 # use /hsrb/wrist_wrench/compensated for actual HSR, for testing feel free to change topic
                  topic: string = "/hsrb/wrist_wrench/compensated",
                  name: Optional[str] = None,
-                 start_condition: cas.Expression = cas.TrueSymbol):
+                 start_condition: cas.Expression = cas.TrueSymbol
+                 ):
+
+        if is_raw:
+            topic = "/hsrb/wrist_wrench/raw"
 
         super().__init__(name=name, stay_true=False, start_condition=start_condition, run_call_in_thread=False)
         self.threshold_name = threshold_name
@@ -70,11 +75,8 @@ class PayloadForceTorque(PayloadMonitor):
 
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
-            force_threshold = 0.2  # might be y value above 0 (maybe torque above Zero too?)
+            force_threshold = 0.2
             torque_threshold = 0.02
-            # if (abs(rob_force.vector.x) >= force_threshold or
-            #         abs(rob_force.vector.y) >= force_threshold or
-            #         abs(rob_force.vector.z) >= force_threshold):
 
             if (abs(rob_force.vector.y) > force_threshold or
                     abs(rob_torque.vector.y) > torque_threshold):
@@ -83,11 +85,12 @@ class PayloadForceTorque(PayloadMonitor):
             else:
                 self.state = False
                 print(f'MISS GWC!: {rob_force.vector.x};{rob_torque.vector.y}')
+
         elif self.threshold_name == ForceTorqueThresholds.FT_Placing.value:
 
             force_x_threshold = 2.34
-            force_z_threshold = 1.0  # placing is most likely Z (could be negative x value too)
-            torque_y_threshold = 0.45  # might be negative y torque value (should still be in 0.x value area)
+            force_z_threshold = 1.0
+            torque_y_threshold = 0.45
 
             if (abs(rob_force.vector.x) >= force_x_threshold and
                     abs(rob_force.vector.z) >= force_z_threshold and
@@ -98,6 +101,22 @@ class PayloadForceTorque(PayloadMonitor):
             else:
                 self.state = False
                 print(f'MISS PLACING!: {rob_force.vector.x};{rob_force.vector.z}')
+
+        elif (self.threshold_name == ForceTorqueThresholds.FT_GraspCutlery.value
+              & self.topic == "/hsrb/wrist_wrench/raw"):
+            # TODO: Add proper Thresholds and Checks for Cutlery
+            force_x_threshold = 0
+            force_y_threshold = 0
+            force_z_threshold = 0
+
+            if (abs(rob_force.vector.x) >= force_x_threshold and
+                    abs(rob_force.vector.y) >= force_y_threshold and
+                    abs(rob_force.vector.z) >= force_z_threshold):
+
+                self.state = True
+
+            else:
+                self.state = False
 
         elif self.threshold_name != ForceTorqueThresholds.value:
             logging.logerr("Please only use Values for threshold_name that can be found in the ForceTorqueThresholds!!")

@@ -13,6 +13,12 @@ class GripperTypes(Enum):
 # TODO: Create Enums for every Force and/or Torque sensitive action, to be used in force_torque_monitor.py
 @unique
 class ForceTorqueThresholds(Enum):
-    FT_GraspWithCare = 'FTGraspC'
+    FT_GraspWithCare = 'FTGraspC' # For any "Conventional Object" (for other objects use extra enum?)
     FT_Placing = 'FTPlace'
     FT_Door = 'FTDoor'
+    FT_DishDoor = 'FTDishDoor'
+    FT_GraspCutlery = 'FTGraspCutlery'
+    #FT_Tilt = 'FTTilt' #Pouring
+    #FT_Shelf_Grasp = 'FT_Shelf'
+
+
