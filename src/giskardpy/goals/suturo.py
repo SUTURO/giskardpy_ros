@@ -887,7 +887,7 @@ class Tilting(Goal):
                  name: str = None,
                  direction: Optional[str] = None,
                  angle: Optional[float] = None,
-                 tip_link: str = 'wrist_flex_joint',
+                 tip_link: str = 'wrist_roll_joint',
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
                  end_condition: w.Expression = w.TrueSymbol):
