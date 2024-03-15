@@ -1549,7 +1549,8 @@ class GiskardWrapper:
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
                                                          start_condition='',
-                                                         threshold_name=ForceTorqueThresholds.FT_Placing.value)
+                                                         threshold_name=ForceTorqueThresholds.FT_Placing.value,
+                                                         is_raw=False)
 
         self.motion_goals.add_motion_goal(motion_goal_class='Placing',
                                           context=context,
@@ -1579,7 +1580,8 @@ class GiskardWrapper:
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
                                                          start_condition='',
-                                                         threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value)
+                                                         threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value,
+                                                         is_raw=False)
 
         self.motion_goals.add_motion_goal(motion_goal_class='GraspCarefully',
                                           goal_pose=goal_pose,

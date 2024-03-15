@@ -30,6 +30,7 @@ class PayloadForceTorque(PayloadMonitor):
                  ):
 
         if is_raw:
+            logging.logwarn("ForceTorque Monitor is now listening to the /hsrb/wrist_wrench/raw Topic!")
             topic = "/hsrb/wrist_wrench/raw"
 
         super().__init__(name=name, stay_true=False, start_condition=start_condition, run_call_in_thread=False)
@@ -68,6 +69,7 @@ class PayloadForceTorque(PayloadMonitor):
 
             return torque_transformed
 
+    # TODO: Add proper checks for all necessary Items!
     def __call__(self):
 
         rob_force = self.force_T_map_transform(1)

@@ -127,7 +127,8 @@ class TestForceMonitor:
         force_torque = zero_pose.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                       name=PayloadForceTorque.__name__,
                                                       start_condition='',
-                                                      threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value)
+                                                      threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value,
+                                                      is_raw=False)
 
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
@@ -155,7 +156,8 @@ class TestForceMonitor:
         force_torque = zero_pose.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                       name=PayloadForceTorque.__name__,
                                                       start_condition='',
-                                                      threshold_name=ForceTorqueThresholds.FT_Placing.value)
+                                                      threshold_name=ForceTorqueThresholds.FT_Placing.value,
+                                                      is_raw=False)
 
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
