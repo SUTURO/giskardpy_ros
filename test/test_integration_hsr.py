@@ -17,7 +17,7 @@ from giskardpy.god_map import god_map
 from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
-from giskardpy.suturo_types import ForceTorqueThresholds
+from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
 
@@ -128,7 +128,8 @@ class TestForceMonitor:
                                                       name=PayloadForceTorque.__name__,
                                                       start_condition='',
                                                       threshold_name=ForceTorqueThresholds.FT_GraspWithCare.value,
-                                                      is_raw=False)
+                                                      is_raw=False,
+                                                      object_type=ObjectTypes.OT_Standard.value)
 
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
@@ -157,7 +158,8 @@ class TestForceMonitor:
                                                       name=PayloadForceTorque.__name__,
                                                       start_condition='',
                                                       threshold_name=ForceTorqueThresholds.FT_Placing.value,
-                                                      is_raw=False)
+                                                      is_raw=False,
+                                                      object_type=ObjectTypes.OT_Standard.value)
 
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'

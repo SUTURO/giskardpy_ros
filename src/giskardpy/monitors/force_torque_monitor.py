@@ -129,10 +129,10 @@ class PayloadForceTorque(PayloadMonitor):
                         abs(rob_torque.vector.y) >= torque_y_threshold):
 
                     self.state = True
-                    print(f'HIT PLACING: {rob_force.vector.x};{rob_force.vector.z}')
+                    print(f'HIT PLACING: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
                 else:
                     self.state = False
-                    print(f'MISS PLACING!: {rob_force.vector.x};{rob_force.vector.z}')
+                    print(f'MISS PLACING!: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
                 #  TODO: Add proper placing logic
