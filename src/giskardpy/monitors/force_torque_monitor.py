@@ -113,7 +113,7 @@ class PayloadForceTorque(PayloadMonitor):
                 #  TODO: Add proper grasping logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
-            elif self.object_type != ObjectTypes.value:
+            else:
                 logging.logerr("No valid object_type found, unable to determine placing thresholds!")
 
         # TODO: Add thresholds and cases for other object types
@@ -147,7 +147,7 @@ class PayloadForceTorque(PayloadMonitor):
                 #  TODO: Add proper placing logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
-            elif self.object_type != ObjectTypes.value:
+            else:
                 logging.logerr("No valid object_type found, unable to determine placing thresholds!")
 
         elif (self.threshold_name == ForceTorqueThresholds.FT_GraspCutlery.value
@@ -178,5 +178,5 @@ class PayloadForceTorque(PayloadMonitor):
             force_y_threshold = 0
             force_z_threshold = 0
 
-        elif self.threshold_name != ForceTorqueThresholds.value:
+        else:
             logging.logerr("No valid threshold_name found, unable to determine action!")
