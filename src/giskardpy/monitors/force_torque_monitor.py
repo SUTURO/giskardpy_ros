@@ -8,7 +8,7 @@ from geometry_msgs.msg import WrenchStamped
 import giskardpy.casadi_wrapper as cas
 from giskardpy.god_map import god_map
 from giskardpy.monitors.monitors import PayloadMonitor
-from giskardpy.suturo_types import ForceTorqueThresholds, PlacingObjectTypes
+from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
 from giskardpy.utils import logging
 
 
@@ -30,7 +30,14 @@ class PayloadForceTorque(PayloadMonitor):
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol
                  ):
-
+        """
+        :param is_raw: checks if the /hsrb/wrist_wrench/raw topic is being listened to
+        :param threshold_name: contains the name of the threshold that will be used (normally an action e.g Placing)
+        :param object_type: is used to determine the type of object that is being placed, is left empty if no object is being placed
+        :param topic: the name of the topic
+        :param name: name of the monitor class
+        :param start_condition: the start condition of the monitor
+        """
         if is_raw:
             logging.logwarn("ForceTorque Monitor is now listening to the /hsrb/wrist_wrench/raw Topic!")
             topic = "/hsrb/wrist_wrench/raw"
@@ -50,7 +57,7 @@ class PayloadForceTorque(PayloadMonitor):
         """
         The force_T_map_transform method is used to transform the Vector data from the
         force-torque sensor frame into the map frame, so that the axis stay
-        the same, to ensure that the threshold check is actually done on the relevant axis.
+        the same, to ensure that the threshold check is actually done on the relevant/correct axis.
         """
         self.wrench.header.frame_id = god_map.world.search_for_link_name(self.wrench.header.frame_id)
 
@@ -77,23 +84,42 @@ class PayloadForceTorque(PayloadMonitor):
 
         rob_force = self.force_T_map_transform(1)
         rob_torque = self.force_T_map_transform(2)
-
+        # TODO: Add more threshold cases and determine whether the normal grasp action is even needed currently
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
-            force_threshold = 0.2
-            torque_threshold = 0.02
+            if self.object_type == ObjectTypes.OT_Standard.value:
 
-            if (abs(rob_force.vector.y) > force_threshold or
-                    abs(rob_torque.vector.y) > torque_threshold):
-                self.state = True
-                print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
-            else:
-                self.state = False
-                print(f'MISS GWC!: {rob_force.vector.x};{rob_torque.vector.y}')
+                force_threshold = 0.2
+                torque_threshold = 0.02
+
+                if (abs(rob_force.vector.y) > force_threshold or
+                        abs(rob_torque.vector.y) > torque_threshold):
+                    self.state = True
+                    print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
+                else:
+                    self.state = False
+                    print(f'MISS GWC!: {rob_force.vector.x};{rob_torque.vector.y}')
+
+            elif self.object_type == ObjectTypes.OT_Cutlery.value:
+
+                #  TODO: Add proper grasping logic
+                print("IT JUST WORKS - Todd Howard, at some point")
+
+            elif self.object_type == ObjectTypes.OT_Plate.value:
+                #  TODO: Add proper grasping logic
+                print("IT JUST WORKS - Todd Howard, at some point")
+
+            elif self.object_type == ObjectTypes.OT_Tray.value:
+                #  TODO: Add proper grasping logic
+                print("IT JUST WORKS - Todd Howard, at some point")
+
+            elif self.object_type != ObjectTypes.value:
+                logging.logerr("No valid object_type found, unable to determine placing thresholds!")
+
         # TODO: Add thresholds and cases for other object types
         elif self.threshold_name == ForceTorqueThresholds.FT_Placing.value:
 
-            if self.object_type == PlacingObjectTypes.PO_Standard.value:
+            if self.object_type == ObjectTypes.OT_Standard.value:
                 force_x_threshold = 2.34
                 force_z_threshold = 1.0
                 torque_y_threshold = 0.45
@@ -108,18 +134,21 @@ class PayloadForceTorque(PayloadMonitor):
                     self.state = False
                     print(f'MISS PLACING!: {rob_force.vector.x};{rob_force.vector.z}')
 
-            elif self.object_type == PlacingObjectTypes.PO_Cutlery.value:
+            elif self.object_type == ObjectTypes.OT_Cutlery.value:
                 #  TODO: Add proper placing logic
                 #  Check cutlery placing force-> might need raw topic too?
-                print('IT JUST WORKS - Todd Howard, at some point')
+                print("IT JUST WORKS - Todd Howard, at some point")
 
-            elif self.object_type == PlacingObjectTypes.PO_Plate.value:
+            elif self.object_type == ObjectTypes.OT_Plate.value:
                 #  TODO: Add proper placing logic
-                print('IT JUST WORKS - Todd Howard, at some point')
+                print("IT JUST WORKS - Todd Howard, at some point")
 
-            elif self.object_type == PlacingObjectTypes.PO_Tray.value:
+            elif self.object_type == ObjectTypes.OT_Tray.value:
                 #  TODO: Add proper placing logic
-                print('IT JUST WORKS - Todd Howard, at some point')
+                print("IT JUST WORKS - Todd Howard, at some point")
+
+            elif self.object_type != ObjectTypes.value:
+                logging.logerr("No valid object_type found, unable to determine placing thresholds!")
 
         elif (self.threshold_name == ForceTorqueThresholds.FT_GraspCutlery.value
               & self.topic == "/hsrb/wrist_wrench/raw"):
@@ -144,10 +173,10 @@ class PayloadForceTorque(PayloadMonitor):
             force_z_threshold = 0
 
         elif self.threshold_name == ForceTorqueThresholds.FT_DishDoor.value:
-            # TODO: Establish needed values and add logic for door handling
+            # TODO: Establish needed values and add logic for dishwasher door handling
             force_x_threshold = 0
             force_y_threshold = 0
             force_z_threshold = 0
 
         elif self.threshold_name != ForceTorqueThresholds.value:
-            logging.logerr("Please only use Values for threshold_name that can be found in the ForceTorqueThresholds!!")
+            logging.logerr("No valid threshold_name found, unable to determine action!")

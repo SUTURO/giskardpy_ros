@@ -24,8 +24,8 @@ class ForceTorqueThresholds(Enum):
 
 # List of Objects that need to be differentiated between when placing method is used
 @unique
-class PlacingObjectTypes(Enum):
-    PO_Standard = 'Standard'  # Includes Cups/Glasses, since planning grabs them from front
-    PO_Cutlery = 'Cutlery'
-    PO_Plate = 'Plate'
-    PO_Tray = 'Tray'  # Not currently in use, might change later
+class ObjectTypes(Enum):
+    OT_Standard = 'Standard'  # Normal Objects(e.g Milk), includes Cups/Glasses, since planning grabs them from front
+    OT_Cutlery = 'Cutlery'
+    OT_Plate = 'Plate'
+    OT_Tray = 'Tray'  # Not currently in use, might change later
