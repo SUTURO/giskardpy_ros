@@ -47,7 +47,7 @@ class SwitchControllers:
         time_diff = data.header.stamp.secs - self.last_change
         if (all(data.buttons[i] == 1 for i in self.buttons if len(data.buttons) > i)
                 and self.check_controllers() and time_diff > 5.0):
-            self.last_change = data.header.stamp.sec
+            self.last_change = data.header.stamp.secs
             self.switch_controls()
 
     def check_controllers(self):
