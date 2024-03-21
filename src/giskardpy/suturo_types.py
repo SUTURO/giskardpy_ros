@@ -14,9 +14,18 @@ class GripperTypes(Enum):
 @unique
 class ForceTorqueThresholds(Enum):
     FT_GraspWithCare = 'FTGraspC'  # For any "Conventional Object" (for other objects use extra enum?)
+    FT_GraspCutlery = 'FTGraspCutlery'
     FT_Placing = 'FTPlace'
     FT_Door = 'FTDoor'
     FT_DishDoor = 'FTDishDoor'
-    FT_GraspCutlery = 'FTGraspCutlery'
     FT_Tilt = 'FTTilt'  # Pouring
     # FT_Shelf_Grasp = 'FT_Shelf'
+
+
+# List of Objects that need to be differentiated between when placing method is used
+@unique
+class PlacingObjectTypes(Enum):
+    PO_Standard = 'Standard'  # Includes Cups/Glasses, since planning grabs them from front
+    PO_Cutlery = 'Cutlery'
+    PO_Plate = 'Plate'
+    PO_Tray = 'Tray'  # Not currently in use, might change later

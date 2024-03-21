@@ -38,7 +38,7 @@ from giskardpy.monitors.monitors import EndMotion
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator
 from giskardpy.monitors.payload_monitors import Print, Sleep, CancelMotion, SetMaxTrajectoryLength, \
     PayloadAlternator
-from giskardpy.suturo_types import ForceTorqueThresholds
+from giskardpy.suturo_types import ForceTorqueThresholds, PlacingObjectTypes
 from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import kwargs_to_json
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
@@ -1558,7 +1558,8 @@ class GiskardWrapper:
                                                          name=PayloadForceTorque.__name__,
                                                          start_condition='',
                                                          threshold_name=ForceTorqueThresholds.FT_Placing.value,
-                                                         is_raw=False)
+                                                         is_raw=False,
+                                                         object_type=PlacingObjectTypes.PO_Standard.value)
 
         self.motion_goals.add_motion_goal(motion_goal_class='Placing',
                                           context=context,
