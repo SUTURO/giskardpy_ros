@@ -260,12 +260,12 @@ class OpenLoopBTConfig(BehaviorTreeConfig):
             self.add_trajectory_plotter(wait=True)
             self.add_debug_trajectory_plotter(wait=True)
             self.add_debug_marker_publisher()
-            self.add_qp_data_publisher(
-                publish_debug=True,
-                publish_xdot=True,
-                # publish_lbA=True,
-                # publish_ubA=True
-            )
+            # self.add_qp_data_publisher(
+            #     publish_debug=True,
+            #     publish_xdot=True,
+            #     # publish_lbA=True,
+            #     # publish_ubA=True
+            # )
 
 
 class ClosedLoopBTConfig(BehaviorTreeConfig):
@@ -290,14 +290,14 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
         self.add_gantt_chart_plotter()
         self.add_goal_graph_plotter()
         if self.debug_mode:
-            # self.add_trajectory_plotter(wait=True)
-            # self.add_debug_trajectory_plotter(wait=True)
-            self.add_debug_marker_publisher()
-            self.add_qp_data_publisher(
-                publish_debug=True,
-                publish_xdot=True,
-                # publish_lbA=True,
-                # publish_ubA=True
-            )
+            self.add_trajectory_plotter(wait=True)
+            self.add_debug_trajectory_plotter(wait=True)
+            # self.add_debug_marker_publisher()
+            # self.add_qp_data_publisher(
+            #     publish_debug=True,
+            #     publish_xdot=True,
+            #     # publish_lbA=True,
+            #     # publish_ubA=True
+            # )
         if self.publish_free_variables:
             self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
