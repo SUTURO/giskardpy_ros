@@ -168,15 +168,11 @@ class PayloadForceTorque(PayloadMonitor):
 
         elif self.threshold_name == ForceTorqueThresholds.FT_Door.value:
             # TODO: Establish needed values and add logic for door handling
-            force_x_threshold = 0
-            force_y_threshold = 0
-            force_z_threshold = 0
+            print("Woof")
 
         elif self.threshold_name == ForceTorqueThresholds.FT_DishDoor.value:
             # TODO: Establish needed values and add logic for dishwasher door handling
-            force_x_threshold = 0
-            force_y_threshold = 0
-            force_z_threshold = 0
+            print("Miau")
 
         else:
             logging.logerr("No valid threshold_name found, unable to determine action!")
