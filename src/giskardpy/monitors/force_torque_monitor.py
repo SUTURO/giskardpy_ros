@@ -32,7 +32,7 @@ class PayloadForceTorque(PayloadMonitor):
                  ):
         """
         :param is_raw: checks if the /hsrb/wrist_wrench/raw topic is being listened to
-        :param threshold_name: contains the name of the threshold that will be used (normally an action e.g Placing)
+        :param threshold_name: contains the name of the threshold that will be used (normally an action e.g. Placing)
         :param object_type: is used to determine the type of object that is being placed, is left empty if no object is being placed
         :param topic: the name of the topic
         :param name: name of the monitor class
