@@ -218,8 +218,11 @@ class StandAloneBTConfig(BehaviorTreeConfig):
 
 
 class JSConfig(BehaviorTreeConfig):
-    def __init__(self, planning_sleep: Optional[float] = None, publish_free_variables=False):
+    def __init__(self, planning_sleep: Optional[float] = None, publish_free_variables=False, debug_mode=False):
         super().__init__(ControlModes.open_loop)
+        if god_map.is_in_github_workflow():
+            debug_mode = False
+        self.debug_mode = debug_mode
         self.planning_sleep = planning_sleep
         self.publish_free_variables = publish_free_variables
 
@@ -232,6 +235,10 @@ class JSConfig(BehaviorTreeConfig):
         # sleeper doesn't exists anymore
         #if self.planning_sleep is not None:
         #    self.add_sleeper(self.planning_sleep)
+        if self.debug_mode:
+            self.add_trajectory_plotter(wait=True)
+            self.add_debug_trajectory_plotter(wait=True)
+            self.add_debug_marker_publisher()
         if self.publish_free_variables:
             self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
 
