@@ -1,14 +1,12 @@
+from builtins import Exception
 from typing import Dict, Optional, List, Tuple
 
 import actionlib
 import rospy
 from actionlib_msgs.msg import GoalStatus
+from controller_manager_msgs.srv import ListControllers, ListControllersResponse
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-
-from giskardpy.goals.realtime_goals import RealTimePointingPose
-from giskardpy.goals.suturo import Reaching, Placing, Retracting
-from std_srvs.srv import TriggerRequest, TriggerResponse
 from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
 from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -16,6 +14,8 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
+from giskardpy.goals.realtime_goals import RealTimePointingPose
+from giskardpy.goals.suturo import Reaching, Placing, Retracting
 from giskardpy.python_interface.python_interface import GiskardWrapper
 from giskardpy.suturo_types import GripperTypes
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
@@ -25,11 +25,18 @@ from giskardpy.tree.control_modes import ControlModes
 class OldGiskardWrapper(GiskardWrapper):
 
     def __init__(self, node_name: str = 'giskard'):
+
+        self.list_controller_srv = rospy.ServiceProxy(name='/hsrb/controller_manager/list_controllers',
+                                                      service_class=ListControllers)
+
         super().__init__(node_name, avoid_name_conflict=True)
 
-    def execute(self, wait: bool = True, add_default: bool = True) -> MoveResult:
+    def execute(self, wait: bool = True, add_default: bool = True, check_controller: bool = True) -> MoveResult:
         if add_default:
             self.add_default_end_motion_conditions()
+        if check_controller and self.world.get_control_mode() == ControlModes.close_loop:
+            if not self.check_controllers_active():
+                raise Exception(f'Controllers are configured incorrectly. Look at rqt_controller_manager.')
         return super().execute(wait)
 
     def projection(self, wait: bool = True) -> MoveResult:
@@ -651,10 +658,10 @@ class OldGiskardWrapper(GiskardWrapper):
         :return: Response message of the service call
         """
         return self.world.add_box(name=name,
-                                     size=size,
-                                     pose=pose,
-                                     parent_link=parent_link,
-                                     parent_link_group=parent_link_group)
+                                  size=size,
+                                  pose=pose,
+                                  parent_link=parent_link,
+                                  parent_link_group=parent_link_group)
 
     def add_sphere(self,
                    name: str,
@@ -666,10 +673,10 @@ class OldGiskardWrapper(GiskardWrapper):
         See add_box.
         """
         return self.world.add_sphere(name=name,
-                                        radius=radius,
-                                        pose=pose,
-                                        parent_link=parent_link,
-                                        parent_link_group=parent_link_group)
+                                     radius=radius,
+                                     pose=pose,
+                                     parent_link=parent_link,
+                                     parent_link_group=parent_link_group)
 
     def add_mesh(self,
                  name: str,
@@ -684,11 +691,11 @@ class OldGiskardWrapper(GiskardWrapper):
                         package://giskardpy/test/urdfs/meshes/bowl_21.obj
         """
         return self.world.add_mesh(name=name,
-                                      mesh=mesh,
-                                      scale=scale,
-                                      pose=pose,
-                                      parent_link=parent_link,
-                                      parent_link_group=parent_link_group)
+                                   mesh=mesh,
+                                   scale=scale,
+                                   pose=pose,
+                                   parent_link=parent_link,
+                                   parent_link_group=parent_link_group)
 
     def add_cylinder(self,
                      name: str,
@@ -701,11 +708,11 @@ class OldGiskardWrapper(GiskardWrapper):
         See add_box.
         """
         return self.world.add_cylinder(name=name,
-                                          height=height,
-                                          radius=radius,
-                                          pose=pose,
-                                          parent_link=parent_link,
-                                          parent_link_group=parent_link_group)
+                                       height=height,
+                                       radius=radius,
+                                       pose=pose,
+                                       parent_link=parent_link,
+                                       parent_link_group=parent_link_group)
 
     def remove_group(self, name: str) -> WorldResult:
         """
@@ -727,8 +734,8 @@ class OldGiskardWrapper(GiskardWrapper):
         :return: result message
         """
         return self.world.update_parent_link_of_group(name=name,
-                                                         parent_link=parent_link,
-                                                         parent_link_group=parent_link_group)
+                                                      parent_link=parent_link,
+                                                      parent_link_group=parent_link_group)
 
     def detach_group(self, object_name: str):
         """
@@ -754,11 +761,11 @@ class OldGiskardWrapper(GiskardWrapper):
         :return: response message
         """
         return self.world.add_urdf(name=name,
-                                      urdf=urdf,
-                                      pose=pose,
-                                      js_topic=js_topic,
-                                      parent_link=parent_link,
-                                      parent_link_group=parent_link_group)
+                                   urdf=urdf,
+                                   pose=pose,
+                                   js_topic=js_topic,
+                                   parent_link=parent_link,
+                                   parent_link_group=parent_link_group)
 
     def dye_group(self, group_name: str, rgba: Tuple[float, float, float, float]) -> DyeGroupResponse:
         """
@@ -1112,3 +1119,14 @@ class OldGiskardWrapper(GiskardWrapper):
                                topic_name='human_pose',
                                endless_mode=True,
                                pointing_axis=tip_V_pointing_axis)
+
+    def check_controllers_active(self):
+        stopped_controllers = ['arm_trajectory_controller', 'head_trajectory_controller']
+        running_controllers = ['realtime_body_controller_real']
+        resp: ListControllersResponse = self.list_controller_srv()
+        controller_dict = {controller.name: controller for controller in resp.controller}
+
+        if (all(controller_dict[con].state == 'stopped' or controller_dict[con].state == 'initialized' for con in
+                stopped_controllers) and all(controller_dict[con].state == 'running' for con in running_controllers)):
+            return True
+        return False
