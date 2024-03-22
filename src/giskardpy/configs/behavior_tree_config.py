@@ -217,34 +217,9 @@ class StandAloneBTConfig(BehaviorTreeConfig):
             # self.add_js_publisher(include_prefix=False, topic_name='giskard_joint_states')
 
 
-class JSConfig(BehaviorTreeConfig):
-    def __init__(self, planning_sleep: Optional[float] = None, publish_free_variables=False, debug_mode=False):
-        super().__init__(ControlModes.open_loop)
-        if god_map.is_in_github_workflow():
-            debug_mode = False
-        self.debug_mode = debug_mode
-        self.planning_sleep = planning_sleep
-        self.publish_free_variables = publish_free_variables
-
-    def setup(self):
-        self.add_visualization_marker_publisher(add_to_sync=True, add_to_control_loop=True) # add_to_planning=False
-        self.add_tf_publisher(include_prefix=True, mode=TfPublishingModes.all)
-        # self.add_trajectory_plotter()
-        # self.add_debug_marker_publisher()
-
-        # sleeper doesn't exists anymore
-        #if self.planning_sleep is not None:
-        #    self.add_sleeper(self.planning_sleep)
-        if self.debug_mode:
-            self.add_trajectory_plotter(wait=True)
-            self.add_debug_trajectory_plotter(wait=True)
-            self.add_debug_marker_publisher()
-        if self.publish_free_variables:
-            self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
-
-
 class OpenLoopBTConfig(BehaviorTreeConfig):
-    def __init__(self, debug_mode: bool = False, control_loop_max_hz: float = 50,
+    def __init__(self, debug_mode: bool = False, publish_free_variables=False, add_tf_pub=False,
+                 control_loop_max_hz: float = 50,
                  simulation_max_hz: Optional[float] = None):
         """
         The default behavior tree for Giskard in open-loop mode. It will first plan the trajectory in simulation mode
@@ -255,9 +230,12 @@ class OpenLoopBTConfig(BehaviorTreeConfig):
         """
         super().__init__(ControlModes.open_loop, control_loop_max_hz=control_loop_max_hz,
                          simulation_max_hz=simulation_max_hz)
+
         if god_map.is_in_github_workflow():
             debug_mode = False
         self.debug_mode = debug_mode
+        self.publish_free_variables = publish_free_variables
+        self.add_tf_pub = add_tf_pub
 
     def setup(self):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_control_loop=True)
@@ -273,12 +251,16 @@ class OpenLoopBTConfig(BehaviorTreeConfig):
             #     # publish_lbA=True,
             #     # publish_ubA=True
             # )
+        if self.publish_free_variables:
+            self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
+        if self.add_tf_pub:
+            self.add_tf_publisher(include_prefix=True, mode=TfPublishingModes.all)
 
 
 class ClosedLoopBTConfig(BehaviorTreeConfig):
     def __init__(self, debug_mode: bool = False, control_loop_max_hz: float = 50,
                  simulation_max_hz: Optional[float] = None,
-                 publish_free_variables = False):
+                 publish_free_variables=False):
         """
         The default configuration for Giskard in closed loop mode. Make use to set up the robot interface accordingly.
         :param debug_mode: If True, will publish debug data on topics. This will significantly slow down the control loop.
@@ -299,7 +281,7 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
         if self.debug_mode:
             self.add_trajectory_plotter(wait=True)
             self.add_debug_trajectory_plotter(wait=True)
-            # self.add_debug_marker_publisher()
+            self.add_debug_marker_publisher()
             # self.add_qp_data_publisher(
             #     publish_debug=True,
             #     publish_xdot=True,
