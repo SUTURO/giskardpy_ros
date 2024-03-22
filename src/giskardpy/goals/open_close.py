@@ -12,7 +12,7 @@ from giskardpy.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.tasks.task import WEIGHT_BELOW_CA
 
 
-class Open(ForceSensorGoal):
+class Open(Goal):
     def __init__(self,
                  tip_link: str,
                  environment_link: str,
@@ -38,7 +38,6 @@ class Open(ForceSensorGoal):
         :param goal_joint_state: goal state for the container. default is maximum joint state.
         :param weight:
         """
-        super().__init__()
         self.weight = weight
         self.tip_link = god_map.world.search_for_link_name(tip_link, tip_group)
         self.handle_link = god_map.world.search_for_link_name(environment_link, environment_group)
@@ -52,8 +51,8 @@ class Open(ForceSensorGoal):
         if goal_joint_state is None:
             goal_joint_state = max_position
         else:
-            # goal_joint_state = min(max_position, goal_joint_state)
-            goal_joint_state = goal_joint_state
+            goal_joint_state = min(max_position, goal_joint_state)
+            # goal_joint_state = goal_joint_state
 
         if not cas.is_true(start_condition):
             handle_T_tip = god_map.world.compose_fk_expression(self.handle_link, self.tip_link)
@@ -92,23 +91,6 @@ class Open(ForceSensorGoal):
                                                        start_condition=start_condition,
                                                        hold_condition=hold_condition,
                                                        end_condition=end_condition))
-
-    def goal_cancel_condition(self):
-
-        expression = (lambda sensor_values, sensor_derivatives:
-                      (math.isclose(sensor_values['x_force'], 0.0, abs_tol=0.2)) and
-                      (math.isclose(sensor_values['y_force'], 0.0, abs_tol=0.2)) and
-                      (math.isclose(sensor_values['z_force'], 0.0, abs_tol=0.2)) and
-                      (math.isclose(sensor_derivatives['x_force'], 0.0, abs_tol=0.2)) and
-                      (math.isclose(sensor_derivatives['y_force'], 0.0, abs_tol=0.2)) and
-                      (math.isclose(sensor_derivatives['z_force'], 0.0, abs_tol=0.2)))
-
-        return expression
-
-    def recovery_modifier(self) -> Dict:
-        recover = {}
-
-        return recover
 
 
 class Close(Goal):
