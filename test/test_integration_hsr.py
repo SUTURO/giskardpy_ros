@@ -399,81 +399,80 @@ class TestCartGoals:
         zero_pose.plan_and_execute()
 
 
-# FIXME ForceSensorGoal needs to be fixed, before the Tests can be fixed
-# class TestConstraints:
-#
-#     def test_open_fridge(self, kitchen_setup: HSRTestWrapper):
-#         handle_frame_id = 'iai_kitchen/iai_fridge_door_handle'
-#         handle_name = 'iai_fridge_door_handle'
-#         kitchen_setup.open_gripper()
-#         base_goal = PoseStamped()
-#         base_goal.header.frame_id = 'map'
-#         base_goal.pose.position = Point(0.3, -0.5, 0)
-#         base_goal.pose.orientation.w = 1
-#         kitchen_setup.move_base(base_goal)
-#
-#         bar_axis = Vector3Stamped()
-#         bar_axis.header.frame_id = handle_frame_id
-#         bar_axis.vector.z = 1
-#
-#         bar_center = PointStamped()
-#         bar_center.header.frame_id = handle_frame_id
-#
-#         tip_grasp_axis = Vector3Stamped()
-#         tip_grasp_axis.header.frame_id = kitchen_setup.tip
-#         tip_grasp_axis.vector.x = 1
-#
-#         kitchen_setup.set_grasp_bar_goal(root_link=kitchen_setup.default_root,
-#                                          tip_link=kitchen_setup.tip,
-#                                          tip_grasp_axis=tip_grasp_axis,
-#                                          bar_center=bar_center,
-#                                          bar_axis=bar_axis,
-#                                          bar_length=.4)
-#         x_gripper = Vector3Stamped()
-#         x_gripper.header.frame_id = kitchen_setup.tip
-#         x_gripper.vector.z = 1
-#
-#         x_goal = Vector3Stamped()
-#         x_goal.header.frame_id = handle_frame_id
-#         x_goal.vector.x = -1
-#         kitchen_setup.set_align_planes_goal(tip_link=kitchen_setup.tip,
-#                                             tip_normal=x_gripper,
-#                                             goal_normal=x_goal,
-#                                             root_link='map')
-#         kitchen_setup.allow_all_collisions()
-#         # kitchen_setup.add_json_goal('AvoidJointLimits', percentage=10)
-#         kitchen_setup.execute()
-#         current_pose = god_map.world.compute_fk_pose(root='map', tip=kitchen_setup.tip)
-#
-#         kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
-#                                               environment_link=handle_name,
-#                                               goal_joint_state=1.5)
-#         # kitchen_setup.motion_goals.add_motion_goal('AvoidJointLimits', percentage=40)
-#         kitchen_setup.allow_all_collisions()
-#         # kitchen_setup.add_json_goal('AvoidJointLimits')
-#         kitchen_setup.execute()
-#         kitchen_setup.set_env_state({'iai_fridge_door_joint': 1.5})
-#
-#         pose_reached = kitchen_setup.monitors.add_cartesian_pose('map',
-#                                                                  tip_link=kitchen_setup.tip,
-#                                                                  goal_pose=current_pose)
-#         kitchen_setup.monitors.add_end_motion(start_condition=pose_reached)
-#
-#         kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
-#                                               environment_link=handle_name,
-#                                               goal_joint_state=0)
-#         kitchen_setup.allow_all_collisions()
-#         # kitchen_setup.motion_goals.add_motion_goal('AvoidJointLimits', percentage=40)
-#
-#         kitchen_setup.execute(add_local_minimum_reached=False)
-#
-#         kitchen_setup.set_env_state({'iai_fridge_door_joint': 0})
-#
-#         kitchen_setup.set_joint_goal(kitchen_setup.better_pose)
-#         kitchen_setup.allow_self_collision()
-#         kitchen_setup.plan_and_execute()
-#
-#         kitchen_setup.close_gripper()
+class TestConstraints:
+
+    def test_open_fridge(self, kitchen_setup: HSRTestWrapper):
+        handle_frame_id = 'iai_kitchen/iai_fridge_door_handle'
+        handle_name = 'iai_fridge_door_handle'
+        kitchen_setup.open_gripper()
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position = Point(0.3, -0.5, 0)
+        base_goal.pose.orientation.w = 1
+        kitchen_setup.move_base(base_goal)
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.z = 1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = kitchen_setup.tip
+        tip_grasp_axis.vector.x = 1
+
+        kitchen_setup.set_grasp_bar_goal(root_link=kitchen_setup.default_root,
+                                         tip_link=kitchen_setup.tip,
+                                         tip_grasp_axis=tip_grasp_axis,
+                                         bar_center=bar_center,
+                                         bar_axis=bar_axis,
+                                         bar_length=.4)
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = kitchen_setup.tip
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+        kitchen_setup.set_align_planes_goal(tip_link=kitchen_setup.tip,
+                                            tip_normal=x_gripper,
+                                            goal_normal=x_goal,
+                                            root_link='map')
+        kitchen_setup.allow_all_collisions()
+        # kitchen_setup.add_json_goal('AvoidJointLimits', percentage=10)
+        kitchen_setup.execute()
+        current_pose = god_map.world.compute_fk_pose(root='map', tip=kitchen_setup.tip)
+
+        kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
+                                              environment_link=handle_name,
+                                              goal_joint_state=1.5)
+        # kitchen_setup.motion_goals.add_motion_goal('AvoidJointLimits', percentage=40)
+        kitchen_setup.allow_all_collisions()
+        # kitchen_setup.add_json_goal('AvoidJointLimits')
+        kitchen_setup.execute()
+        kitchen_setup.set_env_state({'iai_fridge_door_joint': 1.5})
+
+        pose_reached = kitchen_setup.monitors.add_cartesian_pose('map',
+                                                                 tip_link=kitchen_setup.tip,
+                                                                 goal_pose=current_pose)
+        kitchen_setup.monitors.add_end_motion(start_condition=pose_reached)
+
+        kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
+                                              environment_link=handle_name,
+                                              goal_joint_state=0)
+        kitchen_setup.allow_all_collisions()
+        # kitchen_setup.motion_goals.add_motion_goal('AvoidJointLimits', percentage=40)
+
+        kitchen_setup.execute(add_local_minimum_reached=False)
+
+        kitchen_setup.set_env_state({'iai_fridge_door_joint': 0})
+
+        kitchen_setup.set_joint_goal(kitchen_setup.better_pose)
+        kitchen_setup.allow_self_collision()
+        kitchen_setup.plan_and_execute()
+
+        kitchen_setup.close_gripper()
 
 
 class TestCollisionAvoidanceGoals:
