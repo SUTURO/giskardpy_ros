@@ -124,7 +124,7 @@ class HSRVelocityInterface(RobotInterfaceConfig):
         self.sync_joint_state_topic('/hsrb/joint_states')
         self.sync_odometry_topic('/hsrb/odom', self.drive_joint_name)
 
-        self.add_joint_velocity_group_controller(namespace='/hsrb/realtime_body_controller_real')
+        self.add_joint_velocity_group_controller(namespace='hsrb/realtime_body_controller_real')
 
         self.add_base_cmd_velocity(cmd_vel_topic='/hsrb/command_velocity',
                                    joint_name=self.drive_joint_name)
