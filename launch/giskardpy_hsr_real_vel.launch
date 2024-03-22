@@ -1,6 +1,8 @@
 <launch>
     <arg name="debug_mode" default="False" />
 
+    <include file="$(find hsr_velocity_controller)/launch/switch_to_velocity_controllers.launch" />
+
     <node pkg="giskardpy" type="iai_hsr_real_time.py" name="giskard" output="screen">
         <param name="debug_mode" value="$(arg debug_mode)" />
     </node>
@@ -11,6 +13,8 @@
             [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16]
         </rosparam>
     </node>
+
+    <node pkg="giskardpy" type="switch_controllers.py" name="giskard_joy_switch_controllers" output="screen" />
 
     <node pkg="giskardpy" type="interactive_marker.py" name="giskard_interactive_marker" output="screen">
         <rosparam param="enable_self_collision">False</rosparam>

@@ -1,8 +1,8 @@
-from typing import List
-
+#!/usr/bin/env python
 import rospy
 from controller_manager_msgs.srv import ListControllers, ListControllersResponse, SwitchController, \
     SwitchControllerResponse
+from typing import List
 from sensor_msgs.msg import Joy
 
 
@@ -23,7 +23,7 @@ class SwitchControllers:
         @param joy_topic Topic where joy is published to, to get the correct buttons
         @param buttons Indexes of the buttons used for the button-combination
         """
-        rospy.init_node("switch_controllers")
+        rospy.init_node("giskard_joy_switch_controllers")
 
         self.data = Joy()
         self.con_list1 = con_list1
