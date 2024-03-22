@@ -68,6 +68,7 @@ class HSRTestWrapper(GiskardTestWrapper):
     def command_gripper(self, width):
         js = {'hand_motor_joint': width}
         self.set_joint_goal(js)
+        self.allow_all_collisions()
         self.plan_and_execute()
 
     def reset_base(self):
@@ -442,6 +443,9 @@ class TestConstraints:
         kitchen_setup.allow_all_collisions()
         # kitchen_setup.add_json_goal('AvoidJointLimits', percentage=10)
         kitchen_setup.execute()
+
+        kitchen_setup.close_gripper()
+
         current_pose = god_map.world.compute_fk_pose(root='map', tip=kitchen_setup.tip)
 
         kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
@@ -467,6 +471,7 @@ class TestConstraints:
         kitchen_setup.execute(add_local_minimum_reached=False)
 
         kitchen_setup.set_env_state({'iai_fridge_door_joint': 0})
+        kitchen_setup.open_gripper()
 
         kitchen_setup.set_joint_goal(kitchen_setup.better_pose)
         kitchen_setup.allow_self_collision()
