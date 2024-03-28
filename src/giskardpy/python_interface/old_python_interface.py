@@ -15,7 +15,7 @@ from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
 from giskardpy.goals.realtime_goals import RealTimePointingPose
-from giskardpy.goals.suturo import Reaching, Placing, Retracting
+from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting
 from giskardpy.python_interface.python_interface import GiskardWrapper
 from giskardpy.suturo_types import GripperTypes
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
@@ -926,9 +926,9 @@ class OldGiskardWrapper(GiskardWrapper):
                 tip_link: str = 'wrist_roll_joint',
                 ):
 
-        self.motion_goals.add_motion_goal(motion_goal_class='Tilting',
+        self.motion_goals.add_motion_goal(motion_goal_class=Tilting.__name__,
                                           direction=tilt_direction,
-                                          tilt_angle=tilt_angle,
+                                          angle=tilt_angle,
                                           tip_link=tip_link)
 
     def joint_rotation_continuous(self,
