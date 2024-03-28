@@ -897,8 +897,7 @@ class TestSUTURO:
 
             compare_poses(cord_data.pose, align_states[mode].pose)
 
-    # FIXME: Tilting doesn't work. SuTuRo-Goal does not tilt.
-    # Maybe change compare poses to finger tips and not tool_frame
+    # Maybe change compare poses to fingertips and not tool_frame
     def test_tilting(self, zero_pose: HSRTestWrapper):
         directions = ['left', 'right']
 
@@ -907,21 +906,21 @@ class TestSUTURO:
         tilt_pose1.header.frame_id = 'map'
         tilt_pose1.pose.position.x = 0.3862282703183651
         tilt_pose1.pose.position.y = 0.07997985276116013
-        tilt_pose1.pose.position.z = 0.7144424174771254
-        tilt_pose1.pose.orientation.x = -0.4443082797691649
-        tilt_pose1.pose.orientation.y = 0.5553960633877594
-        tilt_pose1.pose.orientation.z = -0.5090628713771196
-        tilt_pose1.pose.orientation.w = -0.4847477264384307
+        tilt_pose1.pose.position.z = 0.695562902503049
+        tilt_pose1.pose.orientation.x = 0.02036729579358757
+        tilt_pose1.pose.orientation.y = -0.09918407993790013
+        tilt_pose1.pose.orientation.z = 0.7016143119255045
+        tilt_pose1.pose.orientation.w = 0.7053262003145989
 
         tilt_pose2 = PoseStamped()
         tilt_pose2.header.frame_id = 'map'
-        tilt_pose2.pose.position.x = -0.04230309478138269
+        tilt_pose2.pose.position.x = 0.4011968051112429
         tilt_pose2.pose.position.y = 0.07997985276116013
-        tilt_pose2.pose.position.z = 0.8027971124538672
-        tilt_pose2.pose.orientation.x = 0.36673529634187035
-        tilt_pose2.pose.orientation.y = 0.6191556216911683
-        tilt_pose2.pose.orientation.z = -0.5675033717108586
-        tilt_pose2.pose.orientation.w = 0.4001143107189125
+        tilt_pose2.pose.position.z = 0.6997425428565389
+        tilt_pose2.pose.orientation.x = -0.7013959300921285
+        tilt_pose2.pose.orientation.y = 0.7062105656448003
+        tilt_pose2.pose.orientation.z = -0.02684219924309636
+        tilt_pose2.pose.orientation.w = -0.09268161933006579
 
         tilt_states = {
             'left': tilt_pose1,
@@ -951,8 +950,8 @@ class TestSUTURO:
 
             cord_data = (god_map.world.
                          compute_fk_pose('map', 'hand_l_finger_tip_frame'))
-            # TODO: Fix values for tilting Test
-            # compare_poses(cord_data.pose, tilt_states[direction].pose)
+
+            compare_poses(cord_data.pose, tilt_states[direction].pose)
 
     def test_take_pose(self, zero_pose: HSRTestWrapper):
         poses = ['park', 'perceive', 'assistance', 'pre_align_height', 'carry']
