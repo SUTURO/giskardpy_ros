@@ -86,6 +86,7 @@ class PayloadForceTorque(PayloadMonitor):
         rob_torque = self.force_T_map_transform(2)
         # TODO: Add more threshold cases and determine whether the normal grasp action is even needed currently
         # TODO: Talk to planning and knowledge about outsourcing the thresholds to knowledge, so that we only receive them and put them in
+        # TODO: create empty thresholds that can be filled via parameters used by knowledge/ planning
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
             if self.object_type == ObjectTypes.OT_Standard.value:

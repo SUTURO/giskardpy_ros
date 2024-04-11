@@ -5,6 +5,7 @@ from typing import Optional, List
 import rospy
 from geometry_msgs.msg import Vector3Stamped, PointStamped, PoseStamped
 
+from giskardpy.god_map import god_map
 from giskardpy.monitors.monitors import ExpressionMonitor
 from giskardpy.tasks.task import WEIGHT_BELOW_CA
 from giskardpy.goals.pointing import Pointing
@@ -80,5 +81,6 @@ class RealTimePointingPose(Pointing):
         # FIXME: Should be removed after Perception fixed frame_id to be without "/" in front or fixed otherwise
         if point_data.header.frame_id.startswith('/'):
             point_data.header.frame_id = point_data.header.frame_id[1:]
-        point_data = transform_msg(self.root, point_data)
+        #point_data = transform_msg(self.root, point_data)
+        point_data = god_map.world.transform_point(self.root, point_data)
         self.root_P_goal_point = point_data
