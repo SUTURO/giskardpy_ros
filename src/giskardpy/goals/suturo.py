@@ -10,6 +10,7 @@ from control_msgs.msg import FollowJointTrajectoryGoal, FollowJointTrajectoryAct
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
 
 from giskardpy.god_map import god_map
+from giskardpy.suturo_types import GraspTypes
 from giskardpy.utils.expression_definition_utils import transform_msg, transform_msg_and_turn_to_expr
 
 if 'GITHUB_WORKFLOW' not in os.environ:
@@ -160,7 +161,8 @@ class MoveGripper(NonMotionGoal):
 
 class Reaching(ObjectGoal):
     def __init__(self,
-                 context: {str: ContextTypes},
+                 grasp: str,
+                 align: str,
                  name: str = None,
                  object_name: Optional[str] = None,
                  object_shape: Optional[str] = None,
@@ -199,17 +201,15 @@ class Reaching(ObjectGoal):
         if tip_link is None:
             tip_link = self.gripper_tool_frame
 
-        self.context = context
+        self.grasp = grasp
+        self.align = align
         self.object_name = object_name
         self.object_shape = object_shape
         self.root_link_name = root_link
         self.tip_link_name = tip_link
         self.velocity = velocity
         self.weight = weight
-        self.action = check_context_element('action', ContextAction, self.context)
-        self.from_above = check_context_element('from_above', ContextFromAbove, self.context)
-        self.align_vertical = check_context_element('align_vertical', ContextAlignVertical, self.context)
-        self.radius = 0.0
+        self.offsets = Vector3(0, 0, 0)
         self.careful = False
         self.object_in_world = goal_pose is None
 
@@ -230,66 +230,38 @@ class Reaching(ObjectGoal):
             self.reference_frame = 'base_footprint'
             logwarn(f'Warning: Object not in giskard world')
 
-        if self.action == ContextActionModes.grasping.value:
-            if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
-                self.radius = self.object_size.x
-            else:
-                if self.object_in_world:
-                    self.radius = - 0.02
-                else:
-                    self.radius = max(min(0.08, self.object_size.x / 2), 0.05)
-
-        elif self.action == ContextActionModes.placing.value:
-            if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
-                self.radius = self.object_size.x
-
-            # Placing positions are calculated in planning in clean the table.
-            # Apply height offset only when placing frontal
-            if not self.from_above:
-                self.goal_pose.pose.position.z += (self.object_size.z / 2) + 0.02
-
-        elif self.action == ContextActionModes.pouring.value:
-            # Pouring position is calculated in planning in serve breakfast.
-            pass
-
-        elif self.action == ContextActionModes.door_opening.value:
-            self.radius = -0.02
-            self.goal_pose = transform_msg(god_map.world.search_for_link_name('base_footprint'), self.goal_pose)
-            self.careful = True
-
-        if self.careful:
-            self.add_constraints_of_goal(GraspCarefully(goal_pose=self.goal_pose,
-                                                        reference_frame_alignment=self.reference_frame,
-                                                        frontal_offset=self.radius,
-                                                        from_above=self.from_above,
-                                                        align_vertical=self.align_vertical,
-                                                        root_link=self.root_link_name,
-                                                        tip_link=self.tip_link_name,
-                                                        velocity=self.velocity / 2,
-                                                        weight=self.weight,
-                                                        start_condition=start_condition,
-                                                        hold_condition=hold_condition,
-                                                        end_condition=end_condition))
+        # TODO: Offsets korrekt berechnen
+        if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
+            self.offsets = Vector3(self.object_size.x, self.object_size.x, self.object_size.z)
         else:
-            self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
-                                                     reference_frame_alignment=self.reference_frame,
-                                                     frontal_offset=self.radius,
-                                                     from_above=self.from_above,
-                                                     align_vertical=self.align_vertical,
-                                                     root_link=self.root_link_name,
-                                                     tip_link=self.tip_link_name,
-                                                     velocity=self.velocity,
-                                                     weight=self.weight,
-                                                     start_condition=start_condition,
-                                                     hold_condition=hold_condition,
-                                                     end_condition=end_condition))
+            if self.object_in_world:
+                self.offsets = Vector3(-self.object_size.x/2, self.object_size.y/2, self.object_size.z/2)
+            else:
+                self.offsets = Vector3(max(min(0.08, self.object_size.x / 2), 0.05), 0, 0)
+
+        if all(self.grasp != member.value for member in GraspTypes):
+            raise Exception(f"Unknown grasp value: {grasp}")
+
+        self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
+                                                 reference_frame_alignment=self.reference_frame,
+                                                 offsets=self.offsets,
+                                                 grasp=self.grasp,
+                                                 align=self.align,
+                                                 root_link=self.root_link_name,
+                                                 tip_link=self.tip_link_name,
+                                                 velocity=self.velocity,
+                                                 weight=self.weight,
+                                                 start_condition=start_condition,
+                                                 hold_condition=hold_condition,
+                                                 end_condition=end_condition))
 
 
 class GraspObject(ObjectGoal):
     def __init__(self,
                  goal_pose: PoseStamped,
-                 frontal_offset: float = 0.0,
-                 from_above: bool = False,
+                 align: str,
+                 offsets: Vector3 = Vector3(0, 0, 0),
+                 grasp: str = 'front',
                  align_vertical: bool = False,
                  name: Optional[str] = None,
                  reference_frame_alignment: Optional[str] = None,
@@ -307,8 +279,7 @@ class GraspObject(ObjectGoal):
             All available context Messages are found in the Enum 'ContextTypes'
 
             :param goal_pose: Goal pose for the object.
-            :param frontal_offset: Optional parameter to pass a specific offset
-            :param from_above: States if the gripper should be aligned frontal or from above
+            :param offsets: Optional parameter to pass a specific offset in x, y or z direction
             :param align_vertical: States if the gripper should be rotated.
             :param reference_frame_alignment: Reference frame to align with. Is usually either an object link or 'base_footprint'
             :param root_link: Current root Link
@@ -322,8 +293,9 @@ class GraspObject(ObjectGoal):
         super().__init__(name=name)
         self.goal_pose = goal_pose
 
-        self.frontal_offset = frontal_offset
-        self.from_above = from_above
+        self.offsets = offsets
+        self.grasp = grasp
+        self.align = align
         self.align_vertical = align_vertical
 
         if reference_frame_alignment is None:
@@ -360,16 +332,33 @@ class GraspObject(ObjectGoal):
 
         self.goal_point = transform_msg(self.reference_link, root_goal_point)
 
-        if self.from_above:
+        # TODO: Offsets überprüfen und weitere hinzufügen
+        if self.grasp == GraspTypes.TOP.value:
             self.goal_vertical_axis.vector = self.standard_forward
             self.goal_frontal_axis.vector = multiply_vector(self.standard_up, -1)
 
-        else:
+            self.goal_point.point.z += self.offsets.z
+
+        elif self.grasp == GraspTypes.BELOW.value:
+            self.goal_vertical_axis.vector = multiply_vector(self.standard_forward, -1)
+            self.goal_frontal_axis.vector = self.standard_up
+
+            self.goal_point.point.z -= self.offsets.z
+
+        elif self.grasp == GraspTypes.FRONT.value:
             self.goal_vertical_axis.vector = self.standard_up
             self.goal_frontal_axis.vector = self.base_forward
 
-            self.goal_point.point.x += frontal_offset
+            self.goal_point.point.x += self.offsets.x
             self.goal_point.point.z -= 0.01
+
+        elif self.grasp == GraspTypes.LEFT.value:
+            self.goal_frontal_axis.vector = self.gripper_left
+            self.goal_vertical_axis.vector = self.standard_up
+
+        elif self.grasp == GraspTypes.RIGHT.value:
+            self.goal_frontal_axis.vector = multiply_vector(self.gripper_left, -1)
+            self.goal_vertical_axis.vector = self.standard_up
 
         if self.align_vertical:
             self.tip_vertical_axis.vector = self.gripper_left

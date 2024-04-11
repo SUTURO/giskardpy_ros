@@ -1,4 +1,5 @@
 from enum import unique, Enum
+from json import JSONEncoder
 
 
 # States for the HSRs gripper, is being used only in old_python_interface as of now
@@ -29,3 +30,12 @@ class ObjectTypes(Enum):
     OT_Cutlery = 'Cutlery'
     OT_Plate = 'Plate'
     OT_Tray = 'Tray'  # Not currently in use, might change later
+
+# List of possible grasping directions
+@unique
+class GraspTypes(Enum):
+    FRONT = 'front'
+    TOP = 'top'
+    LEFT = 'left'
+    RIGHT = 'right'
+    BELOW = 'below'

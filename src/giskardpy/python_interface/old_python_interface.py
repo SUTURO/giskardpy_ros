@@ -15,7 +15,7 @@ from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
 from giskardpy.goals.realtime_goals import RealTimePointingPose
-from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting
+from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting, TakePose
 from giskardpy.python_interface.python_interface import GiskardWrapper
 from giskardpy.suturo_types import GripperTypes
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
@@ -24,19 +24,20 @@ from giskardpy.tree.control_modes import ControlModes
 
 class OldGiskardWrapper(GiskardWrapper):
 
-    def __init__(self, node_name: str = 'giskard'):
+    def __init__(self, node_name: str = 'giskard', check_controller: bool = True):
 
         self.list_controller_srv = rospy.ServiceProxy(name='/hsrb/controller_manager/list_controllers',
                                                       service_class=ListControllers)
 
         super().__init__(node_name, avoid_name_conflict=True)
 
-    def execute(self, wait: bool = True, add_default: bool = True, check_controller: bool = True) -> MoveResult:
-        if add_default:
-            self.add_default_end_motion_conditions()
         if check_controller and self.world.get_control_mode() == ControlModes.close_loop:
             if not self.check_controllers_active():
                 raise Exception(f'Controllers are configured incorrectly. Look at rqt_controller_manager.')
+
+    def execute(self, wait: bool = True, add_default: bool = True) -> MoveResult:
+        if add_default:
+            self.add_default_end_motion_conditions()
         return super().execute(wait)
 
     def projection(self, wait: bool = True) -> MoveResult:
@@ -825,8 +826,20 @@ class OldGiskardWrapper(GiskardWrapper):
         self.motion_goals.add_motion_goal(motion_goal_class='MoveGripper',
                                           gripper_state=gripper_state)
 
+    # def reaching(self,
+    #                grasp: str -> front top right left below
+    #                align -> frame (dh wrist frame aligned damit) -> aka tip_link, wenn align leer dann ignore
+    #                object_name: str, #(die spawned planning)
+    #                object_shape: str, #(cylinder oder something lese)
+    #                goal_pose: Optional[PoseStamped] = None,
+    #                object_size: Optional[Vector3] = None,
+    #                root_link: str = 'map',
+    #                tip_link: str = 'hand_palm_link',
+    #                velocity: float = 0.2): -> auch von planning
+
     def reaching(self,
-                 context,
+                 grasp: str,
+                 align: str,
                  object_name: str,
                  object_shape: str,
                  goal_pose: Optional[PoseStamped] = None,
@@ -836,7 +849,8 @@ class OldGiskardWrapper(GiskardWrapper):
                  velocity: float = 0.2):
 
         self.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
-                                          context=context,
+                                          grasp=grasp,
+                                          align=align,
                                           object_name=object_name,
                                           object_shape=object_shape,
                                           goal_pose=goal_pose,
@@ -917,7 +931,7 @@ class OldGiskardWrapper(GiskardWrapper):
     def take_pose(self,
                   pose_keyword: str):
 
-        self.motion_goals.add_motion_goal(motion_goal_class='TakePose',
+        self.motion_goals.add_motion_goal(motion_goal_class=TakePose.__name__,
                                           pose_keyword=pose_keyword)
 
     def tilting(self,

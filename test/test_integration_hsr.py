@@ -17,12 +17,12 @@ from giskardpy.god_map import god_map
 from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
-from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
+from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes, GraspTypes
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
 
 if 'GITHUB_WORKFLOW' not in os.environ:
-    from giskardpy.goals.suturo import ContextActionModes, ContextTypes
+    from giskardpy.goals.suturo import ContextActionModes, ContextTypes, Reaching, TakePose, GraspObject
 
 
 class HSRTestWrapper(GiskardTestWrapper):
@@ -652,12 +652,56 @@ class TestAddObject:
 
 class TestSUTURO:
 
-    # TODO: Actually make the reach Test test something
-    def test_reaching(self, zero_pose: HSRTestWrapper):
-        pass
+    def test_suff(self, kitchen_setup: HSRTestWrapper):
 
+        link = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
+        joint = god_map.world.get_movable_parent_joint(link)
+        link = god_map.world.get_parent_link_of_joint(joint)
+        print(joint)
+        print(link)
+        print(god_map.world.joints)
+
+        joint = god_map.world.get_movable_parent_joint(link)
+        print(joint)
+
+    # FIXME: Compare Pose hinzufügen sobald reaching fertig ist
+    # TODO: Weitere Reaching Tests mit anderen Objekten/aus anderen Richtungen hinzufügen
+    def test_reaching1(self, zero_pose: HSRTestWrapper):
+        box_name = 'asdf'
+        box_pose = PoseStamped()
+        box_pose.header.frame_id = 'map'
+        box_pose.pose.position = Point(1, 0, 0.7)
+        box_pose.pose.orientation = Quaternion(0, 0, 0, 1)
+
+        zero_pose.add_box_to_world(box_name, (0.07, 0.04, 0.1), box_pose)
+
+        zero_pose.take_pose("pre_align_height")
+        zero_pose.plan_and_execute()
+
+        zero_pose.open_gripper()
+
+        for grasp in GraspTypes:
+            # print(grasp.value)
+            zero_pose.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
+                                                   object_name=box_name,
+                                                   object_shape='box',
+                                                   grasp=grasp.value,
+                                                   align='test',
+                                                   root_link='map',
+                                                   tip_link='hand_palm_link')
+
+            zero_pose.allow_self_collision()
+            zero_pose.plan_and_execute()
+
+            zero_pose.reset_base()
+            zero_pose.take_pose("pre_align_height")
+            zero_pose.plan_and_execute()
+
+        zero_pose.close_gripper()
+
+    # FIXME: add all grasp poses
     def test_grasp_object(self, zero_pose: HSRTestWrapper):
-        from_above_modes = [False, True]
+        grasps = ['front', 'top']
         align_vertical_modes = [False, True]
 
         grasp_pose_1 = PoseStamped()
@@ -701,21 +745,22 @@ class TestSUTURO:
         grasp_pose_4.pose.orientation.w = -7.953924864631972e-08
 
         grasp_states = {
-            (False, False): grasp_pose_1,
-            (False, True): grasp_pose_2,
-            (True, False): grasp_pose_3,
-            (True, True): grasp_pose_4,
+            ('front', False): grasp_pose_1,
+            ('front', True): grasp_pose_2,
+            ('top', False): grasp_pose_3,
+            ('top', True): grasp_pose_4,
         }
 
         target_pose = PoseStamped()
         target_pose.pose.position.x = 1
         target_pose.pose.position.z = 0.7
 
-        for from_above_mode in from_above_modes:
+        for grasp in grasps:
             for align_vertical_mode in align_vertical_modes:
-                zero_pose.motion_goals.add_motion_goal(motion_goal_class='GraspObject',
+                zero_pose.motion_goals.add_motion_goal(motion_goal_class=GraspObject.__name__,
                                                        goal_pose=target_pose,
-                                                       from_above=from_above_mode,
+                                                       grasp=grasp,
+                                                       align='',
                                                        align_vertical=align_vertical_mode,
                                                        root_link='map',
                                                        tip_link='hand_palm_link')
@@ -725,7 +770,7 @@ class TestSUTURO:
                 m_P_g = (god_map.world.
                          compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
-                compare_poses(m_P_g.pose, grasp_states[from_above_mode, align_vertical_mode].pose)
+                compare_poses(m_P_g.pose, grasp_states[grasp, align_vertical_mode].pose)
 
     def test_vertical_motion_up(self, zero_pose: HSRTestWrapper):
 
@@ -739,7 +784,7 @@ class TestSUTURO:
         vertical_motion_pose.pose.orientation.z = 0.5271017946406412
         vertical_motion_pose.pose.orientation.w = 0.5057224638312487
 
-        zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class=TakePose.__name__,
                                                pose_keyword='park')
 
         zero_pose.allow_self_collision()
@@ -1015,8 +1060,9 @@ class TestSUTURO:
         }
 
         for pose in poses:
-            zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
-                                                   pose_keyword=pose)
+            zero_pose.motion_goals.add_motion_goal(motion_goal_class=TakePose.__name__,
+                                                   pose_keyword=pose,
+                                                   max_velocity=None)
 
             zero_pose.allow_self_collision()
             zero_pose.plan_and_execute()
