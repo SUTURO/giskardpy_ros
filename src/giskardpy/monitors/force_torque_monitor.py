@@ -89,6 +89,10 @@ class PayloadForceTorque(PayloadMonitor):
         # TODO: create empty thresholds that can be filled via parameters used by knowledge/ planning
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
+            # Basic idea for checking whether an object is being grasped or not:
+            # return false as long as threshold is being surpassed;
+            # return true when it stops being surpassed, so that goal stops when object is unexpectedly dropped
+
             if self.object_type == ObjectTypes.OT_Standard.value:
 
                 force_threshold = 0.2
@@ -169,11 +173,11 @@ class PayloadForceTorque(PayloadMonitor):
 
         elif self.threshold_name == ForceTorqueThresholds.FT_Door.value:
             # TODO: Establish needed values and add logic for door handling
-            print("Woof")
+            print("DOOR STUCK, DOOR STUCK!!!1!")
 
         elif self.threshold_name == ForceTorqueThresholds.FT_DishDoor.value:
             # TODO: Establish needed values and add logic for dishwasher door handling
-            print("Miau")
+            print("*Throws Chihuahua into dishwasher*")
 
         else:
             logging.logerr("No valid threshold_name found, unable to determine action!")
