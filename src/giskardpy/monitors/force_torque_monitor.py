@@ -137,6 +137,25 @@ class PayloadForceTorque(PayloadMonitor):
                     print(f'MISS PLACING!: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
+
+                if (self.threshold_name == ForceTorqueThresholds.FT_GraspCutlery.value
+                        & self.topic == "/hsrb/wrist_wrench/raw"):
+                    # TODO: Add proper Thresholds and Checks for grasping Cutlery
+
+                    force_x_threshold = 0
+                    force_y_threshold = 0
+                    force_z_threshold = 0
+
+                    if (abs(rob_force.vector.x) >= force_x_threshold and
+                            abs(rob_force.vector.y) >= force_y_threshold and
+                            abs(rob_force.vector.z) >= force_z_threshold):
+
+                        self.state = True
+                        print(f'HIT CUTLERY: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
+                    else:
+                        self.state = False
+                        print(f'MISS CUTLERY: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
+
                 #  TODO: Add proper placing logic
                 #  Check cutlery placing force-> might need raw topic too?
                 print("IT JUST WORKS - Todd Howard, at some point")
@@ -151,22 +170,6 @@ class PayloadForceTorque(PayloadMonitor):
 
             else:
                 logging.logerr("No valid object_type found, unable to determine placing thresholds!")
-
-        elif (self.threshold_name == ForceTorqueThresholds.FT_GraspCutlery.value
-              & self.topic == "/hsrb/wrist_wrench/raw"):
-            # TODO: Add proper Thresholds and Checks for grasping Cutlery
-            force_x_threshold = 0
-            force_y_threshold = 0
-            force_z_threshold = 0
-
-            if (abs(rob_force.vector.x) >= force_x_threshold and
-                    abs(rob_force.vector.y) >= force_y_threshold and
-                    abs(rob_force.vector.z) >= force_z_threshold):
-
-                self.state = True
-
-            else:
-                self.state = False
 
         elif self.threshold_name == ForceTorqueThresholds.FT_Door.value:
             # TODO: Establish needed values and add logic for door handling
