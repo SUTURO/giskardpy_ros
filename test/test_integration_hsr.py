@@ -652,7 +652,7 @@ class TestAddObject:
 
 class TestSUTURO:
 
-    def test_suff(self, kitchen_setup: HSRTestWrapper):
+    def test_stuff(self, kitchen_setup: HSRTestWrapper):
 
         link = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
         joint = god_map.world.get_movable_parent_joint(link)

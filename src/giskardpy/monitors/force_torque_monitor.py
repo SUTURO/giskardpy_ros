@@ -156,10 +156,6 @@ class PayloadForceTorque(PayloadMonitor):
                         self.state = False
                         print(f'MISS CUTLERY: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
 
-                #  TODO: Add proper placing logic
-                #  Check cutlery placing force-> might need raw topic too?
-                print("IT JUST WORKS - Todd Howard, at some point")
-
             elif self.object_type == ObjectTypes.OT_Plate.value:
                 #  TODO: Add proper placing logic
                 print("IT JUST WORKS - Todd Howard, at some point")
