@@ -119,6 +119,10 @@ class PayloadForceTorque(PayloadMonitor):
                 #  TODO: Add proper grasping logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
+            elif self.object_type == ObjectTypes.OT_Bowl.value:
+                #  TODO: Add proper grasping logic
+                print("IT JUST WORKS - Todd Howard, at some point")
+
             else:
                 logging.logerr("No valid object_type found, unable to determine placing thresholds!")
 
@@ -135,10 +139,10 @@ class PayloadForceTorque(PayloadMonitor):
                         abs(rob_torque.vector.y) >= torque_y_threshold):
 
                     self.state = True
-                    print(f'HIT PLACING: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
+                    print(f'HIT PLACING: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
                 else:
                     self.state = False
-                    print(f'MISS PLACING!: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
+                    print(f'MISS PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
 
@@ -155,16 +159,20 @@ class PayloadForceTorque(PayloadMonitor):
                             abs(rob_force.vector.z) >= force_z_threshold):
 
                         self.state = True
-                        print(f'HIT CUTLERY: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
+                        print(f'HIT CUTLERY: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
                     else:
                         self.state = False
-                        print(f'MISS CUTLERY: {rob_force.vector.x};{rob_force.vector.z};{rob_torque.vector.y}')
+                        print(f'MISS CUTLERY: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Plate.value:
                 #  TODO: Add proper placing logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
             elif self.object_type == ObjectTypes.OT_Tray.value:
+                #  TODO: Add proper placing logic
+                print("IT JUST WORKS - Todd Howard, at some point")
+
+            elif self.object_type == ObjectTypes.OT_Bowl.value:
                 #  TODO: Add proper placing logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 

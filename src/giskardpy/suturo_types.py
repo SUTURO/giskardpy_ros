@@ -19,7 +19,7 @@ class ForceTorqueThresholds(Enum):
     FT_Placing = 'Place'
     FT_Door = 'Door'
     FT_DishDoor = 'DishDoor'
-    FT_Tilt = 'Tilt'  # Pouring (might not be needed)
+    FT_Tilt = 'Tilt'  # Pouring
     # FT_Shelf_Grasp = 'FT_Shelf' # Might not be needed at all
 
 
@@ -29,6 +29,7 @@ class ObjectTypes(Enum):
     OT_Standard = 'Standard'  # Normal Objects(e.g Milk), includes Cups/Glasses, since planning grabs them from front
     OT_Cutlery = 'Cutlery'
     OT_Plate = 'Plate'
+    OT_Bowl = 'Bowl'
     OT_Tray = 'Tray'  # Not currently in use, might change later
 
 
