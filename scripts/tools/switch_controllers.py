@@ -5,6 +5,8 @@ from controller_manager_msgs.srv import ListControllers, ListControllersResponse
 from typing import List
 from sensor_msgs.msg import Joy
 
+from giskardpy.utils import logging
+
 
 class SwitchControllers:
 
@@ -76,12 +78,14 @@ class SwitchControllers:
             start_con = self.con_list1
             stop_con = self.con_list2
             resp: SwitchControllerResponse = self.srv_switch_con(start_con, stop_con, strictness, start_asap, timeout)
+            logging.loginfo("Switched Controllers")
 
         elif (all(controller_dict[con].state == 'stopped' or controller_dict[con].state == 'initialized' for con in
                   self.con_list2) and all(controller_dict[con].state == 'running' for con in self.con_list1)):
             start_con = self.con_list2
             stop_con = self.con_list1
             resp: SwitchControllerResponse = self.srv_switch_con(start_con, stop_con, strictness, start_asap, timeout)
+            logging.loginfo("Switched Controllers")
 
 
 if __name__ == '__main__':
