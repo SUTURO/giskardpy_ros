@@ -836,6 +836,9 @@ class WorldTree(WorldTreeInterface):
             joint = self.links[self.joints[joint].parent_link_name].parent_joint_name
         return joint
 
+    def get_parent_link_of_joint(self, joint_name: PrefixName) -> PrefixName:
+        return self.joints[joint_name].parent_link_name
+
     def get_parent_group_name(self, group_name: str) -> str:
         for potential_parent_group in self.minimal_group_names:
             if group_name in self.groups[potential_parent_group].groups:
