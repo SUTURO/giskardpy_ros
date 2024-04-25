@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 import pytest
+import rospy
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
@@ -20,6 +21,7 @@ from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
 from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes, GraspTypes
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
+from giskardpy.goals.suturo import OpenDoorGoal
 
 if 'GITHUB_WORKFLOW' not in os.environ:
     from giskardpy.goals.suturo import ContextActionModes, ContextTypes, Reaching, TakePose, GraspObject
@@ -652,17 +654,83 @@ class TestAddObject:
 
 class TestSUTURO:
 
-    def test_stuff(self, kitchen_setup: HSRTestWrapper):
+    # TODO: add compare pose?
+    def test_continuous_pointing(self, zero_pose):
+        pub = rospy.Publisher('/human_pose', PoseStamped, queue_size=10)
 
-        link = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
-        joint = god_map.world.get_movable_parent_joint(link)
-        link = god_map.world.get_parent_link_of_joint(joint)
-        print(joint)
-        print(link)
-        print(god_map.world.joints)
+        zero_pose.continuous_pointing_head()
+        zero_pose.execute(wait=False, add_local_minimum_reached=False)
 
-        joint = god_map.world.get_movable_parent_joint(link)
-        print(joint)
+        rospy.sleep(1)
+
+        poses = []
+
+        pose = PoseStamped()
+        pose.header.frame_id = 'map'
+        pose.pose.orientation.w = 1
+        pose.pose.position.x = 1
+        pose.pose.position.z = 1
+
+        poses.append(pose)
+
+        pose2 = deepcopy(pose)
+        pose2.pose.position.y = 5
+
+        poses.append(pose2)
+
+        pose3 = deepcopy(pose2)
+
+        pose3.pose.position.x = 0.5
+        pose3.pose.position.y = 0
+
+        poses.append(pose3)
+
+        for pose in poses:
+            pub.publish(pose)
+            rospy.sleep(2)
+
+        zero_pose.take_pose('park')
+        zero_pose.execute()
+
+    def test_open_door(self, door_setup: HSRTestWrapper):
+
+        handle_name = "suturo_door/suturo_door_area:door_handle_outside"
+
+        handle_frame_id = god_map.world.get_movable_parent_joint(handle_name)
+        link_id = god_map.world.get_parent_link_of_joint(handle_frame_id)
+        door_hinge_id = god_map.world.get_movable_parent_joint(link_id)
+
+        door_setup.open_gripper()
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_name
+        bar_axis.vector.x = -1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_name
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = door_setup.tip
+        tip_grasp_axis.vector.y = 1
+
+        door_setup.set_grasp_bar_goal(root_link=door_setup.default_root,
+                                      tip_link=door_setup.tip,
+                                      tip_grasp_axis=tip_grasp_axis,
+                                      bar_center=bar_center,
+                                      bar_axis=bar_axis,
+                                      bar_length=.15)
+
+        door_setup.execute()
+
+        door_setup.close_gripper()
+
+        door_setup.motion_goals.add_motion_goal(motion_goal_class=OpenDoorGoal.__name__,
+                                                tip_link=door_setup.tip,
+                                                door_handle_link=handle_name)
+
+        door_setup.allow_all_collisions()
+
+        door_setup.execute(add_local_minimum_reached=True)
 
     # FIXME: Compare Pose hinzufügen sobald reaching fertig ist
     # TODO: Weitere Reaching Tests mit anderen Objekten/aus anderen Richtungen hinzufügen
