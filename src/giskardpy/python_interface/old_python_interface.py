@@ -15,7 +15,7 @@ from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
 from giskardpy.goals.realtime_goals import RealTimePointingPose
-from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting, TakePose
+from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting, TakePose, OpenDoorGoal
 from giskardpy.python_interface.python_interface import GiskardWrapper
 from giskardpy.suturo_types import GripperTypes
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
@@ -500,6 +500,9 @@ class OldGiskardWrapper(GiskardWrapper):
                                 tip_group: Optional[str] = None,
                                 environment_group: Optional[str] = None,
                                 goal_joint_state: Optional[float] = None,
+                                start_condition: str = '',
+                                hold_condition: str = '',
+                                end_condition: str = '',
                                 weight=WEIGHT_ABOVE_CA):
         """
         Open a container in an environment.
@@ -518,6 +521,9 @@ class OldGiskardWrapper(GiskardWrapper):
                                              tip_group=tip_group,
                                              environment_group=environment_group,
                                              goal_joint_state=goal_joint_state,
+                                             start_condition=start_condition,
+                                             hold_condition=hold_condition,
+                                             end_condition=end_condition,
                                              weight=weight)
 
     def set_close_container_goal(self,
@@ -1112,7 +1118,7 @@ class OldGiskardWrapper(GiskardWrapper):
         which is used for person live-tracking.
         """
         # if endless_mode:
-        #     self.motion_goals.add_motion_goal(motion_goal_class='EndlessMode')
+        #     self.motion_goals.add_motion_goal(motion_goal_class='EndlessMode')f
 
         self.motion_goals.add_motion_goal(motion_goal_class=RealTimePointingPose.__name__,
                                           tip_link=tip_link,
@@ -1134,7 +1140,12 @@ class OldGiskardWrapper(GiskardWrapper):
                                endless_mode=True,
                                pointing_axis=tip_V_pointing_axis)
 
+    # FIXME: make controller lists parameters and add configs for robots or something
     def check_controllers_active(self):
+        """
+        Checks if the arm_trajectory_controller and head_trajectory_controller are stopped
+        and the realtime_body_controller_real is running
+        """
         stopped_controllers = ['arm_trajectory_controller', 'head_trajectory_controller']
         running_controllers = ['realtime_body_controller_real']
         resp: ListControllersResponse = self.list_controller_srv()
@@ -1144,3 +1155,13 @@ class OldGiskardWrapper(GiskardWrapper):
                 stopped_controllers) and all(controller_dict[con].state == 'running' for con in running_controllers)):
             return True
         return False
+
+    def set_open_door_goal(self,
+                           tip_link: str,
+                           door_handle_link: str,
+                           name: str = None):
+
+        self.motion_goals.add_motion_goal(motion_goal_class=OpenDoorGoal.__name__,
+                                          tip_link=tip_link,
+                                          door_handle_link=door_handle_link,
+                                          name=name)

@@ -6,10 +6,13 @@ from typing import Optional, Dict
 import actionlib
 import numpy as np
 import rospy
+from breezy.builtins import cmd_assert_fail
 from control_msgs.msg import FollowJointTrajectoryGoal, FollowJointTrajectoryAction
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
 
+from giskardpy.goals.open_close import Open
 from giskardpy.god_map import god_map
+from giskardpy.monitors.joint_monitors import JointGoalReached
 from giskardpy.suturo_types import GraspTypes
 from giskardpy.utils.expression_definition_utils import transform_msg, transform_msg_and_turn_to_expr
 
@@ -235,7 +238,7 @@ class Reaching(ObjectGoal):
             self.offsets = Vector3(self.object_size.x, self.object_size.x, self.object_size.z)
         else:
             if self.object_in_world:
-                self.offsets = Vector3(-self.object_size.x/2, self.object_size.y/2, self.object_size.z/2)
+                self.offsets = Vector3(-self.object_size.x / 2, self.object_size.y / 2, self.object_size.z / 2)
             else:
                 self.offsets = Vector3(max(min(0.08, self.object_size.x / 2), 0.05), 0, 0)
 
@@ -1131,6 +1134,66 @@ class KeepRotationGoal(Goal):
                                                           start_condition=start_condition,
                                                           hold_condition=hold_condition,
                                                           end_condition=end_condition))
+
+
+class OpenDoorGoal(Goal):
+    def __init__(self,
+                 tip_link: str,
+                 door_handle_link: str,
+                 name: str = None,
+                 start_condition: w.Expression = w.TrueSymbol,
+                 hold_condition: w.Expression = w.FalseSymbol,
+                 end_condition: w.Expression = w.TrueSymbol):
+        """
+        Use this, if you have grasped a door handle and want to open the door and handle
+
+        :param tip_link: end effector that is grasping the handle
+        :param door_handle_link: link that is grasped by the tip_link
+        :param name: name of the goal
+        :param start_condition: start condition of the door opening sequence
+        :param hold_condition: hold condition of the door opening sequence
+        :param end_condition: end condition of the door opening sequence
+        """
+        if name is None:
+            name = 'OpenDoorGoal'
+        super().__init__(name)
+
+        handle_name = door_handle_link
+        handle_frame_id = god_map.world.get_movable_parent_joint(handle_name)
+        link_id = god_map.world.get_parent_link_of_joint(handle_frame_id)
+        door_hinge_id = god_map.world.get_movable_parent_joint(link_id)
+
+        _, max_limit_handle = god_map.world.compute_joint_limits(handle_frame_id, 0)
+        min_limit_hinge, _ = god_map.world.compute_joint_limits(door_hinge_id, 0)
+
+        handle_state = {handle_frame_id: max_limit_handle}
+        handle_state_monitor = JointGoalReached(goal_state=handle_state,
+                                                threshold=0.01,
+                                                name='handle_joint_monitor')
+        self.add_monitor(handle_state_monitor)
+
+        hinge_state = {door_hinge_id: min_limit_hinge}
+        hinge_state_monitor = JointGoalReached(goal_state=hinge_state,
+                                               threshold=0.01,
+                                               name='hinge_joint_monitor')
+        self.add_monitor(hinge_state_monitor)
+
+        self.add_constraints_of_goal(Open(tip_link=tip_link,
+                                          environment_link=handle_name,
+                                          goal_joint_state=max_limit_handle,
+                                          name='OpenHandle',
+                                          start_condition=start_condition,
+                                          hold_condition=hold_condition))
+
+        end_con = w.logic_and(end_condition, hinge_state_monitor.get_state_expression())
+
+        self.add_constraints_of_goal(Open(tip_link=tip_link,
+                                          environment_link=link_id,
+                                          goal_joint_state=min_limit_hinge,
+                                          name='OpenHinge',
+                                          start_condition=handle_state_monitor.get_state_expression(),
+                                          hold_condition=hold_condition,
+                                          end_condition=end_con))
 
 
 def check_context_element(name: str,
