@@ -16,6 +16,7 @@ class GripperTypes(Enum):
 class ForceTorqueThresholds(Enum):
     FT_GraspWithCare = 'GraspCarefully'
     FT_GraspCutlery = 'GraspCutlery'
+    FT_PlaceCutlery = 'PlaceCutlery'
     FT_Placing = 'Place'
     FT_Door = 'Door'
     FT_DishDoor = 'DishDoor'

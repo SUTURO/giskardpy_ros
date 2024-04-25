@@ -3,9 +3,11 @@ from typing import Optional
 
 import geometry_msgs
 import rospy
+from docutils.nodes import topic
 from geometry_msgs.msg import WrenchStamped
 
 import giskardpy.casadi_wrapper as cas
+import giskardpy.utils.force_torque_raw_filter
 from giskardpy.god_map import god_map
 from giskardpy.monitors.monitors import PayloadMonitor
 from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
@@ -27,6 +29,7 @@ class PayloadForceTorque(PayloadMonitor):
                  # object_type is needed to differentiate between objects with different placing thresholds
                  object_type: Optional[str] = None,
                  topic: string = "/hsrb/wrist_wrench/compensated",
+                 filter_topic: string = "rebuilt_signal",
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol
                  ):
@@ -46,6 +49,7 @@ class PayloadForceTorque(PayloadMonitor):
         self.object_type = object_type
         self.threshold_name = threshold_name
         self.topic = topic
+        self.filter_topic = filter_topic  # filter_topic is used for the rebuilt_signal topic of the raw filter
         self.wrench = WrenchStamped()
         self.subscriber = rospy.Subscriber(name=topic,
                                            data_class=WrenchStamped, callback=self.cb)
@@ -107,7 +111,7 @@ class PayloadForceTorque(PayloadMonitor):
                     print(f'MISS GWC!: {rob_force.vector.x};{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
-
+                #
                 #  TODO: Add proper grasping logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
@@ -145,11 +149,14 @@ class PayloadForceTorque(PayloadMonitor):
                     print(f'MISS PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
-
-                if (self.threshold_name == ForceTorqueThresholds.FT_GraspCutlery.value
-                        & self.topic == "/hsrb/wrist_wrench/raw"):
+                self.topic = "rebuilt_signal"
+                #Maybe execute filter in here?
+                if (self.threshold_name == ForceTorqueThresholds.FT_PlaceCutlery.value
+                        & self.topic == "rebuilt_signal"):
                     # TODO: Add proper Thresholds and Checks for grasping Cutlery
-
+                    giskardpy.utils.force_torque_raw_filter.ForceTorqueRawFilter()
+                    print(f'filtered Force: {rob_force}')
+                    print(f'filtered Torque: {rob_torque}')
                     force_x_threshold = 0
                     force_y_threshold = 0
                     force_z_threshold = 0
