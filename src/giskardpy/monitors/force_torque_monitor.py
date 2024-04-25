@@ -149,10 +149,10 @@ class PayloadForceTorque(PayloadMonitor):
                     print(f'MISS PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
-                self.topic = "rebuilt_signal"
+                self.topic = "~/rebuilt_signal"
                 #Maybe execute filter in here?
                 if (self.threshold_name == ForceTorqueThresholds.FT_PlaceCutlery.value
-                        & self.topic == "~/rebuilt_signal"):
+                        & self.topic == "rebuilt_signal"):
                     # TODO: Add proper Thresholds and Checks for grasping Cutlery
                     giskardpy.utils.force_torque_raw_filter.ForceTorqueRawFilter()
                     print(f'filtered Force: {rob_force}')
