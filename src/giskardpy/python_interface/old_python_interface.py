@@ -1160,7 +1160,13 @@ class OldGiskardWrapper(GiskardWrapper):
                            tip_link: str,
                            door_handle_link: str,
                            name: str = None):
+        """
+        Adds OpenDoorGoal to motion goal execution plan
 
+        :param tip_link: Link that is grasping the door handle
+        :param door_handle_link: Link of the door handle of the door that is to be opened
+        :param name: Name of the Goal for distinction between similar goals
+        """
         self.motion_goals.add_motion_goal(motion_goal_class=OpenDoorGoal.__name__,
                                           tip_link=tip_link,
                                           door_handle_link=door_handle_link,
@@ -1170,6 +1176,13 @@ class OldGiskardWrapper(GiskardWrapper):
                                 door_handle_link: str,
                                 tip_link: str = 'hand_gripper_tool_frame',
                                 name: str = 'HSRB_open_door'):
+        """
+        HSRB specific open door goal wrapper
+
+        :param door_handle_link: Link of the door handle
+        :param tip_link: Link that's grasping the door handle
+        :param name: name of the goal for distinction between same goals
+        """
 
         self.set_open_door_goal(tip_link=tip_link,
                                 door_handle_link=door_handle_link,
@@ -1179,18 +1192,29 @@ class OldGiskardWrapper(GiskardWrapper):
                                    handle_name: str,
                                    handle_bar_length: float = 0.15,
                                    tip_link: str = 'hand_gripper_tool_frame',
-                                   root_link: str = 'map'):
+                                   root_link: str = 'map',
+                                   bar_axis_v: Vector3 = Vector3(-1, 0, 0),
+                                   tip_grasp_axis_v: Vector3 = Vector3(0, 1, 0)):
+        """
+        HSRB specific set_grasp_bar_goal, that only needs handle_name of the door_handle
 
+        :param handle_name: URDF link that represents the door handle
+        :param handle_bar_length: length of the door handle
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        :param bar_axis_v: Vector for changing the orientation of the door handle
+        :param tip_grasp_axis_v: Vector for the orientation of the tip grasp link
+        """
         bar_axis = Vector3Stamped()
         bar_axis.header.frame_id = handle_name
-        bar_axis.vector.x = -1
+        bar_axis.vector = bar_axis_v
 
         bar_center = PointStamped()
         bar_center.header.frame_id = handle_name
 
         tip_grasp_axis = Vector3Stamped()
         tip_grasp_axis.header.frame_id = tip_link
-        tip_grasp_axis.vector.y = 1
+        tip_grasp_axis.vector = tip_grasp_axis_v
 
         self.set_grasp_bar_goal(root_link=root_link,
                                 tip_link=tip_link,

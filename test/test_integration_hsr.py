@@ -698,31 +698,13 @@ class TestSUTURO:
 
         door_setup.open_gripper()
 
-        bar_axis = Vector3Stamped()
-        bar_axis.header.frame_id = handle_name
-        bar_axis.vector.x = -1
-
-        bar_center = PointStamped()
-        bar_center.header.frame_id = handle_name
-
-        tip_grasp_axis = Vector3Stamped()
-        tip_grasp_axis.header.frame_id = door_setup.tip
-        tip_grasp_axis.vector.y = 1
-
-        door_setup.set_grasp_bar_goal(root_link=door_setup.default_root,
-                                      tip_link=door_setup.tip,
-                                      tip_grasp_axis=tip_grasp_axis,
-                                      bar_center=bar_center,
-                                      bar_axis=bar_axis,
-                                      bar_length=.15)
+        door_setup.set_hsrb_door_handle_grasp(handle_name=handle_name)
 
         door_setup.execute()
 
         door_setup.close_gripper()
 
-        door_setup.motion_goals.add_motion_goal(motion_goal_class=OpenDoorGoal.__name__,
-                                                tip_link=door_setup.tip,
-                                                door_handle_link=handle_name)
+        door_setup.set_hsrb_open_door_goal(door_handle_link=handle_name)
 
         door_setup.allow_all_collisions()
 
