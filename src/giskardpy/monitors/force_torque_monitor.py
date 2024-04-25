@@ -152,7 +152,7 @@ class PayloadForceTorque(PayloadMonitor):
                 self.topic = "rebuilt_signal"
                 #Maybe execute filter in here?
                 if (self.threshold_name == ForceTorqueThresholds.FT_PlaceCutlery.value
-                        & self.topic == "rebuilt_signal"):
+                        & self.topic == "~/rebuilt_signal"):
                     # TODO: Add proper Thresholds and Checks for grasping Cutlery
                     giskardpy.utils.force_torque_raw_filter.ForceTorqueRawFilter()
                     print(f'filtered Force: {rob_force}')
