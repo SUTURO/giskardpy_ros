@@ -696,10 +696,6 @@ class TestSUTURO:
 
         handle_name = "suturo_door/suturo_door_area:door_handle_outside"
 
-        handle_frame_id = god_map.world.get_movable_parent_joint(handle_name)
-        link_id = god_map.world.get_parent_link_of_joint(handle_frame_id)
-        door_hinge_id = god_map.world.get_movable_parent_joint(link_id)
-
         door_setup.open_gripper()
 
         bar_axis = Vector3Stamped()
