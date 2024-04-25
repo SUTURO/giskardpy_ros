@@ -1165,3 +1165,36 @@ class OldGiskardWrapper(GiskardWrapper):
                                           tip_link=tip_link,
                                           door_handle_link=door_handle_link,
                                           name=name)
+
+    def set_hsrb_open_door_goal(self,
+                                door_handle_link: str,
+                                tip_link: str = 'hand_gripper_tool_frame',
+                                name: str = 'HSRB_open_door'):
+
+        self.set_open_door_goal(tip_link=tip_link,
+                                door_handle_link=door_handle_link,
+                                name=name)
+
+    def set_hsrb_door_handle_grasp(self,
+                                   handle_name: str,
+                                   handle_bar_length: float = 0.15,
+                                   tip_link: str = 'hand_gripper_tool_frame',
+                                   root_link: str = 'map'):
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_name
+        bar_axis.vector.x = -1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_name
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.y = 1
+
+        self.set_grasp_bar_goal(root_link=root_link,
+                                tip_link=tip_link,
+                                tip_grasp_axis=tip_grasp_axis,
+                                bar_center=bar_center,
+                                bar_axis=bar_axis,
+                                bar_length=handle_bar_length)
