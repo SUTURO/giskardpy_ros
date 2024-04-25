@@ -1,7 +1,6 @@
 import pytest
 import rospy
-from geometry_msgs.msg import PoseStamped, Quaternion
-from tf.transformations import quaternion_about_axis
+from geometry_msgs.msg import PoseStamped
 
 import giskardpy.utils.tfwrapper as tf
 from giskardpy.god_map import god_map
@@ -39,6 +38,13 @@ def ros(request):
             launch_launchfile('package://iai_apartment/launch/upload_apartment.launch')
         except:
             logging.logwarn('iai_kitchen not found')
+    try:
+        rospy.get_param('door_description')
+    except:
+        try:
+            launch_launchfile('package://suturo_resources/urdf/launch/upload_door_obj.launch')
+        except:
+            logging.logwarn('door not found')
     request.addfinalizer(kill_ros)
 
 
@@ -140,4 +146,26 @@ def apartment_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
     base_pose.pose.orientation.w = 1
     base_pose = better_pose.transform_msg(god_map.world.root_link_name, base_pose)
     better_pose.set_localization(base_pose)
+    return better_pose
+
+
+@pytest.fixture()
+def door_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
+    door_name = 'suturo_door'
+    if god_map.is_standalone():
+        kitchen_pose = PoseStamped()
+        kitchen_pose.header.frame_id = str(better_pose.default_root)
+        kitchen_pose.pose.orientation.w = 1
+        better_pose.add_urdf_to_world(name=door_name,
+                                      urdf=rospy.get_param('door_description'),
+                                      pose=kitchen_pose)
+    js = {}
+    for joint_name in god_map.world.groups[door_name].movable_joint_names:
+        joint = god_map.world.joints[joint_name]
+        if isinstance(joint, OneDofJoint):
+            if god_map.is_standalone():
+                js[str(joint.free_variable.name)] = 0.0
+            else:
+                js[str(joint.free_variable.name.short_name)] = 0.0
+    better_pose.set_env_state(js)
     return better_pose
