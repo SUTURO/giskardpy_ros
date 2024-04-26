@@ -4,20 +4,19 @@ import geometry_msgs
 import rospy
 from geometry_msgs.msg import WrenchStamped
 from scipy.signal import butter, lfilter
+from collections import deque
 
 
 class ForceTorqueRawFilter:
-# Limit Array (hz * 2)
-# FIFO-Queue
-# Add filter to scripts and add it to cMakeLists
+
     def __init__(self,
                  topic: string = "/hsrb/wrist_wrench/raw"):
-        self.trans_F_x = []
-        self.trans_F_y = []
-        self.trans_F_z = []
-        self.trans_T_x = []
-        self.trans_T_y = []
-        self.trans_T_z = []
+        self.trans_F_x = deque(maxlen=100 * 2)  # make queue size dynamic
+        self.trans_F_y = deque(maxlen=100 * 2)
+        self.trans_F_z = deque(maxlen=100 * 2)
+        self.trans_T_x = deque(maxlen=100 * 2)
+        self.trans_T_y = deque(maxlen=100 * 2)
+        self.trans_T_z = deque(maxlen=100 * 2)
         self.topic = topic
         self.wrench = WrenchStamped()
         self.subscriber = rospy.Subscriber(name=topic,
@@ -25,18 +24,12 @@ class ForceTorqueRawFilter:
 
         self.pub = rospy.Publisher(name='rebuilt_signal', data_class=WrenchStamped, queue_size=10)
         self.rate = rospy.Rate(10)
-        # remember to remove main at bottom and add init_node
-    # what to do: split topic data into force and torque
-    # save both in own variables
-    # publish filtered data via node
-    # subscribe to node with force_torque_monitor and use data as threshold
-    # for force and torque filter each x y z separate (maybe in 6 arrays)
 
     def cb(self, rawdata: WrenchStamped):
         self.wrench = rawdata
 
         # Sample parameters for the filter
-        fs = 100  # Sample rate, Hz
+        fs = 100  # Sample rate, Hz, currently set to Hz of the topic
         cutoff = 20  # Desired cutoff frequency of the filter, Hz
         order = 5  # Order of the filter
 
@@ -48,7 +41,6 @@ class ForceTorqueRawFilter:
         filtered_data5 = self.butter_lowpass_filter(self.convert_my_shit(5), cutoff, fs, order)
         filtered_data6 = self.butter_lowpass_filter(self.convert_my_shit(6), cutoff, fs, order)
         # Plotting Force
-
         self.pub.publish(
             self.rebuild_signal(filtered_data[-1], filtered_data2[-1], filtered_data3[-1], filtered_data4[-1],
                                 filtered_data5[-1],
@@ -63,7 +55,7 @@ class ForceTorqueRawFilter:
         rebuild_wrench = geometry_msgs.msg.Wrench(rebuild_force, rebuild_torque)
 
         rebuild_wrenchStamped = geometry_msgs.msg.WrenchStamped(self.wrench.header, rebuild_wrench)
-        #print(rebuild_wrenchStamped)
+        # print(rebuild_wrenchStamped)
         return rebuild_wrenchStamped
 
     def convert_my_shit(self, picker):
