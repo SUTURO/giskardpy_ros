@@ -190,6 +190,7 @@ catkin_install_python(PROGRAMS
 	scripts/examples/python_interface_example.py
 	scripts/examples/old_python_interface_example.py
 	scripts/upload_env.py
+	scripts/force_torque_raw_filter.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 ## Mark executables and/or libraries for installation

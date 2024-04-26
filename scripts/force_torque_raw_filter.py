@@ -1,14 +1,15 @@
 import string
 
 import geometry_msgs
-import matplotlib.pyplot as plt
 import rospy
 from geometry_msgs.msg import WrenchStamped
 from scipy.signal import butter, lfilter
 
 
 class ForceTorqueRawFilter:
-
+# Limit Array (hz * 2)
+# FIFO-Queue
+# Add filter to scripts and add it to cMakeLists
     def __init__(self,
                  topic: string = "/hsrb/wrist_wrench/raw"):
         self.trans_F_x = []
@@ -25,8 +26,6 @@ class ForceTorqueRawFilter:
         self.pub = rospy.Publisher(name='rebuilt_signal', data_class=WrenchStamped, queue_size=10)
         self.rate = rospy.Rate(10)
         # remember to remove main at bottom and add init_node
-        plt.autoscale(enable=True, axis='both', tight=None)
-
     # what to do: split topic data into force and torque
     # save both in own variables
     # publish filtered data via node
@@ -37,8 +36,8 @@ class ForceTorqueRawFilter:
         self.wrench = rawdata
 
         # Sample parameters for the filter
-        fs = 60  # Sample rate, Hz
-        cutoff = 5  # Desired cutoff frequency of the filter, Hz
+        fs = 100  # Sample rate, Hz
+        cutoff = 20  # Desired cutoff frequency of the filter, Hz
         order = 5  # Order of the filter
 
         # Filter the data
@@ -49,25 +48,6 @@ class ForceTorqueRawFilter:
         filtered_data5 = self.butter_lowpass_filter(self.convert_my_shit(5), cutoff, fs, order)
         filtered_data6 = self.butter_lowpass_filter(self.convert_my_shit(6), cutoff, fs, order)
         # Plotting Force
-        plt.figure(figsize=(50, 50))
-        plt.subplot(2, 1, 1)
-        plt.plot(filtered_data, '-', linewidth=2, label='filtered_F_x', color='skyblue')  # missing t
-        plt.plot(filtered_data2, '-', linewidth=2, label='filtered_F_y', color='green')
-        plt.plot(filtered_data3, '-', linewidth=2, label='filtered_F_z', color='red')  # missing t
-        plt.xlabel('Time [sec]')
-        plt.grid()
-        plt.legend()
-
-        # Plotting Torque
-        plt.subplot(2, 1, 2)
-        plt.plot(filtered_data4, '-', linewidth=2, label='filtered_T_x', color='skyblue')
-        plt.plot(filtered_data5, '-', linewidth=2, label='filtered_T_y', color='green')
-        plt.plot(filtered_data6, '-', linewidth=2, label='filtered_T_z', color='red')
-        plt.xlabel('Time [sec]')
-        plt.grid()
-        plt.legend()
-        plt.subplots_adjust(hspace=0.35)
-        plt.show()
 
         self.pub.publish(
             self.rebuild_signal(filtered_data[-1], filtered_data2[-1], filtered_data3[-1], filtered_data4[-1],
@@ -83,13 +63,13 @@ class ForceTorqueRawFilter:
         rebuild_wrench = geometry_msgs.msg.Wrench(rebuild_force, rebuild_torque)
 
         rebuild_wrenchStamped = geometry_msgs.msg.WrenchStamped(self.wrench.header, rebuild_wrench)
-        print(rebuild_wrenchStamped)
+        #print(rebuild_wrenchStamped)
         return rebuild_wrenchStamped
 
     def convert_my_shit(self, picker):
         convstampF = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header, vector=self.wrench.wrench.force)
         convstampT = geometry_msgs.msg.Vector3Stamped(header=self.wrench.header, vector=self.wrench.wrench.torque)
-
+        # Instead of picker define an array that consists of the 6 values
         if picker == 1:
             self.trans_F_x.append(convstampF.vector.x)
             return self.trans_F_x

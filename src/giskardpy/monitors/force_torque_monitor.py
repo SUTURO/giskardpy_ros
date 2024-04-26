@@ -7,7 +7,6 @@ from docutils.nodes import topic
 from geometry_msgs.msg import WrenchStamped
 
 import giskardpy.casadi_wrapper as cas
-import giskardpy.utils.force_torque_raw_filter
 from giskardpy.god_map import god_map
 from giskardpy.monitors.monitors import PayloadMonitor
 from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
@@ -154,7 +153,6 @@ class PayloadForceTorque(PayloadMonitor):
                 if (self.threshold_name == ForceTorqueThresholds.FT_PlaceCutlery.value
                         & self.topic == "rebuilt_signal"):
                     # TODO: Add proper Thresholds and Checks for grasping Cutlery
-                    giskardpy.utils.force_torque_raw_filter.ForceTorqueRawFilter()
                     print(f'filtered Force: {rob_force}')
                     print(f'filtered Torque: {rob_torque}')
                     force_x_threshold = 0
