@@ -832,8 +832,9 @@ class Placing(ObjectGoal):
 
         self.root_link = god_map.world.search_for_link_name(root_link)
         self.tip_link = god_map.world.search_for_link_name(tip_link)
-
         self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
+                                                 align='',
+                                                 grasp='',
                                                  from_above=self.from_above,
                                                  align_vertical=self.align_vertical,
                                                  root_link=self.root_link.short_name,
@@ -843,7 +844,6 @@ class Placing(ObjectGoal):
                                                  start_condition=start_condition,
                                                  hold_condition=hold_condition,
                                                  end_condition=end_condition))
-
     # might need to be removed in the future, as soon as the old interface isn't in use anymore
     def goal_cancel_condition(self):
 
