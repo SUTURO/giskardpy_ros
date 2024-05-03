@@ -606,7 +606,7 @@ class TestConstraints:
 
         kitchen_setup.open_gripper()
 
-        kitchen_setup.set_hsrb_dishwasher_door_around(handle_frame_id=handle_frame_id,
+        kitchen_setup.set_hsrb_dishwasher_door_around(handle_name=handle_name,
                                                       root_link=kitchen_setup.default_root,
                                                       tip_link=kitchen_setup.tip)
 

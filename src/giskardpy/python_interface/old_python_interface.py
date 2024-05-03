@@ -1277,7 +1277,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                 bar_length=handle_bar_length)
 
     def set_hsrb_dishwasher_door_around(self,
-                                        handle_frame_id: str,
+                                        handle_name: str,
                                         root_link: str = 'map',
                                         tip_link: str = 'hand_gripper_tool_frame'):
         """
@@ -1289,7 +1289,7 @@ class OldGiskardWrapper(GiskardWrapper):
         """
 
         self.motion_goals.add_motion_goal(motion_goal_class=MoveAroundDishwasher.__name__,
-                                          handle_frame_id=handle_frame_id,
+                                          handle_name=handle_name,
                                           root_link=root_link,
                                           tip_link=tip_link)
 

@@ -1200,7 +1200,7 @@ class OpenDoorGoal(Goal):
 
 class MoveAroundDishwasher(Goal):
     def __init__(self,
-                 handle_frame_id: str,
+                 handle_name: str,
                  root_link: str,
                  tip_link: str,
                  reference_linear_velocity: float = 0.1,
@@ -1229,8 +1229,10 @@ class MoveAroundDishwasher(Goal):
         self.weight = weight
         self.reference_linear_velocity = reference_linear_velocity
 
-        hinge_joint = god_map.world.get_movable_parent_joint(handle_frame_id)
-        door_hinge_frame_id = god_map.world.get_parent_link_of_link(handle_frame_id)
+        self.handle_frame_id = self.tip_link = god_map.world.search_for_link_name(handle_name)
+
+        hinge_joint = god_map.world.get_movable_parent_joint(self.handle_frame_id)
+        door_hinge_frame_id = god_map.world.get_parent_link_of_link(self.handle_frame_id)
 
         self.tip_link = god_map.world.search_for_link_name(tip_link)
         self.root_link = god_map.world.search_for_link_name(root_link)
@@ -1241,7 +1243,7 @@ class MoveAroundDishwasher(Goal):
         object_V_object_rotation_axis = cas.Vector3(god_map.world.get_joint(hinge_joint).axis)
         root_T_door_expr = god_map.world.compose_fk_expression(self.root_link, door_hinge_frame_id)
 
-        door_P_handle = god_map.world.compute_fk_pose(door_hinge_frame_id, handle_frame_id).pose.position
+        door_P_handle = god_map.world.compute_fk_pose(door_hinge_frame_id, self.handle_frame_id).pose.position
         temp_point = np.asarray([door_P_handle.x, door_P_handle.y, door_P_handle.z])
         # axis pointing in the direction of handle frame from door joint frame
         direction_axis = np.argmax(abs(temp_point))
