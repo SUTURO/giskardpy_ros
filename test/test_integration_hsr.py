@@ -564,23 +564,9 @@ class TestConstraints:
         base_goal.pose.orientation.w = 1
         kitchen_setup.move_base(base_goal)
 
-        bar_axis = Vector3Stamped()
-        bar_axis.header.frame_id = handle_frame_id
-        bar_axis.vector.y = 1
-
-        bar_center = PointStamped()
-        bar_center.header.frame_id = handle_frame_id
-
-        tip_grasp_axis = Vector3Stamped()
-        tip_grasp_axis.header.frame_id = kitchen_setup.tip
-        tip_grasp_axis.vector.x = 1
-
-        kitchen_setup.set_grasp_bar_goal(root_link=kitchen_setup.default_root,
-                                         tip_link=kitchen_setup.tip,
-                                         tip_grasp_axis=tip_grasp_axis,
-                                         bar_center=bar_center,
-                                         bar_axis=bar_axis,
-                                         bar_length=.4)
+        kitchen_setup.set_hsrb_dishwasher_door_handle_grasp(root_link=kitchen_setup.default_root,
+                                                            tip_link=kitchen_setup.tip,
+                                                            handle_frame_id=handle_frame_id)
         x_gripper = Vector3Stamped()
         x_gripper.header.frame_id = kitchen_setup.tip
         x_gripper.vector.z = 1

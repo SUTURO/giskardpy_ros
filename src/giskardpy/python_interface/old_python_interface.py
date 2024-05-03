@@ -1335,3 +1335,26 @@ class OldGiskardWrapper(GiskardWrapper):
                                     tip_link=tip_link,
                                     door_handle=handle_name,
                                     door_object=hinge_frame_id)
+
+    def set_hsrb_dishwasher_door_handle_grasp(self,
+                                              handle_frame_id: str,
+                                              root_link: str = 'map',
+                                              tip_link: str = 'hand_gripper_tool_frame'):
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.y = 1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.x = 1
+
+        self.set_grasp_bar_goal(root_link=root_link,
+                                tip_link=tip_link,
+                                tip_grasp_axis=tip_grasp_axis,
+                                bar_center=bar_center,
+                                bar_axis=bar_axis,
+                                bar_length=.5)
