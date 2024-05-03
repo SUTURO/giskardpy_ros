@@ -6,13 +6,14 @@ from typing import Optional, Dict
 import actionlib
 import numpy as np
 import rospy
-from breezy.builtins import cmd_assert_fail
 from control_msgs.msg import FollowJointTrajectoryGoal, FollowJointTrajectoryAction
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
+from std_msgs.msg import ColorRGBA
 
 from giskardpy.goals.open_close import Open
 from giskardpy.god_map import god_map
 from giskardpy.monitors.joint_monitors import JointGoalReached
+from giskardpy.monitors.monitors import ExpressionMonitor
 from giskardpy.suturo_types import GraspTypes
 from giskardpy.utils.expression_definition_utils import transform_msg, transform_msg_and_turn_to_expr
 
@@ -21,7 +22,7 @@ if 'GITHUB_WORKFLOW' not in os.environ:
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 import giskardpy.utils.tfwrapper as tf
-from giskardpy import casadi_wrapper as w
+from giskardpy import casadi_wrapper as w, casadi_wrapper as cas
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
 from giskardpy.goals.goal import Goal, ForceSensorGoal, NonMotionGoal
@@ -844,6 +845,7 @@ class Placing(ObjectGoal):
                                                  start_condition=start_condition,
                                                  hold_condition=hold_condition,
                                                  end_condition=end_condition))
+
     # might need to be removed in the future, as soon as the old interface isn't in use anymore
     def goal_cancel_condition(self):
 
@@ -1194,6 +1196,122 @@ class OpenDoorGoal(Goal):
                                           start_condition=handle_state_monitor.get_state_expression(),
                                           hold_condition=hold_condition,
                                           end_condition=end_con))
+
+
+class MoveAroundDishwasher(Goal):
+    def __init__(self,
+                 handle_frame_id: str,
+                 root_link: str,
+                 tip_link: str,
+                 reference_linear_velocity: float = 0.1,
+                 weight: float = WEIGHT_ABOVE_CA,
+                 name: str = None,
+                 start_condition: cas.Expression = cas.TrueSymbol,
+                 hold_condition: cas.Expression = cas.FalseSymbol,
+                 end_condition: cas.Expression = cas.TrueSymbol):
+        """
+        Adds two Points to move around the door of the dishwasher
+
+        :param handle_frame_id: full frame id of the dishwasher door handle
+        :param root_link: root link of the kinematic chain
+        :param tip_link: tip link of the kinematic chain
+        :param reference_linear_velocity: m/s
+        :param weight:
+        :param name: Name of the goal
+        :param start_condition: start condition of the task chain
+        :param hold_condition: hold condition of all task
+        :param end_condition: end condition of the task chain
+        """
+        if name is None:
+            name = 'MoveAroundDishwasherGoal'
+        super().__init__(name)
+
+        self.weight = weight
+        self.reference_linear_velocity = reference_linear_velocity
+
+        hinge_joint = god_map.world.get_movable_parent_joint(handle_frame_id)
+        door_hinge_frame_id = god_map.world.get_parent_link_of_link(handle_frame_id)
+
+        self.tip_link = god_map.world.search_for_link_name(tip_link)
+        self.root_link = god_map.world.search_for_link_name(root_link)
+
+        root_T_tip = god_map.world.compose_fk_expression(self.root_link, self.tip_link)
+        root_P_tip = root_T_tip.to_position()
+        object_joint_angle = god_map.world.state[hinge_joint].position
+        object_V_object_rotation_axis = cas.Vector3(god_map.world.get_joint(hinge_joint).axis)
+        root_T_door_expr = god_map.world.compose_fk_expression(self.root_link, door_hinge_frame_id)
+
+        door_P_handle = god_map.world.compute_fk_pose(door_hinge_frame_id, handle_frame_id).pose.position
+        temp_point = np.asarray([door_P_handle.x, door_P_handle.y, door_P_handle.z])
+        # axis pointing in the direction of handle frame from door joint frame
+        direction_axis = np.argmax(abs(temp_point))
+
+        multipliers = [(7 / 5, -0.3, 'down_long'),
+                       (7 / 5, 0.3, 'up_long')]
+        root_P_top_chain = []
+
+        for i, (axis_multi, angle_multi, goal_name) in enumerate(multipliers):
+            door_P_intermediate_point = np.zeros(3)
+            door_P_intermediate_point[direction_axis] = temp_point[direction_axis] * axis_multi
+            door_P_intermediate_point = cas.Point3([door_P_intermediate_point[0],
+                                                    door_P_intermediate_point[1],
+                                                    door_P_intermediate_point[2]])
+
+            # # point w.r.t door
+            desired_angle = object_joint_angle * angle_multi  # just chose 1/2 of the goal angle
+
+            # find point w.r.t rotated door in local frame
+            door_R_door_rotated = cas.RotationMatrix.from_axis_angle(axis=object_V_object_rotation_axis,
+                                                                     angle=desired_angle)
+            door_T_door_rotated = cas.TransMatrix(door_R_door_rotated)
+            # as the root_T_door is already pointing to a completely rotated door, we invert desired angle to get to the
+            # intermediate point
+            door_rotated_P_top = cas.dot(door_T_door_rotated.inverse(), door_P_intermediate_point)
+            root_P_top = cas.dot(cas.TransMatrix(root_T_door_expr), door_rotated_P_top)
+
+            root_P_top_chain.append((root_P_top, goal_name))
+
+        old_position_monitor = None
+
+        for i, (root_P_top, goal_name) in enumerate(root_P_top_chain):
+            god_map.debug_expression_manager.add_debug_expression(f'goal_point_{goal_name}', root_P_top,
+                                                                  color=ColorRGBA(0, 0.5, 0.5, 1))
+
+            task = self.create_and_add_task(goal_name)
+
+            if old_position_monitor is None:
+                position_monitor = ExpressionMonitor(name=goal_name,
+                                                     stay_true=True,
+                                                     start_condition=w.TrueSymbol)
+            else:
+                position_monitor = ExpressionMonitor(name=goal_name,
+                                                     stay_true=True,
+                                                     start_condition=old_position_monitor.get_state_expression())
+
+            distance_to_point = cas.euclidean_distance(root_P_tip, root_P_top)
+            point_reached = cas.less(distance_to_point, 0.01)
+            position_monitor.expression = point_reached
+            self.add_monitor(position_monitor)
+
+            task.add_point_goal_constraints(frame_P_current=root_T_tip.to_position(),
+                                            frame_P_goal=root_P_top,
+                                            reference_velocity=self.reference_linear_velocity,
+                                            weight=self.weight)
+
+            task.hold_condition = hold_condition
+
+            if i == 0:
+                task.start_condition = start_condition
+                task.end_condition = position_monitor
+            elif i == len(root_P_top_chain) - 1:
+                end_con = cas.logic_and(end_condition, position_monitor.get_state_expression())
+                task.start_condition = old_position_monitor
+                task.end_condition = end_con
+            else:
+                task.start_condition = old_position_monitor
+                task.end_condition = position_monitor
+
+            old_position_monitor = position_monitor
 
 
 def check_context_element(name: str,
