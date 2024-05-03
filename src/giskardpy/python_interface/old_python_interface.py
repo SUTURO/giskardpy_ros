@@ -15,7 +15,7 @@ from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
 from giskardpy.goals.realtime_goals import RealTimePointingPose
-from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting, TakePose, OpenDoorGoal
+from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting, TakePose, OpenDoorGoal, MoveAroundDishwasher
 from giskardpy.python_interface.python_interface import GiskardWrapper
 from giskardpy.suturo_types import GripperTypes
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
@@ -870,8 +870,8 @@ class OldGiskardWrapper(GiskardWrapper):
         :return: WorldResult
         """
         return self.world.register_group(new_group_name=new_group_name,
-                                   root_link_name=root_link_name,
-                                   root_link_group_name=root_link_group_name)
+                                         root_link_name=root_link_name,
+                                         root_link_group_name=root_link_group_name)
 
     def clear_world(self) -> WorldResult:
         """
@@ -1275,3 +1275,63 @@ class OldGiskardWrapper(GiskardWrapper):
                                 bar_center=bar_center,
                                 bar_axis=bar_axis,
                                 bar_length=handle_bar_length)
+
+    def set_hsrb_dishwasher_door_around(self,
+                                        handle_frame_id: str,
+                                        root_link: str = 'map',
+                                        tip_link: str = 'hand_gripper_tool_frame'):
+        """
+        HSRB specific avoid dishwasher door goal
+
+        :param handle_frame_id: Frame id of the door handle
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        self.motion_goals.add_motion_goal(motion_goal_class=MoveAroundDishwasher.__name__,
+                                          handle_frame_id=handle_frame_id,
+                                          root_link=root_link,
+                                          tip_link=tip_link)
+
+    def set_hsrb_align_to_push_door_goal(self,
+                                         handle_name: str,
+                                         hinge_frame_id: str,
+                                         tip_link: str = 'hand_gripper_tool_frame',
+                                         root_link: str = 'map'):
+        """
+        HSRB specific push door open goal of dishwasher
+
+        :param handle_name: name of the door handle
+        :param hinge_frame_id: Frame id of the door hinge
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.x = 1
+
+        self.set_align_to_push_door_goal(root_link=root_link,
+                                         tip_link=tip_link,
+                                         door_handle=handle_name,
+                                         door_object=hinge_frame_id,
+                                         tip_gripper_axis=tip_grasp_axis)
+
+    def set_hsrb_pre_push_door_goal(self,
+                                    handle_name: str,
+                                    hinge_frame_id: str,
+                                    root_link: str = 'map',
+                                    tip_link: str = 'hand_gripper_tool_frame'):
+        """
+        HSRB specific pre push door open goal of dishwasher
+
+        :param handle_name: name of the door handle
+        :param hinge_frame_id: Frame id of the door hinge
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        self.set_pre_push_door_goal(root_link=root_link,
+                                    tip_link=tip_link,
+                                    door_handle=handle_name,
+                                    door_object=hinge_frame_id)
