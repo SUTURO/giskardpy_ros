@@ -25,6 +25,7 @@ class AlignToPushDoor(Goal):
                  tip_group: Optional[str] = None,
                  reference_linear_velocity: float = 0.1,
                  reference_angular_velocity: float = 0.5,
+                 intermediate_point_scale: float = 1,
                  weight: float = WEIGHT_BELOW_CA,
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol,
@@ -64,7 +65,7 @@ class AlignToPushDoor(Goal):
         door_P_intermediate_point = np.zeros(3)
         # axis pointing in the direction of handle frame from door joint frame
         direction_axis = np.argmax(abs(temp_point))
-        door_P_intermediate_point[direction_axis] = temp_point[direction_axis]*3/4
+        door_P_intermediate_point[direction_axis] = temp_point[direction_axis]*intermediate_point_scale
         door_P_intermediate_point = cas.Point3([door_P_intermediate_point[0],
                                                 door_P_intermediate_point[1],
                                                 door_P_intermediate_point[2]])
