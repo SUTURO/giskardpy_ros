@@ -21,7 +21,6 @@ from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
 from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes, GraspTypes
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
-from giskardpy.goals.suturo import OpenDoorGoal
 
 if 'GITHUB_WORKFLOW' not in os.environ:
     from giskardpy.goals.suturo import ContextActionModes, ContextTypes, Reaching, TakePose, GraspObject
@@ -481,13 +480,13 @@ class TestConstraints:
 
         kitchen_setup.close_gripper()
 
-    def test_open_dishwasher(self, kitchen_setup: HSRTestWrapper):
+    def test_open_dishwasher1(self, kitchen_setup: HSRTestWrapper):
         handle_frame_id = 'iai_kitchen/sink_area_dish_washer_door_handle'
         handle_name = 'sink_area_dish_washer_door_handle'
         kitchen_setup.open_gripper()
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
-        base_goal.pose.position = Point(0.3, 0.2, 0)
+        base_goal.pose.position = Point(0.3, -0.3, 0)
         base_goal.pose.orientation.w = 1
         kitchen_setup.move_base(base_goal)
 
@@ -527,7 +526,8 @@ class TestConstraints:
         current_pose = god_map.world.compute_fk_pose(root='map', tip=kitchen_setup.tip)
 
         kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
-                                              environment_link=handle_name)
+                                              environment_link=handle_name,
+                                              goal_joint_state=1.5)
 
         kitchen_setup.allow_all_collisions()
         kitchen_setup.execute()
@@ -550,6 +550,91 @@ class TestConstraints:
         kitchen_setup.plan_and_execute()
 
         kitchen_setup.close_gripper()
+
+    def test_open_dishwasher2(self, kitchen_setup: HSRTestWrapper):
+        handle_frame_id = 'iai_kitchen/sink_area_dish_washer_door_handle'
+        handle_name = 'sink_area_dish_washer_door_handle'
+        hinge_joint = god_map.world.get_movable_parent_joint(handle_frame_id)
+        door_hinge_frame_id = god_map.world.get_parent_link_of_link(handle_frame_id)
+
+        kitchen_setup.open_gripper()
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position = Point(0.3, -0.3, 0)
+        base_goal.pose.orientation.w = 1
+        kitchen_setup.move_base(base_goal)
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.y = 1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = kitchen_setup.tip
+        tip_grasp_axis.vector.x = 1
+
+        kitchen_setup.set_grasp_bar_goal(root_link=kitchen_setup.default_root,
+                                         tip_link=kitchen_setup.tip,
+                                         tip_grasp_axis=tip_grasp_axis,
+                                         bar_center=bar_center,
+                                         bar_axis=bar_axis,
+                                         bar_length=.4)
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = kitchen_setup.tip
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+        kitchen_setup.set_align_planes_goal(tip_link=kitchen_setup.tip,
+                                            tip_normal=x_gripper,
+                                            goal_normal=x_goal,
+                                            root_link='map')
+        kitchen_setup.allow_all_collisions()
+        kitchen_setup.execute()
+
+        kitchen_setup.close_gripper()
+
+        kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
+                                              environment_link=handle_name,
+                                              goal_joint_state=1.5)
+
+        kitchen_setup.allow_all_collisions()
+        kitchen_setup.execute()
+
+        kitchen_setup.open_gripper()
+
+        kitchen_setup.set_hsrb_dishwasher_door_around(handle_frame_id=handle_frame_id,
+                                                      root_link=kitchen_setup.default_root,
+                                                      tip_link=kitchen_setup.tip)
+
+        kitchen_setup.execute()
+
+        kitchen_setup.set_hsrb_align_to_push_door_goal(root_link=kitchen_setup.default_root,
+                                                       tip_link=kitchen_setup.tip,
+                                                       handle_name=handle_name,
+                                                       hinge_frame_id=door_hinge_frame_id)
+
+        kitchen_setup.plan_and_execute()
+
+        kitchen_setup.close_gripper()
+
+        kitchen_setup.set_pre_push_door_goal(root_link=kitchen_setup.default_root,
+                                             tip_link=kitchen_setup.tip,
+                                             door_handle=handle_name,
+                                             door_object=door_hinge_frame_id)
+
+        kitchen_setup.allow_collision(kitchen_setup.default_env_name, kitchen_setup.gripper_group)
+        kitchen_setup.plan_and_execute()
+
+        kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
+                                              environment_link=handle_name,
+                                              goal_joint_state=1.5)
+
+        kitchen_setup.allow_collision(kitchen_setup.default_env_name, kitchen_setup.robot_name)
+        kitchen_setup.execute()
 
 
 class TestCollisionAvoidanceGoals:
