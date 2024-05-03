@@ -553,7 +553,7 @@ class TestConstraints:
 
     def test_open_dishwasher2(self, kitchen_setup: HSRTestWrapper):
         handle_frame_id = 'iai_kitchen/sink_area_dish_washer_door_handle'
-        handle_name = 'sink_area_dish_washer_door_handle'
+        handle_name = handle_frame_id
         hinge_joint = god_map.world.get_movable_parent_joint(handle_frame_id)
         door_hinge_frame_id = god_map.world.get_parent_link_of_link(handle_frame_id)
 
@@ -621,10 +621,10 @@ class TestConstraints:
 
         kitchen_setup.close_gripper()
 
-        kitchen_setup.set_pre_push_door_goal(root_link=kitchen_setup.default_root,
-                                             tip_link=kitchen_setup.tip,
-                                             door_handle=handle_name,
-                                             door_object=door_hinge_frame_id)
+        kitchen_setup.set_hsrb_pre_push_door_goal(root_link=kitchen_setup.default_root,
+                                                  tip_link=kitchen_setup.tip,
+                                                  handle_name=handle_name,
+                                                  hinge_frame_id=door_hinge_frame_id)
 
         kitchen_setup.allow_collision(kitchen_setup.default_env_name, kitchen_setup.gripper_group)
         kitchen_setup.plan_and_execute()
