@@ -534,6 +534,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                     tip_gripper_axis: Vector3Stamped,
                                     tip_group: Optional[str] = None,
                                     root_group: Optional[str] = None,
+                                    intermediate_point_scale: Optional[float] = 1,
                                     weight: float = WEIGHT_BELOW_CA):
         """
         Aligns the tip_link with the door_object to push it open. Only works if the door object is part of the urdf.
@@ -548,6 +549,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                                  tip_link=tip_link,
                                                  door_object=door_object,
                                                  door_handle=door_handle,
+                                                 intermediate_point_scale=intermediate_point_scale,
                                                  tip_group=tip_group,
                                                  tip_gripper_axis=tip_gripper_axis,
                                                  root_group=root_group,
@@ -1309,13 +1311,14 @@ class OldGiskardWrapper(GiskardWrapper):
 
         tip_grasp_axis = Vector3Stamped()
         tip_grasp_axis.header.frame_id = tip_link
-        tip_grasp_axis.vector.x = 1
+        tip_grasp_axis.vector.y = 1
 
         self.set_align_to_push_door_goal(root_link=root_link,
                                          tip_link=tip_link,
                                          door_handle=handle_name,
                                          door_object=hinge_frame_id,
-                                         tip_gripper_axis=tip_grasp_axis)
+                                         tip_gripper_axis=tip_grasp_axis,
+                                         intermediate_point_scale=0.95)
 
     def set_hsrb_pre_push_door_goal(self,
                                     handle_name: str,
@@ -1357,4 +1360,4 @@ class OldGiskardWrapper(GiskardWrapper):
                                 tip_grasp_axis=tip_grasp_axis,
                                 bar_center=bar_center,
                                 bar_axis=bar_axis,
-                                bar_length=.5)
+                                bar_length=.4)
