@@ -1245,11 +1245,11 @@ class OldGiskardWrapper(GiskardWrapper):
 
     def set_hsrb_door_handle_grasp(self,
                                    handle_name: str,
-                                   handle_bar_length: float = 0.15,
+                                   handle_bar_length: float = 0,
                                    tip_link: str = 'hand_gripper_tool_frame',
                                    root_link: str = 'map',
-                                   bar_axis_v: Vector3 = Vector3(-1, 0, 0),
-                                   tip_grasp_axis_v: Vector3 = Vector3(0, 1, 0)):
+                                   bar_axis_v: Vector3 = Vector3(0, 1, 0),
+                                   tip_grasp_axis_v: Vector3 = Vector3(1, 0, 0)):
         """
         HSRB specific set_grasp_bar_goal, that only needs handle_name of the door_handle
 
@@ -1266,6 +1266,7 @@ class OldGiskardWrapper(GiskardWrapper):
 
         bar_center = PointStamped()
         bar_center.header.frame_id = handle_name
+        bar_center.point.y = 0.045
 
         tip_grasp_axis = Vector3Stamped()
         tip_grasp_axis.header.frame_id = tip_link

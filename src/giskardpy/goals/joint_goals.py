@@ -265,6 +265,7 @@ class JointPositionList(Goal):
                                          equality_bound=error,
                                          weight=self.weight,
                                          task_expression=current)
+            god_map.debug_expression_manager.add_debug_expression(name, goal)
 
         self.connect_monitors_to_all_tasks(start_condition, hold_condition, end_condition)
 
