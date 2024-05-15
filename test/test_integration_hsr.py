@@ -566,6 +566,7 @@ class TestConstraints:
 
         kitchen_setup.set_hsrb_dishwasher_door_handle_grasp(root_link=kitchen_setup.default_root,
                                                             tip_link=kitchen_setup.tip,
+                                                            grasp_bar_offset=0.02,
                                                             handle_frame_id=handle_frame_id)
         x_gripper = Vector3Stamped()
         x_gripper.header.frame_id = kitchen_setup.tip

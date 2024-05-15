@@ -26,15 +26,12 @@ from giskardpy.goals.open_close import Close, Open
 from giskardpy.goals.pointing import Pointing
 from giskardpy.goals.pre_push_door import PrePushDoor
 from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
+from giskardpy.goals.suturo import GraspBarOffset
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, PointingAt, \
     VectorsAligned, DistanceToLine
 from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy.monitors.joint_monitors import JointGoalReached
-from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator, CancelMotion, EndMotion
-from giskardpy.monitors.payload_monitors import Print, Sleep, SetMaxTrajectoryLength, \
-    UpdateParentLinkOfGroup, PayloadAlternator
-from giskardpy.utils.utils import kwargs_to_json, get_all_classes_in_package
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.monitors.monitors import EndMotion
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator
@@ -42,6 +39,7 @@ from giskardpy.monitors.payload_monitors import Print, Sleep, CancelMotion, SetM
     PayloadAlternator
 from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
 from giskardpy.tree.control_modes import ControlModes
+from giskardpy.utils.utils import get_all_classes_in_package
 from giskardpy.utils.utils import kwargs_to_json
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
@@ -1124,6 +1122,58 @@ class MotionGoalWrapper:
                              weight=weight,
                              name=name,
                              absolute=absolute,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition,
+                             **kwargs)
+
+    def add_grasp_bar_offset(self,
+                             bar_center: PointStamped,
+                             bar_axis: Vector3Stamped,
+                             bar_length: float,
+                             tip_link: str,
+                             tip_grasp_axis: Vector3Stamped,
+                             root_link: str,
+                             grasp_axis_offset: float = 0.0,
+                             tip_group: Optional[str] = None,
+                             root_group: Optional[str] = None,
+                             reference_linear_velocity: Optional[float] = None,
+                             reference_angular_velocity: Optional[float] = None,
+                             weight: Optional[float] = None,
+                             name: Optional[str] = None,
+                             start_condition: str = '',
+                             hold_condition: str = '',
+                             end_condition: str = '',
+                             **kwargs: goal_parameter):
+        """
+        Like a CartesianPose but with more freedom.
+        tip_link is allowed to be at any point along bar_axis, that is without bar_center +/- bar_length.
+        It will align tip_grasp_axis with bar_axis, but allows rotation around it.
+        :param root_link: root link of the kinematic chain
+        :param tip_link: tip link of the kinematic chain
+        :param tip_grasp_axis: axis of tip_link that will be aligned with bar_axis
+        :param bar_center: center of the bar to be grasped
+        :param bar_axis: alignment of the bar to be grasped
+        :param bar_length: length of the bar to be grasped
+        :param root_group: if root_link is not unique, search in this group for matches
+        :param tip_group: if tip_link is not unique, search in this group for matches
+        :param reference_linear_velocity: m/s
+        :param reference_angular_velocity: rad/s
+        """
+        self.add_motion_goal(motion_goal_class=GraspBarOffset.__name__,
+                             root_link=root_link,
+                             tip_link=tip_link,
+                             tip_grasp_axis=tip_grasp_axis,
+                             bar_center=bar_center,
+                             bar_axis=bar_axis,
+                             bar_length=bar_length,
+                             grasp_axis_offset=grasp_axis_offset,
+                             root_group=root_group,
+                             tip_group=tip_group,
+                             reference_linear_velocity=reference_linear_velocity,
+                             reference_angular_velocity=reference_angular_velocity,
+                             weight=weight,
+                             name=name,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
                              end_condition=end_condition,

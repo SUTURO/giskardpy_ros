@@ -1342,6 +1342,7 @@ class OldGiskardWrapper(GiskardWrapper):
 
     def set_hsrb_dishwasher_door_handle_grasp(self,
                                               handle_frame_id: str,
+                                              grasp_bar_offset: float = 0.0,
                                               root_link: str = 'map',
                                               tip_link: str = 'hand_gripper_tool_frame'):
 
@@ -1356,9 +1357,74 @@ class OldGiskardWrapper(GiskardWrapper):
         tip_grasp_axis.header.frame_id = tip_link
         tip_grasp_axis.vector.x = 1
 
-        self.set_grasp_bar_goal(root_link=root_link,
-                                tip_link=tip_link,
-                                tip_grasp_axis=tip_grasp_axis,
-                                bar_center=bar_center,
-                                bar_axis=bar_axis,
-                                bar_length=.4)
+        self.set_grasp_bar_offset_goal(root_link=root_link,
+                                       tip_link=tip_link,
+                                       tip_grasp_axis=tip_grasp_axis,
+                                       bar_center=bar_center,
+                                       bar_axis=bar_axis,
+                                       bar_length=.4,
+                                       grasp_axis_offset=grasp_bar_offset)
+
+    def set_grasp_bar_offset_goal(self,
+                                  bar_center: PointStamped,
+                                  bar_axis: Vector3Stamped,
+                                  bar_length: float,
+                                  tip_link: str,
+                                  tip_grasp_axis: Vector3Stamped,
+                                  root_link: str,
+                                  grasp_axis_offset: float = 0.0,
+                                  tip_group: Optional[str] = None,
+                                  root_group: Optional[str] = None,
+                                  reference_linear_velocity: Optional[float] = None,
+                                  reference_angular_velocity: Optional[float] = None,
+                                  weight: float = WEIGHT_ABOVE_CA,
+                                  add_monitor: bool = True,
+                                  **kwargs: goal_parameter):
+        """
+        Like a CartesianPose but with more freedom.
+        tip_link is allowed to be at any point along bar_axis, that is without bar_center +/- bar_length.
+        It will align tip_grasp_axis with bar_axis, but allows rotation around it.
+        :param root_link: root link of the kinematic chain
+        :param tip_link: tip link of the kinematic chain
+        :param tip_grasp_axis: axis of tip_link that will be aligned with bar_axis
+        :param bar_center: center of the bar to be grasped
+        :param bar_axis: alignment of the bar to be grasped
+        :param bar_length: length of the bar to be grasped
+        :param grasp_axis_offset: offset of the tip_link to the bar_center
+        :param root_group: if root_link is not unique, search in this group for matches
+        :param tip_group: if tip_link is not unique, search in this group for matches
+        :param reference_linear_velocity: m/s
+        :param reference_angular_velocity: rad/s
+        :param weight:
+        :param add_monitor: if True, adds a monitor as end_condition to check if the goal was reached.
+        """
+        end_condition = ''
+        if add_monitor:
+            monitor_name1 = self.monitors.add_distance_to_line(root_link=root_link,
+                                                               tip_link=tip_link,
+                                                               center_point=bar_center,
+                                                               line_axis=bar_axis,
+                                                               line_length=bar_length,
+                                                               root_group=root_group,
+                                                               tip_group=tip_group)
+            monitor_name2 = self.monitors.add_vectors_aligned(root_link=root_link,
+                                                              tip_link=tip_link,
+                                                              goal_normal=bar_axis,
+                                                              tip_normal=tip_grasp_axis,
+                                                              root_group=root_group,
+                                                              tip_group=tip_group)
+            end_condition = f'{monitor_name1} and {monitor_name2}'
+        self.motion_goals.add_grasp_bar_offset(end_condition=end_condition,
+                                               root_link=root_link,
+                                               tip_link=tip_link,
+                                               tip_grasp_axis=tip_grasp_axis,
+                                               bar_center=bar_center,
+                                               bar_axis=bar_axis,
+                                               bar_length=bar_length,
+                                               grasp_axis_offset=grasp_axis_offset,
+                                               root_group=root_group,
+                                               tip_group=tip_group,
+                                               reference_linear_velocity=reference_linear_velocity,
+                                               reference_angular_velocity=reference_angular_velocity,
+                                               weight=weight,
+                                               **kwargs)
