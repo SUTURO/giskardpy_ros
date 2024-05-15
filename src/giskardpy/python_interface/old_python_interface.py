@@ -1365,6 +1365,18 @@ class OldGiskardWrapper(GiskardWrapper):
                                        bar_length=.4,
                                        grasp_axis_offset=grasp_bar_offset)
 
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = tip_link
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+        self.set_align_planes_goal(tip_link=tip_link,
+                                   tip_normal=x_gripper,
+                                   goal_normal=x_goal,
+                                   root_link=root_link)
+
     def set_grasp_bar_offset_goal(self,
                                   bar_center: PointStamped,
                                   bar_axis: Vector3Stamped,

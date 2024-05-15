@@ -568,17 +568,7 @@ class TestConstraints:
                                                             tip_link=kitchen_setup.tip,
                                                             grasp_bar_offset=0.02,
                                                             handle_frame_id=handle_frame_id)
-        x_gripper = Vector3Stamped()
-        x_gripper.header.frame_id = kitchen_setup.tip
-        x_gripper.vector.z = 1
 
-        x_goal = Vector3Stamped()
-        x_goal.header.frame_id = handle_frame_id
-        x_goal.vector.x = -1
-        kitchen_setup.set_align_planes_goal(tip_link=kitchen_setup.tip,
-                                            tip_normal=x_gripper,
-                                            goal_normal=x_goal,
-                                            root_link='map')
         kitchen_setup.allow_all_collisions()
         kitchen_setup.execute()
 
