@@ -1351,7 +1351,7 @@ class GraspBarOffset(Goal):
                  bar_center: PointStamped,
                  bar_axis: Vector3Stamped,
                  bar_length: float,
-                 grasp_axis_offset: float = 0.0,
+                 grasp_axis_offset: Vector3Stamped,
                  root_group: Optional[str] = None,
                  tip_group: Optional[str] = None,
                  reference_linear_velocity: float = 0.1,
@@ -1386,6 +1386,7 @@ class GraspBarOffset(Goal):
         super().__init__(name)
 
         bar_center = transform_msg(self.root, bar_center)
+        grasp_axis_offset = transform_msg(self.root, grasp_axis_offset)
 
         tip_grasp_axis = transform_msg(self.tip, tip_grasp_axis)
         tip_grasp_axis.vector = tf.normalize(tip_grasp_axis.vector)
@@ -1406,6 +1407,7 @@ class GraspBarOffset(Goal):
         root_V_bar_axis = cas.Vector3(self.bar_axis)
         tip_V_tip_grasp_axis = cas.Vector3(self.tip_grasp_axis)
         root_P_bar_center = cas.Point3(self.bar_center)
+        root_V_bar_offset = cas.Vector3(self.grasp_axis_offset)
 
         root_T_tip = god_map.world.compose_fk_expression(self.root, self.tip)
         root_V_tip_normal = cas.dot(root_T_tip, tip_V_tip_grasp_axis)
@@ -1419,7 +1421,7 @@ class GraspBarOffset(Goal):
 
         root_P_tip = god_map.world.compose_fk_expression(self.root, self.tip).to_position()
 
-        root_P_bar_center = root_P_bar_center + (tip_V_tip_grasp_axis * grasp_axis_offset)
+        root_P_bar_center = root_P_bar_center + root_V_bar_offset
 
         root_P_line_start = root_P_bar_center + root_V_bar_axis * self.bar_length / 2
         root_P_line_end = root_P_bar_center - root_V_bar_axis * self.bar_length / 2
@@ -1433,6 +1435,7 @@ class GraspBarOffset(Goal):
         self.connect_monitors_to_all_tasks(start_condition, hold_condition, end_condition)
 
         god_map.debug_expression_manager.add_debug_expression('nearest', nearest)
+        god_map.debug_expression_manager.add_debug_expression('tip V tip grasp axis', tip_V_tip_grasp_axis)
 
 
 def check_context_element(name: str,

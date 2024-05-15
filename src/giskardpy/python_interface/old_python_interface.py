@@ -1357,13 +1357,17 @@ class OldGiskardWrapper(GiskardWrapper):
         tip_grasp_axis.header.frame_id = tip_link
         tip_grasp_axis.vector.x = 1
 
+        grasp_axis_offset = Vector3Stamped()
+        grasp_axis_offset.header.frame_id = handle_frame_id
+        grasp_axis_offset.vector.x = -grasp_bar_offset
+
         self.set_grasp_bar_offset_goal(root_link=root_link,
                                        tip_link=tip_link,
                                        tip_grasp_axis=tip_grasp_axis,
                                        bar_center=bar_center,
                                        bar_axis=bar_axis,
                                        bar_length=.4,
-                                       grasp_axis_offset=grasp_bar_offset)
+                                       grasp_axis_offset=grasp_axis_offset)
 
         x_gripper = Vector3Stamped()
         x_gripper.header.frame_id = tip_link
@@ -1372,6 +1376,7 @@ class OldGiskardWrapper(GiskardWrapper):
         x_goal = Vector3Stamped()
         x_goal.header.frame_id = handle_frame_id
         x_goal.vector.x = -1
+
         self.set_align_planes_goal(tip_link=tip_link,
                                    tip_normal=x_gripper,
                                    goal_normal=x_goal,
@@ -1384,7 +1389,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                   tip_link: str,
                                   tip_grasp_axis: Vector3Stamped,
                                   root_link: str,
-                                  grasp_axis_offset: float = 0.0,
+                                  grasp_axis_offset: Vector3Stamped,
                                   tip_group: Optional[str] = None,
                                   root_group: Optional[str] = None,
                                   reference_linear_velocity: Optional[float] = None,

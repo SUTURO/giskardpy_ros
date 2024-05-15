@@ -1134,7 +1134,7 @@ class MotionGoalWrapper:
                              tip_link: str,
                              tip_grasp_axis: Vector3Stamped,
                              root_link: str,
-                             grasp_axis_offset: float = 0.0,
+                             grasp_axis_offset: Vector3Stamped,
                              tip_group: Optional[str] = None,
                              root_group: Optional[str] = None,
                              reference_linear_velocity: Optional[float] = None,
