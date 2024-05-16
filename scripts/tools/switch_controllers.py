@@ -95,6 +95,6 @@ if __name__ == '__main__':
                                         'head_trajectory_controller'],
                              con_list2=['realtime_body_controller_real'],
                              joy_topic='/hsrb/joy',
-                             buttons=[7, 8])
+                             buttons=[0, 9])
 
     rospy.spin()
