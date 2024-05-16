@@ -179,7 +179,7 @@ class Reaching(ObjectGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol, ):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
             Concludes Reaching type goals.
             Executes them depending on the given context action.
@@ -236,6 +236,7 @@ class Reaching(ObjectGoal):
             logwarn(f'Warning: Object not in giskard world')
 
         # TODO: Offsets korrekt berechnen
+        # TODO: Weitere Objekte einfügen
         if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
             self.offsets = Vector3(self.object_size.x, self.object_size.x, self.object_size.z)
         else:
@@ -276,7 +277,7 @@ class GraspObject(ObjectGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
             Concludes Reaching type goals.
             Executes them depending on the given context action.
@@ -424,7 +425,7 @@ class VerticalMotion(ObjectGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Move the tip link vertical according to the given context.
 
@@ -513,7 +514,7 @@ class Retracting(ObjectGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Retract the tip link from the current position by the given distance.
         The exact direction is based on the given reference frame.
@@ -609,7 +610,7 @@ class AlignHeight(ObjectGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Align the tip link with the given goal_pose to prepare for further action (e.g. grasping or placing)
 
@@ -740,7 +741,7 @@ class GraspCarefully(ForceSensorGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Same as GraspObject but with force sensor to avoid bumping into things (e.g. door for door opening).
 
@@ -801,7 +802,7 @@ class Placing(ObjectGoal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
 
         """
         Place an object using the force-/torque-sensor.
@@ -885,7 +886,7 @@ class Tilting(Goal):
                  tip_link: str = 'wrist_roll_joint',
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Tilts the given tip link into one direction by a given angle.
 
@@ -925,7 +926,7 @@ class TakePose(Goal):
                  name: str = None,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Get into a predefined pose with a given keyword.
         Used to get into complete poses. To move only specific joints use 'JointPositionList'
@@ -1017,7 +1018,7 @@ class Mixing(Goal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Simple Mixing motion.
 
@@ -1069,7 +1070,7 @@ class JointRotationGoalContinuous(Goal):
                  period_length: float = 1.0,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Rotate a joint continuously around a center. The execution time and speed is variable.
 
@@ -1111,7 +1112,7 @@ class KeepRotationGoal(Goal):
                  weight: float = WEIGHT_ABOVE_CA,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Use this if a specific link should not rotate during a goal execution. Typically used for the hand.
 
@@ -1146,7 +1147,7 @@ class OpenDoorGoal(Goal):
                  name: str = None,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.TrueSymbol):
+                 end_condition: w.Expression = w.FalseSymbol):
         """
         Use this, if you have grasped a door handle and want to open the door and handle
 
@@ -1232,7 +1233,7 @@ class MoveAroundDishwasher(Goal):
                  name: str = None,
                  start_condition: cas.Expression = cas.TrueSymbol,
                  hold_condition: cas.Expression = cas.FalseSymbol,
-                 end_condition: cas.Expression = cas.TrueSymbol):
+                 end_condition: cas.Expression = cas.FalseSymbol):
         """
         Adds two Points to move around the door of the dishwasher
 
@@ -1331,14 +1332,14 @@ class MoveAroundDishwasher(Goal):
 
             if i == 0:
                 task.start_condition = start_condition
-                task.end_condition = position_monitor
+                task.end_condition = position_monitor.get_state_expression()
             elif i == len(root_P_top_chain) - 1:
                 end_con = cas.logic_and(end_condition, position_monitor.get_state_expression())
-                task.start_condition = old_position_monitor
+                task.start_condition = old_position_monitor.get_state_expression()
                 task.end_condition = end_con
             else:
-                task.start_condition = old_position_monitor
-                task.end_condition = position_monitor
+                task.start_condition = old_position_monitor.get_state_expression()
+                task.end_condition = position_monitor.get_state_expression()
 
             old_position_monitor = position_monitor
 
@@ -1360,7 +1361,7 @@ class GraspBarOffset(Goal):
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol,
                  hold_condition: cas.Expression = cas.FalseSymbol,
-                 end_condition: cas.Expression = cas.TrueSymbol
+                 end_condition: cas.Expression = cas.FalseSymbol
                  ):
         """
         Like a CartesianPose but with more freedom.
