@@ -4,7 +4,8 @@ from typing import Dict, Optional, List, Tuple
 import actionlib
 import rospy
 from actionlib_msgs.msg import GoalStatus
-from controller_manager_msgs.srv import ListControllers, ListControllersResponse
+from controller_manager_msgs.srv import ListControllers, ListControllersResponse, SwitchController, \
+    SwitchControllerResponse
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
@@ -26,16 +27,25 @@ class OldGiskardWrapper(GiskardWrapper):
 
     def __init__(self, node_name: str = 'giskard', check_controller: bool = True):
 
-        self.list_controller_srv = rospy.ServiceProxy(name='/hsrb/controller_manager/list_controllers',
-                                                      service_class=ListControllers)
-
         super().__init__(node_name, avoid_name_conflict=True)
 
         if check_controller and self.world.get_control_mode() == ControlModes.close_loop:
             # TODO: create config for robots
+            start_con = ['realtime_body_controller_real']
+            stop_con = ['arm_trajectory_controller', 'head_trajectory_controller']
+            switch_controllers_srv_name = '/hsrb/controller_manager/switch_controller'
+            list_controllers_srv_name = '/hsrb/controller_manager/list_controllers'
+
+            self.list_controller_srv = rospy.ServiceProxy(name=list_controllers_srv_name,
+                                                          service_class=ListControllers)
+
+            self.set_closed_loop_controllers(stop=stop_con,
+                                             start=start_con,
+                                             switch_controller_srv=switch_controllers_srv_name)
+
             if not self.check_controllers_active(
-                    stopped_controllers=['arm_trajectory_controller', 'head_trajectory_controller'],
-                    running_controllers=['realtime_body_controller_real']):
+                    stopped_controllers=stop_con,
+                    running_controllers=start_con):
                 raise Exception(f'Controllers are configured incorrectly. Look at rqt_controller_manager.')
 
     def execute(self, wait: bool = True, add_default: bool = True) -> MoveResult:
@@ -1220,6 +1230,37 @@ class OldGiskardWrapper(GiskardWrapper):
                 stopped_controllers) and all(controller_dict[con].state == 'running' for con in running_controllers)):
             return True
         return False
+
+    def set_closed_loop_controllers(self,
+                                    stop: Optional[List] = None,
+                                    start: Optional[List] = None,
+                                    switch_controller_srv: Optional[
+                                        str] = '/hsrb/controller_manager/switch_controller') -> SwitchControllerResponse:
+        """
+        Start and Stop controllers for via the designated switch_controller service
+        """
+
+        if stop is None:
+            stop = ['arm_trajectory_controller', 'head_trajectory_controller']
+        if start is None:
+            start = ['realtime_body_controller_real']
+
+        start_controllers = start
+        stop_controllers = stop
+        strictness: int = 1
+        start_asap: bool = False
+        timeout: float = 0.0
+
+        rospy.wait_for_service(switch_controller_srv)
+        srv_switch_con = rospy.ServiceProxy(name=switch_controller_srv,
+                                            service_class=SwitchController)
+
+        resp: SwitchControllerResponse = srv_switch_con(start_controllers,
+                                                        stop_controllers,
+                                                        strictness,
+                                                        start_asap,
+                                                        timeout)
+        return resp
 
     def set_open_door_goal(self,
                            tip_link: str,
