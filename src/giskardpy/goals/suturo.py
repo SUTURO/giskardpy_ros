@@ -735,7 +735,7 @@ class AlignHeight(ObjectGoal):
                                                        hold_condition=hold_condition,
                                                        end_condition=end_condition))
 
-
+# TODO: Delete GraspCarefully as a goal when the Grasping logic of the Force-Torque Monitor is finished, because at that point it'll be deprecated
 class GraspCarefully(ForceSensorGoal):
     def __init__(self,
                  goal_pose: PoseStamped,
