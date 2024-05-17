@@ -898,15 +898,15 @@ class OldGiskardWrapper(GiskardWrapper):
                  tip_link: str = 'hand_palm_link',
                  velocity: float = 0.2):
         """
-        :param grasp: front top right left below
-        :param align: align -> frame (dh wrist frame aligned damit) -> aka tip_link, wenn align leer dann ignore
+        :param grasp: direction to grasp from, directions are: front, top, right, left, below
+        :param align: the frame that the wrist frame aligns with, will be ignored if left empty
         :param object_name: name of object that should be reached
         :param object_shape: shape of the object (current options are cylinder, sphere and rectangle)
         :param goal_pose: position of the goal that should be reached
         :param object_size: size of the object as a Vector3 (in meters)
         :param root_link: the root link, usually map
-        :param tip_link: str = 'hand_palm_link',
-        :param velocity: velocity of movement
+        :param tip_link: the tip link, normally hand_palm_link
+        :param velocity: velocity of executed movement
         """
 
         self.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
