@@ -239,6 +239,15 @@ class Reaching(ObjectGoal):
         # TODO: Weitere Objekte einfügen
         if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
             self.offsets = Vector3(self.object_size.x, self.object_size.x, self.object_size.z)
+
+        # elif self.object_name == 'plate':
+        #     self.offsets = -(self.object_size.x / 2) + 0.03
+        #
+        # elif self.object_name == 'bowl':
+        #     print('Bowl!')
+        #     object_size = Vector3(0.16, 0.16, 0.058)
+        #     self.offsets = -(object_size.x / 2) + 0.15
+
         else:
             if self.object_in_world:
                 self.offsets = Vector3(-self.object_size.x / 2, self.object_size.y / 2, self.object_size.z / 2)
