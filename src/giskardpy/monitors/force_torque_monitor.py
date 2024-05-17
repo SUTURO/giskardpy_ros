@@ -90,6 +90,7 @@ class PayloadForceTorque(PayloadMonitor):
         # TODO: Add more threshold cases and determine whether the normal grasp action is even needed currently
         # TODO: Talk to planning and knowledge about outsourcing the thresholds to knowledge, so that we only receive them and put them in
         # TODO: create empty thresholds that can be filled via parameters used by knowledge/ planning
+        # TODO: Check whether or not gripper is closed and use it as starting point to check if force_torque value is undershot
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
             # Basic idea for checking whether an object is being grasped or not:
