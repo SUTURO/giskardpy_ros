@@ -102,7 +102,6 @@ class ObjectGoal(Goal):
             return None
 
 
-# TODO move to PayloadMonitor
 class MoveGripper(NonMotionGoal):
     _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
                                                                GripperApplyEffortAction)
@@ -768,8 +767,7 @@ class GraspCarefully(ForceSensorGoal):
         if name is None:
             name = 'GraspCarefully'
 
-        # FIXME: ForceSensorGoal muss name annehmen, dann name als Parameter übergeben
-        super().__init__()
+        super().__init__(name)
 
         self.add_constraints_of_goal(GraspObject(goal_pose=goal_pose,
                                                  reference_frame_alignment=reference_frame_alignment,
@@ -833,7 +831,6 @@ class Placing(ObjectGoal):
         self.from_above = check_context_element('from_above', ContextFromAbove, context)
         self.align_vertical = check_context_element('align_vertical', ContextAlignVertical, context)
 
-        # FIXME Wenn ForceSensorGoal name hat, dann muss hier name eingefügt werden
         super().__init__(name=name)
 
         if root_link is None:
