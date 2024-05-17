@@ -32,7 +32,10 @@ class OldGiskardWrapper(GiskardWrapper):
         super().__init__(node_name, avoid_name_conflict=True)
 
         if check_controller and self.world.get_control_mode() == ControlModes.close_loop:
-            if not self.check_controllers_active():
+            # TODO: create config for robots
+            if not self.check_controllers_active(
+                    stopped_controllers=['arm_trajectory_controller', 'head_trajectory_controller'],
+                    running_controllers=['realtime_body_controller_real']):
                 raise Exception(f'Controllers are configured incorrectly. Look at rqt_controller_manager.')
 
     def execute(self, wait: bool = True, add_default: bool = True) -> MoveResult:
@@ -1195,14 +1198,21 @@ class OldGiskardWrapper(GiskardWrapper):
                                endless_mode=True,
                                pointing_axis=tip_V_pointing_axis)
 
-    # FIXME: make controller lists parameters and add configs for robots or something
-    def check_controllers_active(self):
+    def check_controllers_active(self,
+                                 stopped_controllers: Optional[List] = None,
+                                 running_controllers: Optional[List] = None):
         """
         Checks if the arm_trajectory_controller and head_trajectory_controller are stopped
         and the realtime_body_controller_real is running
+
+        :param stopped_controllers: controllers that have to be in state stopped or initialized
+        :param running_controllers: controllers that have to be in state running
         """
-        stopped_controllers = ['arm_trajectory_controller', 'head_trajectory_controller']
-        running_controllers = ['realtime_body_controller_real']
+        if stopped_controllers is None:
+            stopped_controllers = []
+        if running_controllers is None:
+            running_controllers = []
+
         resp: ListControllersResponse = self.list_controller_srv()
         controller_dict = {controller.name: controller for controller in resp.controller}
 
