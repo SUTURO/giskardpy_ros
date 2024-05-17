@@ -887,17 +887,6 @@ class OldGiskardWrapper(GiskardWrapper):
         self.motion_goals.add_motion_goal(motion_goal_class='MoveGripper',
                                           gripper_state=gripper_state)
 
-    # def reaching(self,
-    #                grasp: str -> front top right left below
-    #                align -> frame (dh wrist frame aligned damit) -> aka tip_link, wenn align leer dann ignore
-    #                object_name: str, #(die spawned planning)
-    #                object_shape: str, #(cylinder oder something lese)
-    #                goal_pose: Optional[PoseStamped] = None,
-    #                object_size: Optional[Vector3] = None,
-    #                root_link: str = 'map',
-    #                tip_link: str = 'hand_palm_link',
-    #                velocity: float = 0.2): -> auch von planning
-
     def reaching(self,
                  grasp: str,
                  align: str,
@@ -908,6 +897,17 @@ class OldGiskardWrapper(GiskardWrapper):
                  root_link: str = 'map',
                  tip_link: str = 'hand_palm_link',
                  velocity: float = 0.2):
+        """
+        :param grasp: front top right left below
+        :param align: align -> frame (dh wrist frame aligned damit) -> aka tip_link, wenn align leer dann ignore
+        :param object_name: name of object that should be reached
+        :param object_shape: shape of the object (current options are cylinder, sphere and rectangle)
+        :param goal_pose: position of the goal that should be reached
+        :param object_size: size of the object as a Vector3 (in meters)
+        :param root_link: the root link, usually map
+        :param tip_link: str = 'hand_palm_link',
+        :param velocity: velocity of movement
+        """
 
         self.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
                                           grasp=grasp,
