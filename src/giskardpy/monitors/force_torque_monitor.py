@@ -111,7 +111,6 @@ class PayloadForceTorque(PayloadMonitor):
                     print(f'MISS GWC!: {rob_force.vector.x};{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
-                #
                 #  TODO: Add proper grasping logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
@@ -119,11 +118,11 @@ class PayloadForceTorque(PayloadMonitor):
                 #  TODO: Add proper grasping logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
-            elif self.object_type == ObjectTypes.OT_Tray.value:
+            elif self.object_type == ObjectTypes.OT_Bowl.value:
                 #  TODO: Add proper grasping logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
-            elif self.object_type == ObjectTypes.OT_Bowl.value:
+            elif self.object_type == ObjectTypes.OT_Tray.value:
                 #  TODO: Add proper grasping logic
                 print("IT JUST WORKS - Todd Howard, at some point")
 
@@ -150,10 +149,10 @@ class PayloadForceTorque(PayloadMonitor):
 
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
                 self.topic = "~/rebuilt_signal"
-                #Maybe execute filter in here?
+
                 if (self.threshold_name == ForceTorqueThresholds.FT_PlaceCutlery.value
                         & self.topic == "rebuilt_signal"):
-                    # TODO: Add proper Thresholds and Checks for grasping Cutlery
+                    # TODO: Add proper Thresholds and Checks for placing Cutlery
                     print(f'filtered Force: {rob_force}')
                     print(f'filtered Torque: {rob_torque}')
                     force_x_threshold = 0
@@ -171,27 +170,27 @@ class PayloadForceTorque(PayloadMonitor):
                         print(f'MISS CUTLERY: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
             elif self.object_type == ObjectTypes.OT_Plate.value:
-                #  TODO: Add proper placing logic
-                print("IT JUST WORKS - Todd Howard, at some point")
-
-            elif self.object_type == ObjectTypes.OT_Tray.value:
-                #  TODO: Add proper placing logic
+                #  TODO: Add proper placing logic for Plate
                 print("IT JUST WORKS - Todd Howard, at some point")
 
             elif self.object_type == ObjectTypes.OT_Bowl.value:
-                #  TODO: Add proper placing logic
+                #  TODO: Add proper placing logic for Bowl
+                print("IT JUST WORKS - Todd Howard, at some point")
+
+            elif self.object_type == ObjectTypes.OT_Tray.value:
+                #  TODO: Add proper placing logic for Tray
                 print("IT JUST WORKS - Todd Howard, at some point")
 
             else:
                 logging.logerr("No valid object_type found, unable to determine placing thresholds!")
 
-        elif self.threshold_name == ForceTorqueThresholds.FT_Door.value:
-            # TODO: Establish needed values and add logic for door handling
-            print("DOOR STUCK, DOOR STUCK!!!1!")
-
-        elif self.threshold_name == ForceTorqueThresholds.FT_DishDoor.value:
-            # TODO: Establish needed values and add logic for dishwasher door handling
-            print("*Throws Chihuahua into dishwasher*")
+        # elif self.threshold_name == ForceTorqueThresholds.FT_Door.value:
+        #     # TODO: Establish needed values and add logic for door handling
+        #     print("DOOR STUCK, DOOR STUCK!!!1!")
+        #
+        # elif self.threshold_name == ForceTorqueThresholds.FT_DishDoor.value:
+        #     # TODO: Establish needed values and add logic for dishwasher door handling
+        #     print("*Throws Chihuahua into dishwasher*")
 
         else:
             logging.logerr("No valid threshold_name found, unable to determine action!")

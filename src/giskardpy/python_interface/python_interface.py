@@ -1712,9 +1712,10 @@ class GiskardWrapper:
                                 root_link: Optional[str] = None,
                                 tip_link: Optional[str] = None):
         """
-        adds monitor functionality for the GraspCarefully motion goal, goal now stops if force_threshold is overstepped,
+        adds monitor functionality to the reaching goal, thus making the original GraspCarefully motion goal redundant.
+        The goal now stops if force_threshold/torque_threshold is undershot,
         which means it essentially stops automatically if the HSR for example slips off of a door handle while trying
-        to open doors.
+        to open doors or fails to properly grip an object.
         """
         sleep = self.monitors.add_sleep(1.5)
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
@@ -1724,7 +1725,7 @@ class GiskardWrapper:
                                                          is_raw=False,
                                                          object_type=ObjectTypes.OT_Standard.value)
 
-        self.motion_goals.add_motion_goal(motion_goal_class='GraspCarefully',
+        self.motion_goals.add_motion_goal(motion_goal_class='Reaching',
                                           goal_pose=goal_pose,
                                           from_above=from_above,
                                           align_vertical=align_vertical,
