@@ -246,6 +246,11 @@ class Reaching(ObjectGoal):
         #     print('Bowl!')
         #     object_size = Vector3(0.16, 0.16, 0.058)
         #     self.offsets = -(object_size.x / 2) + 0.15
+        #
+        # elif self.object_name == 'cutlery':
+        #       self.offsets = -(self.object_size.x / 2) + 0.02
+        # elif self.object_name == 'tray':
+        #       self.offsets = -(self.object_size.x / 2) + 0.04
 
         else:
             if self.object_in_world:

@@ -91,11 +91,15 @@ class PayloadForceTorque(PayloadMonitor):
         # TODO: Talk to planning and knowledge about outsourcing the thresholds to knowledge, so that we only receive them and put them in
         # TODO: create empty thresholds that can be filled via parameters used by knowledge/ planning
         # TODO: Check whether or not gripper is closed and use it as starting point to check if force_torque value is undershot
+        # Maybe just code a new method that planning calls manually??
+        # Or manage to check whether the gripper is closed and then check ForceTorque values
+        # Maybe check Gripper for correct Radiance???? (probably readable from or smth)
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
-            # Basic idea for checking whether an object is being grasped or not:
+            # Basic idea for checking whether an object has successfully been grasped or not:
             # return false as long as threshold is being surpassed;
             # return true when it stops being surpassed, so that goal stops when object is unexpectedly dropped
+            # or the HSR failed to grasp them at all
 
             if self.object_type == ObjectTypes.OT_Standard.value:
 
