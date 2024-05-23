@@ -69,8 +69,8 @@ class WorldConfig(ABC):
     def get_root_link_of_group(self, group_name: str) -> PrefixName:
         return god_map.world.groups[group_name].root_link_name
 
-    def check_for_link_name_of_group(self, group_name: str, link_name: str):
-        if len(god_map.world.groups[group_name].search_for_link_name(link_name)) > 0:
+    def check_for_link_name(self, link_name: str):
+        if len(god_map.world.search_for_link_name(link_name)) > 0:
             return True
         else:
             return False

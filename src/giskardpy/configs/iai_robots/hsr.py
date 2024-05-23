@@ -38,9 +38,9 @@ class WorldWithHSRConfig(WorldConfig):
         self.add_robot_from_parameter_server(parameter_name=self.robot_description_name)
 
         try:
-            self.check_for_link_name_of_group(self.robot_group_name, 'hand_gripper_tool_frame')
+            self.check_for_link_name(link_name='hand_gripper_tool_frame')
         except ValueError as e:
-            logging.logwarn(f'Could not find Hand Gripper Tool Frame for robot {self.robot_group_name}\n Exception: {e}')
+            logging.logwarn(f'Could not find Hand Gripper Tool Frame Exception: {e}')
         else:
             logging.loginfo(f'Hand Gripper Tool Frame Found')
 
