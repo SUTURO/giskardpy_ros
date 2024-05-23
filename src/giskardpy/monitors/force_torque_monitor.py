@@ -4,7 +4,6 @@ from typing import Optional
 import geometry_msgs
 import hsrb_interface.end_effector
 import rospy
-from docutils.nodes import topic
 from geometry_msgs.msg import WrenchStamped
 
 import giskardpy.casadi_wrapper as cas
@@ -110,8 +109,7 @@ class PayloadForceTorque(PayloadMonitor):
                         print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
                     else:
                         self.state = True
-                        raise Exception(
-                            "HSR failed to Grasp Object,Grasping threshold has been Undershot.") # might not be needed at all, since monitor basically gives out signal
+                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.") # might not be needed at all, since monitor basically gives out signal
 
                 # case for grasping cutlery
                 elif self.object_type == ObjectTypes.OT_Cutlery.value:

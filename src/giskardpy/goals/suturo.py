@@ -185,7 +185,6 @@ class Reaching(ObjectGoal):
             Context is a dictionary in an action is given as well as situational parameters.
             All available context Messages are found in the Enum 'ContextTypes'
 
-            :param context: Context of this goal. Contains information about action and situational parameters
             :param object_name: Name of the object to use. Optional as long as goal_pose and object_size are filled instead
             :param object_shape: Shape of the object to manipulate. Edit object size when having a sphere or cylinder
             :param goal_pose: Goal pose for the object. Alternative if no object name is given.
@@ -249,6 +248,7 @@ class Reaching(ObjectGoal):
         #
         # elif self.object_name == 'cutlery':
         #       self.offsets = -(self.object_size.x / 2) + 0.02
+        #
         # elif self.object_name == 'tray':
         #       self.offsets = -(self.object_size.x / 2) + 0.04
 
@@ -352,7 +352,7 @@ class GraspObject(ObjectGoal):
         self.goal_point = transform_msg(self.reference_link, root_goal_point)
 
         # TODO: Offsets überprüfen und weitere hinzufügen
-        if self.grasp == GraspTypes.TOP.value:
+        if self.grasp == GraspTypes.ABOVE.value:
             self.goal_vertical_axis.vector = self.standard_forward
             self.goal_frontal_axis.vector = multiply_vector(self.standard_up, -1)
 

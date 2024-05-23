@@ -37,7 +37,7 @@ class ObjectTypes(Enum):
 @unique
 class GraspTypes(Enum):
     FRONT = 'front'
-    TOP = 'top'
+    ABOVE = 'above'
     LEFT = 'left'
     RIGHT = 'right'
     BELOW = 'below'
