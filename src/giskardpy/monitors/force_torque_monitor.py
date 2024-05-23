@@ -2,6 +2,7 @@ import string
 from typing import Optional
 
 import geometry_msgs
+import hsrb_interface.end_effector
 import rospy
 from docutils.nodes import topic
 from geometry_msgs.msg import WrenchStamped
@@ -87,55 +88,95 @@ class PayloadForceTorque(PayloadMonitor):
 
         rob_force = self.force_T_map_transform(1)
         rob_torque = self.force_T_map_transform(2)
-        # TODO: Add more threshold cases and determine whether the normal grasp action is even needed currently
-        # TODO: Talk to planning and knowledge about outsourcing the thresholds to knowledge, so that we only receive them and put them in
-        # TODO: create empty thresholds that can be filled via parameters used by knowledge/ planning
-        # TODO: Check whether or not gripper is closed and use it as starting point to check if force_torque value is undershot
-        # Maybe just code a new method that planning calls manually??
-        # Or manage to check whether the gripper is closed and then check ForceTorque values
-        # Maybe check Gripper for correct Radiance???? (probably readable from or smth)
+
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
-            # Basic idea for checking whether an object has successfully been grasped or not:
-            # return false as long as threshold is being surpassed;
-            # return true when it stops being surpassed, so that goal stops when object is unexpectedly dropped
-            # or the HSR failed to grasp them at all
+            # Makes sure that thresholds are only being checked if an attempt at grasping has been made
+            if hsrb_interface.end_effector.Gripper.get_distance() <= 0.002:
+                # Basic idea for checking whether an object has successfully been grasped or not:
+                # return false as long as threshold is being surpassed;
+                # return true when it stops being surpassed, so that goal stops when object is unexpectedly dropped
+                # or the HSR failed to grasp them at all
 
-            if self.object_type == ObjectTypes.OT_Standard.value:
+                # case for grasping "normal" objects (namely Milk, Cereal and cups)
+                if self.object_type == ObjectTypes.OT_Standard.value:
 
-                force_threshold = 0.2
-                torque_threshold = 0.02
+                    force_threshold = 0.2
+                    torque_threshold = 0.02
 
-                if (abs(rob_force.vector.y) > force_threshold or
-                        abs(rob_torque.vector.y) > torque_threshold):
-                    self.state = True
-                    print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
+                    if (abs(rob_force.vector.y) > force_threshold or
+                            abs(rob_torque.vector.y) > torque_threshold):
+                        self.state = False
+                        print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
+                    else:
+                        self.state = True
+                        raise Exception(
+                            "HSR failed to Grasp Object,Grasping threshold has been Undershot.") # might not be needed at all, since monitor basically gives out signal
+
+                # case for grasping cutlery
+                elif self.object_type == ObjectTypes.OT_Cutlery.value:
+
+                    force_threshold = 0.2
+                    torque_threshold = 0.02
+
+                    if (abs(rob_force.vector.y) > force_threshold or
+                            abs(rob_torque.vector.y) > torque_threshold):
+                        self.state = False
+                        print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
+                    else:
+                        self.state = True
+                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.")
+
+                # case for grasping plate
+                elif self.object_type == ObjectTypes.OT_Plate.value:
+
+                    force_threshold = 0.2
+                    torque_threshold = 0.02
+
+                    if (abs(rob_force.vector.y) > force_threshold or
+                            abs(rob_torque.vector.y) > torque_threshold):
+                        self.state = False
+                        print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
+                    else:
+                        self.state = True
+                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.")
+
+                # case for grasping Bowl
+                elif self.object_type == ObjectTypes.OT_Bowl.value:
+
+                    force_threshold = 0.2
+                    torque_threshold = 0.02
+
+                    if (abs(rob_force.vector.y) > force_threshold or
+                            abs(rob_torque.vector.y) > torque_threshold):
+                        self.state = False
+                        print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
+                    else:
+                        self.state = True
+                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.")
+
+                # case for grasping tray
+                elif self.object_type == ObjectTypes.OT_Tray.value:
+
+                    force_threshold = 0.2
+                    torque_threshold = 0.02
+
+                    if (abs(rob_force.vector.y) > force_threshold or
+                            abs(rob_torque.vector.y) > torque_threshold):
+                        self.state = False
+                        print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
+                    else:
+                        self.state = True
+                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot!")
+
+                # if no valid object_type has been declared in method parameters
                 else:
-                    self.state = False
-                    print(f'MISS GWC!: {rob_force.vector.x};{rob_torque.vector.y}')
-
-            elif self.object_type == ObjectTypes.OT_Cutlery.value:
-                #  TODO: Add proper grasping logic
-                print("IT JUST WORKS - Todd Howard, at some point")
-
-            elif self.object_type == ObjectTypes.OT_Plate.value:
-                #  TODO: Add proper grasping logic
-                print("IT JUST WORKS - Todd Howard, at some point")
-
-            elif self.object_type == ObjectTypes.OT_Bowl.value:
-                #  TODO: Add proper grasping logic
-                print("IT JUST WORKS - Todd Howard, at some point")
-
-            elif self.object_type == ObjectTypes.OT_Tray.value:
-                #  TODO: Add proper grasping logic
-                print("IT JUST WORKS - Todd Howard, at some point")
-
-            else:
-                logging.logerr("No valid object_type found, unable to determine placing thresholds!")
+                    raise Exception("No valid object_type found, unable to determine placing thresholds!")
 
         # TODO: Add thresholds and cases for other object types
         elif self.threshold_name == ForceTorqueThresholds.FT_Placing.value:
 
+            # case for placing "normal" objects (namely Milk, Cereal and cups)
             if self.object_type == ObjectTypes.OT_Standard.value:
                 force_x_threshold = 2.34
                 force_z_threshold = 1.0
@@ -151,6 +192,7 @@ class PayloadForceTorque(PayloadMonitor):
                     self.state = False
                     print(f'MISS PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
+            # case for placing cutlery
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
                 self.topic = "~/rebuilt_signal"
 
@@ -173,20 +215,24 @@ class PayloadForceTorque(PayloadMonitor):
                         self.state = False
                         print(f'MISS CUTLERY: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
+            # case for placing plates
             elif self.object_type == ObjectTypes.OT_Plate.value:
                 #  TODO: Add proper placing logic for Plate
                 print("IT JUST WORKS - Todd Howard, at some point")
 
+            # case for placing bowls
             elif self.object_type == ObjectTypes.OT_Bowl.value:
                 #  TODO: Add proper placing logic for Bowl
                 print("IT JUST WORKS - Todd Howard, at some point")
 
+            # case for placing tray
             elif self.object_type == ObjectTypes.OT_Tray.value:
                 #  TODO: Add proper placing logic for Tray
                 print("IT JUST WORKS - Todd Howard, at some point")
 
+            # if no valid object_type has been declared in method parameters
             else:
-                logging.logerr("No valid object_type found, unable to determine placing thresholds!")
+                raise Exception("No valid object_type found, unable to determine placing thresholds!")
 
         # elif self.threshold_name == ForceTorqueThresholds.FT_Door.value:
         #     # TODO: Establish needed values and add logic for door handling
@@ -197,4 +243,4 @@ class PayloadForceTorque(PayloadMonitor):
         #     print("*Throws Chihuahua into dishwasher*")
 
         else:
-            logging.logerr("No valid threshold_name found, unable to determine action!")
+            raise Exception("No valid threshold_name found, unable to determine proper course of action!")
