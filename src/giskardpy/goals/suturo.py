@@ -1186,7 +1186,7 @@ class OpenDoorGoal(Goal):
         handle_state = {handle_frame_id: limit_handle}
         handle_state_monitor = JointGoalReached(goal_state=handle_state,
                                                 threshold=0.01,
-                                                name='handle_joint_monitor')
+                                                name=f'{name}_handle_joint_monitor')
         self.add_monitor(handle_state_monitor)
 
         limit_hinge = max(min_limit_hinge, -(np.pi / 4))
@@ -1194,8 +1194,8 @@ class OpenDoorGoal(Goal):
         hinge_state = {door_hinge_id: limit_hinge}
 
         hinge_state_monitor = JointGoalReached(goal_state=hinge_state,
-                                               threshold=0.01,
-                                               name='hinge_joint_monitor')
+                                               threshold=0.05,
+                                               name=f'{name}_hinge_joint_monitor')
         self.add_monitor(hinge_state_monitor)
 
         self.add_constraints_of_goal(Open(tip_link=tip_link,
@@ -1218,9 +1218,9 @@ class OpenDoorGoal(Goal):
         local_min_mon = LocalMinimumReached(start_condition=sleep_mon.get_state_expression())
         self.add_monitor(local_min_mon)
 
-        end_con = w.logic_and(end_condition,
-                              hinge_state_monitor.get_state_expression(),
-                              local_min_mon.get_state_expression())
+        end_con = w.logic_or(end_condition,
+                             w.logic_and(hinge_state_monitor.get_state_expression(),
+                                         local_min_mon.get_state_expression()))
 
         self.add_constraints_of_goal(Open(tip_link=tip_link,
                                           environment_link=link_id,
@@ -1414,7 +1414,6 @@ class GraspBarOffset(Goal):
         self.reference_linear_velocity = reference_linear_velocity
         self.reference_angular_velocity = reference_angular_velocity
         self.weight = weight
-
 
         root_V_bar_axis = cas.Vector3(self.bar_axis)
         tip_V_tip_grasp_axis = cas.Vector3(self.tip_grasp_axis)
