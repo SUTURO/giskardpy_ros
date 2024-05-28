@@ -1194,7 +1194,7 @@ class OpenDoorGoal(Goal):
         hinge_state = {door_hinge_id: limit_hinge}
 
         hinge_state_monitor = JointGoalReached(goal_state=hinge_state,
-                                               threshold=0.05,
+                                               threshold=0.01,
                                                name=f'{name}_hinge_joint_monitor')
         self.add_monitor(hinge_state_monitor)
 
