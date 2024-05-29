@@ -21,28 +21,22 @@ class PayloadForceTorque(PayloadMonitor):
     """
 
     def __init__(self,
-                 # is_raw is necessary to switch between the raw and the compensated topic
-                 is_raw: bool,
                  # threshold_name is needed here for the class to be able to handle the suturo_types appropriately
                  threshold_name: string,
                  # object_type is needed to differentiate between objects with different placing thresholds
                  object_type: Optional[str] = None,
                  topic: string = "/hsrb/wrist_wrench/compensated",
-                 filter_topic: string = "rebuilt_signal",
+                 filter_topic: string = "rebuilt_signal",  # Might be unnecessary
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol
                  ):
         """
-        :param is_raw: checks if the /hsrb/wrist_wrench/raw topic is being listened to
         :param threshold_name: contains the name of the threshold that will be used (normally an action e.g. Placing)
         :param object_type: is used to determine the type of object that is being placed, is left empty if no object is being placed
         :param topic: the name of the topic
         :param name: name of the monitor class
         :param start_condition: the start condition of the monitor
         """
-        if is_raw:
-            logging.logwarn("ForceTorque Monitor is now listening to the /hsrb/wrist_wrench/raw Topic!")
-            topic = "/hsrb/wrist_wrench/raw"
 
         super().__init__(name=name, stay_true=False, start_condition=start_condition, run_call_in_thread=False)
         self.object_type = object_type
@@ -153,20 +147,6 @@ class PayloadForceTorque(PayloadMonitor):
                         self.state = True
                         raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.")
 
-                # case for grasping tray
-                elif self.object_type == ObjectTypes.OT_Tray.value:
-
-                    force_threshold = 0.2
-                    torque_threshold = 0.02
-
-                    if (abs(rob_force.vector.y) > force_threshold or
-                            abs(rob_torque.vector.y) > torque_threshold):
-                        self.state = False
-                        print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
-                    else:
-                        self.state = True
-                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot!")
-
                 # if no valid object_type has been declared in method parameters
                 else:
                     raise Exception("No valid object_type found, unable to determine placing thresholds!")
@@ -223,22 +203,9 @@ class PayloadForceTorque(PayloadMonitor):
                 #  TODO: Add proper placing logic for Bowl
                 print("IT JUST WORKS - Todd Howard, at some point")
 
-            # case for placing tray
-            elif self.object_type == ObjectTypes.OT_Tray.value:
-                #  TODO: Add proper placing logic for Tray
-                print("IT JUST WORKS - Todd Howard, at some point")
-
             # if no valid object_type has been declared in method parameters
             else:
                 raise Exception("No valid object_type found, unable to determine placing thresholds!")
-
-        # elif self.threshold_name == ForceTorqueThresholds.FT_Door.value:
-        #     # TODO: Establish needed values and add logic for door handling
-        #     print("DOOR STUCK, DOOR STUCK!!!1!")
-        #
-        # elif self.threshold_name == ForceTorqueThresholds.FT_DishDoor.value:
-        #     # TODO: Establish needed values and add logic for dishwasher door handling
-        #     print("*Throws Chihuahua into dishwasher*")
 
         else:
             raise Exception("No valid threshold_name found, unable to determine proper course of action!")

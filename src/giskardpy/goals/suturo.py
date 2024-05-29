@@ -238,19 +238,15 @@ class Reaching(ObjectGoal):
         if self.object_shape == 'sphere' or self.object_shape == 'cylinder':
             self.offsets = Vector3(self.object_size.x, self.object_size.x, self.object_size.z)
 
-        # elif self.object_name == 'plate':
-        #     self.offsets = -(self.object_size.x / 2) + 0.03
-        #
-        # elif self.object_name == 'bowl':
-        #     print('Bowl!')
-        #     object_size = Vector3(0.16, 0.16, 0.058)
-        #     self.offsets = -(object_size.x / 2) + 0.15
-        #
-        # elif self.object_name == 'cutlery':
-        #       self.offsets = -(self.object_size.x / 2) + 0.02
-        #
-        # elif self.object_name == 'tray':
-        #       self.offsets = -(self.object_size.x / 2) + 0.04
+        # TODO: fine tune and add correct object names
+        elif self.object_name == 'plate':
+            self.offsets = -(self.object_size.x / 2) + 0.03
+
+        elif self.object_name == 'bowl':
+            self.offsets = -(object_size.x / 2) + 0.15
+
+        elif self.object_name == 'cutlery':
+            self.offsets = -(self.object_size.x / 2) + 0.02
 
         else:
             if self.object_in_world:
@@ -738,6 +734,7 @@ class AlignHeight(ObjectGoal):
                                                        start_condition=start_condition,
                                                        hold_condition=hold_condition,
                                                        end_condition=end_condition))
+
 
 # TODO: Delete GraspCarefully as a goal when the Grasping logic of the Force-Torque Monitor is finished, because at that point it'll be deprecated
 class GraspCarefully(ForceSensorGoal):
