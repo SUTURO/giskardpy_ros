@@ -6,6 +6,7 @@ from actionlib import SimpleActionClient
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped
 from rospy import ServiceException
 from shape_msgs.msg import SolidPrimitive
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
@@ -41,7 +42,6 @@ from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
 from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import get_all_classes_in_package
 from giskardpy.utils.utils import kwargs_to_json
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
 class WorldWrapper:
@@ -652,6 +652,8 @@ class MotionGoalWrapper:
     def add_open_container(self,
                            tip_link: str,
                            environment_link: str,
+                           special_door: Optional[bool] = False,
+                           special_door_state: Optional[float] = 0.0,
                            tip_group: Optional[str] = None,
                            environment_group: Optional[str] = None,
                            goal_joint_state: Optional[float] = None,
@@ -676,6 +678,8 @@ class MotionGoalWrapper:
                              tip_link=tip_link,
                              environment_link=environment_link,
                              tip_group=tip_group,
+                             special_door=special_door,
+                             special_door_state=special_door_state,
                              environment_group=environment_group,
                              goal_joint_state=goal_joint_state,
                              weight=weight,

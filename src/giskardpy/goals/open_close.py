@@ -1,13 +1,13 @@
 from __future__ import division
 
-import math
-from typing import Optional, Dict
+from typing import Optional
 
 import giskardpy.casadi_wrapper as cas
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
-from giskardpy.goals.goal import Goal, ForceSensorGoal
+from giskardpy.goals.goal import Goal
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.god_map import god_map
+from giskardpy.monitors.joint_monitors import JointGoalReached
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.tasks.task import WEIGHT_BELOW_CA
 
@@ -16,6 +16,8 @@ class Open(Goal):
     def __init__(self,
                  tip_link: str,
                  environment_link: str,
+                 special_door: Optional[bool] = False,
+                 special_door_state: Optional[float] = 0.0,
                  tip_group: Optional[str] = None,
                  environment_group: Optional[str] = None,
                  goal_joint_state: Optional[float] = None,
@@ -24,7 +26,7 @@ class Open(Goal):
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol,
                  hold_condition: cas.Expression = cas.FalseSymbol,
-                 end_condition: cas.Expression = cas.FalseSymbol
+                 end_condition: cas.Expression = cas.TrueSymbol
                  ):
         """
         Open a container in an environment.
@@ -60,6 +62,19 @@ class Open(Goal):
                                                                                start_condition)
         else:
             handle_T_tip = cas.TransMatrix(god_map.world.compute_fk_pose(self.handle_link, self.tip_link))
+
+        if special_door:
+            monitor_goal_state = {self.joint_name: goal_joint_state - 0.1}
+
+            door_joint_state_monitor = JointGoalReached(goal_state=monitor_goal_state,
+                                                        threshold=0.05,
+                                                        name=f'{name}_door_joint_monitor')
+            self.add_monitor(door_joint_state_monitor)
+
+            end_condition = cas.logic_or(end_condition, door_joint_state_monitor.get_state_expression())
+
+            god_map.debug_expression_manager.add_debug_expression('joint_state',
+                                                                  door_joint_state_monitor.get_state_expression())
 
         # %% position
         r_P_c = god_map.world.compose_fk_expression(self.handle_link, self.tip_link).to_position()
