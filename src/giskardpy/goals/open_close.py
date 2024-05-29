@@ -8,6 +8,7 @@ from giskardpy.goals.goal import Goal
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.god_map import god_map
 from giskardpy.monitors.joint_monitors import JointGoalReached
+from giskardpy.monitors.payload_monitors import Sleep
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.tasks.task import WEIGHT_BELOW_CA
 
@@ -100,12 +101,40 @@ class Open(Goal):
                                            end_condition=end_condition)
 
         goal_state = {self.joint_name.short_name: goal_joint_state}
+
         self.add_constraints_of_goal(JointPositionList(goal_state=goal_state,
                                                        max_velocity=max_velocity,
                                                        weight=WEIGHT_BELOW_CA,
                                                        start_condition=start_condition,
                                                        hold_condition=hold_condition,
                                                        end_condition=end_condition))
+
+        if goal_joint_state > 1 and special_door:
+            head_pan_joint = 0.0
+            head_tilt_joint = 0.0
+            arm_lift_joint = 0.0
+            arm_flex_joint = 0.0
+            arm_roll_joint = -1.5
+            wrist_flex_joint = -1.5
+            wrist_roll_joint = 0.0
+
+            joint_states = {
+                'head_pan_joint': head_pan_joint,
+                'head_tilt_joint': head_tilt_joint,
+                'arm_lift_joint': arm_lift_joint,
+                'arm_flex_joint': arm_flex_joint,
+                'arm_roll_joint': arm_roll_joint,
+                'wrist_flex_joint': wrist_flex_joint,
+                'wrist_roll_joint': wrist_roll_joint}
+
+            sleep_mon = Sleep(seconds=3,
+                              start_condition=end_condition)
+            self.add_monitor(sleep_mon)
+
+            self.add_constraints_of_goal(JointPositionList(goal_state=joint_states,
+                                                           start_condition=end_condition,
+                                                           hold_condition=hold_condition,
+                                                           end_condition=sleep_mon.get_state_expression()))
 
 
 class Close(Goal):
