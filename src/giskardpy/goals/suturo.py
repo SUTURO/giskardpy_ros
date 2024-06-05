@@ -830,7 +830,7 @@ class Placing(ObjectGoal):
         self.velocity = velocity
         self.weight = weight
 
-        self.from_above = check_context_element('from_above', ContextFromAbove, context)
+        #self.from_above = check_context_element('from_above', ContextFromAbove, context)
         self.align_vertical = check_context_element('align_vertical', ContextAlignVertical, context)
 
         super().__init__(name=name)
@@ -846,7 +846,6 @@ class Placing(ObjectGoal):
         self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                  align='',
                                                  grasp='',
-                                                 from_above=self.from_above,
                                                  align_vertical=self.align_vertical,
                                                  root_link=self.root_link.short_name,
                                                  tip_link=self.tip_link.short_name,

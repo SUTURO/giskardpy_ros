@@ -1704,10 +1704,9 @@ class GiskardWrapper:
                                           velocity=velocity,
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
-        local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
-        self.monitors.add_end_motion(start_condition=f'{local_min}')
+        local_min = self.monitors.add_local_minimum_reached()
+        self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
         self.monitors.add_max_trajectory_length(100)
-        self.execute()
 
     def monitor_grasp_carefully(self,
                                 goal_pose: PoseStamped,
@@ -1745,4 +1744,3 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
         self.monitors.add_end_motion(start_condition=f'{local_min}')
         self.monitors.add_max_trajectory_length(100)
-        self.execute()
