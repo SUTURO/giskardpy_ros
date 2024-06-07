@@ -32,10 +32,8 @@ from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.utils.logging import loginfo, logwarn
 
-if False:# 'GITHUB_WORKFLOW' not in os.environ:
-    from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, \
-        ContextObjectShape, \
-        ContextAlignVertical
+if 'GITHUB_WORKFLOW' not in os.environ:
+    pass
 
 
 class ContextActionModes(Enum):
@@ -94,65 +92,66 @@ class ObjectGoal(Goal):
             return None
 
 
-class MoveGripper(NonMotionGoal):
-    _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
-                                                               GripperApplyEffortAction)
-    _gripper_controller = actionlib.SimpleActionClient('/hsrb/gripper_controller/follow_joint_trajectory',
-                                                       FollowJointTrajectoryAction)
+if 'GITHUB_WORKFLOW' not in os.environ:
+    class MoveGripper(NonMotionGoal):
+        _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
+                                                                   GripperApplyEffortAction)
+        _gripper_controller = actionlib.SimpleActionClient('/hsrb/gripper_controller/follow_joint_trajectory',
+                                                           FollowJointTrajectoryAction)
 
-    def __init__(self,
-                 gripper_state: str,
-                 suffix=''):
-        """
-        Open / CLose Gripper.
-        Current implementation is only a workaround for manipulation to work with the gripper
-        and a follow joint, trajectory connection was not helpful.
-        For whole plans, Planning should open the gripper by themselves
+        def __init__(self,
+                     gripper_state: str,
+                     suffix=''):
+            """
+            Open / CLose Gripper.
+            Current implementation is only a workaround for manipulation to work with the gripper
+            and a follow joint, trajectory connection was not helpful.
+            For whole plans, Planning should open the gripper by themselves
 
-        :param gripper_state: keyword to state the gripper. Possible options: 'open', 'neutral', 'close'
-        """
-        super().__init__()
+            :param gripper_state: keyword to state the gripper. Possible options: 'open', 'neutral', 'close'
+            """
+            super().__init__()
 
-        self.suffix = suffix
-        self.gripper_state = gripper_state
+            self.suffix = suffix
+            self.gripper_state = gripper_state
 
-        if self.gripper_state == 'open':
-            self.close_gripper_force(0.8)
+            if self.gripper_state == 'open':
+                self.close_gripper_force(0.8)
 
-        elif self.gripper_state == 'close':
-            self.close_gripper_force(-0.8)
+            elif self.gripper_state == 'close':
+                self.close_gripper_force(-0.8)
 
-        elif self.gripper_state == 'neutral':
-            self.set_gripper_joint_position(0.5)
+            elif self.gripper_state == 'neutral':
+                self.set_gripper_joint_position(0.5)
 
-    def close_gripper_force(self, force=0.8):
-        """
-        Closes the gripper with the given force.
-        :param force: force to grasp with should be between 0.2 and 0.8 (N)
-        :return: applied effort
-        """
-        rospy.loginfo("Closing gripper with force: {}".format(force))
-        f = force  # max(min(0.8, force), 0.2)
-        goal = GripperApplyEffortGoal()
-        goal.effort = f
-        self._gripper_apply_force_client.send_goal(goal)
+        def close_gripper_force(self, force=0.8):
+            """
+            Closes the gripper with the given force.
+            :param force: force to grasp with should be between 0.2 and 0.8 (N)
+            :return: applied effort
+            """
+            rospy.loginfo("Closing gripper with force: {}".format(force))
+            f = force  # max(min(0.8, force), 0.2)
+            goal = GripperApplyEffortGoal()
+            goal.effort = f
+            self._gripper_apply_force_client.send_goal(goal)
 
-    def set_gripper_joint_position(self, position):
-        """
-        Sets the gripper joint to the given  position
-        :param position: goal position of the joint -0.105 to 1.239 rad
-        :return: error_code of FollowJointTrajectoryResult
-        """
-        pos = max(min(1.239, position), -0.105)
-        goal = FollowJointTrajectoryGoal()
-        goal.trajectory.joint_names = [u'hand_motor_joint']
-        p = JointTrajectoryPoint()
-        p.positions = [pos]
-        p.velocities = [0]
-        p.effort = [0.1]
-        p.time_from_start = rospy.Time(1)
-        goal.trajectory.points = [p]
-        self._gripper_controller.send_goal(goal)
+        def set_gripper_joint_position(self, position):
+            """
+            Sets the gripper joint to the given  position
+            :param position: goal position of the joint -0.105 to 1.239 rad
+            :return: error_code of FollowJointTrajectoryResult
+            """
+            pos = max(min(1.239, position), -0.105)
+            goal = FollowJointTrajectoryGoal()
+            goal.trajectory.joint_names = [u'hand_motor_joint']
+            p = JointTrajectoryPoint()
+            p.positions = [pos]
+            p.velocities = [0]
+            p.effort = [0.1]
+            p.time_from_start = rospy.Time(1)
+            goal.trajectory.points = [p]
+            self._gripper_controller.send_goal(goal)
 
 
 class Reaching(ObjectGoal):
@@ -844,7 +843,7 @@ class Placing(ObjectGoal):
         self.velocity = velocity
         self.weight = weight
 
-        #self.from_above = check_context_element('from_above', ContextFromAbove, context)
+        # self.from_above = check_context_element('from_above', ContextFromAbove, context)
         self.align_vertical = align_vertical
 
         super().__init__(name=name)
@@ -868,6 +867,7 @@ class Placing(ObjectGoal):
                                                  start_condition=start_condition,
                                                  hold_condition=hold_condition,
                                                  end_condition=end_condition))
+
     # might need to be removed in the future, as soon as the old interface isn't in use anymore
 
     def recovery_modifier(self) -> Dict:
