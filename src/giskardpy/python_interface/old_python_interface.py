@@ -8,8 +8,10 @@ from controller_manager_msgs.srv import ListControllers, ListControllersResponse
     SwitchControllerResponse
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
-from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+import os
+if 'GITHUB_WORKFLOW' not in os.environ:
+    from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
+    from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectoryPoint
 
 from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
