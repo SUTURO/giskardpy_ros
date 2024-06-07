@@ -2,7 +2,9 @@ import string
 from typing import Optional
 
 import geometry_msgs
-import hsrb_interface.end_effector
+import os
+if 'GITHUB_WORKFLOW' not in os.environ:
+    import hsrb_interface.end_effector
 import rospy
 from geometry_msgs.msg import WrenchStamped
 
