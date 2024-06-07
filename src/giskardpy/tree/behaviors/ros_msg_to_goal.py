@@ -5,7 +5,7 @@ from py_trees import Status
 from giskard_msgs.msg import MoveGoal
 from giskardpy.exceptions import InvalidGoalException
 from giskardpy.goals.base_traj_follower import BaseTrajFollower
-from giskardpy.monitors.monitors import TimeAbove, LocalMinimumReached, EndMotion
+from giskardpy.monitors.monitors import TimeAbove, LocalMinimumReached, EndMotion, CancelMotion
 from giskardpy.god_map import god_map
 from giskardpy.model.joints import OmniDrive, DiffDrive
 from giskardpy.monitors.monitors import TimeAbove, LocalMinimumReached
@@ -38,7 +38,6 @@ class ParseActionGoal(GiskardBehavior):
     def update(self):
         move_goal = god_map.move_action_server.goal_msg
         loginfo(f'Parsing goal #{god_map.move_action_server.goal_id} message.')
-        self.sanity_check(move_goal)
         try:
             god_map.monitor_manager.parse_monitors(move_goal.monitors)
             god_map.motion_goal_manager.parse_motion_goals(move_goal.goals)
@@ -47,14 +46,21 @@ class ParseActionGoal(GiskardBehavior):
             raise InvalidGoalException('Couldn\'t transform goal')
         except Exception as e:
             raise e
+        self.sanity_check()
         # if god_map.is_collision_checking_enabled():
         #     god_map.motion_goal_manager.parse_collision_entries(move_goal.collisions)
         loginfo('Done parsing goal message.')
         return Status.SUCCESS
 
-    def sanity_check(self, move_goal: MoveGoal):
-        if not end_motion_in_move_goal(move_goal):
-            logging.logwarn(f'No {EndMotion.__name__} monitor.')
+    def sanity_check(self) -> None:
+        if (not god_map.monitor_manager.has_end_motion_monitor()
+                and not god_map.monitor_manager.has_cancel_motion_monitor()):
+            logging.logwarn(f'No {EndMotion.__name__} or {CancelMotion.__name__} monitor specified. '
+                            f'Motion will not stop unless cancelled externally.')
+            return
+        if not god_map.monitor_manager.has_end_motion_monitor():
+            logging.logwarn(f'No {EndMotion.__name__} monitor specified. Motion can\'t end successfully.')
+
 
 
 class SetExecutionMode(GiskardBehavior):
@@ -67,7 +73,8 @@ class SetExecutionMode(GiskardBehavior):
     @record_time
     @profile
     def update(self):
-        loginfo(f'Goal is of type {get_ros_msgs_constant_name_by_value(type(god_map.move_action_server.goal_msg), god_map.move_action_server.goal_msg.type)}')
+        loginfo(
+            f'Goal is of type {get_ros_msgs_constant_name_by_value(type(god_map.move_action_server.goal_msg), god_map.move_action_server.goal_msg.type)}')
         if god_map.is_goal_msg_type_projection():
             god_map.tree.switch_to_projection()
         elif god_map.is_goal_msg_type_execute():

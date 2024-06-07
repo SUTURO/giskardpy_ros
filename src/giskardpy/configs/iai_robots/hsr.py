@@ -1,10 +1,14 @@
 import numpy as np
+import rospy
 
 from giskardpy.configs.collision_avoidance_config import CollisionAvoidanceConfig
 from giskardpy.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
 from giskardpy.configs.world_config import WorldConfig
 from giskardpy.data_types import PrefixName, Derivatives
+from giskardpy.god_map import god_map
+from giskardpy.model.utils import robot_name_from_urdf_string
 from giskardpy.utils import logging
+import giskardpy.utils.tfwrapper as tf
 
 
 class WorldWithHSRConfig(WorldConfig):
@@ -66,6 +70,28 @@ class WorldWithHSRConfig(WorldConfig):
             Derivatives.jerk: 10,
         },
             joint_name='arm_lift_joint')
+
+
+class SuturoArenaWithHSRConfig(WorldWithHSRConfig):
+
+    def __init__(self, map_name: str = 'map', localization_joint_name: str = 'localization',
+                 odom_link_name: str = 'odom', drive_joint_name: str = 'brumbrum',
+                 description_name: str = 'robot_description',
+                 environment_name: str = 'kitchen_description'):
+        super().__init__(map_name, localization_joint_name, odom_link_name, drive_joint_name, description_name)
+        self.environment_name = environment_name
+
+    def setup(self):
+        super().setup()
+        urdf = rospy.get_param(self.environment_name)
+        self.kitchen_name = robot_name_from_urdf_string(urdf)
+        god_map.world.add_urdf(urdf=urdf,
+                               group_name=self.kitchen_name,
+                               actuated=False)
+        root_link_name = self.get_root_link_of_group(self.kitchen_name)
+        kitchen_pose = tf.lookup_pose(self.map_name, 'iai_kitchen/urdf_main')
+        self.add_fixed_joint(parent_link=self.map_name, child_link=root_link_name,
+                             homogenous_transform=tf.pose_to_np(kitchen_pose.pose))
 
 
 class HSRCollisionAvoidanceConfig(CollisionAvoidanceConfig):
