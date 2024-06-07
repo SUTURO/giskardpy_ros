@@ -32,18 +32,10 @@ from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.utils.logging import loginfo, logwarn
 
-if 'GITHUB_WORKFLOW' not in os.environ:
+if False:# 'GITHUB_WORKFLOW' not in os.environ:
     from manipulation_msgs.msg import ContextAction, ContextFromAbove, ContextNeatly, ContextObjectType, \
         ContextObjectShape, \
         ContextAlignVertical
-
-
-class ContextTypes(Enum):
-    context_action = ContextAction
-    context_from_above = ContextFromAbove
-    context_neatly = ContextNeatly
-    context_object_type = ContextObjectType
-    context_object_shape = ContextObjectShape
 
 
 class ContextActionModes(Enum):
@@ -425,7 +417,7 @@ class GraspObject(ObjectGoal):
 
 class VerticalMotion(ObjectGoal):
     def __init__(self,
-                 context: {str: ContextTypes},
+                 action: str = None,
                  name: str = None,
                  distance: float = 0.02,
                  root_link: Optional[str] = None,
@@ -438,7 +430,6 @@ class VerticalMotion(ObjectGoal):
         """
         Move the tip link vertical according to the given context.
 
-        :param context: Same parameter as in the goal 'Reaching'
         :param distance: Optional parameter to adjust the distance to move.
         :param root_link: Current root Link
         :param tip_link: Current tip link
@@ -454,14 +445,13 @@ class VerticalMotion(ObjectGoal):
             root_link = 'base_footprint'
         if tip_link is None:
             tip_link = self.gripper_tool_frame
-        self.context = context
         self.distance = distance
         self.root_link = god_map.world.search_for_link_name(root_link)
         self.tip_link = god_map.world.search_for_link_name(tip_link)
         self.velocity = velocity
         self.weight = weight
         self.base_footprint = god_map.world.search_for_link_name('base_footprint')
-        self.action = check_context_element('action', ContextAction, self.context)
+        self.action = action
 
         start_point_tip = PoseStamped()
         start_point_tip.header.frame_id = self.tip_link.short_name
@@ -608,7 +598,8 @@ class Retracting(ObjectGoal):
 
 class AlignHeight(ObjectGoal):
     def __init__(self,
-                 context: {str: ContextTypes},
+                 action: str = None,
+                 from_above: bool = False,
                  name: str = None,
                  object_name: Optional[str] = None,
                  goal_pose: Optional[PoseStamped] = None,
@@ -665,7 +656,7 @@ class AlignHeight(ObjectGoal):
         self.velocity = velocity
         self.weight = weight
 
-        self.from_above = check_context_element('from_above', ContextFromAbove, context)
+        self.from_above = from_above
 
         self.base_footprint = god_map.world.search_for_link_name('base_footprint')
 
@@ -801,9 +792,32 @@ class GraspCarefully(ForceSensorGoal):
 
 class Placing(ObjectGoal):
 
+    def goal_cancel_condition(self):
+
+        if self.from_above:
+
+            y_torque_threshold = -0.15
+
+            z_force_threshold = 1.0
+
+            expression = (lambda sensor_values, _:
+                          (sensor_values[self.forward_force] >= z_force_threshold))
+            # or
+            # ((sensor_values[self.sideway_torque] >= y_torque_threshold))
+
+        else:
+            x_force_threshold = 0.0
+            y_torque_threshold = 0.15
+
+            expression = (lambda sensor_values, _:
+                          (sensor_values[self.upwards_force] <= x_force_threshold) or
+                          (sensor_values[self.sideway_torque] >= y_torque_threshold))
+
+        return expression
+
     def __init__(self,
-                 context: {str: ContextTypes},
                  goal_pose: PoseStamped,
+                 align_vertical: bool = False,
                  name: str = None,
                  root_link: Optional[str] = None,
                  tip_link: Optional[str] = None,
@@ -831,7 +845,7 @@ class Placing(ObjectGoal):
         self.weight = weight
 
         #self.from_above = check_context_element('from_above', ContextFromAbove, context)
-        self.align_vertical = check_context_element('align_vertical', ContextAlignVertical, context)
+        self.align_vertical = align_vertical
 
         super().__init__(name=name)
 
@@ -854,30 +868,7 @@ class Placing(ObjectGoal):
                                                  start_condition=start_condition,
                                                  hold_condition=hold_condition,
                                                  end_condition=end_condition))
-
     # might need to be removed in the future, as soon as the old interface isn't in use anymore
-    def goal_cancel_condition(self):
-
-        if self.from_above:
-
-            y_torque_threshold = -0.15
-
-            z_force_threshold = 1.0
-
-            expression = (lambda sensor_values, _:
-                          (sensor_values[self.forward_force] >= z_force_threshold))
-            # or
-            # ((sensor_values[self.sideway_torque] >= y_torque_threshold))
-
-        else:
-            x_force_threshold = 0.0
-            y_torque_threshold = 0.15
-
-            expression = (lambda sensor_values, _:
-                          (sensor_values[self.upwards_force] <= x_force_threshold) or
-                          (sensor_values[self.sideway_torque] >= y_torque_threshold))
-
-        return expression
 
     def recovery_modifier(self) -> Dict:
         joint_states = {'arm_lift_joint': 0.03}
