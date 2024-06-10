@@ -18,7 +18,6 @@ class Open(Goal):
                  tip_link: str,
                  environment_link: str,
                  special_door: Optional[bool] = False,
-                 special_door_state: Optional[float] = 0.0,
                  tip_group: Optional[str] = None,
                  environment_group: Optional[str] = None,
                  goal_joint_state: Optional[float] = None,
