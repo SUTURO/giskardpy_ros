@@ -8,6 +8,7 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
+from tmc_control_msgs.msg import GripperApplyEffortActionGoal, GripperApplyEffortActionResult
 
 from giskard_msgs.msg import GiskardError
 from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
@@ -1233,3 +1234,21 @@ class TestSUTURO:
                  compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
         compare_poses(m_P_g.pose, keep_rotation_pose.pose)
+
+    def test_hsr_open_close_gripper(self, zero_pose: HSRTestWrapper):
+        echo = rospy.Publisher('/hsrb/gripper_controller/grasp/result', GripperApplyEffortActionResult,
+                               queue_size=1)
+        gripper_open = zero_pose.monitors.add_open_hsr_gripper(name='open')
+        gripper_closed = zero_pose.monitors.add_close_hsr_gripper(name='close',
+                                                                  start_condition=gripper_open)
+        zero_pose.monitors.add_end_motion(start_condition=gripper_closed)
+        zero_pose.execute(add_local_minimum_reached=False, wait=False)
+
+        for i in range(2):
+            msg: GripperApplyEffortActionGoal = rospy.wait_for_message('/hsrb/gripper_controller/grasp/goal',
+                                                                       GripperApplyEffortActionGoal)
+            result = GripperApplyEffortActionResult()
+            result.status.goal_id = msg.goal_id
+            echo.publish(result)
+        result = zero_pose.get_result()
+        assert result.error.code == GiskardError.SUCCESS

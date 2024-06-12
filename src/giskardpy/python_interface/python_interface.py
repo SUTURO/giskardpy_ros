@@ -6,6 +6,8 @@ from actionlib import SimpleActionClient
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped
 from rospy import ServiceException
 from shape_msgs.msg import SolidPrimitive
+
+from giskardpy.monitors.hsr_gripper import OpenHsrGripper, CloseHsrGripper
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 import giskard_msgs.msg as giskard_msgs
@@ -1681,6 +1683,25 @@ class MonitorWrapper:
                                 frame_id=frame_id,
                                 laser_distance_threshold_width=laser_distance_threshold_width,
                                 laser_distance_threshold=laser_distance_threshold)
+
+    def add_open_hsr_gripper(self, start_condition: str = '', name: Optional[str] = None) -> str:
+        """
+        The monitor will send a force to the HSR's gripper to open it.
+        """
+        name = name or OpenHsrGripper.__name__
+        return self.add_monitor(monitor_class=OpenHsrGripper.__name__,
+                                name=name,
+                                start_condition=start_condition)
+
+    def add_close_hsr_gripper(self, start_condition: str = '', name: Optional[str] = None) -> str:
+        """
+        The monitor will send a force to the HSR's gripper to close it.
+        """
+        name = name or CloseHsrGripper.__name__
+        return self.add_monitor(monitor_class=CloseHsrGripper.__name__,
+                                name=name,
+                                start_condition=start_condition)
+
 
 
 class GiskardWrapper:
