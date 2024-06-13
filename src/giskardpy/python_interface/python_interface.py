@@ -7,7 +7,6 @@ from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, Quatern
 from rospy import ServiceException
 from shape_msgs.msg import SolidPrimitive
 
-from giskardpy.monitors.hsr_gripper import OpenHsrGripper, CloseHsrGripper
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 import giskard_msgs.msg as giskard_msgs
@@ -1688,6 +1687,7 @@ class MonitorWrapper:
         """
         The monitor will send a force to the HSR's gripper to open it.
         """
+        from giskardpy.monitors.hsr_gripper import OpenHsrGripper
         name = name or OpenHsrGripper.__name__
         return self.add_monitor(monitor_class=OpenHsrGripper.__name__,
                                 name=name,
@@ -1697,6 +1697,7 @@ class MonitorWrapper:
         """
         The monitor will send a force to the HSR's gripper to close it.
         """
+        from giskardpy.monitors.hsr_gripper import CloseHsrGripper
         name = name or CloseHsrGripper.__name__
         return self.add_monitor(monitor_class=CloseHsrGripper.__name__,
                                 name=name,
