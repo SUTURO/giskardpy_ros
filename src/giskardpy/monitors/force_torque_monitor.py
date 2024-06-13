@@ -16,7 +16,7 @@ from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
 
 class PayloadForceTorque(PayloadMonitor):
     """
-    The Payload_Force class creates a monitor for the usage of the HSRs Force-Torque Sensor.
+    The PayloadForceTorque class creates a monitor for the usage of the HSRs Force-Torque Sensor.
     This makes it possible for goals which use the Force-Torque Sensor to be used with Monitors,
     specifically to end/hold a goal automatically when a certain Force/Torque Threshold is being surpassed.
     """
@@ -175,6 +175,7 @@ class PayloadForceTorque(PayloadMonitor):
 
                 if (self.threshold_name == ForceTorqueThresholds.FT_PlaceCutlery.value
                         & self.topic == "compensated/diff"):
+                    self.topic = "filtered_raw"
                     # TODO: Add proper Thresholds and Checks for placing Cutlery
                     print(f'filtered Force: {rob_force}')
                     print(f'filtered Torque: {rob_torque}')

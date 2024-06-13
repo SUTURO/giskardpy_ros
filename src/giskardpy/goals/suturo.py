@@ -268,7 +268,6 @@ class GraspObject(ObjectGoal):
                  align: str,
                  offsets: Vector3 = Vector3(0, 0, 0),
                  grasp: str = 'front',
-                 align_vertical: bool = False,
                  name: Optional[str] = None,
                  reference_frame_alignment: Optional[str] = None,
                  root_link: Optional[str] = None,
@@ -286,7 +285,7 @@ class GraspObject(ObjectGoal):
 
             :param goal_pose: Goal pose for the object.
             :param offsets: Optional parameter to pass a specific offset in x, y or z direction
-            :param align_vertical: States if the gripper should be rotated.
+            :param align: States if the gripper should be rotated and in which "direction"
             :param reference_frame_alignment: Reference frame to align with. Is usually either an object link or 'base_footprint'
             :param root_link: Current root Link
             :param tip_link: Current tip link
@@ -302,7 +301,6 @@ class GraspObject(ObjectGoal):
         self.offsets = offsets
         self.grasp = grasp
         self.align = align
-        self.align_vertical = align_vertical
 
         if reference_frame_alignment is None:
             reference_frame_alignment = 'base_footprint'
@@ -366,7 +364,7 @@ class GraspObject(ObjectGoal):
             self.goal_frontal_axis.vector = multiply_vector(self.gripper_left, -1)
             self.goal_vertical_axis.vector = self.standard_up
 
-        if self.align_vertical:
+        if self.align == "vertical":
             self.tip_vertical_axis.vector = self.gripper_left
 
         else:
@@ -726,97 +724,11 @@ class AlignHeight(ObjectGoal):
                                                        end_condition=end_condition))
 
 
-# TODO: Delete GraspCarefully as a goal when the Grasping logic of the Force-Torque Monitor is finished, because at that point it'll be deprecated
-class GraspCarefully(ForceSensorGoal):
-    def __init__(self,
-                 goal_pose: PoseStamped,
-                 name: str = None,
-                 frontal_offset: float = 0.0,
-                 from_above: bool = False,
-                 align_vertical: bool = False,
-                 reference_frame_alignment: Optional[str] = None,
-                 root_link: Optional[str] = None,
-                 tip_link: Optional[str] = None,
-                 velocity: float = 0.02,
-                 weight: float = WEIGHT_ABOVE_CA,
-                 start_condition: w.Expression = w.TrueSymbol,
-                 hold_condition: w.Expression = w.FalseSymbol,
-                 end_condition: w.Expression = w.FalseSymbol):
-        """
-        Same as GraspObject but with force sensor to avoid bumping into things (e.g. door for door opening).
-
-        :param goal_pose: Goal pose for the object.
-        :param frontal_offset: Optional parameter to pass a specific offset
-        :param from_above: States if the gripper should be aligned frontal or from above
-        :param align_vertical: States if the gripper should be rotated.
-        :param reference_frame_alignment: Reference frame to align with. Is usually either an object link or 'base_footprint'
-        :param root_link: Current root Link
-        :param tip_link: Current tip link
-        :param velocity: Desired velocity of this goal
-        :param weight: weight of this goal
-
-        """
-        if name is None:
-            name = 'GraspCarefully'
-
-        super().__init__(name)
-
-        self.add_constraints_of_goal(GraspObject(goal_pose=goal_pose,
-                                                 reference_frame_alignment=reference_frame_alignment,
-                                                 frontal_offset=frontal_offset,
-                                                 from_above=from_above,
-                                                 align_vertical=align_vertical,
-                                                 root_link=root_link,
-                                                 tip_link=tip_link,
-                                                 velocity=velocity,
-                                                 weight=weight,
-                                                 start_condition=start_condition,
-                                                 hold_condition=hold_condition,
-                                                 end_condition=end_condition))
-
-    # might need to be removed in the future, as soon as the old interface isn't used by anymore
-    def goal_cancel_condition(self):
-        force_threshold = 5.0
-
-        expression = (lambda sensor_values, _:
-                      (abs(sensor_values['x_force']) >= force_threshold) or
-                      (abs(sensor_values['y_force']) >= force_threshold) or
-                      (abs(sensor_values['z_force']) >= force_threshold))
-
-        return expression
-
-    def recovery(self) -> Dict:
-        return {}
-
-
 class Placing(ObjectGoal):
 
-    def goal_cancel_condition(self):
-
-        if self.from_above:
-
-            y_torque_threshold = -0.15
-
-            z_force_threshold = 1.0
-
-            expression = (lambda sensor_values, _:
-                          (sensor_values[self.forward_force] >= z_force_threshold))
-            # or
-            # ((sensor_values[self.sideway_torque] >= y_torque_threshold))
-
-        else:
-            x_force_threshold = 0.0
-            y_torque_threshold = 0.15
-
-            expression = (lambda sensor_values, _:
-                          (sensor_values[self.upwards_force] <= x_force_threshold) or
-                          (sensor_values[self.sideway_torque] >= y_torque_threshold))
-
-        return expression
-
     def __init__(self,
                  goal_pose: PoseStamped,
-                 align_vertical: bool = False,
+                 align: str,
                  name: str = None,
                  root_link: Optional[str] = None,
                  tip_link: Optional[str] = None,
@@ -842,9 +754,9 @@ class Placing(ObjectGoal):
         self.goal_pose = goal_pose
         self.velocity = velocity
         self.weight = weight
+        self.align = align
 
         # self.from_above = check_context_element('from_above', ContextFromAbove, context)
-        self.align_vertical = align_vertical
 
         super().__init__(name=name)
 
@@ -859,7 +771,6 @@ class Placing(ObjectGoal):
         self.add_constraints_of_goal(GraspObject(goal_pose=self.goal_pose,
                                                  align='',
                                                  grasp='',
-                                                 align_vertical=self.align_vertical,
                                                  root_link=self.root_link.short_name,
                                                  tip_link=self.tip_link.short_name,
                                                  velocity=self.velocity,
