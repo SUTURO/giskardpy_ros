@@ -176,6 +176,9 @@ class Reaching(ObjectGoal):
             Context is a dictionary in an action is given as well as situational parameters.
             All available context Messages are found in the Enum 'ContextTypes'
 
+            :param grasp: Direction from which object is being grasped from
+            :param align: String which decides whether HSR tries to vertically align with the object before reaching
+            :param name: name of the executed goal, in this case Reaching
             :param object_name: Name of the object to use. Optional as long as goal_pose and object_size are filled instead
             :param object_shape: Shape of the object to manipulate. Edit object size when having a sphere or cylinder
             :param goal_pose: Goal pose for the object. Alternative if no object name is given.
@@ -284,8 +287,10 @@ class GraspObject(ObjectGoal):
             All available context Messages are found in the Enum 'ContextTypes'
 
             :param goal_pose: Goal pose for the object.
-            :param offsets: Optional parameter to pass a specific offset in x, y or z direction
             :param align: States if the gripper should be rotated and in which "direction"
+            :param offsets: Optional parameter to pass a specific offset in x, y or z direction
+            :param grasp: The Direction from with an object should be grasped
+            :param name: Name of the executed goal, in this case GraspObject
             :param reference_frame_alignment: Reference frame to align with. Is usually either an object link or 'base_footprint'
             :param root_link: Current root Link
             :param tip_link: Current tip link
@@ -423,6 +428,8 @@ class VerticalMotion(ObjectGoal):
         """
         Move the tip link vertical according to the given context.
 
+        :param action: Action to take.
+        :param name: Name of the goal, in this case VerticalMotion.
         :param distance: Optional parameter to adjust the distance to move.
         :param root_link: Current root Link
         :param tip_link: Current tip link
@@ -496,7 +503,6 @@ class VerticalMotion(ObjectGoal):
 
 class Retracting(ObjectGoal):
     def __init__(self,
-                 object_name='',
                  name: str = None,
                  distance: float = 0.3,
                  reference_frame: Optional[str] = None,
@@ -511,7 +517,7 @@ class Retracting(ObjectGoal):
         Retract the tip link from the current position by the given distance.
         The exact direction is based on the given reference frame.
 
-        :param object_name: Unused parameter that exists because cram throws errors when calling a goal without a parameter
+        :param name: Name of the goal, in this case Retracting.
         :param distance: Optional parameter to adjust the distance to move.
         :param reference_frame: Reference axis from which should be retracted. Is usually 'base_footprint' or 'hand_palm_link'
         :param root_link: Current root Link
@@ -591,7 +597,6 @@ class Retracting(ObjectGoal):
 
 class AlignHeight(ObjectGoal):
     def __init__(self,
-                 action: str = None,
                  from_above: bool = False,
                  name: str = None,
                  object_name: Optional[str] = None,
@@ -607,7 +612,8 @@ class AlignHeight(ObjectGoal):
         """
         Align the tip link with the given goal_pose to prepare for further action (e.g. grasping or placing)
 
-        :param context: Same parameter as in the goal 'Reaching'
+        :param from_above: whether action should be executed from above or not
+        :param name: Name of the goal, in this case AlignHeight
         :param object_name: name of the object if added to world
         :param goal_pose: final destination pose
         :param object_height: height of the target object. Used as additional offset.
@@ -735,10 +741,12 @@ class Placing(ObjectGoal):
                  end_condition: w.Expression = w.FalseSymbol):
 
         """
-        Place an object using the force-/torque-sensor.
+        Place an object. Use monitor_placing in python_interface.py in
+         case of using the force-/torque-sensor to place objects.
 
-        :param context: Context similar to 'Reaching'. Only uses 'from_above' and 'align_vertical' as variables
         :param goal_pose: Goal pose for the object.
+        :param align: States if the gripper should be rotated and in which "direction"
+        :param name: Name of the goal, in this case Placing
         :param root_link: Current root Link
         :param tip_link: Current tip link
         :param velocity: Desired velocity of this goal
@@ -795,6 +803,7 @@ class Tilting(Goal):
         """
         Tilts the given tip link into one direction by a given angle.
 
+         :param name: Name of the goal, in this case Tilting
         :param direction: Direction in which to rotate the joint.
         :param angle: Amount how much the joint should be moved
         :param tip_link: The joint that should rotate. Default ensures correct usage for pouring.
