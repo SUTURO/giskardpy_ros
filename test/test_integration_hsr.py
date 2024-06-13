@@ -811,7 +811,7 @@ class TestSUTURO:
     # FIXME: add all grasp poses
     def test_grasp_object(self, zero_pose: HSRTestWrapper):
         grasps = ['front', 'top']
-        align_vertical_modes = [False, True]
+        align_vertical_modes = ['horizontal', 'vertical']
 
         grasp_pose_1 = PoseStamped()
         grasp_pose_1.header.frame_id = 'map'
@@ -869,8 +869,7 @@ class TestSUTURO:
                 zero_pose.motion_goals.add_motion_goal(motion_goal_class=GraspObject.__name__,
                                                        goal_pose=target_pose,
                                                        grasp=grasp,
-                                                       align='',
-                                                       align_vertical=align_vertical_mode,
+                                                       align=align_vertical_mode,
                                                        root_link='map',
                                                        tip_link='hand_palm_link')
 
