@@ -8,7 +8,6 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
-from tmc_control_msgs.msg import GripperApplyEffortActionGoal, GripperApplyEffortActionResult
 
 from giskard_msgs.msg import GiskardError
 from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
@@ -25,6 +24,7 @@ from utils_for_tests import compare_poses, GiskardTestWrapper
 
 if 'GITHUB_WORKFLOW' not in os.environ:
     from giskardpy.goals.suturo import ContextActionModes, Reaching, TakePose, GraspObject, VerticalMotion, AlignHeight
+    from tmc_control_msgs.msg import GripperApplyEffortActionGoal, GripperApplyEffortActionResult
 
 
 class HSRTestWrapper(GiskardTestWrapper):
