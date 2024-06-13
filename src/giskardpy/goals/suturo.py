@@ -336,24 +336,20 @@ class GraspObject(ObjectGoal):
 
         self.goal_point = transform_msg(self.reference_link, root_goal_point)
 
-        # TODO: Offsets überprüfen und weitere hinzufügen
         if self.grasp == GraspTypes.ABOVE.value:
             self.goal_vertical_axis.vector = self.standard_forward
             self.goal_frontal_axis.vector = multiply_vector(self.standard_up, -1)
-
             self.goal_point.point.z += self.offsets.z
 
         elif self.grasp == GraspTypes.BELOW.value:
             self.goal_vertical_axis.vector = multiply_vector(self.standard_forward, -1)
             self.goal_frontal_axis.vector = self.standard_up
-
             self.goal_point.point.z -= self.offsets.z
 
         elif self.grasp == GraspTypes.FRONT.value:
             self.goal_vertical_axis.vector = self.standard_up
             self.goal_frontal_axis.vector = self.base_forward
 
-            self.goal_point.point.x += self.offsets.x
             self.goal_point.point.z -= 0.01
 
         elif self.grasp == GraspTypes.LEFT.value:
