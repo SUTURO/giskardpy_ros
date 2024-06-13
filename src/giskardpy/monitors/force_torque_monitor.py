@@ -12,7 +12,6 @@ import giskardpy.casadi_wrapper as cas
 from giskardpy.god_map import god_map
 from giskardpy.monitors.monitors import PayloadMonitor
 from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
-from giskardpy.utils import logging
 
 
 class PayloadForceTorque(PayloadMonitor):
@@ -27,8 +26,7 @@ class PayloadForceTorque(PayloadMonitor):
                  threshold_name: string,
                  # object_type is needed to differentiate between objects with different placing thresholds
                  object_type: Optional[str] = None,
-                 topic: string = "/hsrb/wrist_wrench/compensated",
-                 filter_topic: string = "rebuilt_signal",  # Might be unnecessary
+                 topic: string = "/compensated/diff",
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol
                  ):
@@ -44,7 +42,6 @@ class PayloadForceTorque(PayloadMonitor):
         self.object_type = object_type
         self.threshold_name = threshold_name
         self.topic = topic
-        self.filter_topic = filter_topic  # filter_topic is used for the rebuilt_signal topic of the raw filter
         self.wrench = WrenchStamped()
         self.subscriber = rospy.Subscriber(name=topic,
                                            data_class=WrenchStamped, callback=self.cb)
@@ -105,11 +102,12 @@ class PayloadForceTorque(PayloadMonitor):
                         print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
                     else:
                         self.state = True
-                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.") # might not be needed at all, since monitor basically gives out signal
+                        raise Exception("HSR failed to Grasp Object, Grasping threshold has been Undershot.") # might not be needed at all, since monitor basically gives out signal
 
                 # case for grasping cutlery
                 elif self.object_type == ObjectTypes.OT_Cutlery.value:
-
+                    self.topic = "filtered_raw"
+                    # switch to filtered_raw / filtered_raw/diff
                     force_threshold = 0.2
                     torque_threshold = 0.02
 
@@ -119,7 +117,7 @@ class PayloadForceTorque(PayloadMonitor):
                         print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
                     else:
                         self.state = True
-                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.")
+                        raise Exception("HSR failed to Grasp Object, Grasping threshold has been Undershot.")
 
                 # case for grasping plate
                 elif self.object_type == ObjectTypes.OT_Plate.value:
@@ -133,7 +131,7 @@ class PayloadForceTorque(PayloadMonitor):
                         print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
                     else:
                         self.state = True
-                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.")
+                        raise Exception("HSR failed to Grasp Object, Grasping threshold has been Undershot.")
 
                 # case for grasping Bowl
                 elif self.object_type == ObjectTypes.OT_Bowl.value:
@@ -147,7 +145,7 @@ class PayloadForceTorque(PayloadMonitor):
                         print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
                     else:
                         self.state = True
-                        raise Exception("HSR failed to Grasp Object,Grasping threshold has been Undershot.")
+                        raise Exception("HSR failed to Grasp Object, Grasping threshold has been Undershot.")
 
                 # if no valid object_type has been declared in method parameters
                 else:
@@ -174,10 +172,9 @@ class PayloadForceTorque(PayloadMonitor):
 
             # case for placing cutlery
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
-                self.topic = "~/rebuilt_signal"
 
                 if (self.threshold_name == ForceTorqueThresholds.FT_PlaceCutlery.value
-                        & self.topic == "rebuilt_signal"):
+                        & self.topic == "compensated/diff"):
                     # TODO: Add proper Thresholds and Checks for placing Cutlery
                     print(f'filtered Force: {rob_force}')
                     print(f'filtered Torque: {rob_torque}')
