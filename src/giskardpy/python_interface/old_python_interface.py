@@ -898,12 +898,6 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         return self.world.clear()
 
-    def move_gripper(self,
-                     gripper_state: str):
-
-        self.motion_goals.add_motion_goal(motion_goal_class='MoveGripper',
-                                          gripper_state=gripper_state)
-
     def reaching(self,
                  grasp: str,
                  align: str,
