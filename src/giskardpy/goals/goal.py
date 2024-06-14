@@ -189,13 +189,6 @@ class Goal(ABC):
             god_map.monitor_manager.add_payload_monitor(monitor)
 
 
-class NonMotionGoal(Goal):
-    """
-    Inherit from this goal, if the goal does not add any constraints.
-    """
-    pass
-
-
 class ForceSensorGoal(Goal):
     """
     Inherit from this goal, if the goal should use the Force Sensor.
