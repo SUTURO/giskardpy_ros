@@ -31,7 +31,7 @@ from giskardpy.goals.pre_push_door import PrePushDoor
 from giskardpy.goals.realtime_goals import RealTimePointing, RealTimePointingPose
 from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
 from giskardpy.goals.suturo import GraspBarOffset, Reaching, Placing, VerticalMotion, AlignHeight, TakePose, Tilting, \
-    JointRotationGoalContinuous, Mixing, OpenDoorGoal
+    JointRotationGoalContinuous, Mixing, OpenDoorGoal, Retracting
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, PointingAt, \
     VectorsAligned, DistanceToLine
@@ -2014,6 +2014,7 @@ class GiskardWrapper:
         adds monitor functionality for the Placing motion goal, goal now stops if force_threshold is overstepped,
         which means the HSR essentially stops automatically after placing the object.
         """
+
         sleep = self.monitors.add_sleep(1.5)
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
@@ -2029,13 +2030,16 @@ class GiskardWrapper:
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
         local_min = self.monitors.add_local_minimum_reached()
+
+        self.monitors.add_cancel_motion(local_min, "HSR IS UNABLE TO PLACE OBJECT", 810)
         self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
         self.monitors.add_max_trajectory_length(100)
 
+        #  TODO: Add gripper monitor as start condition when it's merged in
+
     def monitor_grasp_carefully(self,
                                 goal_pose: PoseStamped,
-                                from_above: bool = False,
-                                align_vertical: bool = False,
+                                align: str,
                                 reference_frame_alignment: Optional[str] = None,
                                 object_name: str = "",
                                 object_type: str = "",
@@ -2049,16 +2053,16 @@ class GiskardWrapper:
         to open doors or fails to properly grip an object.
         """
         sleep = self.monitors.add_sleep(1.5)
+
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
-                                                         start_condition='',
+                                                         start_condition='',  # add gripper monitor as start condition
                                                          threshold_name=threshold_name,
                                                          object_type=object_type)
 
         self.motion_goals.add_motion_goal(motion_goal_class='Reaching',
                                           goal_pose=goal_pose,
-                                          from_above=from_above,
-                                          align_vertical=align_vertical,
+                                          align=align,
                                           reference_frame_alignment=reference_frame_alignment,
                                           object_name=object_name,
                                           root_link=root_link,
@@ -2068,3 +2072,28 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
         self.monitors.add_end_motion(start_condition=f'{local_min}')
         self.monitors.add_max_trajectory_length(100)
+
+    def monitor_transport_check(self,
+                                object_type: str = "",
+                                threshold_name: str = ""):
+
+        self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                  name=PayloadForceTorque.__name__,
+                                  start_condition='',
+                                  threshold_name=threshold_name,
+                                  object_type=object_type)
+
+    def monitor_full_grasping(self,
+                              goal_pose: PoseStamped,
+                              align: str,
+                              reference_frame_alignment: Optional[str] = None,
+                              object_name: str = "",
+                              object_type: str = "",
+                              threshold_name: str = "",
+                              root_link: Optional[str] = None,
+                              tip_link: Optional[str] = None):
+
+        self.monitor_grasp_carefully(goal_pose, align, reference_frame_alignment, object_name, object_type,
+                                     threshold_name, root_link, tip_link)
+
+        self.monitor_transport_check(object_type, threshold_name)
