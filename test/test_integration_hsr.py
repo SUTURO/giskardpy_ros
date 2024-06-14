@@ -5,7 +5,7 @@ from typing import Optional
 import numpy as np
 import pytest
 import rospy
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped, Vector3
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
@@ -791,7 +791,7 @@ class TestSUTURO:
     # FIXME: add all grasp poses
     def test_grasp_object(self, zero_pose: HSRTestWrapper):
         grasps = ['front', 'top']
-        align_vertical_modes = [False, True]
+        align_vertical_modes = ['horizontal', 'vertical']
 
         grasp_pose_1 = PoseStamped()
         grasp_pose_1.header.frame_id = 'map'
@@ -844,13 +844,15 @@ class TestSUTURO:
         target_pose.pose.position.x = 1
         target_pose.pose.position.z = 0.7
 
+        offsets = Vector3(0.1, 0, 0)
+
         for grasp in grasps:
             for align_vertical_mode in align_vertical_modes:
                 zero_pose.motion_goals.add_motion_goal(motion_goal_class=GraspObject.__name__,
                                                        goal_pose=target_pose,
                                                        grasp=grasp,
-                                                       align='',
-                                                       align_vertical=align_vertical_mode,
+                                                       offsets=offsets,
+                                                       align=align_vertical_mode,
                                                        root_link='map',
                                                        tip_link='hand_palm_link')
 
@@ -1016,7 +1018,6 @@ class TestSUTURO:
             target_pose.pose.position.z = 0.7
 
             zero_pose.motion_goals.add_motion_goal(motion_goal_class=AlignHeight.__name__,
-                                                   action=action,
                                                    from_above=from_above,
                                                    object_name='',
                                                    goal_pose=target_pose,
