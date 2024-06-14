@@ -18,7 +18,8 @@ from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
 from giskardpy.goals.realtime_goals import RealTimePointingPose
-from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting, TakePose, OpenDoorGoal, MoveAroundDishwasher
+from giskardpy.goals.suturo import Reaching, Placing, Retracting, Tilting, TakePose, OpenDoorGoal, MoveAroundDishwasher, \
+    VerticalMotion, AlignHeight
 from giskardpy.python_interface.python_interface import GiskardWrapper
 from giskardpy.suturo_types import GripperTypes
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
@@ -944,13 +945,13 @@ class OldGiskardWrapper(GiskardWrapper):
                                           velocity=velocity)
 
     def vertical_motion(self,
-                        context: str,
+                        action: str,
                         distance: float = 0.02,
                         root_link: str = 'base_link',
                         tip_link: str = 'hand_palm_link'):
 
-        self.motion_goals.add_motion_goal(motion_goal_class='VerticalMotion',
-                                          context=context,
+        self.motion_goals.add_motion_goal(motion_goal_class=VerticalMotion.__name__,
+                                          action=action,
                                           distance=distance,
                                           root_link=root_link,
                                           tip_link=tip_link)
@@ -972,15 +973,15 @@ class OldGiskardWrapper(GiskardWrapper):
                                           velocity=velocity)
 
     def align_height(self,
-                     context,
                      object_name: str,
                      goal_pose: PoseStamped,
                      object_height: float,
+                     from_above: bool = False,
                      root_link: str = 'map',
                      tip_link: str = 'hand_gripper_tool_frame'):
 
-        self.motion_goals.add_motion_goal(motion_goal_class='AlignHeight',
-                                          context=context,
+        self.motion_goals.add_motion_goal(motion_goal_class=AlignHeight.__name__,
+                                          from_above=from_above,
                                           object_name=object_name,
                                           goal_pose=goal_pose,
                                           object_height=object_height,

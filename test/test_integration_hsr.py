@@ -1038,7 +1038,6 @@ class TestSUTURO:
             target_pose.pose.position.z = 0.7
 
             zero_pose.motion_goals.add_motion_goal(motion_goal_class=AlignHeight.__name__,
-                                                   action=action,
                                                    from_above=from_above,
                                                    object_name='',
                                                    goal_pose=target_pose,
