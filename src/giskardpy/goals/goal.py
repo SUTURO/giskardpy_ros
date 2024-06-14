@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 from abc import ABC
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 import controller_manager_msgs
 # import giskardpy.identifier as identifier
@@ -194,3 +194,17 @@ class NonMotionGoal(Goal):
     Inherit from this goal, if the goal does not add any constraints.
     """
     pass
+
+
+class WaitingGoal(NonMotionGoal):
+    """
+    Goal to use when you want to continuously monitor something without a MotionGoal
+    """
+    def __init__(self,
+                 name: Optional[str] = None,
+                 start_condition: cas.Expression = cas.TrueSymbol,
+                 hold_condition: cas.Expression = cas.FalseSymbol,
+                 end_condition: cas.Expression = cas.FalseSymbol):
+        if name is None:
+            name = self.__class__.__name__
+        super().__init__(name=name)
