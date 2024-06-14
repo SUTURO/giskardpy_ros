@@ -12,6 +12,7 @@ class Job:
     def do_work(self, data: deque) -> np.ndarray:
         pass
 
+
 class Filter(Job):
     def __init__(self, cutoff, fs, order):
         self.cutoff = cutoff
@@ -31,11 +32,14 @@ class Filter(Job):
         y = lfilter(b, a, data)
         return y
 
+
 class Diff(Job):
     def __init__(self, dt: float):
         self.dt = dt
+
     def do_work(self, data: deque) -> np.ndarray:
         return np.gradient(data) / self.dt
+
 
 class ForceTorqueRawFilter:
 
@@ -87,7 +91,6 @@ class ForceTorqueRawFilter:
 
     def rebuild_signal(self, F_x: np.ndarray, F_y: np.ndarray, F_z: np.ndarray,
                        T_x: np.ndarray, T_y: np.ndarray, T_z: np.ndarray) -> WrenchStamped:
-
         rebuild_force = geometry_msgs.msg.Vector3(F_x, F_y, F_z)
         rebuild_torque = geometry_msgs.msg.Vector3(T_x, T_y, T_z)
 
@@ -107,9 +110,9 @@ if __name__ == '__main__':
                                                order=5))  # Order of the filter))
     diff = ForceTorqueRawFilter(input_topic="/hsrb/wrist_wrench/compensated",
                                 output_topic='compensated/diff',
-                                 worker=Diff(dt=0.01))  # Order of the filter))
+                                worker=Diff(dt=0.01))  # Order of the filter))
     force_diff = ForceTorqueRawFilter(input_topic="filtered_raw",
-                                output_topic='filtered_raw/diff',
-                                 worker=Diff(dt=0.01))  # Order of the filter))
+                                      output_topic='filtered_raw/diff',
+                                      worker=Diff(dt=0.01))  # Order of the filter))
     rospy.loginfo('wrench filter running')
     rospy.spin()

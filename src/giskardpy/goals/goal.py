@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 from abc import ABC
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 
 import controller_manager_msgs
 # import giskardpy.identifier as identifier
