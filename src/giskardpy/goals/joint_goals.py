@@ -11,9 +11,6 @@ from giskardpy.model.joints import OneDofJoint
 from giskardpy.symbol_manager import symbol_manager
 from giskardpy.tasks.task import WEIGHT_BELOW_CA
 
-    def __str__(self):
-        s = super().__str__()
-        return f'{s}/{self.joint_name}'
 
 class JointVelocityLimit(Goal):
     def __init__(self,
