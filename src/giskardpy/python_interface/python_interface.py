@@ -1,12 +1,12 @@
 from collections import defaultdict
 from typing import Dict, Tuple, Optional, List
+
 import numpy as np
 import rospy
 from actionlib import SimpleActionClient
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped
 from rospy import ServiceException
 from shape_msgs.msg import SolidPrimitive
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
@@ -14,6 +14,7 @@ from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, Mo
 from giskard_msgs.srv import DyeGroupRequest, DyeGroup, GetGroupInfoRequest, DyeGroupResponse
 from giskard_msgs.srv import GetGroupInfo, GetGroupNames
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse
+from giskardpy.casadi_wrapper import Vector3
 from giskardpy.data_types import goal_parameter
 from giskardpy.exceptions import DuplicateNameException, UnknownGroupException
 from giskardpy.goals.align_planes import AlignPlanes
@@ -27,9 +28,10 @@ from giskardpy.goals.joint_goals import JointPositionList, AvoidJointLimits, Set
 from giskardpy.goals.open_close import Close, Open
 from giskardpy.goals.pointing import Pointing
 from giskardpy.goals.pre_push_door import PrePushDoor
-from giskardpy.goals.realtime_goals import RealTimePointing
+from giskardpy.goals.realtime_goals import RealTimePointing, RealTimePointingPose
 from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
-from giskardpy.goals.suturo import GraspBarOffset
+from giskardpy.goals.suturo import GraspBarOffset, Reaching, Placing, VerticalMotion, AlignHeight, TakePose, Tilting, \
+    JointRotationGoalContinuous, Mixing, OpenDoorGoal
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, PointingAt, \
     VectorsAligned, DistanceToLine
@@ -40,10 +42,11 @@ from giskardpy.monitors.monitors import EndMotion
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator
 from giskardpy.monitors.payload_monitors import Print, Sleep, CancelMotion, SetMaxTrajectoryLength, \
     PayloadAlternator
-from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes
+from giskardpy.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import get_all_classes_in_package
 from giskardpy.utils.utils import kwargs_to_json
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
 class WorldWrapper:
@@ -1318,6 +1321,191 @@ class MotionGoalWrapper:
                              hold_condition=hold_condition,
                              end_condition=end_condition,
                              **kwargs)
+
+    def add_reaching(self,
+                     grasp: str,
+                     align: str,
+                     object_name: str,
+                     object_shape: str,
+                     goal_pose: Optional[PoseStamped] = None,
+                     object_size: Optional[Vector3] = None,
+                     root_link: str = 'map',
+                     tip_link: str = 'hand_palm_link',
+                     velocity: float = 0.2):
+        """
+        :param grasp: direction to grasp from, directions are: front, top, right, left, below
+        :param align: the frame that the wrist frame aligns with, will be ignored if left empty
+        :param object_name: name of object that should be reached
+        :param object_shape: shape of the object (current options are cylinder, sphere and rectangle)
+        :param goal_pose: position of the goal that should be reached
+        :param object_size: size of the object as a Vector3 (in meters)
+        :param root_link: the root link, usually map
+        :param tip_link: the tip link, normally hand_palm_link
+        :param velocity: velocity of executed movement
+        """
+
+        self.add_motion_goal(motion_goal_class=Reaching.__name__,
+                             grasp=grasp,
+                             align=align,
+                             object_name=object_name,
+                             object_shape=object_shape,
+                             goal_pose=goal_pose,
+                             object_size=object_size,
+                             root_link=root_link,
+                             tip_link=tip_link,
+                             velocity=velocity)
+
+    def add_placing(self,
+                    context,
+                    goal_pose: PoseStamped,
+                    tip_link: str = 'hand_palm_link',
+                    velocity: float = 0.02):
+
+        self.add_motion_goal(motion_goal_class=Placing.__name__,
+                             context=context,
+                             goal_pose=goal_pose,
+                             tip_link=tip_link,
+                             velocity=velocity)
+
+    def add_vertical_motion(self,
+                            action: str,
+                            distance: float = 0.02,
+                            root_link: str = 'base_link',
+                            tip_link: str = 'hand_palm_link'):
+
+        self.add_motion_goal(motion_goal_class=VerticalMotion.__name__,
+                             action=action,
+                             distance=distance,
+                             root_link=root_link,
+                             tip_link=tip_link)
+
+    def add_retract(self,
+                    object_name: str,
+                    distance: float = 0.1,
+                    reference_frame: str = 'base_link',
+                    root_link: str = 'map',
+                    tip_link: str = 'base_link',
+                    velocity: float = 0.2):
+
+        self.add_motion_goal(motion_goal_class=Retracting.__name__,
+                             object_name=object_name,
+                             distance=distance,
+                             reference_frame=reference_frame,
+                             root_link=root_link,
+                             tip_link=tip_link,
+                             velocity=velocity)
+
+    def add_align_height(self,
+                         object_name: str,
+                         goal_pose: PoseStamped,
+                         object_height: float,
+                         from_above: bool = False,
+                         root_link: str = 'map',
+                         tip_link: str = 'hand_gripper_tool_frame'):
+
+        self.add_motion_goal(motion_goal_class=AlignHeight.__name__,
+                             from_above=from_above,
+                             object_name=object_name,
+                             goal_pose=goal_pose,
+                             object_height=object_height,
+                             root_link=root_link,
+                             tip_link=tip_link)
+
+    def add_test_goal(self,
+                      goal_name: str,
+                      **kwargs):
+
+        self.add_motion_goal(motion_goal_class=goal_name,
+                             **kwargs)
+
+    def add_take_pose(self,
+                      pose_keyword: str):
+
+        self.add_motion_goal(motion_goal_class=TakePose.__name__,
+                             pose_keyword=pose_keyword)
+
+    def add_tilting(self,
+                    tilt_direction: Optional[str] = None,
+                    tilt_angle: Optional[float] = None,
+                    tip_link: str = 'wrist_roll_joint',
+                    ):
+
+        self.add_motion_goal(motion_goal_class=Tilting.__name__,
+                             direction=tilt_direction,
+                             angle=tilt_angle,
+                             tip_link=tip_link)
+
+    def add_joint_rotation_continuous(self,
+                                      joint_name: str,
+                                      joint_center: float,
+                                      joint_range: float,
+                                      trajectory_length: float = 20,
+                                      target_speed: float = 1,
+                                      period_length: float = 1.0):
+
+        self.add_motion_goal(motion_goal_class=JointRotationGoalContinuous.__name__,
+                             joint_name=joint_name,
+                             joint_center=joint_center,
+                             joint_range=joint_range,
+                             trajectory_length=trajectory_length,
+                             target_speed=target_speed,
+                             period_length=period_length)
+
+    def add_mixing(self,
+                   mixing_time=20,
+                   weight: float = WEIGHT_ABOVE_CA):
+
+        self.add_motion_goal(motion_goal_class=Mixing.__name__,
+                             mixing_time=mixing_time,
+                             weight=weight)
+
+    def add_open_environment(self,
+                             tip_link: str,
+                             environment_link: str,
+                             tip_group: Optional[str] = None,
+                             environment_group: Optional[str] = None,
+                             goal_joint_state: Optional[float] = None,
+                             weight: float = WEIGHT_ABOVE_CA):
+
+        self.add_motion_goal(motion_goal_class=Open.__name__,
+                             tip_link=tip_link,
+                             environment_link=environment_link,
+                             tip_group=tip_group,
+                             environment_group=environment_group,
+                             goal_joint_state=goal_joint_state,
+                             weight=weight)
+
+    def add_real_time_pointer(self,
+                              tip_link: str,
+                              topic_name: str,
+                              root_link: str,
+                              pointing_axis: Vector3Stamped = None):
+        """
+        Wrapper for RealTimePointing and EndlessMode,
+        which is used for person live-tracking.
+        """
+
+        self.add_motion_goal(motion_goal_class=RealTimePointingPose.__name__,
+                             tip_link=tip_link,
+                             topic_name=topic_name,
+                             root_link=root_link,
+                             pointing_axis=pointing_axis)
+
+    def add_open_door_goal(self,
+                           tip_link: str,
+                           door_handle_link: str,
+                           name: str = None):
+        """
+        Adds OpenDoorGoal to motion goal execution plan
+
+        :param tip_link: Link that is grasping the door handle
+        :param door_handle_link: Link of the door handle of the door that is to be opened
+        :param name: Name of the Goal for distinction between similar goals
+        """
+        self.add_motion_goal(motion_goal_class=OpenDoorGoal.__name__,
+                             tip_link=tip_link,
+                             door_handle_link=door_handle_link,
+                             name=name)
 
 
 class MonitorWrapper:
