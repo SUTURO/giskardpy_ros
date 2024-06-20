@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           path: 'ros_ws/src/giskardpy'
-          repository: SemRoCo/giskardpy
+          repository: SUTURO/giskardpy
       - name: Checkout giskard msgs
         uses: actions/checkout@v3
         with:
@@ -83,6 +83,9 @@ jobs:
       - name: start roscore
         run: |
           roscore &
+      - if: ${{ (runner.debug == '1') }}
+        name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - name: casadi wrapper
         run: |
           roscd giskardpy

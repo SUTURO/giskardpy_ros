@@ -189,8 +189,134 @@ class Goal(ABC):
             god_map.monitor_manager.add_payload_monitor(monitor)
 
 
-class NonMotionGoal(Goal):
+class ForceSensorGoal(Goal):
     """
-    Inherit from this goal, if the goal does not add any constraints.
+    Inherit from this goal, if the goal should use the Force Sensor.
     """
-    pass
+
+    def __init__(self, name: str,
+                 start_condition: cas.Expression = cas.TrueSymbol,
+                 hold_condition: cas.Expression = cas.FalseSymbol,
+                 end_condition: cas.Expression = cas.TrueSymbol):
+
+        super().__init__(name=name)
+
+        robot_name = god_map.world.robot_name
+        self.arm_trajectory_publisher = None
+
+        if robot_name == 'hsrb':
+            self.wrench_topic_name = '/hsrb/wrist_wrench/compensated'
+            self.arm_topic_name = '/hsrb/arm_trajectory_controller/command'
+            # self.controller_list_topic_name = '/hsrb/controller_manager/list_controllers'
+            self.controller_list_topic_name = None
+            self.directions = {'up': 'x',
+                               'forward': 'z',
+                               'side': 'y'}
+
+        elif robot_name == 'iai_donbot':
+            self.wrench_topic_name = '/kms40_driver/wrench'
+            self.arm_topic_name = '/scaled_pos_joint_traj_controller/command'
+            self.directions = {'up': 'y',
+                               'forward': 'z',
+                               'side': 'x'}
+        else:
+            logging.logerr(f'{robot_name} is not supported')
+            raise GiskardException()
+
+        self.upwards_force, self.forward_force, self.sideway_force = [value + '_force' for key, value in
+                                                                      self.directions.items()]
+        self.upwards_torque, self.forward_torque, self.sideway_torque = [value + '_torque' for key, value in
+                                                                         self.directions.items()]
+
+        conditions = self.goal_cancel_condition()
+        tree = god_map.tree
+
+        self.behaviour = MonitorForceSensor('monitor force', conditions, self.wrench_topic_name)
+
+        if tree.control_mode == tree.control_mode.open_loop:
+            self.connect_trajectory_publisher()
+
+            tree.insert_node(self.behaviour, 'monitor execution', 2)
+        else:
+            tree.insert_node(self.behaviour, 'closed loop control', 12)
+
+    def make_constraints(self):
+        pass
+
+    def __str__(self) -> str:
+        return super().__str__()
+
+    @abc.abstractmethod
+    def goal_cancel_condition(self):
+        pass
+
+    def recovery_modifier(self) -> Dict:
+        return {}
+
+    def connect_trajectory_publisher(self):
+        # initialize ROS publisher
+        if self.arm_topic_name is not None:
+            self.arm_trajectory_publisher = rospy.Publisher(self.arm_topic_name,
+                                                            trajectory_msgs.msg.JointTrajectory, queue_size=10)
+
+            # wait to establish connection between the controller
+            while self.arm_trajectory_publisher.get_num_connections() == 0:
+                logging.logwarn(f'connecting to {self.arm_topic_name}')
+                rospy.sleep(0.1)
+
+        # make sure the controller is running
+        if self.controller_list_topic_name is not None:
+            rospy.wait_for_service(self.controller_list_topic_name)
+            list_controllers = (
+                rospy.ServiceProxy(self.controller_list_topic_name,
+                                   controller_manager_msgs.srv.ListControllers))
+
+            running1, running2 = False, False
+            while running1 is False or running2 is False:
+                rospy.sleep(0.1)
+                for c in list_controllers().controller:
+                    if c.name == 'arm_trajectory_controller' and c.state == 'running':
+                        running1 = True
+
+    def recover(self, joint_modifier):
+
+        arm_joint_names = ['arm_lift_joint', 'arm_flex_joint',
+                           'arm_roll_joint', 'wrist_flex_joint', 'wrist_roll_joint']
+
+        if any(x in joint_modifier for x in arm_joint_names):
+            arm_joint_positions = []
+            for joint_name in arm_joint_names:
+                join_state_position = god_map.world.state.get(god_map.world.search_for_joint_name(joint_name)).position
+
+                if joint_name in joint_modifier:
+                    mod = joint_modifier.get(joint_name)
+                else:
+                    mod = 0.0
+
+                arm_joint_positions.append(join_state_position + mod)
+
+            # fill ROS message
+            traj = trajectory_msgs.msg.JointTrajectory()
+            traj.joint_names = arm_joint_names
+
+            trajectory_point = trajectory_msgs.msg.JointTrajectoryPoint()
+            trajectory_point.positions = arm_joint_positions
+            trajectory_point.velocities = [0, 0, 0, 0, 0]
+            trajectory_point.time_from_start = rospy.Duration(1)
+            traj.points = [trajectory_point]
+
+            # publish ROS message
+            self.arm_trajectory_publisher.publish(traj)
+
+    def clean_up(self):
+        if god_map.tree.control_mode == god_map.tree.control_mode.open_loop:
+            self.recover(self.recovery_modifier())
+
+        try:
+            self.behaviour.wrench_compensated_subscriber.unregister()
+            logging.loginfo('Successfully unsubscribed force monitoring')
+        except:
+            logging.logwarn(f'Subscriber does not exist in {self.behaviour.name}')
+
+        tree = god_map.tree
+        tree.remove_node(self.behaviour.name)
