@@ -15,15 +15,14 @@ from giskardpy.configs.giskard import Giskard
 from giskardpy.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
 from giskardpy.configs.qp_controller_config import QPControllerConfig
 from giskardpy.god_map import god_map
-from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
-from giskardpy.suturo_types import ForceTorqueThresholds, ObjectTypes, GraspTypes
+from giskardpy.suturo_types import GraspTypes
 from giskardpy.utils.utils import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
 
 if 'GITHUB_WORKFLOW' not in os.environ:
-    from giskardpy.goals.suturo import ContextActionModes, Reaching, TakePose, GraspObject, VerticalMotion, AlignHeight
+    from giskardpy.goals.suturo import Reaching, TakePose, GraspObject, VerticalMotion, AlignHeight
     from tmc_control_msgs.msg import GripperApplyEffortActionGoal, GripperApplyEffortActionResult
 
 
@@ -742,7 +741,7 @@ class TestSUTURO:
 
         door_setup.open_gripper()
 
-        door_setup.set_hsrb_door_handle_grasp(handle_name=handle_name)
+        door_setup.set_hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05)
 
         door_setup.execute()
 
@@ -752,7 +751,9 @@ class TestSUTURO:
 
         door_setup.allow_all_collisions()
 
-        door_setup.execute(add_local_minimum_reached=True)
+        door_setup.execute(add_local_minimum_reached=False)
+
+        door_setup.open_gripper()
 
     # FIXME: Compare Pose hinzufügen sobald reaching fertig ist
     # TODO: Weitere Reaching Tests mit anderen Objekten/aus anderen Richtungen hinzufügen
