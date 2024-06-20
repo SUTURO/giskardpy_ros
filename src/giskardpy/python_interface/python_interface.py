@@ -2123,6 +2123,7 @@ class GiskardWrapper:
     def monitor_grasp_carefully(self,
                                 goal_pose: PoseStamped,
                                 align: str,
+                                grasp: str,
                                 reference_frame_alignment: Optional[str] = None,
                                 object_name: str = "",
                                 object_type: str = "",
@@ -2145,6 +2146,7 @@ class GiskardWrapper:
 
         self.motion_goals.add_motion_goal(motion_goal_class='Reaching',
                                           goal_pose=goal_pose,
+                                          grasp=grasp,
                                           align=align,
                                           reference_frame_alignment=reference_frame_alignment,
                                           object_name=object_name,
@@ -2152,8 +2154,10 @@ class GiskardWrapper:
                                           tip_link=tip_link,
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
-        local_min = self.monitors.add_local_minimum_reached(start_condition=force_torque_trigger)
-        self.monitors.add_end_motion(start_condition=f'{local_min}')
+        local_min = self.monitors.add_local_minimum_reached()
+
+        self.monitors.add_cancel_motion(local_min, "", 811)
+        self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
         self.monitors.add_max_trajectory_length(100)
 
     def monitor_transport_check(self,
@@ -2168,6 +2172,7 @@ class GiskardWrapper:
 
     def monitor_full_grasping(self,
                               goal_pose: PoseStamped,
+                              grasp: str,
                               align: str,
                               reference_frame_alignment: Optional[str] = None,
                               object_name: str = "",
@@ -2176,7 +2181,7 @@ class GiskardWrapper:
                               root_link: Optional[str] = None,
                               tip_link: Optional[str] = None):
 
-        self.monitor_grasp_carefully(goal_pose, align, reference_frame_alignment, object_name, object_type,
+        self.monitor_grasp_carefully(goal_pose, grasp, align, reference_frame_alignment, object_name, object_type,
                                      threshold_name, root_link, tip_link)
 
         self.monitor_transport_check(object_type, threshold_name)

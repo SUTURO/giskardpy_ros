@@ -1,11 +1,11 @@
+import os
 import string
 from typing import Optional
 
 import geometry_msgs
-import os
 
 if 'GITHUB_WORKFLOW' not in os.environ:
-    import hsrb_interface.end_effector
+    pass
 import rospy
 from geometry_msgs.msg import WrenchStamped
 
@@ -92,34 +92,30 @@ class PayloadForceTorque(PayloadMonitor):
             # case for grasping "normal" objects (namely Milk, Cereal and cups)
             if self.object_type == ObjectTypes.OT_Standard.value:
 
-                force_threshold = 0.2
-                torque_threshold = 0.02
+                force_threshold = 10.0
 
-                if (abs(rob_force.vector.y) > force_threshold or
-                        abs(rob_torque.vector.y) > torque_threshold):
-                    self.state = False
-                    print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
-                else:
+                if abs(rob_force.vector.y) > force_threshold:
                     self.state = True
-                    raise Exception(
-                        "HSR failed to Grasp Object, Grasping threshold has been Undershot.")  # might not be needed at all, since monitor basically gives out signal
+                    print(rob_force.vector.y)
+                else:
+                    self.state = False
 
             # case for grasping cutlery
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
                 self.topic = "filtered_raw"
                 # switch to filtered_raw / filtered_raw/diff
-                force_threshold = 0.2
-                torque_threshold = 0.02
+                force_threshold = -98.0
+                torque_threshold = -3.8
 
-                if (abs(rob_force.vector.y) > force_threshold or
+                if (abs(rob_force.vector.z) > force_threshold or
                         abs(rob_torque.vector.y) > torque_threshold):
-                    self.state = False
-                    print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
-                else:
                     self.state = True
-                    raise Exception("HSR failed to Grasp Object, Grasping threshold has been Undershot.")
+                    print(f'HIT GWC: {rob_force.vector.z};{rob_torque.vector.y}')
+                else:
+                    self.state = False
 
             # case for grasping plate
+            # NOT CURRENTLY USED AS PLATES ARE NEITHER PLACED NOR PICKED UP
             elif self.object_type == ObjectTypes.OT_Plate.value:
 
                 force_threshold = 0.2
@@ -136,15 +132,13 @@ class PayloadForceTorque(PayloadMonitor):
             # case for grasping Bowl
             elif self.object_type == ObjectTypes.OT_Bowl.value:
 
-                force_threshold = 1.0
-                torque_threshold = 0.02
+                force_threshold = 60.0
 
-                if abs(rob_force.vector.z) < force_threshold:
-                    self.state = False
-                    print(f'HIT GWC: {rob_force.vector.x};{rob_torque.vector.y}')
-                else:
+                if abs(rob_force.vector.z) > force_threshold:
                     self.state = True
-                    raise Exception("HSR failed to Grasp Object, Grasping threshold has been Undershot.")
+                    print(rob_force.vector.z)
+                else:
+                    self.state = False
 
             # if no valid object_type has been declared in method parameters
             else:
