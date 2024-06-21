@@ -2047,7 +2047,8 @@ class GiskardWrapper:
 
     # SuTuRo Goals start here! (Only add SuTuRo goals which actually need monitors for stopping conditions etc.)
     def monitor_placing(self,
-                        context,
+                        align: str,
+                        grasp: str,
                         goal_pose: PoseStamped,
                         threshold_name: str = "",
                         object_type: str = "",
@@ -2066,19 +2067,18 @@ class GiskardWrapper:
                                                          object_type=object_type)
 
         self.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
-                                          context=context,
                                           goal_pose=goal_pose,
+                                          align=align,
+                                          grasp=grasp,
                                           tip_link=tip_link,
                                           velocity=velocity,
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, "HSR IS UNABLE TO PLACE OBJECT", )
-        self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
+        self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
+        self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
-
-        #  TODO: Add gripper monitor as start condition when it's merged in
 
     def monitor_grasp_carefully(self,
                                 goal_pose: PoseStamped,
@@ -2097,10 +2097,10 @@ class GiskardWrapper:
         to open doors or fails to properly grip an object.
         """
         sleep = self.monitors.add_sleep(1.5)
-        gripper_closed = self.monitors.add_close_hsr_gripper()
+        gripper_open = self.monitors.add_open_hsr_gripper()
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
-                                                         start_condition=gripper_closed,  # add gripper monitor as start condition
+                                                         start_condition=gripper_open,
                                                          threshold_name=threshold_name,
                                                          object_type=object_type)
 
@@ -2116,17 +2116,19 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, "", 811)
-        self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
+        self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_GRASPING_MISSED_OBJECT)
+        self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
     def monitor_transport_check(self,
                                 object_type: str = "",
                                 threshold_name: str = ""):
 
+        gripper_closed = self.monitors.add_close_hsr_gripper()
+
         self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                   name=PayloadForceTorque.__name__,
-                                  start_condition='',
+                                  start_condition=gripper_closed,
                                   threshold_name=threshold_name,
                                   object_type=object_type)
 

@@ -17,7 +17,7 @@ if 'GITHUB_WORKFLOW' not in os.environ:
     from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectoryPoint
 
-from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
+from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult, GiskardError
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
 from giskardpy.goals.suturo import MoveAroundDishwasher, Placing, Reaching
@@ -1470,7 +1470,8 @@ class OldGiskardWrapper(GiskardWrapper):
                                                **kwargs)
 
     def monitor_placing_in_old(self,
-                               context,
+                               grasp: str,
+                               align: str,
                                goal_pose: PoseStamped,
                                threshold_name: str = "",
                                object_type: str = "",
@@ -1489,15 +1490,16 @@ class OldGiskardWrapper(GiskardWrapper):
                                                          object_type=object_type)
 
         self.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
-                                          context=context,
                                           goal_pose=goal_pose,
+                                          align=align,
+                                          grasp=grasp,
                                           tip_link=tip_link,
                                           velocity=velocity,
                                           end_condition=f'{force_torque_trigger} and {sleep}')
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, "HSR IS UNABLE TO PLACE OBJECT", 810)
+        self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
         self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
         self.monitors.add_max_trajectory_length(100)
 
@@ -1522,7 +1524,6 @@ class OldGiskardWrapper(GiskardWrapper):
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
                                                          start_condition=gripper_closed,
-                                                         # add gripper monitor as start condition
                                                          threshold_name=threshold_name,
                                                          object_type=object_type)
 
@@ -1538,6 +1539,6 @@ class OldGiskardWrapper(GiskardWrapper):
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, "", 811)
+        self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_GRASPING_MISSED_OBJECT)
         self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
         self.monitors.add_max_trajectory_length(100)
