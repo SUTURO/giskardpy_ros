@@ -980,46 +980,7 @@ class MotionGoalWrapper:
                              hold_condition=hold_condition,
                              end_condition=end_condition,
                              **kwargs)
-
-    def add_real_time_pointing(self,
-                               tip_link: str,
-                               pointing_axis: Vector3Stamped,
-                               root_link: str,
-                               topic_name: str,
-                               tip_group: Optional[str] = None,
-                               root_group: Optional[str] = None,
-                               max_velocity: float = 0.3,
-                               weight: Optional[float] = None,
-                               name: Optional[str] = None,
-                               start_condition: str = '',
-                               hold_condition: str = '',
-                               end_condition: str = '',
-                               **kwargs: goal_parameter):
-        """
-        Will orient pointing_axis at goal_point.
-        :param tip_link: tip link of the kinematic chain.
-        :param topic_name: name of a topic of type PointStamped
-        :param root_link: root link of the kinematic chain.
-        :param tip_group: if tip_link is not unique, search this group for matches.
-        :param root_group: if root_link is not unique, search this group for matches.
-        :param pointing_axis: the axis of tip_link that will be used for pointing
-        :param max_velocity: rad/s
-        """
-        self.add_motion_goal(motion_goal_class=RealTimePointing.__name__,
-                             tip_link=tip_link,
-                             tip_group=tip_group,
-                             root_link=root_link,
-                             topic_name=topic_name,
-                             root_group=root_group,
-                             pointing_axis=pointing_axis,
-                             max_velocity=max_velocity,
-                             weight=weight,
-                             name=name,
-                             start_condition=start_condition,
-                             hold_condition=hold_condition,
-                             end_condition=end_condition,
-                             **kwargs)
-
+        
     def add_carry_my_luggage(self,
                              name: str,
                              tracked_human_position_topic_name: str = '/robokudovanessa/human_position',
@@ -1951,7 +1912,6 @@ class MonitorWrapper:
         return self.add_monitor(monitor_class=CloseHsrGripper.__name__,
                                 name=name,
                                 start_condition=start_condition)
-
 
 
 class GiskardWrapper:
