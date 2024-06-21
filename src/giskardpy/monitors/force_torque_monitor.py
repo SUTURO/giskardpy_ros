@@ -187,6 +187,7 @@ class PayloadForceTorque(PayloadMonitor):
                         print(f'MISS CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
             # case for placing plates
+            # NOT CURRENTLY USED AS PLATES ARE NEITHER PLACED NOR PICKED UP
             elif self.object_type == ObjectTypes.OT_Plate.value:
                 #  TODO: Add proper placing logic for Plate
                 force_x_threshold = 2.34

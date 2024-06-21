@@ -10,6 +10,8 @@ from controller_manager_msgs.srv import ListControllers, ListControllersResponse
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
+from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
+
 if 'GITHUB_WORKFLOW' not in os.environ:
     from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
     from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
@@ -18,7 +20,7 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
 from giskardpy.data_types import goal_parameter
-from giskardpy.goals.suturo import MoveAroundDishwasher
+from giskardpy.goals.suturo import MoveAroundDishwasher, Placing, Reaching
 from giskardpy.python_interface.python_interface import GiskardWrapper
 from giskardpy.suturo_types import GripperTypes
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
@@ -405,7 +407,7 @@ class OldGiskardWrapper(GiskardWrapper):
         :param prediction_horizon: size of the prediction horizon, a number that should be 1 or above 5.
         """
         self.monitors.add_set_prediction_horizon(prediction_horizon=prediction_horizon,
-                                             **kwargs)
+                                                 **kwargs)
 
     def set_max_traj_length(self, new_length: float, **kwargs: goal_parameter):
         """
@@ -1466,3 +1468,76 @@ class OldGiskardWrapper(GiskardWrapper):
                                                reference_angular_velocity=reference_angular_velocity,
                                                weight=weight,
                                                **kwargs)
+
+    def monitor_placing_in_old(self,
+                               context,
+                               goal_pose: PoseStamped,
+                               threshold_name: str = "",
+                               object_type: str = "",
+                               tip_link: str = 'hand_palm_link',
+                               velocity: float = 0.02):
+        """
+        adds monitor functionality for the Placing motion goal, goal now stops if force_threshold is overstepped,
+        which means the HSR essentially stops automatically after placing the object.
+        """
+
+        sleep = self.monitors.add_sleep(1.5)
+        force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                                         name=PayloadForceTorque.__name__,
+                                                         start_condition='',
+                                                         threshold_name=threshold_name,
+                                                         object_type=object_type)
+
+        self.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
+                                          context=context,
+                                          goal_pose=goal_pose,
+                                          tip_link=tip_link,
+                                          velocity=velocity,
+                                          end_condition=f'{force_torque_trigger} and {sleep}')
+
+        local_min = self.monitors.add_local_minimum_reached()
+
+        self.monitors.add_cancel_motion(local_min, "HSR IS UNABLE TO PLACE OBJECT", 810)
+        self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
+        self.monitors.add_max_trajectory_length(100)
+
+    def monitor_grasp_carefully_in_old(self,
+                                       goal_pose: PoseStamped,
+                                       align: str,
+                                       grasp: str,
+                                       reference_frame_alignment: Optional[str] = None,
+                                       object_name: str = "",
+                                       object_type: str = "",
+                                       threshold_name: str = "",
+                                       root_link: Optional[str] = None,
+                                       tip_link: Optional[str] = None):
+        """
+            adds monitor functionality to the reaching goal, thus making the original GraspCarefully motion goal redundant.
+            The goal now stops if force_threshold/torque_threshold is undershot,
+            which means it essentially stops automatically if the HSR for example slips off of a door handle while trying
+            to open doors or fails to properly grip an object.
+            """
+        sleep = self.monitors.add_sleep(1.5)
+        gripper_closed = self.monitors.add_close_hsr_gripper()
+        force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                                         name=PayloadForceTorque.__name__,
+                                                         start_condition=gripper_closed,
+                                                         # add gripper monitor as start condition
+                                                         threshold_name=threshold_name,
+                                                         object_type=object_type)
+
+        self.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
+                                          goal_pose=goal_pose,
+                                          grasp=grasp,
+                                          align=align,
+                                          reference_frame_alignment=reference_frame_alignment,
+                                          object_name=object_name,
+                                          root_link=root_link,
+                                          tip_link=tip_link,
+                                          end_condition=f'{force_torque_trigger} and {sleep}')
+
+        local_min = self.monitors.add_local_minimum_reached()
+
+        self.monitors.add_cancel_motion(local_min, "", 811)
+        self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
+        self.monitors.add_max_trajectory_length(100)

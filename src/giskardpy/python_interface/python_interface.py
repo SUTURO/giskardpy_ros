@@ -2074,7 +2074,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, "HSR IS UNABLE TO PLACE OBJECT", 810)
+        self.monitors.add_cancel_motion(local_min, "HSR IS UNABLE TO PLACE OBJECT", )
         self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
         self.monitors.add_max_trajectory_length(100)
 
@@ -2097,10 +2097,10 @@ class GiskardWrapper:
         to open doors or fails to properly grip an object.
         """
         sleep = self.monitors.add_sleep(1.5)
-
+        gripper_closed = self.monitors.add_close_hsr_gripper()
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
-                                                         start_condition='',  # add gripper monitor as start condition
+                                                         start_condition=gripper_closed,  # add gripper monitor as start condition
                                                          threshold_name=threshold_name,
                                                          object_type=object_type)
 

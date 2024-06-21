@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import string
 
 import geometry_msgs
