@@ -92,7 +92,6 @@ class ObjectGoal(Goal):
             return None
 
 
-
 class Reaching(ObjectGoal):
     def __init__(self,
                  grasp: str,

@@ -101,8 +101,8 @@ class HSRCollisionAvoidanceConfig(CollisionAvoidanceConfig):
 
     def setup(self):
         self.load_self_collision_matrix('package://giskardpy/self_collision_matrices/iai/hsrb.srdf')
-        self.set_default_external_collision_avoidance(soft_threshold=0.05,
-                                                      hard_threshold=0.0)
+        self.set_default_external_collision_avoidance(soft_threshold=0.08,
+                                                      hard_threshold=0.04)
         self.overwrite_external_collision_avoidance('wrist_roll_joint',
                                                     number_of_repeller=4,
                                                     soft_threshold=0.05,

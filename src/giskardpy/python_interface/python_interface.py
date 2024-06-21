@@ -980,7 +980,7 @@ class MotionGoalWrapper:
                              hold_condition=hold_condition,
                              end_condition=end_condition,
                              **kwargs)
-        
+
     def add_carry_my_luggage(self,
                              name: str,
                              tracked_human_position_topic_name: str = '/robokudovanessa/human_position',
@@ -2065,7 +2065,7 @@ class GiskardWrapper:
                                                          threshold_name=threshold_name,
                                                          object_type=object_type)
 
-        self.motion_goals.add_motion_goal(motion_goal_class='Placing',
+        self.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
                                           context=context,
                                           goal_pose=goal_pose,
                                           tip_link=tip_link,
@@ -2104,7 +2104,7 @@ class GiskardWrapper:
                                                          threshold_name=threshold_name,
                                                          object_type=object_type)
 
-        self.motion_goals.add_motion_goal(motion_goal_class='Reaching',
+        self.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
                                           goal_pose=goal_pose,
                                           grasp=grasp,
                                           align=align,
