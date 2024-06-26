@@ -188,8 +188,8 @@ def unit_vector(length, elements=None):
     return st.builds(normalize, vector)
 
 
-def quaternion(elements=None):
-    return unit_vector(4, elements)
+def quaternion():
+    return unit_vector(4, float_no_nan_no_inf(outer_limit=1))
 
 
 def pykdl_frame_to_numpy(pykdl_frame):
@@ -874,9 +874,13 @@ class GiskardTestWrapper(OldGiskardWrapper):
             f'({min_contact.original_link_a} with {min_contact.original_link_b})'
 
     def move_base(self, goal_pose) -> None:
-        tip = self.get_odometry_joint().parent_link_name
-        self.motion_goals.add_cartesian_pose(goal_pose, tip_link=tip.short_name, root_link='map')
-        self.plan_and_execute()
+        tip = self.get_odometry_joint().child_link_name
+        monitor = self.monitors.add_cartesian_pose(goal_pose=goal_pose, tip_link=tip.short_name, root_link='map',
+                                                   name='base goal')
+        self.motion_goals.add_cartesian_pose(goal_pose=goal_pose, tip_link=tip.short_name, root_link='map',
+                                             name='base goal',
+                                             end_condition=monitor)
+        self.execute()
 
     def reset(self):
         pass
