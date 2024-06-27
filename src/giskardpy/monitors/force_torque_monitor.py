@@ -27,7 +27,7 @@ class PayloadForceTorque(PayloadMonitor):
                  threshold_name: string,
                  # object_type is needed to differentiate between objects with different placing thresholds
                  object_type: Optional[str] = None,
-                 topic: string = "compensated/diff",
+                 topic: string = "/compensated/diff",
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol
                  ):
@@ -96,13 +96,14 @@ class PayloadForceTorque(PayloadMonitor):
 
                 if abs(rob_force.vector.y) > force_threshold:
                     self.state = True
-                    print(rob_force.vector.y)
+                    print(f'HIT GWC: {rob_force.vector.y}')
                 else:
                     self.state = False
+                    print(f'MISS GWC: {rob_force.vector.y}')
 
             # case for grasping cutlery
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
-                self.topic = "filtered_raw"
+                self.topic = "filtered_raw/diff"
                 # switch to filtered_raw / filtered_raw/diff
                 force_threshold = -98.0
                 torque_threshold = -3.8
@@ -113,6 +114,7 @@ class PayloadForceTorque(PayloadMonitor):
                     print(f'HIT GWC: {rob_force.vector.z};{rob_torque.vector.y}')
                 else:
                     self.state = False
+                    print(f'MISS GWC: {rob_force.vector.z};{rob_torque.vector.y}')
 
             # case for grasping plate
             # NOT CURRENTLY USED AS PLATES ARE NEITHER PLACED NOR PICKED UP
@@ -139,6 +141,7 @@ class PayloadForceTorque(PayloadMonitor):
                     print(rob_force.vector.z)
                 else:
                     self.state = False
+                    print(f'MISS GWC:{rob_force.vector.z}')
 
             # if no valid object_type has been declared in method parameters
             else:

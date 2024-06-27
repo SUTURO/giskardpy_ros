@@ -2172,10 +2172,10 @@ class GiskardWrapper:
         to open doors or fails to properly grip an object.
         """
         sleep = self.monitors.add_sleep(1.5)
-        gripper_open = self.monitors.add_open_hsr_gripper()
+       # gripper_open = self.monitors.add_open_hsr_gripper()
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
-                                                         start_condition=gripper_open,
+                                                         start_condition='',
                                                          threshold_name=threshold_name,
                                                          object_type=object_type)
 

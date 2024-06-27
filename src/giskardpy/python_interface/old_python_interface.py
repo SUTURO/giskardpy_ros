@@ -1504,9 +1504,9 @@ class OldGiskardWrapper(GiskardWrapper):
         self.monitors.add_max_trajectory_length(100)
 
     def monitor_grasp_carefully_in_old(self,
-                                       goal_pose: PoseStamped,
                                        align: str,
                                        grasp: str,
+                                       goal_pose: PoseStamped = None,
                                        reference_frame_alignment: Optional[str] = None,
                                        object_name: str = "",
                                        object_type: str = "",
@@ -1520,10 +1520,10 @@ class OldGiskardWrapper(GiskardWrapper):
             to open doors or fails to properly grip an object.
             """
         sleep = self.monitors.add_sleep(1.5)
-        gripper_closed = self.monitors.add_close_hsr_gripper()
+        #gripper_open = self.monitors.add_open_hsr_gripper()
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
-                                                         start_condition=gripper_closed,
+                                                         start_condition='',
                                                          threshold_name=threshold_name,
                                                          object_type=object_type)
 
