@@ -16,6 +16,8 @@
 
     <node pkg="giskardpy" type="switch_controllers.py" name="giskard_joy_switch_controllers" output="screen" />
 
+    <node pkg="giskardpy" type="force_torque_raw_filter.py" name="force_torque_raw_filter" output="screen" />
+
     <node pkg="giskardpy" type="interactive_marker.py" name="giskard_interactive_marker" output="screen">
         <rosparam param="enable_self_collision">False</rosparam>
         <rosparam param="interactive_marker_chains">
