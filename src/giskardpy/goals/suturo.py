@@ -1030,31 +1030,19 @@ class OpenDoorGoal(Goal):
                                                 name=f'{name}_handle_joint_monitor')
         self.add_monitor(handle_state_monitor)
 
+        sleep_mon = Sleep(seconds=2,
+                          start_condition=handle_state_monitor.get_state_expression())
+        self.add_monitor(sleep_mon)
+
         limit_hinge = max(min_limit_hinge, -(np.pi / 4))
 
         hinge_state = {door_hinge_id: limit_hinge}
 
         hinge_state_monitor = JointGoalReached(goal_state=hinge_state,
                                                threshold=0.01,
-                                               name=f'{name}_hinge_joint_monitor')
+                                               name=f'{name}_hinge_joint_monitor',
+                                               start_condition=sleep_mon.get_state_expression())
         self.add_monitor(hinge_state_monitor)
-
-        self.add_constraints_of_goal(Open(tip_link=tip_link,
-                                          environment_link=handle_name,
-                                          goal_joint_state=limit_handle,
-                                          name='OpenHandle',
-                                          start_condition=start_condition,
-                                          hold_condition=hold_condition))
-
-        self.add_constraints_of_goal(JointPositionList(goal_state={door_hinge_id: max_limit_hinge},
-                                                       start_condition=start_condition,
-                                                       hold_condition=hold_condition,
-                                                       end_condition=handle_state_monitor.get_state_expression(),
-                                                       weight=WEIGHT_ABOVE_CA))
-
-        sleep_mon = Sleep(seconds=2,
-                          start_condition=handle_state_monitor.get_state_expression())
-        self.add_monitor(sleep_mon)
 
         local_min_mon = LocalMinimumReached(start_condition=sleep_mon.get_state_expression())
         self.add_monitor(local_min_mon)
@@ -1062,6 +1050,20 @@ class OpenDoorGoal(Goal):
         end_con = w.logic_or(end_condition,
                              w.logic_and(hinge_state_monitor.get_state_expression(),
                                          local_min_mon.get_state_expression()))
+
+        self.add_constraints_of_goal(Open(tip_link=tip_link,
+                                          environment_link=handle_name,
+                                          goal_joint_state=limit_handle,
+                                          name='OpenHandle',
+                                          start_condition=start_condition,
+                                          hold_condition=hold_condition,
+                                          end_condition=end_con))
+
+        self.add_constraints_of_goal(JointPositionList(goal_state={door_hinge_id: max_limit_hinge},
+                                                       start_condition=start_condition,
+                                                       hold_condition=hold_condition,
+                                                       end_condition=handle_state_monitor.get_state_expression(),
+                                                       weight=WEIGHT_ABOVE_CA))
 
         self.add_constraints_of_goal(Open(tip_link=tip_link,
                                           environment_link=link_id,
