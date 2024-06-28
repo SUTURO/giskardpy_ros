@@ -9,8 +9,6 @@ from nav_msgs.msg import Path
 from rospy import ServiceException
 from shape_msgs.msg import SolidPrimitive
 
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
     Monitor, WorldGoal, WorldAction, WorldResult, GiskardError
@@ -31,8 +29,7 @@ from giskardpy.goals.joint_goals import JointPositionList, AvoidJointLimits
 from giskardpy.goals.open_close import Close, Open
 from giskardpy.goals.pointing import Pointing
 from giskardpy.goals.pre_push_door import PrePushDoor
-from giskardpy.goals.realtime_goals import RealTimePointing, RealTimePointingPose
-from giskardpy.monitors.set_prediction_horizon import SetPredictionHorizon
+from giskardpy.goals.realtime_goals import RealTimePointing
 from giskardpy.goals.suturo import GraspBarOffset, Reaching, Placing, VerticalMotion, AlignHeight, TakePose, Tilting, \
     JointRotationGoalContinuous, Mixing, OpenDoorGoal, Retracting
 from giskardpy.model.utils import make_world_body_box
@@ -41,11 +38,12 @@ from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, 
 from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy.monitors.joint_monitors import JointGoalReached
 from giskardpy.monitors.lidar_monitor import LidarPayloadMonitor
-from giskardpy.tasks.task import WEIGHT_ABOVE_CA
-from giskardpy.tree.control_modes import ControlModes
 from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator, CancelMotion, EndMotion
 from giskardpy.monitors.overwrite_state_monitors import SetOdometry, SetSeedConfiguration
 from giskardpy.monitors.payload_monitors import Print, Sleep, SetMaxTrajectoryLength, PayloadAlternator
+from giskardpy.monitors.set_prediction_horizon import SetPredictionHorizon
+from giskardpy.tasks.task import WEIGHT_ABOVE_CA
+from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import kwargs_to_json, get_all_classes_in_package
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
@@ -1534,22 +1532,6 @@ class MotionGoalWrapper:
                              goal_joint_state=goal_joint_state,
                              weight=weight)
 
-    def add_real_time_pointer(self,
-                              tip_link: str,
-                              topic_name: str,
-                              root_link: str,
-                              pointing_axis: Vector3Stamped = None):
-        """
-        Wrapper for RealTimePointing and EndlessMode,
-        which is used for person live-tracking.
-        """
-
-        self.add_motion_goal(motion_goal_class=RealTimePointingPose.__name__,
-                             tip_link=tip_link,
-                             topic_name=topic_name,
-                             root_link=root_link,
-                             pointing_axis=pointing_axis)
-
     def add_open_door_goal(self,
                            tip_link: str,
                            door_handle_link: str,
@@ -2151,7 +2133,8 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
+        self.monitors.add_cancel_motion(local_min, "",
+                                        GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2172,7 +2155,7 @@ class GiskardWrapper:
         to open doors or fails to properly grip an object.
         """
         sleep = self.monitors.add_sleep(1.5)
-       # gripper_open = self.monitors.add_open_hsr_gripper()
+        # gripper_open = self.monitors.add_open_hsr_gripper()
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
                                                          start_condition='',

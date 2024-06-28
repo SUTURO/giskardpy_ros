@@ -1162,10 +1162,10 @@ class OldGiskardWrapper(GiskardWrapper):
         which is used for person live-tracking.
         """
 
-        self.motion_goals.add_real_time_pointer(tip_link=tip_link,
-                                                topic_name=topic_name,
-                                                root_link=root_link,
-                                                pointing_axis=pointing_axis)
+        self.motion_goals.add_real_time_pointing(tip_link=tip_link,
+                                                 topic_name=topic_name,
+                                                 root_link=root_link,
+                                                 pointing_axis=pointing_axis)
 
     def continuous_pointing_head(self):
         """
@@ -1499,7 +1499,8 @@ class OldGiskardWrapper(GiskardWrapper):
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
+        self.monitors.add_cancel_motion(local_min, "",
+                                        GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
         self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
         self.monitors.add_max_trajectory_length(100)
 
@@ -1520,7 +1521,7 @@ class OldGiskardWrapper(GiskardWrapper):
             to open doors or fails to properly grip an object.
             """
         sleep = self.monitors.add_sleep(1.5)
-        #gripper_open = self.monitors.add_open_hsr_gripper()
+        # gripper_open = self.monitors.add_open_hsr_gripper()
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
                                                          start_condition='',
