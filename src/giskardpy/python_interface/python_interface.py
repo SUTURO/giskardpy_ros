@@ -1602,6 +1602,21 @@ class MonitorWrapper:
             name = f'\'{name}\''  # put all monitor names in quotes so that the user doesn't have to
         return name
 
+    def add_force_torque(self,
+                         threshold_name: str,
+                         object_type: str,
+                         topic: str = '/filtered_raw/diff',
+                         name: Optional[str] = None,
+                         stay_true: bool = True,
+                         start_condition: str = ''):
+        return self.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                name=name,
+                                start_condition=start_condition,
+                                stay_true=stay_true,
+                                topic=topic,
+                                threshold_name=threshold_name,
+                                object_type=object_type)
+
     def add_local_minimum_reached(self,
                                   name: Optional[str] = None,
                                   stay_true: bool = True,
