@@ -1,6 +1,7 @@
 import numpy as np
 import rospy
 
+import giskardpy.utils.tfwrapper as tf
 from giskardpy.configs.collision_avoidance_config import CollisionAvoidanceConfig
 from giskardpy.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
 from giskardpy.configs.world_config import WorldConfig
@@ -8,7 +9,6 @@ from giskardpy.data_types import PrefixName, Derivatives
 from giskardpy.god_map import god_map
 from giskardpy.model.utils import robot_name_from_urdf_string
 from giskardpy.utils import logging
-import giskardpy.utils.tfwrapper as tf
 
 
 class WorldWithHSRConfig(WorldConfig):
@@ -77,14 +77,15 @@ class SuturoArenaWithHSRConfig(WorldWithHSRConfig):
     def __init__(self, map_name: str = 'map', localization_joint_name: str = 'localization',
                  odom_link_name: str = 'odom', drive_joint_name: str = 'brumbrum',
                  description_name: str = 'robot_description',
-                 environment_name: str = 'kitchen_description'):
+                 environment_description: str = 'kitchen_description',
+                 environment_name: str = 'iai_kitchen'):
         super().__init__(map_name, localization_joint_name, odom_link_name, drive_joint_name, description_name)
-        self.environment_name = environment_name
+        self.environment_name = environment_description
+        self.kitchen_name = environment_name
 
     def setup(self):
         super().setup()
         urdf = rospy.get_param(self.environment_name)
-        self.kitchen_name = robot_name_from_urdf_string(urdf)
         god_map.world.add_urdf(urdf=urdf,
                                group_name=self.kitchen_name,
                                actuated=False)
@@ -156,6 +157,18 @@ class HSRVelocityInterface(RobotInterfaceConfig):
 
         self.add_base_cmd_velocity(cmd_vel_topic='/hsrb/command_velocity',
                                    joint_name=self.drive_joint_name)
+
+
+class HSRVelocityInterfaceSuturo(HSRVelocityInterface):
+
+    def __init__(self, map_name: str = 'map', localization_joint_name: str = 'localization',
+                 odom_link_name: str = 'odom', drive_joint_name: str = 'brumbrum', environment_name: str = 'iai_kitchen'):
+        super().__init__(map_name, localization_joint_name, odom_link_name, drive_joint_name)
+        self.environment_name = environment_name
+
+    def setup(self):
+        super().setup()
+        self.sync_joint_state_topic('/iai_kitchen/joint_states', group_name=self.environment_name)
 
 
 class HSRJointTrajInterfaceConfig(RobotInterfaceConfig):

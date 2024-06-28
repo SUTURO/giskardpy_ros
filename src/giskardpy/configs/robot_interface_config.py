@@ -3,12 +3,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 
+from giskardpy.data_types import my_string, PrefixName, Derivatives
+from giskardpy.exceptions import SetupException
 from giskardpy.god_map import god_map
+from giskardpy.model.world import WorldTree
 from giskardpy.tree.branches.giskard_bt import GiskardBT
 from giskardpy.tree.control_modes import ControlModes
-from giskardpy.exceptions import GiskardException, SetupException
-from giskardpy.model.world import WorldTree
-from giskardpy.data_types import my_string, PrefixName, Derivatives
 
 
 class RobotInterfaceConfig(ABC):
@@ -73,7 +73,7 @@ class RobotInterfaceConfig(ABC):
             group_name = self.world.robot_name
         self.tree.wait_for_goal.synchronization.sync_joint_state_topic(group_name=group_name,
                                                                        topic_name=topic_name)
-        if god_map.is_closed_loop():
+        if god_map.is_closed_loop() and group_name == self.world.robot_name:
             self.tree.control_loop_branch.closed_loop_synchronization.sync_joint_state2_topic(
                 group_name=group_name,
                 topic_name=topic_name)
