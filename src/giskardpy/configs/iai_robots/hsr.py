@@ -70,6 +70,9 @@ class WorldWithHSRConfig(WorldConfig):
             Derivatives.jerk: 10,
         },
             joint_name='arm_lift_joint')
+        self.world.register_group(name='gripper',
+                                  root_link_name=self.world.search_for_link_name('wrist_roll_link'),
+                                  actuated=False)
 
 
 class SuturoArenaWithHSRConfig(WorldWithHSRConfig):
