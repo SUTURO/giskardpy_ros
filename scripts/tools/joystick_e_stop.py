@@ -1,11 +1,9 @@
 #!/usr/bin/env python
-import rospy
 from sensor_msgs.msg import Joy
 import numpy as np
 
-from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
+from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper
 
-from giskardpy.utils import logging
 
 
 class MUH:

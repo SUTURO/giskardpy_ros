@@ -1,8 +1,4 @@
 #!/usr/bin/env python
-import rospy
-from sensor_msgs.msg._JointState import JointState
-
-from giskardpy.utils.utils import print_joint_state
 
 
 def cb(data):

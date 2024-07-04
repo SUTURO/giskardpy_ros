@@ -1,8 +1,7 @@
 import pytest
-import rospy
 from geometry_msgs.msg import PoseStamped
 
-import giskardpy_ros.ros1.tfwrapper as tf
+import giskardpy_ros.ros2.tfwrapper as tf
 from giskardpy.god_map import god_map
 from giskardpy.middleware import middleware
 from giskardpy.model.joints import OneDofJoint

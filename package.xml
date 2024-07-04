@@ -1,37 +1,20 @@
 <?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>giskardpy_ros</name>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <description>The giskardpy package</description>
-
   <maintainer email="stelter@uni-bremen.de">Simon Stelter</maintainer>
-
+  <author email="stelter@uni-bremen.de">Simon Stelter</author>
   <license>LGPLv3</license>
-
   <url type="website">https://github.com/SemRoCo/giskardpy/wiki</url>
 
-  <author email="stelter@uni-bremen.de">Simon Stelter</author>
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
 
-  <buildtool_depend>catkin</buildtool_depend>
-
-  <exec_depend>tf</exec_depend>
-  <exec_depend>tf2</exec_depend>
-  <exec_depend>geometry2</exec_depend>
-  <exec_depend>angles</exec_depend>
-  <exec_depend>rospy</exec_depend>
-  <exec_depend>giskard_msgs</exec_depend>
-  <exec_depend>control_msgs</exec_depend>
-  <exec_depend>rqt_py_trees</exec_depend>
-
-  <exec_depend>py_trees</exec_depend>
-  <exec_depend>py_trees_ros</exec_depend>
-  <exec_depend>rospy_message_converter</exec_depend>
-  <exec_depend>urdfdom_py</exec_depend>
-  <exec_depend>python3-pykdl</exec_depend>
-
-  <!-- The export tag contains other, unspecified, tags -->
   <export>
-    <!-- Other tools can request additional information be placed here -->
-
+    <build_type>ament_python</build_type>
   </export>
 </package>

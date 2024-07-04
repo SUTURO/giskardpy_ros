@@ -2,18 +2,10 @@
 import numpy as np
 from copy import deepcopy
 
-import rospy
-from actionlib.simple_action_client import SimpleActionClient
 from geometry_msgs.msg import Pose, PoseStamped
-from geometry_msgs.msg._Quaternion import Quaternion
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from interactive_markers.menu_handler import MenuHandler
-from tf.transformations import quaternion_multiply, quaternion_about_axis
 from visualization_msgs.msg import MarkerArray
-from visualization_msgs.msg._InteractiveMarker import InteractiveMarker
-from visualization_msgs.msg._InteractiveMarkerControl import InteractiveMarkerControl
-from visualization_msgs.msg._InteractiveMarkerFeedback import InteractiveMarkerFeedback
-from visualization_msgs.msg._Marker import Marker
 
 from giskardpy.middleware import middleware
 from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper

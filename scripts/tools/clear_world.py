@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-import rospy
-from giskardpy.python_interface import GiskardWrapper
+from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 from giskardpy.utils import logging
 
 if __name__ == '__main__':

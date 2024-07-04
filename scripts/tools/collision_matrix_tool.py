@@ -5,7 +5,6 @@ from __future__ import annotations
 import signal
 import traceback
 from typing import Set, Tuple, List, Optional, Dict, Union
-import rospy
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTableWidget, QCheckBox, QWidget, \
     QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QFileDialog, QMessageBox, QProgressBar, QLabel, QDialog, \
