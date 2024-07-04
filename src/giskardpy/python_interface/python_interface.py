@@ -31,7 +31,7 @@ from giskardpy.goals.pointing import Pointing
 from giskardpy.goals.pre_push_door import PrePushDoor
 from giskardpy.goals.realtime_goals import RealTimePointing
 from giskardpy.goals.suturo import GraspBarOffset, Reaching, Placing, VerticalMotion, AlignHeight, TakePose, Tilting, \
-    JointRotationGoalContinuous, Mixing, OpenDoorGoal, Retracting
+    JointRotationGoalContinuous, Mixing, OpenDoorGoal, Retracting, MoveAroundDishwasher
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, PointingAt, \
     VectorsAligned, DistanceToLine
@@ -1378,6 +1378,244 @@ class MotionGoalWrapper:
                              hold_condition=hold_condition,
                              end_condition=end_condition,
                              **kwargs)
+
+    def open_door_goal(self,
+                       tip_link: str,
+                       door_handle_link: str,
+                       name: str = None):
+        """
+        Adds OpenDoorGoal to motion goal execution plan
+
+        :param tip_link: Link that is grasping the door handle
+        :param door_handle_link: Link of the door handle of the door that is to be opened
+        :param name: Name of the Goal for distinction between similar goals
+        """
+        self.add_open_door_goal(tip_link=tip_link,
+                                door_handle_link=door_handle_link,
+                                name=name)
+
+    def hsrb_open_door_goal(self,
+                            door_handle_link: str,
+                            tip_link: str = 'hand_gripper_tool_frame',
+                            name: str = 'HSRB_open_door'):
+        """
+        HSRB specific open door goal wrapper
+
+        :param door_handle_link: Link of the door handle
+        :param tip_link: Link that's grasping the door handle
+        :param name: name of the goal for distinction between same goals
+        """
+
+        self.open_door_goal(tip_link=tip_link,
+                            door_handle_link=door_handle_link,
+                            name=name)
+
+    def hsrb_door_handle_grasp(self,
+                               handle_name: str,
+                               handle_bar_length: float = 0,
+                               tip_link: str = 'hand_gripper_tool_frame',
+                               root_link: str = 'map',
+                               bar_axis_v: Vector3 = Vector3(0, 1, 0),
+                               tip_grasp_axis_v: Vector3 = Vector3(1, 0, 0)):
+        """
+        HSRB specific set_grasp_bar_goal, that only needs handle_name of the door_handle
+
+        :param handle_name: URDF link that represents the door handle
+        :param handle_bar_length: length of the door handle
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        :param bar_axis_v: Vector for changing the orientation of the door handle
+        :param tip_grasp_axis_v: Vector for the orientation of the tip grasp link
+        """
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_name
+        bar_axis.vector = bar_axis_v
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_name
+        bar_center.point.y = 0.045
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector = tip_grasp_axis_v
+
+        self.add_grasp_bar(root_link=root_link,
+                           tip_link=tip_link,
+                           tip_grasp_axis=tip_grasp_axis,
+                           bar_center=bar_center,
+                           bar_axis=bar_axis,
+                           bar_length=handle_bar_length)
+
+    def hsrb_dishwasher_door_around(self,
+                                    handle_name: str,
+                                    root_link: str = 'map',
+                                    tip_link: str = 'hand_gripper_tool_frame'):
+        """
+        HSRB specific avoid dishwasher door goal
+
+        :param handle_frame_id: Frame id of the door handle
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        self.add_motion_goal(motion_goal_class=MoveAroundDishwasher.__name__,
+                             handle_name=handle_name,
+                             root_link=root_link,
+                             tip_link=tip_link)
+
+    def hsrb_align_to_push_door_goal(self,
+                                     weight: float,
+                                     handle_name: str,
+                                     hinge_frame_id: str,
+                                     tip_link: str = 'hand_gripper_tool_frame',
+                                     root_link: str = 'map'):
+        """
+        HSRB specific push door open goal of dishwasher
+
+        :param handle_name: name of the door handle
+        :param hinge_frame_id: Frame id of the door hinge
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.y = 1
+
+        self.add_align_to_push_door(root_link=root_link,
+                                    tip_link=tip_link,
+                                    door_handle=handle_name,
+                                    door_object=hinge_frame_id,
+                                    tip_gripper_axis=tip_grasp_axis,
+                                    weight=weight,
+                                    intermediate_point_scale=0.95)
+
+    def hsrb_pre_push_door_goal(self,
+                                weight: float,
+                                handle_name: str,
+                                hinge_frame_id: str,
+                                root_link: str = 'map',
+                                tip_link: str = 'hand_gripper_tool_frame'):
+        """
+        HSRB specific pre push door open goal of dishwasher
+
+        :param handle_name: name of the door handle
+        :param hinge_frame_id: Frame id of the door hinge
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        self.add_pre_push_door(root_link=root_link,
+                               tip_link=tip_link,
+                               door_handle=handle_name,
+                               weight=weight,
+                               door_object=hinge_frame_id)
+
+    def hsrb_dishwasher_door_handle_grasp(self,
+                                          handle_frame_id: str,
+                                          grasp_bar_offset: float = 0.0,
+                                          root_link: str = 'map',
+                                          tip_link: str = 'hand_gripper_tool_frame'):
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.y = 1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.x = 1
+
+        grasp_axis_offset = Vector3Stamped()
+        grasp_axis_offset.header.frame_id = handle_frame_id
+        grasp_axis_offset.vector.x = -grasp_bar_offset
+
+        self.grasp_bar_offset_goal(root_link=root_link,
+                                   tip_link=tip_link,
+                                   tip_grasp_axis=tip_grasp_axis,
+                                   bar_center=bar_center,
+                                   bar_axis=bar_axis,
+                                   bar_length=.4,
+                                   grasp_axis_offset=grasp_axis_offset)
+
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = tip_link
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+
+        self.add_align_planes(tip_link=tip_link,
+                              tip_normal=x_gripper,
+                              goal_normal=x_goal,
+                              root_link=root_link)
+
+    def grasp_bar_offset_goal(self,
+                              bar_center: PointStamped,
+                              bar_axis: Vector3Stamped,
+                              bar_length: float,
+                              tip_link: str,
+                              tip_grasp_axis: Vector3Stamped,
+                              root_link: str,
+                              grasp_axis_offset: Vector3Stamped,
+                              tip_group: Optional[str] = None,
+                              root_group: Optional[str] = None,
+                              reference_linear_velocity: Optional[float] = None,
+                              reference_angular_velocity: Optional[float] = None,
+                              weight: float = WEIGHT_ABOVE_CA,
+                              add_monitor: bool = True,
+                              **kwargs: goal_parameter):
+        """
+        Like a CartesianPose but with more freedom.
+        tip_link is allowed to be at any point along bar_axis, that is without bar_center +/- bar_length.
+        It will align tip_grasp_axis with bar_axis, but allows rotation around it.
+        :param root_link: root link of the kinematic chain
+        :param tip_link: tip link of the kinematic chain
+        :param tip_grasp_axis: axis of tip_link that will be aligned with bar_axis
+        :param bar_center: center of the bar to be grasped
+        :param bar_axis: alignment of the bar to be grasped
+        :param bar_length: length of the bar to be grasped
+        :param grasp_axis_offset: offset of the tip_link to the bar_center
+        :param root_group: if root_link is not unique, search in this group for matches
+        :param tip_group: if tip_link is not unique, search in this group for matches
+        :param reference_linear_velocity: m/s
+        :param reference_angular_velocity: rad/s
+        :param weight:
+        :param add_monitor: if True, adds a monitor as end_condition to check if the goal was reached.
+        """
+        end_condition = ''
+        if add_monitor:
+            monitor_name1 = self.monitors.add_distance_to_line(root_link=root_link,
+                                                               tip_link=tip_link,
+                                                               center_point=bar_center,
+                                                               line_axis=bar_axis,
+                                                               line_length=bar_length,
+                                                               root_group=root_group,
+                                                               tip_group=tip_group)
+            monitor_name2 = self.monitors.add_vectors_aligned(root_link=root_link,
+                                                              tip_link=tip_link,
+                                                              goal_normal=bar_axis,
+                                                              tip_normal=tip_grasp_axis,
+                                                              root_group=root_group,
+                                                              tip_group=tip_group)
+            end_condition = f'{monitor_name1} and {monitor_name2}'
+        self.add_grasp_bar_offset(end_condition=end_condition,
+                                  root_link=root_link,
+                                  tip_link=tip_link,
+                                  tip_grasp_axis=tip_grasp_axis,
+                                  bar_center=bar_center,
+                                  bar_axis=bar_axis,
+                                  bar_length=bar_length,
+                                  grasp_axis_offset=grasp_axis_offset,
+                                  root_group=root_group,
+                                  tip_group=tip_group,
+                                  reference_linear_velocity=reference_linear_velocity,
+                                  reference_angular_velocity=reference_angular_velocity,
+                                  weight=weight,
+                                  **kwargs)
 
     def add_reaching(self,
                      grasp: str,
