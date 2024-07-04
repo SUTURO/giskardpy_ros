@@ -1548,6 +1548,30 @@ class MotionGoalWrapper:
                              door_handle_link=door_handle_link,
                              name=name)
 
+    def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis):
+        """
+        Wrapper for RealTimePointing and EndlessMode,
+        which is used for person live-tracking.
+        """
+
+        self.add_real_time_pointing(tip_link=tip_link,
+                                    topic_name=topic_name,
+                                    root_link=root_link,
+                                    pointing_axis=pointing_axis)
+
+    def continuous_pointing_head(self):
+        """
+        Uses real_time_pointer for continuous tracking of a human_pose.
+        """
+        tip_V_pointing_axis: Vector3Stamped = Vector3Stamped()
+        tip_V_pointing_axis.header.frame_id = 'head_center_camera_frame'
+        tip_V_pointing_axis.vector.z = 1
+
+        self.real_time_pointer(root_link='map',
+                               tip_link='head_center_camera_frame',
+                               topic_name='human_pose',
+                               pointing_axis=tip_V_pointing_axis)
+
 
 class MonitorWrapper:
     _monitors: List[Monitor]
