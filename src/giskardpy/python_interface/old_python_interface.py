@@ -29,28 +29,9 @@ from giskardpy.tree.control_modes import ControlModes
 
 class OldGiskardWrapper(GiskardWrapper):
 
-    def __init__(self, node_name: str = 'giskard', check_controller: bool = True):
+    def __init__(self, node_name: str = 'giskard'):
 
         super().__init__(node_name, avoid_name_conflict=True)
-
-        if check_controller and self.world.get_control_mode() == ControlModes.close_loop:
-            # TODO: create config for robots
-            start_con = ['realtime_body_controller_real']
-            stop_con = ['arm_trajectory_controller', 'head_trajectory_controller']
-            switch_controllers_srv_name = '/hsrb/controller_manager/switch_controller'
-            list_controllers_srv_name = '/hsrb/controller_manager/list_controllers'
-
-            self.list_controller_srv = rospy.ServiceProxy(name=list_controllers_srv_name,
-                                                          service_class=ListControllers)
-
-            self.set_closed_loop_controllers(stop=stop_con,
-                                             start=start_con,
-                                             switch_controller_srv=switch_controllers_srv_name)
-
-            if not self.check_controllers_active(
-                    stopped_controllers=stop_con,
-                    running_controllers=start_con):
-                raise Exception(f'Controllers are configured incorrectly. Look at rqt_controller_manager.')
 
     def execute(self, wait: bool = True, add_default: bool = True) -> MoveResult:
         if add_default:

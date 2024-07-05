@@ -4,6 +4,8 @@ from typing import Dict, Tuple, Optional, List
 import numpy as np
 import rospy
 from actionlib import SimpleActionClient
+from controller_manager_msgs.srv import ListControllers, SwitchController, SwitchControllerResponse, \
+    ListControllersResponse
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped
 from nav_msgs.msg import Path
 from rospy import ServiceException
@@ -2251,13 +2253,14 @@ class MonitorWrapper:
 class GiskardWrapper:
     last_feedback: MoveFeedback = None
 
-    def __init__(self, node_name: str = 'giskard', avoid_name_conflict: bool = False):
+    def __init__(self, node_name: str = 'giskard', avoid_name_conflict: bool = False, check_controller: bool = True):
         """
         Python wrapper for the ROS interface of Giskard.
         :param node_name: node name of Giskard
         :param avoid_name_conflict: if True, Giskard will automatically add an id to monitors and goals to avoid name
                                     conflicts.
         """
+        self.list_controller_srv = None
         self.world = WorldWrapper(node_name)
         self.monitors = MonitorWrapper(self.robot_name, avoid_name_conflict=avoid_name_conflict)
         self.motion_goals = MotionGoalWrapper(self.robot_name, avoid_name_conflict=avoid_name_conflict)
@@ -2267,6 +2270,79 @@ class GiskardWrapper:
         self._client.wait_for_server()
         self.clear_motion_goals_and_monitors()
         rospy.sleep(.3)
+
+        if check_controller and self.world.get_control_mode() == ControlModes.close_loop:
+            self.setup_controllers()
+
+    def setup_controllers(self):
+        # TODO: create config for robots
+        start_con = ['realtime_body_controller_real']
+        stop_con = ['arm_trajectory_controller', 'head_trajectory_controller']
+        switch_controllers_srv_name = '/hsrb/controller_manager/switch_controller'
+        list_controllers_srv_name = '/hsrb/controller_manager/list_controllers'
+        self.list_controller_srv = rospy.ServiceProxy(name=list_controllers_srv_name,
+                                                      service_class=ListControllers)
+        self.set_closed_loop_controllers(stop=stop_con,
+                                         start=start_con,
+                                         switch_controller_srv=switch_controllers_srv_name)
+        if not self.check_controllers_active(
+                stopped_controllers=stop_con,
+                running_controllers=start_con):
+            raise Exception(f'Controllers are configured incorrectly. Look at rqt_controller_manager.')
+
+    def set_closed_loop_controllers(self,
+                                    stop: Optional[List] = None,
+                                    start: Optional[List] = None,
+                                    switch_controller_srv: Optional[
+                                        str] = '/hsrb/controller_manager/switch_controller') -> SwitchControllerResponse:
+        """
+        Start and Stop controllers for via the designated switch_controller service
+        """
+
+        if stop is None:
+            stop = ['arm_trajectory_controller', 'head_trajectory_controller']
+        if start is None:
+            start = ['realtime_body_controller_real']
+
+        start_controllers = start
+        stop_controllers = stop
+        strictness: int = 1
+        start_asap: bool = False
+        timeout: float = 0.0
+
+        rospy.wait_for_service(switch_controller_srv)
+        srv_switch_con = rospy.ServiceProxy(name=switch_controller_srv,
+                                            service_class=SwitchController)
+
+        resp: SwitchControllerResponse = srv_switch_con(start_controllers,
+                                                        stop_controllers,
+                                                        strictness,
+                                                        start_asap,
+                                                        timeout)
+        return resp
+
+    def check_controllers_active(self,
+                                 stopped_controllers: Optional[List] = None,
+                                 running_controllers: Optional[List] = None):
+        """
+        Checks if the arm_trajectory_controller and head_trajectory_controller are stopped
+        and the realtime_body_controller_real is running
+
+        :param stopped_controllers: controllers that have to be in state stopped or initialized
+        :param running_controllers: controllers that have to be in state running
+        """
+        if stopped_controllers is None:
+            stopped_controllers = []
+        if running_controllers is None:
+            running_controllers = []
+
+        resp: ListControllersResponse = self.list_controller_srv()
+        controller_dict = {controller.name: controller for controller in resp.controller}
+
+        if (all(controller_dict[con].state == 'stopped' or controller_dict[con].state == 'initialized' for con in
+                stopped_controllers) and all(controller_dict[con].state == 'running' for con in running_controllers)):
+            return True
+        return False
 
     def set_avoid_name_conflict(self, value: bool):
         self.avoid_name_conflict = value
