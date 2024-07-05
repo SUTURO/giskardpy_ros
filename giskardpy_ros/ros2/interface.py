@@ -1,22 +1,8 @@
-from inspect import currentframe, getframeinfo
-from typing import Optional, List
-
 import rclpy
-import rospkg
+from ament_index_python import get_package_share_directory
 from rclpy.node import Node
 
 from giskardpy.middleware import MiddlewareWrapper
-
-rospack = rospkg.RosPack()
-
-
-@profile
-def generate_msg(msg):
-    node_name = 'todo'
-    new_msg = '[{}]: {}'.format(node_name, msg)
-    if node_name == '/unnamed':
-        print(new_msg)
-    return new_msg
 
 
 class ROS2Wrapper(MiddlewareWrapper):
@@ -28,24 +14,19 @@ class ROS2Wrapper(MiddlewareWrapper):
         self.node = Node('giskard')
 
     def loginfo(self, msg: str):
-        final_msg = generate_msg(msg)
-        self.node.get_logger().loginfo(final_msg)
+        self.node.get_logger().info(msg)
 
     def logwarn(self, msg: str):
-        final_msg = generate_msg(msg)
-        self.node.get_logger().logwarn(final_msg)
+        self.node.get_logger().warn(msg)
 
     def logerr(self, msg: str):
-        final_msg = generate_msg(msg)
-        self.node.get_logger().logerr(final_msg)
+        self.node.get_logger().error(msg)
 
     def logdebug(self, msg: str):
-        final_msg = generate_msg(msg)
-        self.node.get_logger().logdebug(final_msg)
+        self.node.get_logger().debug(msg)
 
     def logfatal(self, msg: str):
-        final_msg = generate_msg(msg)
-        self.node.get_logger().logfatal(final_msg)
+        self.node.get_logger().fatal(msg)
 
     def resolve_iri(cls, path: str) -> str:
         """
@@ -57,7 +38,7 @@ class ROS2Wrapper(MiddlewareWrapper):
             result = prefix
             for suffix in split[1:]:
                 package_name, suffix = suffix.split('/', 1)
-                real_path = rospack.get_path(package_name)
+                real_path = get_package_share_directory(package_name)
                 result += f'{real_path}/{suffix}'
             return result
         else:

@@ -1,6 +1,6 @@
 from threading import Thread
 
-from py_trees import Status
+from py_trees.common import Status
 
 from giskardpy.motion_graph.monitors.payload_monitors import PayloadMonitor
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior

@@ -1,7 +1,6 @@
 from typing import Optional, List
 
 import numpy as np
-import rospy
 from geometry_msgs.msg import Vector3, Point, PoseStamped, Pose
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 from std_msgs.msg import ColorRGBA
@@ -10,22 +9,24 @@ from visualization_msgs.msg import MarkerArray, Marker
 from giskardpy.god_map import god_map
 from giskardpy.model.collision_world_syncer import Collisions, Collision
 import giskardpy_ros.ros2.msg_converter as msg_converter
-from giskardpy_ros.ros2.ros1_interface import wait_for_publisher, wait_for_topic_to_appear
+from giskardpy_ros.ros2.ros2_interface import wait_for_publisher, wait_for_topic_to_appear
 
 from giskardpy_ros import ros_node
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
 
 class ROSMsgVisualization:
-    red = ColorRGBA(1, 0, 0, 1)
-    yellow = ColorRGBA(1, 1, 0, 1)
-    green = ColorRGBA(0, 1, 0, 1)
+    red = ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
+    yellow = ColorRGBA(r=1.0, g=1.0, b=0.0, a=1.0)
+    green = ColorRGBA(r=0.0, g=1.0, b=0.0, a=1.0)
 
     @profile
     def __init__(self, tf_frame: Optional[str] = None, use_decomposed_meshes: bool = True):
         self.use_decomposed_meshes = use_decomposed_meshes
         qos_profile = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
-        self.publisher = ros_node.create_publisher(MarkerArray, '~visualization_marker_array', qos_profile)
+        self.publisher = ros_node.create_publisher(MarkerArray,
+                                                   f'{ros_node.get_name()}/visualization_marker_array',
+                                                   qos_profile)
         wait_for_publisher(self.publisher)
         self.marker_ids = {}
         if tf_frame is None:
@@ -38,7 +39,7 @@ class ROSMsgVisualization:
     def create_world_markers(self, name_space: str = 'planning_visualization') -> List[Marker]:
         # todo add caching
         markers = []
-        time_stamp = rospy.Time()
+        time_stamp = ros_node.get_clock().now().to_msg()
         links = god_map.world.link_names_with_collisions
         for i, link_name in enumerate(links):
             link = god_map.world.links[link_name]

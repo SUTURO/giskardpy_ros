@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from py_trees import Status
+from py_trees.common import Status
 
 from giskardpy.data_types.data_types import TaskState
 from giskardpy.god_map import god_map

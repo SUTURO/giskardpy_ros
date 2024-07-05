@@ -1,14 +1,11 @@
 from typing import List, Dict, Any
 
-import control_msgs
-from actionlib import SimpleActionClient
-
 from giskardpy.data_types.exceptions import ExecutionException, FollowJointTrajectory_INVALID_JOINTS, \
     FollowJointTrajectory_INVALID_GOAL, FollowJointTrajectory_OLD_HEADER_TIMESTAMP, \
     FollowJointTrajectory_PATH_TOLERANCE_VIOLATED, FollowJointTrajectory_GOAL_TOLERANCE_VIOLATED, \
     ExecutionTimeoutException, ExecutionSucceededPrematurely, ExecutionPreemptedException
 from giskardpy.god_map import god_map
-from giskardpy_ros.ros2.ros1_interface import wait_for_topic_to_appear
+from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 from giskardpy.model.joints import OneDofJoint, OmniDrive
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy_ros import ros_node
@@ -30,19 +27,19 @@ from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
 
 
 class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
-    error_code_to_str = {value: name for name, value in vars(FollowJointTrajectoryResult).items() if
-                         isinstance(value, int)}
-
-    try:
-        supported_action_types = [control_msgs.msg.FollowJointTrajectoryActionGoal,
-                                  pr2_controllers_msgs.msg.JointTrajectoryActionGoal]
-        supported_state_types = [control_msgs.msg.JointTrajectoryControllerState,
-                                 pr2_controllers_msgs.msg.JointTrajectoryControllerState]
-    except NameError:
-        supported_action_types = [control_msgs.msg.FollowJointTrajectoryActionGoal]
-        supported_state_types = [control_msgs.msg.JointTrajectoryControllerState]
-
-    action_client: SimpleActionClient
+    # error_code_to_str = {value: name for name, value in vars(FollowJointTrajectoryResult).items() if
+    #                      isinstance(value, int)}
+    #
+    # try:
+    #     supported_action_types = [control_msgs.msg.FollowJointTrajectoryActionGoal,
+    #                               pr2_controllers_msgs.msg.JointTrajectoryActionGoal]
+    #     supported_state_types = [control_msgs.msg.JointTrajectoryControllerState,
+    #                              pr2_controllers_msgs.msg.JointTrajectoryControllerState]
+    # except NameError:
+    #     supported_action_types = [control_msgs.msg.FollowJointTrajectoryActionGoal]
+    #     supported_state_types = [control_msgs.msg.JointTrajectoryControllerState]
+    #
+    # action_client: SimpleActionClient
 
     @record_time
     @profile

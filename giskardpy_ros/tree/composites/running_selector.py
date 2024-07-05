@@ -1,5 +1,5 @@
 import py_trees.composites
-from py_trees import common, Status
+from py_trees.common import Status
 
 
 class RunningSelector(py_trees.composites.Selector):

@@ -1,5 +1,7 @@
 from typing import Optional
 
+from py_trees.decorators import FailureIsRunning, SuccessIsRunning
+
 from giskardpy.god_map import god_map
 from giskardpy_ros.tree.behaviors.collision_checker import CollisionChecker
 from giskardpy_ros.tree.behaviors.evaluate_debug_expressions import EvaluateDebugExpressions
@@ -16,7 +18,6 @@ from giskardpy_ros.tree.branches.publish_state import PublishState
 from giskardpy_ros.tree.branches.send_controls import SendControls
 from giskardpy_ros.tree.branches.synchronization import Synchronization
 from giskardpy_ros.tree.composites.async_composite import AsyncBehavior
-from giskardpy_ros.tree.decorators import success_is_running, failure_is_running
 from giskardpy.utils.decorators import toggle_on, toggle_off
 
 
@@ -40,32 +41,33 @@ class ControlLoop(AsyncBehavior):
     def __init__(self, name: str = 'control_loop', log_traj: bool = True, max_hz: Optional[float] = None):
         name = f'{name}\nmax_hz: {max_hz}'
         super().__init__(name, max_hz=max_hz)
-        self.publish_state = success_is_running(PublishState)('publish state 2')
+        self.publish_state = PublishState('publish state 2')
         self.publish_state.add_publish_feedback()
-        self.projection_synchronization = success_is_running(Synchronization)()
+        self.projection_synchronization = Synchronization()
         self.check_monitors = CheckMonitors()
         # projection plugins
-        self.time = success_is_running(TimePlugin)()
-        self.kin_sim = success_is_running(KinSimPlugin)('kin sim')
+        self.time = TimePlugin()
+        self.kin_sim = KinSimPlugin('kin sim')
 
-        self.ros_time = success_is_running(RosTime)()
-        self.real_kin_sim = success_is_running(RealKinSimPlugin)('real kin sim')
-        self.send_controls = success_is_running(SendControls)()
-        self.closed_loop_synchronization = success_is_running(Synchronization)()
+        self.ros_time = RosTime()
+        self.real_kin_sim = RealKinSimPlugin('real kin sim')
+        self.send_controls = SendControls()
+        self.closed_loop_synchronization = Synchronization()
 
-        self.add_child(failure_is_running(GoalCanceled)(GiskardBlackboard().move_action_server))
+        goal_canceled = GoalCanceled(GiskardBlackboard().move_action_server)
+        self.add_child(FailureIsRunning('failure is running', goal_canceled))
 
         if god_map.is_collision_checking_enabled():
             self.add_child(CollisionChecker('collision checker'))
 
-        self.add_child(success_is_running(EvaluateMonitors)())
-        self.add_child(self.check_monitors)
+        self.add_child(EvaluateMonitors())
+        self.add_child(self.check_monitors, success_is_running=False)
         self.controller_plugin = ControllerPlugin('controller')
-        self.add_child(self.controller_plugin)
+        self.add_child(self.controller_plugin, success_is_running=False)
 
-        self.add_child(success_is_running(ControlCycleCounter)())
+        self.add_child(ControlCycleCounter())
 
-        self.log_traj = success_is_running(LogTrajPlugin)('add traj point')
+        self.log_traj = LogTrajPlugin('add traj point')
 
         if log_traj:
             self.add_child(self.log_traj)

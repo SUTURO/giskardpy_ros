@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-from py_trees import Status
+from py_trees.common import Status
 from giskardpy.goals.collision_avoidance import CollisionAvoidance
 from giskardpy.goals.goal import Goal
 from giskardpy.motion_graph.monitors.monitors import Monitor, EndMotion, CancelMotion

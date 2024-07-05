@@ -1,4 +1,4 @@
-from py_trees import Status
+from py_trees.common import Status
 
 from giskardpy.data_types.exceptions import SelfCollisionViolatedException
 from giskardpy.god_map import god_map

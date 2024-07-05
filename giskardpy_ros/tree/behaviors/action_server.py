@@ -29,9 +29,10 @@ class ActionServerHandler:
         self.client_alive_checker = None
         self.goal_queue = Queue(1)
         self.result_queue = Queue(1)
-        self._as = ActionServer(ros_node, action_type, self.name,
+        self._as = ActionServer(node=ros_node,
+                                action_type=action_type,
+                                action_name=self.name,
                                 execute_callback=self.execute_cb)
-        self._as.start()
 
     def is_goal_msg_type_execute(self):
         return self.goal_msg.type in [Move.Goal.EXECUTE]

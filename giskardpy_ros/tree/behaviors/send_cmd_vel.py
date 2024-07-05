@@ -7,7 +7,7 @@ from py_trees.common import Status
 
 from giskardpy.god_map import god_map
 from giskardpy.middleware import middleware
-from giskardpy_ros.ros2.ros1_interface import wait_for_topic_to_appear
+from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 from giskardpy.model.joints import OmniDrive, DiffDrive
 from giskardpy_ros import ros_node
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior

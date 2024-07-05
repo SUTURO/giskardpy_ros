@@ -10,7 +10,7 @@ from giskardpy_ros.tree.composites.running_selector import RunningSelector
 
 class SendControls(RunningSelector):
     def __init__(self, name: str = 'send controls'):
-        super().__init__(name)
+        super().__init__(name, memory=False)
 
     def add_joint_velocity_controllers(self, namespaces: List[str]):
         self.add_child(JointVelController(namespaces=namespaces))

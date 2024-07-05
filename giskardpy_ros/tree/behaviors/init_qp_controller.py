@@ -1,7 +1,7 @@
 from itertools import chain
 from typing import Dict, List
 
-from py_trees import Status
+from py_trees.common import Status
 
 import giskardpy.casadi_wrapper as w
 from giskardpy.data_types.exceptions import EmptyProblemException

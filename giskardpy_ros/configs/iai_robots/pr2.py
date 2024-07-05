@@ -4,6 +4,7 @@ from giskardpy.model.world_config import WorldWithOmniDriveRobot
 from giskardpy_ros.configs.giskard import RobotInterfaceConfig
 from giskardpy.data_types.data_types import Derivatives
 from giskardpy.model.collision_world_syncer import CollisionCheckerLib
+from giskardpy_ros.ros2 import ros2_interface
 
 
 class WorldWithPR2Config(WorldWithOmniDriveRobot):
@@ -12,7 +13,9 @@ class WorldWithPR2Config(WorldWithOmniDriveRobot):
         super().__init__(map_name, localization_joint_name, odom_link_name, drive_joint_name)
 
     def setup(self):
-        super().setup(rospy.get_param('robot_description'))
+        urdf = ros2_interface.get_robot_description()
+        super().setup(urdf)
+
         self.set_joint_limits(limit_map={Derivatives.velocity: 2,
                                          Derivatives.jerk: 60},
                               joint_name='head_pan_joint')

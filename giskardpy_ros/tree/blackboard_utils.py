@@ -1,10 +1,11 @@
 from __future__ import annotations
 import traceback
+import typing
 from functools import wraps
 from typing import TypeVar, Callable, TYPE_CHECKING
 
-from py_trees.blackboard import Blackboard
-from py_trees.common import Status
+from py_trees.blackboard import Blackboard, Client
+from py_trees.common import Status, Access
 
 from giskardpy.data_types.exceptions import DontPrintStackTrace
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 blackboard_exception_name = 'exception'
 
 
-class GiskardBlackboard(Blackboard):
+class GiskardBlackboard(Client):
     giskard: Giskard
     tree: GiskardBT
     runtime: float
@@ -27,6 +28,18 @@ class GiskardBlackboard(Blackboard):
     fill_trajectory_velocity_values: bool
     control_loop_max_hz: float
     simulation_max_hz: float
+
+    def __init__(self, *, name: typing.Optional[str] = None, namespace: typing.Optional[str] = None):
+        super().__init__(name=name, namespace=namespace)
+        self.register_key('giskard', access=Access.WRITE)
+        self.register_key('tree', access=Access.WRITE)
+        self.register_key('runtime', access=Access.WRITE)
+        self.register_key('move_action_server', access=Access.WRITE)
+        self.register_key('world_action_server', access=Access.WRITE)
+        self.register_key('ros_visualizer', access=Access.WRITE)
+        self.register_key('fill_trajectory_velocity_values', access=Access.WRITE)
+        self.register_key('control_loop_max_hz', access=Access.WRITE)
+        self.register_key('simulation_max_hz', access=Access.WRITE)
 
 
 def raise_to_blackboard(exception):

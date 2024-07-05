@@ -18,7 +18,7 @@ def giskard_state_to_execution_state() -> ExecutionState:
     monitor_filter = np.array([monitor.plot for monitor in god_map.monitor_manager.monitors.values()])
     task_filter = np.array([task.plot for task in god_map.motion_goal_manager.tasks.values()])
     msg = ExecutionState()
-    msg.header.stamp = ros_node.get_clock().now()
+    msg.header.stamp = ros_node.get_clock().now().to_msg()
     msg.goal_id = GiskardBlackboard().move_action_server.goal_id
     msg.monitors = [msg_converter.monitor_to_ros_msg(m) for m in god_map.monitor_manager.monitors.values() if m.plot]
     msg.tasks = [msg_converter.task_to_ros_msg(t) for t in god_map.motion_goal_manager.tasks.values() if t.plot]
@@ -57,7 +57,7 @@ class PublishFeedback(GiskardBehavior):
         if name is None:
             name = self.__class__.__name__
         if topic_name is None:
-            topic_name = '~state'
+            topic_name = f'{ros_node.get_name()}/state'
         super().__init__(name)
         self.cmd_topic = topic_name
         self.pub = ros_node.create_publisher(ExecutionState,

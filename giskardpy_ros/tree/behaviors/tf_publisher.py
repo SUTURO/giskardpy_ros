@@ -36,7 +36,7 @@ class TFPublisher(GiskardBehavior):
     def make_transform(self, parent_frame, child_frame, pose):
         tf = TransformStamped()
         tf.header.frame_id = parent_frame
-        tf.header.stamp = ros_node.get_clock().now()
+        tf.header.stamp = ros_node.get_clock().now().to_msg()
         tf.child_frame_id = child_frame
         tf.transform.translation.x = pose.position.x
         tf.transform.translation.y = pose.position.y

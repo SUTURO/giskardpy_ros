@@ -1,8 +1,8 @@
-from py_trees import Status
+from giskard_msgs.action import Move
+from py_trees.common import Status
 
-from giskard_msgs.msg import MoveResult, GiskardError
+from giskard_msgs.msg import GiskardError
 from giskardpy.data_types.exceptions import *
-from giskardpy.goals.collision_avoidance import CollisionAvoidance
 from giskardpy.god_map import god_map
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.middleware import middleware
@@ -24,9 +24,9 @@ class SetMoveResult(GiskardBehavior):
     def update(self):
         e = self.get_blackboard_exception()
         if e is None:
-            move_result = MoveResult()
+            move_result = Move.Result()
         else:
-            move_result = MoveResult(error=msg_converter.exception_to_error_msg(e))
+            move_result = Move.Result(error=msg_converter.exception_to_error_msg(e))
 
         trajectory = god_map.trajectory
         joints = [god_map.world.joints[joint_name] for joint_name in god_map.world.movable_joint_names]

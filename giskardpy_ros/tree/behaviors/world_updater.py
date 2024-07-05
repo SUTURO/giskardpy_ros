@@ -2,12 +2,12 @@ import traceback
 from copy import deepcopy
 from threading import Thread
 
+from giskard_msgs.action import World
+from giskard_msgs.srv import GetGroupNames, GetGroupInfo, DyeGroup, GetGroupInfo_Response, GetGroupInfo_Request, \
+    GetGroupNames_Request, GetGroupNames_Response, DyeGroup_Response, DyeGroup_Request
 from py_trees.common import Status
 from visualization_msgs.msg import MarkerArray
 
-from giskard_msgs.msg import WorldResult, WorldGoal
-from giskard_msgs.srv import GetGroupNamesResponse, GetGroupNamesRequest, GetGroupInfoResponse, GetGroupInfoRequest, \
-    DyeGroupResponse, GetGroupNames, GetGroupInfo, DyeGroup, DyeGroupRequest
 from giskardpy.data_types.data_types import JointStates, PrefixName
 from giskardpy.data_types.exceptions import UnknownGroupException, \
     TransformException, DuplicateNameException, InvalidWorldOperationException
@@ -34,12 +34,14 @@ class ProcessWorldUpdate(GiskardBehavior):
 
     @record_time
     @profile
-    def setup(self, timeout: float = 5.0):
-        self.marker_publisher = ros_node.create_publisher(MarkerArray, '~visualization_marker_array', 10)
-        self.get_group_names = ros_node.create_service(GetGroupNames, '~get_group_names', self.get_group_names_cb)
-        self.get_group_info = ros_node.create_service(GetGroupInfo, '~get_group_info', self.get_group_info_cb)
-        self.dye_group = ros_node.create_service(DyeGroup, '~dye_group', self.dye_group)
-        return super().setup(timeout)
+    def setup(self, **kwargs):
+        self.marker_publisher = ros_node.create_publisher(MarkerArray,
+                                                          f'{ros_node.get_name()}/visualization_marker_array', 10)
+        self.get_group_names = ros_node.create_service(GetGroupNames,
+                                                       f'{ros_node.get_name()}/get_group_names', self.get_group_names_cb)
+        self.get_group_info = ros_node.create_service(GetGroupInfo, f'{ros_node.get_name()}/get_group_info', self.get_group_info_cb)
+        self.dye_group = ros_node.create_service(DyeGroup, f'{ros_node.get_name()}/dye_group', self.dye_group)
+        return super().setup(**kwargs)
 
     def update(self) -> Status:
         if not self.started:
@@ -55,19 +57,19 @@ class ProcessWorldUpdate(GiskardBehavior):
 
     def process_goal(self):
         req = self.action_server.goal_msg
-        result = WorldResult()
+        result = World.Result()
         try:
-            if req.operation == WorldGoal.ADD:
+            if req.operation == World.Goal.ADD:
                 self.add_object(req)
-            elif req.operation == WorldGoal.UPDATE_PARENT_LINK:
+            elif req.operation == World.Goal.UPDATE_PARENT_LINK:
                 self.update_parent_link(req)
-            elif req.operation == WorldGoal.UPDATE_POSE:
+            elif req.operation == World.Goal.UPDATE_POSE:
                 self.update_group_pose(req)
-            elif req.operation == WorldGoal.REGISTER_GROUP:
+            elif req.operation == World.Goal.REGISTER_GROUP:
                 self.register_group(req)
-            elif req.operation == WorldGoal.REMOVE:
+            elif req.operation == World.Goal.REMOVE:
                 self.remove_object(req.group_name)
-            elif req.operation == WorldGoal.REMOVE_ALL:
+            elif req.operation == World.Goal.REMOVE_ALL:
                 self.clear_world()
             else:
                 raise InvalidWorldOperationException(f'Received invalid operation code: {req.operation}')
@@ -76,20 +78,20 @@ class ProcessWorldUpdate(GiskardBehavior):
             result.error = msg_converter.exception_to_error_msg(e)
         self.action_server.result_msg = result
 
-    def dye_group(self, req: DyeGroupRequest, res: DyeGroupResponse):
+    def dye_group(self, req: DyeGroup_Request, res: DyeGroup_Response):
         try:
             god_map.world.dye_group(req.group_name, req.color)
-            res.error_codes = DyeGroupResponse.SUCCESS
+            res.error_codes = DyeGroup_Response.SUCCESS
             for link_name in god_map.world.groups[req.group_name].links:
                 god_map.world.links[link_name].reset_cache()
             middleware.loginfo(
                 f'dyed group \'{req.group_name}\' to r:{req.color.r} g:{req.color.g} b:{req.color.b} a:{req.color.a}')
         except UnknownGroupException:
-            res.error_codes = DyeGroupResponse.GROUP_NOT_FOUND_ERROR
+            res.error_codes = DyeGroup_Response.GROUP_NOT_FOUND_ERROR
         return res
 
     @profile
-    def get_group_names_cb(self, req: GetGroupNamesRequest, res: GetGroupNamesResponse) -> GetGroupNamesResponse:
+    def get_group_names_cb(self, req: GetGroupNames_Request, res: GetGroupNames_Response) -> GetGroupNames_Response:
         group_names = god_map.world.group_names
         groups = list(sorted(group_names))
         # make sure robots are at the front
@@ -98,8 +100,8 @@ class ProcessWorldUpdate(GiskardBehavior):
         return res
 
     @profile
-    def get_group_info_cb(self, req: GetGroupInfoRequest, res: GetGroupInfoResponse) -> GetGroupInfoResponse:
-        res.error_codes = GetGroupInfoResponse.SUCCESS
+    def get_group_info_cb(self, req: GetGroupInfo_Request, res: GetGroupInfo_Response) -> GetGroupInfo_Response:
+        res.error_codes = GetGroupInfo_Response.SUCCESS
         try:
             group = god_map.world.groups[req.group_name]  # type: WorldBranch
             res.controlled_joints = [str(j.short_name) for j in group.controlled_joints]
@@ -112,12 +114,12 @@ class ProcessWorldUpdate(GiskardBehavior):
                 res.joint_state.velocity.append(value.velocity)
         except KeyError as e:
             middleware.logerr(f'no object with the name {req.group_name} was found')
-            res.error_codes = GetGroupInfoResponse.GROUP_NOT_FOUND_ERROR
+            res.error_codes = GetGroupInfo_Response.GROUP_NOT_FOUND_ERROR
 
         return res
 
     @profile
-    def add_object(self, req: WorldGoal) -> None:
+    def add_object(self, req: World.Goal) -> None:
         group_name = req.group_name
         if group_name in god_map.world.groups:
             raise DuplicateNameException(f'Group with name \'{req.group_name}\' already exists.')
@@ -164,7 +166,7 @@ class ProcessWorldUpdate(GiskardBehavior):
             raise NotImplementedError('tf_root_link_name is not implemented')
 
     @profile
-    def update_group_pose(self, req: WorldGoal):
+    def update_group_pose(self, req: World.Goal):
         if req.group_name not in god_map.world.groups:
             raise UnknownGroupException(f'Can\'t update pose of unknown group: \'{req.group_name}\'')
         group = god_map.world.groups[req.group_name]
@@ -175,7 +177,7 @@ class ProcessWorldUpdate(GiskardBehavior):
         god_map.world.notify_state_change()
 
     @profile
-    def update_parent_link(self, req: WorldGoal):
+    def update_parent_link(self, req: World.Goal):
         parent_link = msg_converter.link_name_msg_to_prefix_name(req.parent_link, god_map.world)
         if req.group_name not in god_map.world.groups:
             raise UnknownGroupException(f'Can\'t attach to unknown group: \'{req.group_name}\'')
@@ -212,7 +214,7 @@ class ProcessWorldUpdate(GiskardBehavior):
         # self.clear_markers()
         middleware.loginfo('Cleared world.')
 
-    def register_group(self, req: WorldGoal):
+    def register_group(self, req: World.Goal):
         link_name = msg_converter.link_name_msg_to_prefix_name(req.parent_link, god_map.world)
         god_map.world.register_group(name=req.group_name, root_link_name=link_name)
         middleware.loginfo(f'Registered new group \'{req.group_name}\'')

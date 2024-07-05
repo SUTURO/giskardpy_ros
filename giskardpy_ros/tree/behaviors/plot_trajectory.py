@@ -1,7 +1,7 @@
 import traceback
 from threading import Thread
 
-from py_trees import Status
+from py_trees.common import Status
 
 from giskardpy.god_map import god_map
 from giskardpy.middleware import middleware

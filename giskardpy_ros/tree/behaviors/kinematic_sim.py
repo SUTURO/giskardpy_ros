@@ -1,4 +1,4 @@
-from py_trees import Status
+from py_trees.common import Status
 
 from giskardpy.data_types.data_types import KeyDefaultDict
 from giskardpy.god_map import god_map

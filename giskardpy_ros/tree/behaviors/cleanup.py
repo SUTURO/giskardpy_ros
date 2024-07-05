@@ -14,7 +14,9 @@ class CleanUp(GiskardBehavior):
     def __init__(self, name, clear_markers=True):
         super().__init__(name)
         self.clear_markers_ = clear_markers
-        self.marker_pub = ros_node.create_publisher(MarkerArray, '~visualization_marker_array', 10)
+        self.marker_pub = ros_node.create_publisher(MarkerArray,
+                                                    f'{ros_node.get_name()}/visualization_marker_array',
+                                                    10)
 
     def clear_markers(self):
         msg = MarkerArray()

@@ -1,6 +1,6 @@
 from typing import Dict
 
-from py_trees import Sequence
+from py_trees.composites import Sequence
 
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.god_map import god_map
@@ -17,7 +17,7 @@ class ExecuteTraj(Sequence):
     move_robots: Parallel
 
     def __init__(self, name: str = 'execute traj'):
-        super().__init__(name)
+        super().__init__(name, memory=True)
         self.move_robots = Parallel(name='move robot', policy=ParallelPolicy.SuccessOnAll(synchronise=True))
         self.add_child(self.move_robots)
         self.prepare_base_control = PrepareBaseTrajControlLoop()

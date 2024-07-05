@@ -1,5 +1,5 @@
 from typing import Tuple, Dict, Optional
-from py_trees import Status
+from py_trees.common import Status
 
 from giskardpy.god_map import god_map
 from giskardpy.model.joints import Joint6DOF

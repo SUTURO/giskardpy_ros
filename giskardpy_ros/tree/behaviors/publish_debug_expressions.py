@@ -30,13 +30,13 @@ class PublishDebugExpressions(GiskardBehavior):
 
     @profile
     def setup(self, timeout):
-        self.publisher = ros_node.create_publisher(JointState, '~qp_data', 10)
+        self.publisher = ros_node.create_publisher(JointState, f'{ros_node.get_name()}/qp_data', 10)
         return super().setup(timeout)
 
     @profile
     def create_msg(self, qp_controller: QPController):
         msg = JointState()
-        msg.header.stamp = ros_node.get_clock().now()
+        msg.header.stamp = ros_node.get_clock().now().to_msg()
 
         weights, g, lb, ub, E, bE, A, lbA, ubA, weight_filter, bE_filter, bA_filter = qp_controller.qp_solver.get_problem_data()
         free_variable_names = qp_controller.free_variable_bounds.names[weight_filter]

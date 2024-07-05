@@ -107,7 +107,7 @@ class CarryMyBullshit(Goal):
         self.end_of_traj_reached = False
         self.enable_laser_avoidance = enable_laser_avoidance
         if CarryMyBullshit.pub is None:
-            CarryMyBullshit.pub = ros_node.create_publisher(MarkerArray, '~visualization_marker_array', 10)
+            CarryMyBullshit.pub = ros_node.create_publisher(MarkerArray, f'{ros_node.get_name()}/visualization_marker_array', 10)
         self.laser_topic_name = laser_topic_name
         if point_cloud_laser_topic_name == '':
             self.point_cloud_laser_topic_name = None
@@ -123,9 +123,9 @@ class CarryMyBullshit(Goal):
         self.closest_laser_reading_pc = 0
         self.laser_frame = laser_frame_id
         self.last_scan = LaserScan()
-        self.last_scan.header.stamp = ros_node.get_clock().now()
+        self.last_scan.header.stamp = ros_node.get_clock().now().to_msg()
         self.last_scan_pc = LaserScan()
-        self.last_scan_pc.header.stamp = ros_node.get_clock().now()
+        self.last_scan_pc.header.stamp = ros_node.get_clock().now().to_msg()
         self.laser_scan_age_threshold = laser_scan_age_threshold
         self.laser_avoidance_angle_cutout = laser_avoidance_angle_cutout
         self.laser_avoidance_sideways_buffer = laser_avoidance_sideways_buffer
@@ -697,7 +697,7 @@ class FollowNavPath(Goal):
         self.last_scan = {}
         self.enable_laser_avoidance = len(laser_topics) > 0
         if FollowNavPath.pub is None:
-            FollowNavPath.pub = ros_node.create_publisher(MarkerArray, '~visualization_marker_array', 10)
+            FollowNavPath.pub = ros_node.create_publisher(MarkerArray, f'{ros_node.get_name()}/visualization_marker_array', 10)
         self.laser_topics = list(laser_topics)
         self.laser_distance_threshold_width = laser_distance_threshold_width / 2
         self.closest_laser_left = [self.laser_distance_threshold_width] * len(self.laser_topics)

@@ -1,4 +1,4 @@
-from py_trees import Sequence
+from py_trees.composites import Sequence
 
 from giskardpy_ros.tree.behaviors.cleanup import CleanUpPlanning
 from giskardpy_ros.tree.behaviors.compile_debug_expressions import CompileDebugExpressions
@@ -14,7 +14,7 @@ class PrepareControlLoop(Sequence):
     has_compile_debug_expressions: bool
 
     def __init__(self, name: str = 'prepare control loop'):
-        super().__init__(name)
+        super().__init__(name, memory=True)
         self.has_compile_debug_expressions = False
         self.add_child(CleanUpPlanning('CleanUpPlanning'))
         self.add_child(NewTrajectory('NewTrajectory'))
@@ -37,7 +37,7 @@ class PrepareBaseTrajControlLoop(Sequence):
     has_compile_debug_expressions: bool
 
     def __init__(self, name: str = 'prepare control loop'):
-        super().__init__(name)
+        super().__init__(name, memory=True)
         self.has_compile_debug_expressions = False
         self.add_child(CleanUpPlanning('CleanUpPlanning'))
         self.add_child(AddBaseTrajFollowerGoal())

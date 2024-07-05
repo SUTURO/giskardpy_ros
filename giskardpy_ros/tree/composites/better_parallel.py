@@ -1,5 +1,6 @@
 import py_trees.composites
-from py_trees import common, Status
+from py_trees import common
+from py_trees.common import Status
 
 
 # copy paste from py_trees 2.x

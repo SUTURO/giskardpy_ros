@@ -1,14 +1,18 @@
 import traceback
+import uuid
 from threading import Thread
 from time import time
 from typing import Optional
 
+import rclpy
+from py_trees import behaviour
 from py_trees.behaviour import Behaviour
 from py_trees.common import Status
 from py_trees.composites import Composite
+from py_trees.decorators import RunningIsSuccess, SuccessIsRunning
 
+from giskardpy_ros import ros_node
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
-from giskardpy_ros.ros2.ros_timer import Rate
 from giskardpy_ros.tree.blackboard_utils import raise_to_blackboard
 
 
@@ -35,6 +39,17 @@ class AsyncBehavior(GiskardBehavior, Composite):
         self.update_thread.start()
         super().initialise()
 
+    def add_child(self, child: behaviour.Behaviour, success_is_running: bool = True) -> uuid.UUID:
+        if success_is_running:
+            success_is_running_child = SuccessIsRunning('success is running', child)
+            return super().add_child(success_is_running_child)
+        return super().add_child(child)
+
+    def remove_child(self, child: behaviour.Behaviour) -> int:
+        if isinstance(child.parent, SuccessIsRunning):
+            return super().remove_child(child.parent)
+        return super().remove_child(child)
+
     def is_running(self) -> bool:
         return self.status == Status.RUNNING
 
@@ -53,8 +68,13 @@ class AsyncBehavior(GiskardBehavior, Composite):
         for child in self.children:
             child.stop()
 
-    def insert_behind(self, node: Behaviour, left_sibling_name: Behaviour) -> None:
-        sibling_id = self.children.index(left_sibling_name)
+    def insert_behind(self, node: Behaviour, left_sibling_name: Behaviour, success_is_running: bool = True) -> None:
+        if success_is_running:
+            node = SuccessIsRunning('success is running', node)
+        try:
+            sibling_id = self.children.index(left_sibling_name)
+        except:
+            sibling_id = self.children.index(left_sibling_name.parent)
         self.insert_child(node, sibling_id+1)
 
     def tick(self):
@@ -85,10 +105,10 @@ class AsyncBehavior(GiskardBehavior, Composite):
         try:
             self.get_blackboard().runtime = time()
             if self.max_hz is not None:
-                self.sleeper = Rate(self.max_hz, complain=True)
+                self.sleeper = ros_node.create_rate(frequency=self.max_hz)
             else:
                 self.sleeper = None
-            while self.is_running() and not rosnode.is_shutdown():
+            while self.is_running() and rclpy.ok():
                 for child in self.children:
                     if not self.is_running():
                         return

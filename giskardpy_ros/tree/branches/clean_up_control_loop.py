@@ -1,4 +1,5 @@
-from py_trees import Sequence
+from py_trees.composites import Sequence
+from py_trees.decorators import FailureIsSuccess
 
 from giskardpy_ros.tree.behaviors.append_zero_velocity import SetZeroVelocity
 from giskardpy_ros.tree.behaviors.delete_monitors_behaviors import DeleteMonitors
@@ -10,7 +11,6 @@ from giskardpy_ros.tree.behaviors.plot_trajectory import PlotTrajectory
 from giskardpy_ros.tree.behaviors.publish_feedback import PublishFeedback
 from giskardpy_ros.tree.behaviors.reset_joint_state import ResetWorldState
 from giskardpy_ros.tree.behaviors.time import TimePlugin
-from giskardpy_ros.tree.decorators import failure_is_success
 from giskardpy.utils.decorators import toggle_on, toggle_off
 
 
@@ -18,14 +18,15 @@ class CleanupControlLoop(Sequence):
     reset_world_state = ResetWorldState
 
     def __init__(self, name: str = 'clean up control loop'):
-        super().__init__(name)
+        super().__init__(name, memory=True)
         self.add_child(PublishFeedback())
         self.add_child(TimePlugin())
         self.add_child(SetZeroVelocity('set zero vel 1'))
         self.add_child(LogTrajPlugin('log post processing'))
         self.add_child(GoalCleanUp('clean up goals'))
         self.add_child(DeleteMonitors())
-        self.reset_world_state = failure_is_success(ResetWorldState)()
+        self.reset_world_state = ResetWorldState()
+        self.reset_world_state_failure_is_success = FailureIsSuccess('ignore failure', self.reset_world_state)
         self.remove_reset_world_state()
 
     def add_plot_trajectory(self, normalize_position: bool = False, wait: bool = False):
@@ -40,11 +41,11 @@ class CleanupControlLoop(Sequence):
 
     @toggle_on('has_reset_world_state')
     def add_reset_world_state(self):
-        self.add_child(self.reset_world_state)
+        self.add_child(self.reset_world_state_failure_is_success)
 
     @toggle_off('has_reset_world_state')
     def remove_reset_world_state(self):
         try:
-            self.remove_child(self.reset_world_state)
+            self.remove_child(self.reset_world_state_failure_is_success)
         except ValueError as e:
             pass  # it's fine, happens if it's called before add

@@ -35,6 +35,6 @@ class PublishJointState(GiskardBehavior):
                 msg.name.append(joint_name.short_name)
             msg.position.append(god_map.world.state[joint_name].position)
             msg.velocity.append(god_map.world.state[joint_name].velocity)
-        msg.header.stamp = ros_node.get_clock().now()
+        msg.header.stamp = ros_node.get_clock().now().to_msg()
         self.cmd_pub.publish(msg)
         return Status.SUCCESS

@@ -1,4 +1,4 @@
-from py_trees import Status
+from py_trees.common import Status
 
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time

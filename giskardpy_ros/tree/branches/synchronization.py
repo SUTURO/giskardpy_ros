@@ -1,8 +1,8 @@
 from typing import List
 
-from py_trees import Sequence, Status
+from py_trees.common import Status
+from py_trees.composites import Sequence
 
-from giskardpy.god_map import god_map
 from giskardpy.data_types.data_types import PrefixName
 from giskardpy_ros.tree.behaviors.collision_scene_updater import CollisionSceneUpdater
 from giskardpy_ros.tree.behaviors.notify_state_change import NotifyStateChange
@@ -19,7 +19,7 @@ class Synchronization(Sequence):
     added_behaviors: List[GiskardBehavior]
 
     def __init__(self):
-        super().__init__('synchronize')
+        super().__init__('synchronize', memory=True)
         self.sync_tf_frames = None
         self.collision_scene_updater = CollisionSceneUpdater()
         self.add_child(NotifyStateChange())

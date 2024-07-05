@@ -1,4 +1,5 @@
-from py_trees import Sequence
+from py_trees.composites import Sequence
+
 from giskardpy.motion_graph.monitors.payload_monitors import PayloadMonitor
 from giskardpy_ros.tree.behaviors.check_monitor_state import CheckMonitorState
 from giskardpy_ros.tree.behaviors.delete_monitors_behaviors import DeleteMonitor
@@ -10,7 +11,7 @@ class PayloadMonitorSequence(Sequence):
     monitor: PayloadMonitor
 
     def __init__(self, monitor: PayloadMonitor):
-        super().__init__(str(monitor.name))
+        super().__init__(str(monitor.name), memory=True)
         self.monitor = monitor
         if not cas.is_false(self.monitor.end_condition):
             self.add_child(DeleteMonitor(name=f'delete\nparent?', parent=self))
