@@ -6,7 +6,7 @@ import rospy
 from actionlib import SimpleActionClient
 from controller_manager_msgs.srv import ListControllers, SwitchController, SwitchControllerResponse, \
     ListControllersResponse
-from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped
+from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3
 from nav_msgs.msg import Path
 from rospy import ServiceException
 from shape_msgs.msg import SolidPrimitive
@@ -17,7 +17,6 @@ from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, Mo
 from giskard_msgs.srv import DyeGroupRequest, DyeGroup, GetGroupInfoRequest, DyeGroupResponse
 from giskard_msgs.srv import GetGroupInfo, GetGroupNames
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse
-from giskardpy.casadi_wrapper import Vector3
 from giskardpy.data_types import goal_parameter
 from giskardpy.exceptions import DuplicateNameException, UnknownGroupException
 from giskardpy.goals.align_planes import AlignPlanes
@@ -1381,21 +1380,6 @@ class MotionGoalWrapper:
                              end_condition=end_condition,
                              **kwargs)
 
-    def open_door_goal(self,
-                       tip_link: str,
-                       door_handle_link: str,
-                       name: str = None):
-        """
-        Adds OpenDoorGoal to motion goal execution plan
-
-        :param tip_link: Link that is grasping the door handle
-        :param door_handle_link: Link of the door handle of the door that is to be opened
-        :param name: Name of the Goal for distinction between similar goals
-        """
-        self.add_open_door_goal(tip_link=tip_link,
-                                door_handle_link=door_handle_link,
-                                name=name)
-
     def hsrb_open_door_goal(self,
                             door_handle_link: str,
                             tip_link: str = 'hand_gripper_tool_frame',
@@ -1408,17 +1392,17 @@ class MotionGoalWrapper:
         :param name: name of the goal for distinction between same goals
         """
 
-        self.open_door_goal(tip_link=tip_link,
-                            door_handle_link=door_handle_link,
-                            name=name)
+        self.add_open_door_goal(tip_link=tip_link,
+                                door_handle_link=door_handle_link,
+                                name=name)
 
     def hsrb_door_handle_grasp(self,
                                handle_name: str,
                                handle_bar_length: float = 0,
                                tip_link: str = 'hand_gripper_tool_frame',
                                root_link: str = 'map',
-                               bar_axis_v: Vector3 = Vector3(0, 1, 0),
-                               tip_grasp_axis_v: Vector3 = Vector3(1, 0, 0)):
+                               bar_axis_v: Optional[Vector3] = None,
+                               tip_grasp_axis_v: Optional[Vector3] = None):
         """
         HSRB specific set_grasp_bar_goal, that only needs handle_name of the door_handle
 
@@ -1429,17 +1413,24 @@ class MotionGoalWrapper:
         :param bar_axis_v: Vector for changing the orientation of the door handle
         :param tip_grasp_axis_v: Vector for the orientation of the tip grasp link
         """
+        # TODO: actually use Vector3Stamped as parameter instead of Vector3, make handle_name and bar_axis/tip_grasp_axis mutally exclusive
         bar_axis = Vector3Stamped()
         bar_axis.header.frame_id = handle_name
-        bar_axis.vector = bar_axis_v
+        if bar_axis_v is None:
+            bar_axis.vector = Vector3(0, 1, 0)
+        else:
+            bar_axis.vector = bar_axis_v
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        if tip_grasp_axis_v is None:
+            tip_grasp_axis.vector = Vector3(1, 0, 0)
+        else:
+            tip_grasp_axis.vector = tip_grasp_axis_v
 
         bar_center = PointStamped()
         bar_center.header.frame_id = handle_name
         bar_center.point.y = 0.045
-
-        tip_grasp_axis = Vector3Stamped()
-        tip_grasp_axis.header.frame_id = tip_link
-        tip_grasp_axis.vector = tip_grasp_axis_v
 
         self.add_grasp_bar(root_link=root_link,
                            tip_link=tip_link,
@@ -1513,48 +1504,7 @@ class MotionGoalWrapper:
                                weight=weight,
                                door_object=hinge_frame_id)
 
-    def hsrb_dishwasher_door_handle_grasp(self,
-                                          handle_frame_id: str,
-                                          grasp_bar_offset: float = 0.0,
-                                          root_link: str = 'map',
-                                          tip_link: str = 'hand_gripper_tool_frame'):
-
-        bar_axis = Vector3Stamped()
-        bar_axis.header.frame_id = handle_frame_id
-        bar_axis.vector.y = 1
-
-        bar_center = PointStamped()
-        bar_center.header.frame_id = handle_frame_id
-
-        tip_grasp_axis = Vector3Stamped()
-        tip_grasp_axis.header.frame_id = tip_link
-        tip_grasp_axis.vector.x = 1
-
-        grasp_axis_offset = Vector3Stamped()
-        grasp_axis_offset.header.frame_id = handle_frame_id
-        grasp_axis_offset.vector.x = -grasp_bar_offset
-
-        self.grasp_bar_offset_goal(root_link=root_link,
-                                   tip_link=tip_link,
-                                   tip_grasp_axis=tip_grasp_axis,
-                                   bar_center=bar_center,
-                                   bar_axis=bar_axis,
-                                   bar_length=.4,
-                                   grasp_axis_offset=grasp_axis_offset)
-
-        x_gripper = Vector3Stamped()
-        x_gripper.header.frame_id = tip_link
-        x_gripper.vector.z = 1
-
-        x_goal = Vector3Stamped()
-        x_goal.header.frame_id = handle_frame_id
-        x_goal.vector.x = -1
-
-        self.add_align_planes(tip_link=tip_link,
-                              tip_normal=x_gripper,
-                              goal_normal=x_goal,
-                              root_link=root_link)
-
+    # TODO: change object_size Vector3Stamped instead
     def add_reaching(self,
                      grasp: str,
                      align: str,
@@ -2495,6 +2445,8 @@ class GiskardWrapper:
 
         self.monitor_transport_check(object_type, threshold_name)
 
+    # TODO: put logic into giskard Interface of Planning where Monitors and Motions are used,
+    # also other hsrb specific methods
     def grasp_bar_offset_goal(self,
                               bar_center: PointStamped,
                               bar_axis: Vector3Stamped,
@@ -2545,16 +2497,58 @@ class GiskardWrapper:
                                                               tip_group=tip_group)
             end_condition = f'{monitor_name1} and {monitor_name2}'
         self.motion_goals.add_grasp_bar_offset(end_condition=end_condition,
-                                  root_link=root_link,
-                                  tip_link=tip_link,
-                                  tip_grasp_axis=tip_grasp_axis,
-                                  bar_center=bar_center,
-                                  bar_axis=bar_axis,
-                                  bar_length=bar_length,
-                                  grasp_axis_offset=grasp_axis_offset,
-                                  root_group=root_group,
-                                  tip_group=tip_group,
-                                  reference_linear_velocity=reference_linear_velocity,
-                                  reference_angular_velocity=reference_angular_velocity,
-                                  weight=weight,
-                                  **kwargs)
+                                               root_link=root_link,
+                                               tip_link=tip_link,
+                                               tip_grasp_axis=tip_grasp_axis,
+                                               bar_center=bar_center,
+                                               bar_axis=bar_axis,
+                                               bar_length=bar_length,
+                                               grasp_axis_offset=grasp_axis_offset,
+                                               root_group=root_group,
+                                               tip_group=tip_group,
+                                               reference_linear_velocity=reference_linear_velocity,
+                                               reference_angular_velocity=reference_angular_velocity,
+                                               weight=weight,
+                                               **kwargs)
+
+    def hsrb_dishwasher_door_handle_grasp(self,
+                                          handle_frame_id: str,
+                                          grasp_bar_offset: float = 0.0,
+                                          root_link: str = 'map',
+                                          tip_link: str = 'hand_gripper_tool_frame'):
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.y = 1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.x = 1
+
+        grasp_axis_offset = Vector3Stamped()
+        grasp_axis_offset.header.frame_id = handle_frame_id
+        grasp_axis_offset.vector.x = -grasp_bar_offset
+
+        self.grasp_bar_offset_goal(root_link=root_link,
+                                   tip_link=tip_link,
+                                   tip_grasp_axis=tip_grasp_axis,
+                                   bar_center=bar_center,
+                                   bar_axis=bar_axis,
+                                   bar_length=.4,
+                                   grasp_axis_offset=grasp_axis_offset)
+
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = tip_link
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+
+        self.motion_goals.add_align_planes(tip_link=tip_link,
+                                           tip_normal=x_gripper,
+                                           goal_normal=x_goal,
+                                           root_link=root_link)
