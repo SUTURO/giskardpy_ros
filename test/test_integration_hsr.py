@@ -1,6 +1,5 @@
 import os
 from copy import deepcopy
-from typing import Optional
 
 import numpy as np
 import pytest
@@ -69,10 +68,7 @@ class HSRTestWrapper(GiskardTestWrapper):
         self.plan_and_execute()
 
     def reset(self):
-        self.register_group('gripper',
-                            root_link_group_name=self.robot_name,
-                            root_link_name='hand_palm_link')
-
+        pass
 
 
 @pytest.fixture(scope='module')
@@ -741,13 +737,14 @@ class TestSUTURO:
 
         door_setup.open_gripper()
 
-        door_setup.set_hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05)
+        door_setup.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05)
 
         door_setup.execute()
 
         door_setup.close_gripper()
 
-        door_setup.set_hsrb_open_door_goal(door_handle_link=handle_name)
+        door_setup.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=(np.pi / 6),
+                                                    hinge_limit=-(np.pi / 3))
 
         door_setup.allow_all_collisions()
 
