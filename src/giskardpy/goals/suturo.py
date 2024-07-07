@@ -997,6 +997,8 @@ class OpenDoorGoal(Goal):
                  tip_link: str,
                  door_handle_link: str,
                  name: str = None,
+                 handle_limit: Optional[float] = None,
+                 hinge_limit: Optional[float] = None,
                  start_condition: w.Expression = w.TrueSymbol,
                  hold_condition: w.Expression = w.FalseSymbol,
                  end_condition: w.Expression = w.FalseSymbol):
@@ -1022,7 +1024,15 @@ class OpenDoorGoal(Goal):
         _, max_limit_handle = god_map.world.compute_joint_limits(handle_frame_id, 0)
         min_limit_hinge, max_limit_hinge = god_map.world.compute_joint_limits(door_hinge_id, 0)
 
-        limit_handle = min(max_limit_handle, (np.pi / 6))
+        if handle_limit is None:
+            limit_handle = max_limit_handle
+        else:
+            limit_handle = min(max_limit_handle, handle_limit)
+
+        if hinge_limit is None:
+            limit_hinge = min_limit_hinge
+        else:
+            limit_hinge = max(min_limit_hinge, hinge_limit)
 
         handle_state = {handle_frame_id: limit_handle}
         handle_state_monitor = JointGoalReached(goal_state=handle_state,
@@ -1033,8 +1043,6 @@ class OpenDoorGoal(Goal):
         sleep_mon = Sleep(seconds=2,
                           start_condition=handle_state_monitor.get_state_expression())
         self.add_monitor(sleep_mon)
-
-        limit_hinge = max(min_limit_hinge, -(np.pi / 4))
 
         hinge_state = {door_hinge_id: limit_hinge}
 

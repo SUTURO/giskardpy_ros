@@ -1383,18 +1383,24 @@ class MotionGoalWrapper:
     def hsrb_open_door_goal(self,
                             door_handle_link: str,
                             tip_link: str = 'hand_gripper_tool_frame',
-                            name: str = 'HSRB_open_door'):
+                            name: str = 'HSRB_open_door',
+                            handle_limit: Optional[float] = (np.pi / 6),
+                            hinge_limit: Optional[float] = -(np.pi / 4)):
         """
         HSRB specific open door goal wrapper
 
         :param door_handle_link: Link of the door handle
         :param tip_link: Link that's grasping the door handle
         :param name: name of the goal for distinction between same goals
+        :param handle_limit: Limits the handle opening to given value
+        :param hinge_limit: Limits the hinge opening to given value
         """
 
         self.add_open_door_goal(tip_link=tip_link,
                                 door_handle_link=door_handle_link,
-                                name=name)
+                                name=name,
+                                handle_limit=handle_limit,
+                                hinge_limit=hinge_limit)
 
     def hsrb_door_handle_grasp(self,
                                handle_name: str,
@@ -1661,42 +1667,37 @@ class MotionGoalWrapper:
     def add_open_door_goal(self,
                            tip_link: str,
                            door_handle_link: str,
-                           name: str = None):
+                           name: str = None,
+                           handle_limit: Optional[float] = None,
+                           hinge_limit: Optional[float] = None):
         """
         Adds OpenDoorGoal to motion goal execution plan
 
         :param tip_link: Link that is grasping the door handle
         :param door_handle_link: Link of the door handle of the door that is to be opened
         :param name: Name of the Goal for distinction between similar goals
+        :param handle_limit: Limits the handle opening to given value
+        :param hinge_limit: Limits the hinge opening to given value
         """
         self.add_motion_goal(motion_goal_class=OpenDoorGoal.__name__,
                              tip_link=tip_link,
                              door_handle_link=door_handle_link,
-                             name=name)
-
-    def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis):
-        """
-        Wrapper for RealTimePointing and EndlessMode,
-        which is used for person live-tracking.
-        """
-
-        self.add_real_time_pointing(tip_link=tip_link,
-                                    topic_name=topic_name,
-                                    root_link=root_link,
-                                    pointing_axis=pointing_axis)
+                             name=name,
+                             handle_limit=handle_limit,
+                             hinge_limit=hinge_limit)
 
     def continuous_pointing_head(self):
         """
-        Uses real_time_pointer for continuous tracking of a human_pose.
+        Uses real_time_pointing for continuous tracking of a human_pose.
         """
         tip_V_pointing_axis: Vector3Stamped = Vector3Stamped()
         tip_V_pointing_axis.header.frame_id = 'head_center_camera_frame'
         tip_V_pointing_axis.vector.z = 1
 
-        self.real_time_pointer(root_link='map',
-                               tip_link='head_center_camera_frame',
-                               topic_name='human_pose',
-                               pointing_axis=tip_V_pointing_axis)
+        self.add_real_time_pointing(root_link='map',
+                                    tip_link='head_center_camera_frame',
+                                    topic_name='human_pose',
+                                    pointing_axis=tip_V_pointing_axis)
 
 
 class MonitorWrapper:
