@@ -87,7 +87,7 @@ class ForceTorqueRawFilter:
     def cb(self, rawdata: WrenchStamped):
         self.wrench = rawdata
 
-        # Sample parameters for the filter
+        # Add values into respective queues
         self.trans_F_x.append(self.wrench.wrench.force.x)
         self.trans_F_y.append(self.wrench.wrench.force.y)
         self.trans_F_z.append(self.wrench.wrench.force.z)
@@ -104,7 +104,7 @@ class ForceTorqueRawFilter:
         filtered_data4 = self.worker.do_work(self.trans_T_x)
         filtered_data5 = self.worker.do_work(self.trans_T_y)
         filtered_data6 = self.worker.do_work(self.trans_T_z)
-        # Plotting Force
+        # publish signal
         self.pub.publish(
             self.rebuild_signal(filtered_data[-1], filtered_data2[-1], filtered_data3[-1], filtered_data4[-1],
                                 filtered_data5[-1],
