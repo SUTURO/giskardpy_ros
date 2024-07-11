@@ -31,7 +31,7 @@ class Filter(Job):
 
     def butter_lowpass_filter(self, data: deque, cutoff, fs, order=5) -> np.ndarray:
         """
-        The Lowpass Filter. For more info on how lowpass filters work see:
+        The Lowpass Filter. used to filter out signal noise. For more info on how the lowpass filters works see:
         https://en.wikipedia.org/wiki/Low-pass_filter
         """
         b, a = self.butter_lowpass(cutoff, fs, order=order)
@@ -45,7 +45,7 @@ class Diff(Job):
 
     def do_work(self, data: deque) -> np.ndarray:
         """
-        
+        The gradient filter, puts out a gradient of the signal it's filtering
         """
         return np.gradient(data) / self.dt
 
@@ -63,9 +63,13 @@ class ForceTorqueRawFilter:
         low pass filter + gradient to /hsrb/wrist_wrench/raw in that order).
         These filtered values are then put in queues (one for ach value) and are published onto
         their own topics, compensated/diff and filtered_raw/diff respectively.
-        """
 
-        self.trans_F_x = deque(maxlen=100 * 2)  # make queue size dynamic
+        :param input_topic: the topic from which the original signal is taken
+        :param output_topic: the topic the filtered signal is published to
+        :param worker: the filter that is being applied to the signal
+        """
+        # TODO: make queue size dynamic to sample rate
+        self.trans_F_x = deque(maxlen=100 * 2)
         self.trans_F_y = deque(maxlen=100 * 2)
         self.trans_F_z = deque(maxlen=100 * 2)
         self.trans_T_x = deque(maxlen=100 * 2)
