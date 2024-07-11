@@ -1463,11 +1463,11 @@ class MotionGoalWrapper:
                              tip_link=tip_link)
 
     def hsrb_align_to_push_door_goal(self,
-                                     weight: float,
                                      handle_name: str,
                                      hinge_frame_id: str,
                                      tip_link: str = 'hand_gripper_tool_frame',
-                                     root_link: str = 'map'):
+                                     root_link: str = 'map',
+                                     weight: float = WEIGHT_ABOVE_CA):
         """
         HSRB specific push door open goal of dishwasher
 
@@ -1475,6 +1475,7 @@ class MotionGoalWrapper:
         :param hinge_frame_id: Frame id of the door hinge
         :param tip_link: robot link, that grasps the handle
         :param root_link: root link of the kinematic chain
+        :param weight: Weight of the goal compared to Collision Avoidance
         """
 
         tip_grasp_axis = Vector3Stamped()
@@ -1490,11 +1491,11 @@ class MotionGoalWrapper:
                                     intermediate_point_scale=0.95)
 
     def hsrb_pre_push_door_goal(self,
-                                weight: float,
                                 handle_name: str,
                                 hinge_frame_id: str,
                                 root_link: str = 'map',
-                                tip_link: str = 'hand_gripper_tool_frame'):
+                                tip_link: str = 'hand_gripper_tool_frame',
+                                weight: float = WEIGHT_ABOVE_CA):
         """
         HSRB specific pre push door open goal of dishwasher
 
@@ -1502,6 +1503,7 @@ class MotionGoalWrapper:
         :param hinge_frame_id: Frame id of the door hinge
         :param tip_link: robot link, that grasps the handle
         :param root_link: root link of the kinematic chain
+        :param weight: Weight of the goal compared to Collision Avoidance
         """
 
         self.add_pre_push_door(root_link=root_link,
