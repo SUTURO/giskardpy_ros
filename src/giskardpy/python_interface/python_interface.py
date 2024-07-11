@@ -1510,6 +1510,40 @@ class MotionGoalWrapper:
                                weight=weight,
                                door_object=hinge_frame_id)
 
+    def open_container_goal(self,
+                            tip_link: str,
+                            environment_link: str,
+                            special_door: Optional[bool] = False,
+                            tip_group: Optional[str] = None,
+                            environment_group: Optional[str] = None,
+                            goal_joint_state: Optional[float] = None,
+                            start_condition: str = '',
+                            hold_condition: str = '',
+                            end_condition: str = '',
+                            weight=WEIGHT_ABOVE_CA):
+        """
+        Open a container in an environment.
+        Only works with the environment was added as urdf.
+        Assumes that a handle has already been grasped.
+        Can only handle containers with 1 dof, e.g. drawers or doors.
+        :param tip_link: end effector that is grasping the handle
+        :param environment_link: name of the handle that was grasped
+        :param tip_group: if tip_link is not unique, search in this group for matches
+        :param environment_group: if environment_link is not unique, search in this group for matches
+        :param goal_joint_state: goal state for the container. default is maximum joint state.
+        :param weight:
+        """
+        self.add_open_container(tip_link=tip_link,
+                                environment_link=environment_link,
+                                tip_group=tip_group,
+                                special_door=special_door,
+                                environment_group=environment_group,
+                                goal_joint_state=goal_joint_state,
+                                start_condition=start_condition,
+                                hold_condition=hold_condition,
+                                end_condition=end_condition,
+                                weight=weight)
+
     # TODO: change object_size Vector3Stamped instead
     def add_reaching(self,
                      grasp: str,
