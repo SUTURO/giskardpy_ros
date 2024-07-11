@@ -1272,7 +1272,7 @@ class MotionGoalWrapper:
                                **kwargs: goal_parameter):
         """
         Will use kinematic chain between root_link and tip_link to move tip_link to goal_point.
-        :param goal_point:
+        :param goal_point: goal point
         :param tip_link: tip link of the kinematic chain
         :param root_link: root link of the kinematic chain
         :param tip_group: if tip link is not unique, you can use this to tell Giskard in which group to search.
@@ -1355,6 +1355,7 @@ class MotionGoalWrapper:
         :param tip_grasp_axis: axis of tip_link that will be aligned with bar_axis
         :param bar_center: center of the bar to be grasped
         :param bar_axis: alignment of the bar to be grasped
+        :param grasp_axis_offset: offset of the grasp axis
         :param bar_length: length of the bar to be grasped
         :param root_group: if root_link is not unique, search in this group for matches
         :param tip_group: if tip_link is not unique, search in this group for matches
@@ -1452,7 +1453,7 @@ class MotionGoalWrapper:
         """
         HSRB specific avoid dishwasher door goal
 
-        :param handle_frame_id: Frame id of the door handle
+        :param handle_name: name of the dishwasher handle
         :param tip_link: robot link, that grasps the handle
         :param root_link: root link of the kinematic chain
         """

@@ -30,6 +30,10 @@ class Filter(Job):
         return butter(order, normal_cutoff, btype='low', analog=False)
 
     def butter_lowpass_filter(self, data: deque, cutoff, fs, order=5) -> np.ndarray:
+        """
+        The Lowpass Filter. For more info on how lowpass filters work see:
+        https://en.wikipedia.org/wiki/Low-pass_filter
+        """
         b, a = self.butter_lowpass(cutoff, fs, order=order)
         y = lfilter(b, a, data)
         return y
@@ -40,6 +44,9 @@ class Diff(Job):
         self.dt = dt
 
     def do_work(self, data: deque) -> np.ndarray:
+        """
+        
+        """
         return np.gradient(data) / self.dt
 
 
@@ -49,6 +56,15 @@ class ForceTorqueRawFilter:
                  input_topic: str,
                  output_topic: str,
                  worker: Job):
+        # TODO: After robocup, rename filter to just ForceTorqueFilter
+        """
+        The ForceTorqueRawFilter is a filter that takes the signal published by both /hsrb/wrist_wrench/compensated
+        and /hsrb/wrist_wrench/raw and applies filters to them (gradient to /hsrb/wrist_wrench/compensated and
+        low pass filter + gradient to /hsrb/wrist_wrench/raw in that order).
+        These filtered values are then put in queues (one for ach value) and are published onto
+        their own topics, compensated/diff and filtered_raw/diff respectively.
+        """
+
         self.trans_F_x = deque(maxlen=100 * 2)  # make queue size dynamic
         self.trans_F_y = deque(maxlen=100 * 2)
         self.trans_F_z = deque(maxlen=100 * 2)
@@ -93,13 +109,27 @@ class ForceTorqueRawFilter:
 
     def rebuild_signal(self, F_x: np.ndarray, F_y: np.ndarray, F_z: np.ndarray,
                        T_x: np.ndarray, T_y: np.ndarray, T_z: np.ndarray) -> WrenchStamped:
+
+        """
+        Rebuilds the signal with the filtered values back into a WrenchStamped
+
+        :param F_x: X-value of the Force of the filtered signal
+        :param F_y: Y-value of the Force of the filtered signal
+        :param F_z: Z-value of the Force of the filtered signal
+        :param T_x: X-value of the Torque of the filtered signal
+        :param T_y: Y-value of the Torque of the filtered signal
+        :param T_z: Z-value of the Torque of the filtered signal
+
+        :return: WrenchStamped message
+        """
+
         rebuild_force = geometry_msgs.msg.Vector3(F_x, F_y, F_z)
         rebuild_torque = geometry_msgs.msg.Vector3(T_x, T_y, T_z)
 
         rebuild_wrench = geometry_msgs.msg.Wrench(rebuild_force, rebuild_torque)
 
         rebuild_wrenchStamped = geometry_msgs.msg.WrenchStamped(self.wrench.header, rebuild_wrench)
-        # print(rebuild_wrenchStamped)
+
         return rebuild_wrenchStamped
 
 

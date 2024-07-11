@@ -23,13 +23,17 @@ class PayloadForceTorque(PayloadMonitor):
     def __init__(self,
                  # threshold_name is needed here for the class to be able to handle the suturo_types appropriately
                  threshold_name: str,
-                 # object_type is needed to differentiate between objects with different placing thresholds
                  topic: str,
+                 # object_type is needed to differentiate between objects with different placing thresholds
                  object_type: str,
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol,
                  stay_true: bool = True):
         """
+        The PayloadForceTorque class creates a monitor for the usage of the HSRs Force-Torque Sensor.
+        This makes it possible for goals which use the Force-Torque Sensor to be used with Monitors,
+        specifically to end/hold a goal automatically when a certain Force/Torque Threshold is being surpassed.
+
         :param threshold_name: contains the name of the threshold that will be used (normally an action e.g. Placing)
         :param object_type: is used to determine the type of object that is being placed, is left empty if no object is being placed
         :param topic: the name of the topic
@@ -47,12 +51,6 @@ class PayloadForceTorque(PayloadMonitor):
         self.subscriber = rospy.Subscriber(name=topic,
                                            data_class=WrenchStamped, callback=self.cb)
 
-    """
-    The PayloadForceTorque class creates a monitor for the usage of the HSRs Force-Torque Sensor.
-    This makes it possible for goals which use the Force-Torque Sensor to be used with Monitors,
-    specifically to end/hold a goal automatically when a certain Force/Torque Threshold is being surpassed.
-    """
-
     def cb(self, data: WrenchStamped):
         self.rob_force = self.force_T_map_transform(data, 1)
         self.rob_torque = self.force_T_map_transform(data, 2)
@@ -60,8 +58,9 @@ class PayloadForceTorque(PayloadMonitor):
     def force_T_map_transform(self, wrench, picker):
         """
         The force_T_map_transform method is used to transform the Vector data from the
-        force-torque sensor frame into the map frame, so that the axis stay
-        the same, to ensure that the threshold check is actually done on the relevant/correct axis.
+        force-torque sensor frame into the HSRs base frame, so that the axis stay
+        the same, to ensure that the threshold check is actually done on the correct axis,
+        since conversion into the map frame can lead to different values depending on how the map is recorded.
         """
         wrench.header.frame_id = self.sensor_frame
 
@@ -90,11 +89,6 @@ class PayloadForceTorque(PayloadMonitor):
 
         if self.threshold_name == ForceTorqueThresholds.FT_GraspWithCare.value:
 
-            # Basic idea for checking whether an object has successfully been grasped or not:
-            # return false as long as threshold is being surpassed;
-            # return true when it stops being surpassed, so that goal stops when object is unexpectedly dropped
-            # or the HSR failed to grasp them at all
-
             # case for grasping "normal" objects (namely Milk, Cereal and cups)
             if self.object_type == ObjectTypes.OT_Standard.value:
 
@@ -105,11 +99,9 @@ class PayloadForceTorque(PayloadMonitor):
                     logging.loginfo(f'HIT GWC: {rob_torque.vector.y}')
                 else:
                     self.state = False
-                    # print(f'MISS GWC: {rob_force.vector.y}')
 
             # case for grasping cutlery
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
-                # switch to filtered_raw / filtered_raw/diff
 
                 force_threshold = 85
 
@@ -124,7 +116,6 @@ class PayloadForceTorque(PayloadMonitor):
             # NOT CURRENTLY USED AS PLATES ARE NEITHER PLACED NOR PICKED UP
             elif self.object_type == ObjectTypes.OT_Plate.value:
 
-                torque_threshold = 0.2
                 torque_threshold = 0.02
 
                 if (abs(rob_force.vector.y) > torque_threshold or
@@ -157,15 +148,15 @@ class PayloadForceTorque(PayloadMonitor):
             # case for placing "normal" objects (namely Milk, Cereal and cups)
             if self.object_type == ObjectTypes.OT_Standard.value:
 
-                force_z_threshold = 35#1.0
+                force_z_threshold = 35
 
                 if abs(rob_force.vector.z) >= force_z_threshold:
 
                     self.state = True
-                    logging.loginfo(f'HIT PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_force.vector.y}')
+                    logging.loginfo(
+                        f'HIT PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_force.vector.y}')
                 else:
                     self.state = False
-                    # logging.loginfo(f'MISS PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_force.vector.y}')
 
             # case for placing cutlery
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
@@ -177,23 +168,23 @@ class PayloadForceTorque(PayloadMonitor):
                     logging.loginfo(f'filtered Force: {rob_force}')
                     logging.loginfo(f'filtered Torque: {rob_torque}')
 
-                    force_z_threshold = 35#1.0
+                    force_z_threshold = 35
 
                     if abs(rob_force.vector.z) >= force_z_threshold:
 
                         self.state = True
-                        logging.loginfo(f'HIT CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
+                        logging.loginfo(
+                            f'HIT CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
                     else:
                         self.state = False
-                        logging.loginfo(f'MISS CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
+                        logging.loginfo(
+                            f'MISS CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
 
             # case for placing plates
             # NOT CURRENTLY USED AS PLATES ARE NEITHER PLACED NOR PICKED UP
             elif self.object_type == ObjectTypes.OT_Plate.value:
                 #  TODO: Add proper placing logic for Plate
-                force_x_threshold = 2.34
                 force_z_threshold = 1.0
-                force_y_threshold = 0.45
 
                 if abs(rob_force.vector.z) >= force_z_threshold:
 
@@ -214,7 +205,6 @@ class PayloadForceTorque(PayloadMonitor):
                     print(f'HIT PLACING: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
                 else:
                     self.state = False
-                    #print(f'MISS PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
             # if no valid object_type has been declared in method parameters
             else:
                 raise Exception("No valid object_type found, unable to determine placing thresholds!")
