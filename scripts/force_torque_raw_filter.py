@@ -61,7 +61,7 @@ class ForceTorqueRawFilter:
         The ForceTorqueRawFilter is a filter that takes the signal published by both /hsrb/wrist_wrench/compensated
         and /hsrb/wrist_wrench/raw and applies filters to them (gradient to /hsrb/wrist_wrench/compensated and
         low pass filter + gradient to /hsrb/wrist_wrench/raw in that order).
-        These filtered values are then put in queues (one for ach value) and are published onto
+        These filtered values are then put in queues (one for each value) and are published onto
         their own topics, compensated/diff and filtered_raw/diff respectively.
 
         :param input_topic: the topic from which the original signal is taken
