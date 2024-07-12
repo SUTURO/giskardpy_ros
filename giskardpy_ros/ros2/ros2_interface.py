@@ -7,7 +7,7 @@ from rclpy.wait_for_message import wait_for_message
 from std_msgs.msg import String
 
 from giskardpy.middleware import middleware
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 
 
 def wait_for_topic_to_appear(topic_name: str,
@@ -35,17 +35,7 @@ def wait_for_topic_to_appear(topic_name: str,
 def get_robot_description(topic: str = '/robot_description') -> str:
     qos_profile = QoSProfile(depth=10)
     qos_profile.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
-    return wait_for_message(String, ros_node, topic, qos_profile=qos_profile)[1].data
-
-
-def make_pose_from_parts(pose, frame_id, position, orientation):
-    if pose is None:
-        pose = PoseStamped()
-        pose.header.stamp = ros_node.get_clock().now().to_msg()
-        pose.header.frame_id = str(frame_id)
-        pose.pose.position = Point(*(position if position is not None else [0, 0, 0]))
-        pose.pose.orientation = Quaternion(*(orientation if orientation is not None else [0, 0, 0, 1]))
-    return pose
+    return wait_for_message(String, rospy.node, topic, qos_profile=qos_profile)[1].data
 
 
 def wait_for_publisher(publisher):

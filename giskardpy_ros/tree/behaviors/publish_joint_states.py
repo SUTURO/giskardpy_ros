@@ -4,7 +4,7 @@ from sensor_msgs.msg import JointState
 from py_trees.common import Status
 
 from giskardpy.god_map import god_map
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 
 
@@ -19,7 +19,7 @@ class PublishJointState(GiskardBehavior):
         super().__init__(name)
         self.include_prefix = include_prefix
         self.cmd_topic = topic_name
-        self.cmd_pub = ros_node.create_publisher(JointState, self.cmd_topic, 10)
+        self.cmd_pub = rospy.node.create_publisher(JointState, self.cmd_topic, 10)
         if only_prismatic_and_revolute:
             self.joint_names = [k for k in god_map.world.joint_names if god_map.world.is_joint_revolute(k)
                                 or god_map.world.is_joint_prismatic(k)]
@@ -35,6 +35,6 @@ class PublishJointState(GiskardBehavior):
                 msg.name.append(joint_name.short_name)
             msg.position.append(god_map.world.state[joint_name].position)
             msg.velocity.append(god_map.world.state[joint_name].velocity)
-        msg.header.stamp = ros_node.get_clock().now().to_msg()
+        msg.header.stamp = rospy.node.get_clock().now().to_msg()
         self.cmd_pub.publish(msg)
         return Status.SUCCESS

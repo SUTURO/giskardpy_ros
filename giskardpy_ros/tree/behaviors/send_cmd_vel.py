@@ -9,7 +9,7 @@ from giskardpy.god_map import god_map
 from giskardpy.middleware import middleware
 from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 from giskardpy.model.joints import OmniDrive, DiffDrive
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
 
@@ -30,7 +30,7 @@ class SendCmdVel(GiskardBehavior, ABC):
 
         wait_for_topic_to_appear(self.cmd_vel_topic, self.supported_state_types)
 
-        self.vel_pub = ros_node.create_publisher(Twist, self.cmd_vel_topic, 10)
+        self.vel_pub = rospy.node.create_publisher(Twist, self.cmd_vel_topic, 10)
 
         if joint_name is None:
             for joint in god_map.world.joints.values():

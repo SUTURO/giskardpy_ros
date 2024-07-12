@@ -4,7 +4,7 @@ from sensor_msgs.msg import JointState
 
 from giskardpy.god_map import god_map
 from giskardpy.qp.qp_controller import QPController
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 
@@ -30,13 +30,13 @@ class PublishDebugExpressions(GiskardBehavior):
 
     @profile
     def setup(self, timeout):
-        self.publisher = ros_node.create_publisher(JointState, f'{ros_node.get_name()}/qp_data', 10)
+        self.publisher = rospy.node.create_publisher(JointState, f'{rospy.node.get_name()}/qp_data', 10)
         return super().setup(timeout)
 
     @profile
     def create_msg(self, qp_controller: QPController):
         msg = JointState()
-        msg.header.stamp = ros_node.get_clock().now().to_msg()
+        msg.header.stamp = rospy.node.get_clock().now().to_msg()
 
         weights, g, lb, ub, E, bE, A, lbA, ubA, weight_filter, bE_filter, bA_filter = qp_controller.qp_solver.get_problem_data()
         free_variable_names = qp_controller.free_variable_bounds.names[weight_filter]

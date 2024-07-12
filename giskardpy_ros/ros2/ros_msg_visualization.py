@@ -11,7 +11,7 @@ from giskardpy.model.collision_world_syncer import Collisions, Collision
 import giskardpy_ros.ros2.msg_converter as msg_converter
 from giskardpy_ros.ros2.ros2_interface import wait_for_publisher, wait_for_topic_to_appear
 
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
 
@@ -23,11 +23,11 @@ class ROSMsgVisualization:
     @profile
     def __init__(self, tf_frame: Optional[str] = None, use_decomposed_meshes: bool = True):
         self.use_decomposed_meshes = use_decomposed_meshes
-        qos_profile = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
-        self.publisher = ros_node.create_publisher(MarkerArray,
-                                                   f'{ros_node.get_name()}/visualization_marker_array',
-                                                   qos_profile)
-        wait_for_publisher(self.publisher)
+        # qos_profile = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
+        self.publisher = rospy.node.create_publisher(MarkerArray,
+                                                   f'{rospy.node.get_name()}/visualization_marker_array',
+                                               10)
+        # wait_for_publisher(self.publisher)
         self.marker_ids = {}
         if tf_frame is None:
             self.tf_root = str(god_map.world.root_link_name)
@@ -39,7 +39,7 @@ class ROSMsgVisualization:
     def create_world_markers(self, name_space: str = 'planning_visualization') -> List[Marker]:
         # todo add caching
         markers = []
-        time_stamp = ros_node.get_clock().now().to_msg()
+        time_stamp = rospy.node.get_clock().now().to_msg()
         links = god_map.world.link_names_with_collisions
         for i, link_name in enumerate(links):
             link = god_map.world.links[link_name]
@@ -54,11 +54,12 @@ class ROSMsgVisualization:
                 marker.ns = name_space
                 marker.header.stamp = time_stamp
                 pose = god_map.collision_scene.get_map_T_geometry(link_name, j)
-                if not isinstance(pose, Pose):
-                    # TODO handle this better
-                    marker.pose = msg_converter.to_ros_message(pose).pose
-                else:
-                    marker.pose = pose
+                marker.pose = msg_converter.numpy_to_pose_stamped(pose, self.tf_root).pose
+                # if not isinstance(pose, Pose):
+                #     TODO handle this better
+                    # marker.pose = msg_converter.to_ros_message(pose).pose
+                # else:
+                #     marker.pose = pose
                 markers.append(marker)
         return markers
 
@@ -76,8 +77,8 @@ class ROSMsgVisualization:
         m.type = Marker.LINE_LIST
         m.id = 1337
         m.ns = name_space
-        m.scale = Vector3(0.003, 0, 0)
-        m.pose.orientation.w = 1
+        m.scale = Vector3(x=0.003, y=0.0, z=0.0)
+        m.pose.orientation.w = 1.0
         if len(collisions.all_collisions) > 0:
             for collision in collisions.all_collisions:
                 group_name = collision.link_a.prefix

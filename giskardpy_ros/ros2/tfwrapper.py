@@ -13,7 +13,7 @@ from tf2_ros import Buffer, TransformListener
 
 from giskardpy.middleware import middleware
 from giskardpy.utils.decorators import memoize
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 
 tfBuffer: Buffer
 tf_listener: TransformListener
@@ -27,7 +27,7 @@ def init(tf_buffer_size: float = 15) -> None:
     """
     global tfBuffer, tf_listener
     tfBuffer = Buffer(Duration(seconds=tf_buffer_size))
-    tf_listener = TransformListener(tfBuffer, ros_node)
+    tf_listener = TransformListener(tfBuffer, node)
     sleep(5.0)
     try:
         get_tf_root()

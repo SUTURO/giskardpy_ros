@@ -3,9 +3,12 @@ from time import sleep
 from typing import Dict, Tuple, Optional, List, Union
 
 import numpy as np
+import rclpy
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped
 from nav_msgs.msg import Path
 from rclpy.action import ActionClient
+from rclpy.action.client import ClientGoalHandle
+from rclpy.client import Client
 from rclpy.time import Time
 from shape_msgs.msg import SolidPrimitive
 
@@ -39,17 +42,21 @@ from giskardpy.utils.utils import get_all_classes_in_package
 from giskardpy_ros.ros2 import msg_converter
 from giskardpy_ros.ros2.msg_converter import kwargs_to_json
 
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.goals.realtime_goals import RealTimePointing, CarryMyBullshit, FollowNavPath
 from giskardpy_ros.utils.utils import make_world_body_box
 
 
 class WorldWrapper:
+    _get_group_info_srv: Client
+    _get_group_names_srv: Client
+    _dye_group_srv: Client
+
     def __init__(self, node_name: str):
-        self._get_group_info_srv = ros_node.create_client(GetGroupInfo, f'{node_name}/get_group_info')
-        self._get_group_names_srv = ros_node.create_client(GetGroupNames, f'{node_name}/get_group_names')
-        self._dye_group_srv = ros_node.create_client(DyeGroup, f'{node_name}/dye_group')
-        self._client = ActionClient(ros_node, World, f'{node_name}/update_world')
+        self._get_group_info_srv = rospy.node.create_client(GetGroupInfo, f'{node_name}/get_group_info')
+        self._get_group_names_srv = rospy.node.create_client(GetGroupNames, f'{node_name}/get_group_names')
+        self._dye_group_srv = rospy.node.create_client(DyeGroup, f'{node_name}/dye_group')
+        self._client = ActionClient(rospy.node, World, f'{node_name}/update_world')
         self._client.wait_for_server()
         self._get_group_names_srv.wait_for_service()
         self.robot_name = self.get_group_names()[0]
@@ -260,7 +267,9 @@ class WorldWrapper:
         """
         Returns the names of every group in the world.
         """
-        resp: GetGroupNames_Response = self._get_group_names_srv.call(GetGroupNames_Request())
+        future = self._get_group_names_srv.call_async(GetGroupNames_Request())
+        rclpy.spin_until_future_complete(rospy.node, future)
+        resp: GetGroupNames_Response = future.result()
         return resp.group_names
 
     def get_group_info(self, group_name: str) -> GetGroupInfo_Response:
@@ -1736,7 +1745,7 @@ class GiskardWrapper:
         self.motion_goals = MotionGoalWrapper(self.robot_name, avoid_name_conflict=avoid_name_conflict)
         self.clear_motion_goals_and_monitors()
         giskard_topic = f'{node_name}/command'
-        self._client = ActionClient(ros_node, Move, giskard_topic)
+        self._client = ActionClient(rospy.node, Move, giskard_topic)
         self._client.wait_for_server()
         self.clear_motion_goals_and_monitors()
         sleep(.3)
@@ -1803,11 +1812,13 @@ class GiskardWrapper:
         """
         goal = self._create_action_goal()
         goal.type = goal_type
+        future = self._client.send_goal_async(goal, feedback_callback=self._feedback_cb)
         if wait:
-            self._client.send_goal_and_wait(goal)
-            return self._client.get_result()
-        else:
-            self._client.send_goal(goal, feedback_cb=self._feedback_cb)
+            rclpy.spin_until_future_complete(rospy.node, future)
+            goal_handle: ClientGoalHandle = future.result()
+            result_future = goal_handle.get_result_async()
+            rclpy.spin_until_future_complete(rospy.node, result_future)
+            return result_future.result()
 
     def _create_action_goal(self) -> Move.Goal:
         action_goal = Move.Goal()

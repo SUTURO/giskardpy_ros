@@ -8,7 +8,7 @@ from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.god_map import god_map
 from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 import giskardpy_ros.ros2.msg_converter as msg_converter
@@ -29,7 +29,7 @@ class SyncJointState(GiskardBehavior):
     @profile
     def setup(self, timeout=0.0):
         wait_for_topic_to_appear(topic_name=self.joint_state_topic, supported_types=[JointState])
-        self.joint_state_sub = ros_node.create_subscription(JointState, self.joint_state_topic, self.cb, 1)
+        self.joint_state_sub = rospy.node.create_subscription(JointState, self.joint_state_topic, self.cb, 1)
         return super().setup(timeout)
 
     def cb(self, data):
@@ -72,7 +72,7 @@ class SyncJointStatePosition(GiskardBehavior):
     @record_time
     @profile
     def setup(self, timeout=0.0):
-        self.joint_state_sub = ros_node.create_subscription(JointState, self.joint_state_topic, self.cb, 1)
+        self.joint_state_sub = rospy.node.create_subscription(JointState, self.joint_state_topic, self.cb, 1)
         return super().setup(timeout)
 
     def cb(self, data):
@@ -80,7 +80,7 @@ class SyncJointStatePosition(GiskardBehavior):
 
     @profile
     def initialise(self):
-        self.last_time = ros_node.get_clock().now()
+        self.last_time = rospy.node.get_clock().now()
         super().initialise()
 
     @record_time

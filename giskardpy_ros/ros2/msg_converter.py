@@ -3,6 +3,9 @@ import json
 from typing import Optional, Union, List, Dict, Any
 
 import geometry_msgs.msg as geometry_msgs
+import numpy as np
+from rclpy.time import Time
+
 import giskard_msgs.msg as giskard_msgs
 import sensor_msgs.msg as sensor_msgs
 import std_msgs.msg as std_msgs
@@ -26,8 +29,9 @@ from giskardpy.model.trajectory import Trajectory
 from giskardpy.model.world import WorldTree
 from giskardpy.motion_graph.monitors.monitors import EndMotion, CancelMotion, Monitor
 from giskardpy.motion_graph.tasks.task import Task
+from giskardpy.utils.math import quaternion_from_rotation_matrix
 from giskardpy.utils.utils import get_all_classes_in_module
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 
 
 # TODO probably needs some consistency check
@@ -138,6 +142,20 @@ def trans_matrix_to_pose_stamped(data: cas.TransMatrix) -> geometry_msgs.PoseSta
     return pose_stamped
 
 
+def numpy_to_pose_stamped(data: np.ndarray, reference_frame: str) -> geometry_msgs.PoseStamped:
+    pose_stamped = geometry_msgs.PoseStamped()
+    pose_stamped.header.frame_id = str(reference_frame)
+    pose_stamped.pose.position.x = data[0, 3]
+    pose_stamped.pose.position.y = data[1, 3]
+    pose_stamped.pose.position.z = data[2, 3]
+    q = quaternion_from_rotation_matrix(data)
+    pose_stamped.pose.orientation = geometry_msgs.Quaternion(x=q[0],
+                                                             y=q[1],
+                                                             z=q[2],
+                                                             w=q[3])
+    return pose_stamped
+
+
 def point3_to_point_stamped(data: cas.Point3) -> geometry_msgs.PointStamped:
     point_stamped = geometry_msgs.PointStamped()
     point_stamped.header.frame_id = str(data.reference_frame)
@@ -160,17 +178,17 @@ def trans_matrix_to_transform_stamped(data: cas.TransMatrix) -> geometry_msgs.Tr
 
 def trajectory_to_ros_trajectory(data: Trajectory,
                                  sample_period: float,
-                                 start_time: Union[Duration, float],
+                                 start_time: Union[Time, float],
                                  joints: List[MovableJoint],
                                  fill_velocity_values: bool = True) -> trajectory_msgs.JointTrajectory:
     if isinstance(start_time, (int, float)):
-        start_time = Duration(seconds=start_time)
+        start_time = Time(seconds=start_time)
     trajectory_msg = trajectory_msgs.JointTrajectory()
-    trajectory_msg.header.stamp = start_time
+    trajectory_msg.header.stamp = start_time.to_msg()
     trajectory_msg.joint_names = []
     for i, (time, traj_point) in enumerate(data.items()):
         p = trajectory_msgs.JointTrajectoryPoint()
-        p.time_from_start = Duration(time * sample_period)
+        p.time_from_start = Duration(seconds=time * sample_period).to_msg()
         for joint in joints:
             free_variables = joint.get_free_variable_names()
             for free_variable in free_variables:
@@ -202,7 +220,7 @@ def world_to_tf_message(world: WorldTree, include_prefix: bool) -> tf2_msgs.TFMe
         p_T_c.reference_frame = parent_link_name
         p_T_c.child_frame = child_link_name
         p_T_c = trans_matrix_to_transform_stamped(p_T_c)
-        p_T_c.header.stamp = ros_node.get_clock().now().to_msg()
+        p_T_c.header.stamp = rospy.node.get_clock().now().to_msg()
         tf_msg.transforms.append(p_T_c)
     return tf_msg
 
@@ -235,7 +253,7 @@ def convert_dictionary_to_ros_message(json):
 
 def monitor_to_ros_msg(monitor: Monitor) -> giskard_msgs.Monitor:
     msg = giskard_msgs.Monitor()
-    msg.name = monitor.name
+    msg.name = str(monitor.name)
     if isinstance(monitor, EndMotion):
         msg.monitor_class = EndMotion.__name__
     elif isinstance(monitor, CancelMotion):

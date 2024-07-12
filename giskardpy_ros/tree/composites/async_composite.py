@@ -11,7 +11,7 @@ from py_trees.common import Status
 from py_trees.composites import Composite
 from py_trees.decorators import RunningIsSuccess, SuccessIsRunning
 
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.blackboard_utils import raise_to_blackboard
 
@@ -66,7 +66,7 @@ class AsyncBehavior(GiskardBehavior, Composite):
 
     def stop_children(self) -> None:
         for child in self.children:
-            child.stop()
+            child.stop(self.status)
 
     def insert_behind(self, node: Behaviour, left_sibling_name: Behaviour, success_is_running: bool = True) -> None:
         if success_is_running:
@@ -105,7 +105,7 @@ class AsyncBehavior(GiskardBehavior, Composite):
         try:
             self.get_blackboard().runtime = time()
             if self.max_hz is not None:
-                self.sleeper = ros_node.create_rate(frequency=self.max_hz)
+                self.sleeper = rospy.node.create_rate(frequency=self.max_hz)
             else:
                 self.sleeper = None
             while self.is_running() and rclpy.ok():

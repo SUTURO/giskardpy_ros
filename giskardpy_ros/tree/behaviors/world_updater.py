@@ -14,7 +14,7 @@ from giskardpy.data_types.exceptions import UnknownGroupException, \
 from giskardpy.god_map import god_map
 from giskardpy.model.joints import Joint6DOF
 from giskardpy.model.world import WorldBranch
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.action_server import ActionServerHandler
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.middleware import middleware
@@ -35,12 +35,12 @@ class ProcessWorldUpdate(GiskardBehavior):
     @record_time
     @profile
     def setup(self, **kwargs):
-        self.marker_publisher = ros_node.create_publisher(MarkerArray,
-                                                          f'{ros_node.get_name()}/visualization_marker_array', 10)
-        self.get_group_names = ros_node.create_service(GetGroupNames,
-                                                       f'{ros_node.get_name()}/get_group_names', self.get_group_names_cb)
-        self.get_group_info = ros_node.create_service(GetGroupInfo, f'{ros_node.get_name()}/get_group_info', self.get_group_info_cb)
-        self.dye_group = ros_node.create_service(DyeGroup, f'{ros_node.get_name()}/dye_group', self.dye_group)
+        self.marker_publisher = rospy.node.create_publisher(MarkerArray,
+                                                          f'{rospy.node.get_name()}/visualization_marker_array', 10)
+        self.get_group_names = rospy.node.create_service(GetGroupNames,
+                                                       f'{rospy.node.get_name()}/get_group_names', self.get_group_names_cb)
+        self.get_group_info = rospy.node.create_service(GetGroupInfo, f'{rospy.node.get_name()}/get_group_info', self.get_group_info_cb)
+        self.dye_group = rospy.node.create_service(DyeGroup, f'{rospy.node.get_name()}/dye_group', self.dye_group)
         return super().setup(**kwargs)
 
     def update(self) -> Status:
@@ -97,6 +97,7 @@ class ProcessWorldUpdate(GiskardBehavior):
         # make sure robots are at the front
         groups = list(sorted(groups, key=lambda elem: elem not in god_map.world.robot_names))
         res.group_names = groups
+        print(res)
         return res
 
     @profile

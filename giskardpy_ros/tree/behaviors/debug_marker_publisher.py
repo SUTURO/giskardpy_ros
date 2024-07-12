@@ -9,7 +9,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 import giskardpy.casadi_wrapper as w
 from giskardpy.god_map import god_map
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 from giskardpy.utils.math import rotation_matrix_from_axis_angle, quaternion_from_rotation_matrix
@@ -33,8 +33,8 @@ class DebugMarkerPublisher(GiskardBehavior):
             self.map_frame = str(god_map.world.root_link_name)
         else:
             self.map_frame = map_frame
-        self.tf_pub = ros_node.create_publisher(TFMessage, tf_topic, 10)
-        self.marker_pub = ros_node.create_publisher(MarkerArray, f'{ros_node.get_name()}/visualization_marker_array', 10)
+        self.tf_pub = rospy.node.create_publisher(TFMessage, tf_topic, 10)
+        self.marker_pub = rospy.node.create_publisher(MarkerArray, f'{rospy.node.get_name()}/visualization_marker_array', 10)
 
     @record_time
     def setup(self, timeout):

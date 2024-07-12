@@ -5,7 +5,7 @@ from py_trees.common import Status
 from tf2_msgs.msg import TFMessage
 
 from giskardpy.god_map import god_map
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.ros2.tfwrapper import normalize_quaternion_msg
@@ -28,7 +28,7 @@ class TFPublisher(GiskardBehavior):
     def __init__(self, name: str, mode: TfPublishingModes, tf_topic: str = 'tf', include_prefix: bool = True):
         super().__init__(name)
         self.original_links = set(god_map.world.link_names_as_set)
-        self.tf_pub = ros_node.create_publisher(TFMessage, tf_topic, 10)
+        self.tf_pub = rospy.node.create_publisher(TFMessage, tf_topic, 10)
         self.mode = mode
         self.robot_names = god_map.collision_scene.robot_names
         self.include_prefix = include_prefix
@@ -36,7 +36,7 @@ class TFPublisher(GiskardBehavior):
     def make_transform(self, parent_frame, child_frame, pose):
         tf = TransformStamped()
         tf.header.frame_id = parent_frame
-        tf.header.stamp = ros_node.get_clock().now().to_msg()
+        tf.header.stamp = rospy.node.get_clock().now().to_msg()
         tf.child_frame_id = child_frame
         tf.transform.translation.x = pose.position.x
         tf.transform.translation.y = pose.position.y

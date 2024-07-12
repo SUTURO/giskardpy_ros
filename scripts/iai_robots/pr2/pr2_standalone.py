@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from giskardpy_ros.ros2 import rospy
+
+rospy.init_node('giskard')
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.configs.iai_robots.pr2 import PR2CollisionAvoidance, WorldWithPR2Config
@@ -31,6 +34,6 @@ if __name__ == '__main__':
                               drive_joint_name,
                           ]
                       ),
-                      behavior_tree_config=StandAloneBTConfig(publish_tf=True, publish_js=True),
+                      behavior_tree_config=StandAloneBTConfig(publish_tf=False, publish_js=False),
                       qp_controller_config=QPControllerConfig())
     giskard.live()

@@ -6,7 +6,7 @@ from giskardpy.data_types.data_types import PrefixName
 from giskardpy.god_map import god_map
 from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 from giskardpy.model.joints import OmniDrive
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
 from giskardpy.utils.decorators import record_time
@@ -33,7 +33,7 @@ class SyncOdometry(GiskardBehavior):
         actual_type = wait_for_topic_to_appear(topic_name=self.odometry_topic,
                                                supported_types=[Odometry, PoseWithCovarianceStamped])
         self.joint: OmniDrive = god_map.world.joints[self.joint_name]
-        self.odometry_sub = ros_node.create_subscription(actual_type, self.odometry_topic, self.cb, 1)
+        self.odometry_sub = rospy.node.create_subscription(actual_type, self.odometry_topic, self.cb, 1)
 
         return super().setup(timeout)
 

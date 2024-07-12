@@ -281,7 +281,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
             GiskardBlackboard().tree.turn_off_visualization()
         if 'QP_SOLVER' in os.environ:
             god_map.qp_controller.set_qp_solver(SupportedQPSolver[os.environ['QP_SOLVER']])
-        self.heart = Timer(period=rospy.Duration(GiskardBlackboard().tree.tick_rate), callback=self.heart_beat,
+        self.heart = Timer(period=rospy.Duration(GiskardBlackboard().tree.tick_hz), callback=self.heart_beat,
                            thread_name='giskard_bt')
         # self.namespaces = namespaces
         self.robot_names = [list(god_map.world.groups.keys())[0]]

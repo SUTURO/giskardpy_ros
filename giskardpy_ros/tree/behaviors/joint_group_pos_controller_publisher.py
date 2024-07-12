@@ -5,7 +5,7 @@ from std_msgs.msg import Float64MultiArray
 from giskardpy.data_types.data_types import Derivatives
 from giskardpy.data_types.data_types import KeyDefaultDict
 from giskardpy.god_map import god_map
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 
@@ -18,7 +18,7 @@ class JointGroupPosController(GiskardBehavior):
         super().__init__(namespace)
         self.namespace = namespace
         self.cmd_topic = f'{self.namespace}/command'
-        self.cmd_pub = ros_node.create_publisher(Float64MultiArray, self.cmd_topic, 10)
+        self.cmd_pub = rospy.node.create_publisher(Float64MultiArray, self.cmd_topic, 10)
         self.joint_names = rospy.get_param(f'{self.namespace}/joints')
         for i in range(len(self.joint_names)):
             self.joint_names[i] = god_map.world.search_for_joint_name(self.joint_names[i])

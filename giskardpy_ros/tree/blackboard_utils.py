@@ -2,7 +2,7 @@ from __future__ import annotations
 import traceback
 import typing
 from functools import wraps
-from typing import TypeVar, Callable, TYPE_CHECKING
+from typing import TypeVar, Callable, TYPE_CHECKING, Optional
 
 from py_trees.blackboard import Blackboard, Client
 from py_trees.common import Status, Access
@@ -28,6 +28,7 @@ class GiskardBlackboard(Client):
     fill_trajectory_velocity_values: bool
     control_loop_max_hz: float
     simulation_max_hz: float
+    exception: Optional[Exception]
 
     def __init__(self, *, name: typing.Optional[str] = None, namespace: typing.Optional[str] = None):
         super().__init__(name=name, namespace=namespace)
@@ -40,19 +41,21 @@ class GiskardBlackboard(Client):
         self.register_key('fill_trajectory_velocity_values', access=Access.WRITE)
         self.register_key('control_loop_max_hz', access=Access.WRITE)
         self.register_key('simulation_max_hz', access=Access.WRITE)
+        self.register_key('exception', access=Access.WRITE)
+        self.exception = None
+
 
 
 def raise_to_blackboard(exception):
-    GiskardBlackboard().set(blackboard_exception_name, exception)
+    GiskardBlackboard().exception = exception
 
 
 def has_blackboard_exception():
-    return hasattr(GiskardBlackboard(), blackboard_exception_name) \
-        and getattr(GiskardBlackboard(), blackboard_exception_name) is not None
+    return GiskardBlackboard().exception is not None
 
 
 def get_blackboard_exception():
-    return GiskardBlackboard().get(blackboard_exception_name)
+    return GiskardBlackboard().exception
 
 
 def clear_blackboard_exception():

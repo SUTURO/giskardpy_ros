@@ -5,7 +5,7 @@ from giskardpy.data_types.data_types import KeyDefaultDict
 from giskardpy.god_map import god_map
 from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
@@ -18,7 +18,7 @@ class JointGroupVelController(GiskardBehavior):
         self.namespace = namespace
         self.cmd_topic = f'/{self.namespace}/command'
         wait_for_topic_to_appear(topic_name=self.cmd_topic, supported_types=[Float64MultiArray])
-        self.cmd_pub = ros_node.create_publisher(Float64MultiArray, self.cmd_topic, 10)
+        self.cmd_pub = rospy.node.create_publisher(Float64MultiArray, self.cmd_topic, 10)
         self.joint_names = rospy.get_param(f'{self.namespace}/joints')
         for i in range(len(self.joint_names)):
             self.joint_names[i] = god_map.world.search_for_joint_name(self.joint_names[i])

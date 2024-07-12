@@ -10,8 +10,10 @@ from py_trees.behaviour import Behaviour
 from py_trees.composites import Sequence, Selector, Composite
 from py_trees.decorators import FailureIsSuccess
 from py_trees_ros.trees import BehaviourTree
+from rclpy.executors import MultiThreadedExecutor
+
 from giskardpy.god_map import god_map
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.send_result import SendResult
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy_ros.tree.branches.clean_up_control_loop import CleanupControlLoop
@@ -33,7 +35,7 @@ def behavior_is_instance_of(obj: Any, type_: Type) -> bool:
 
 
 class GiskardBT(BehaviourTree):
-    tick_rate: float = 0.05
+    tick_hz: float = 10
     control_mode: ControlModes
     wait_for_goal: WaitForGoal
     prepare_control_loop: PrepareControlLoop
@@ -77,7 +79,7 @@ class GiskardBT(BehaviourTree):
         self.root.add_child(self.cleanup_control_loop)
         self.root.add_child(self.post_processing_failure_is_success)
         self.root.add_child(SendResult(GiskardBlackboard().move_action_server))
-        super().__init__(self.root)
+        super().__init__(self.root, unicode_tree_debug=False)
         self.switch_to_execution()
 
     def has_started(self) -> bool:
@@ -119,14 +121,17 @@ class GiskardBT(BehaviourTree):
         self.cleanup_control_loop.remove_reset_world_state()
 
     def live(self):
-        sleeper = ros_node.create_rate(1 / self.tick_rate)
         middleware.loginfo('giskard is ready')
-        while rclpy.ok():
-            try:
-                self.tick()
-                sleeper.sleep()
-            except KeyboardInterrupt:
-                break
+        self.tick_tock(period_ms=1000.0)
+        executer = MultiThreadedExecutor()
+        executer.add_node(rospy.node)
+        try:
+            executer.spin()
+        except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+            pass
+        finally:
+            self.shutdown()
+            rclpy.try_shutdown()
         middleware.loginfo('giskard died')
 
     def kill_all_services(self):

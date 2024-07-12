@@ -5,7 +5,7 @@ from std_msgs.msg import Float64
 from giskardpy.god_map import god_map
 from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
@@ -25,7 +25,7 @@ class JointPosController(GiskardBehavior):
             cmd_topic = f'/{namespace}/command'
             self.cmd_topics.append(cmd_topic)
             wait_for_topic_to_appear(topic_name=cmd_topic, supported_types=[Float64])
-            self.publishers.append(ros_node.create_publisher(Float64, cmd_topic, 10))
+            self.publishers.append(rospy.node.create_publisher(Float64, cmd_topic, 10))
             self.joint_names.append(rospy.get_param(f'{namespace}/joint'))
         for i in range(len(self.joint_names)):
             self.joint_names[i] = god_map.world.search_for_joint_name(self.joint_names[i])

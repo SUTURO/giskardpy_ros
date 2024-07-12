@@ -1,32 +1,27 @@
-import rclpy
 from ament_index_python import get_package_share_directory
 from rclpy.node import Node
 
 from giskardpy.middleware import MiddlewareWrapper
+from giskardpy_ros.ros2 import rospy
 
 
 class ROS2Wrapper(MiddlewareWrapper):
     node: Node
 
-    def __init__(self) -> None:
-        super().__init__()
-        rclpy.init()
-        self.node = Node('giskard')
-
     def loginfo(self, msg: str):
-        self.node.get_logger().info(msg)
+        rospy.node.get_logger().info(msg)
 
     def logwarn(self, msg: str):
-        self.node.get_logger().warn(msg)
+        rospy.node.get_logger().warn(msg)
 
     def logerr(self, msg: str):
-        self.node.get_logger().error(msg)
+        rospy.node.get_logger().error(msg)
 
     def logdebug(self, msg: str):
-        self.node.get_logger().debug(msg)
+        rospy.node.get_logger().debug(msg)
 
     def logfatal(self, msg: str):
-        self.node.get_logger().fatal(msg)
+        rospy.node.get_logger().fatal(msg)
 
     def resolve_iri(cls, path: str) -> str:
         """

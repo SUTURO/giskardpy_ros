@@ -2,13 +2,14 @@ from queue import Queue, Empty
 from typing import Any
 
 from rclpy.action import ActionServer
+from rclpy.action.server import ServerGoalHandle
 from rclpy.timer import Timer
 
 from giskard_msgs.action import Move
 from giskardpy.data_types.exceptions import GiskardException
 from giskardpy.middleware import middleware
 from giskardpy.utils.decorators import record_time
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 
 
 class ActionServerHandler:
@@ -19,6 +20,7 @@ class ActionServerHandler:
     name: str
     client_alive_checker: Timer
     client_alive: bool
+    goal_handle: ServerGoalHandle
 
     @record_time
     def __init__(self, action_name: str, action_type: Any):
@@ -29,7 +31,7 @@ class ActionServerHandler:
         self.client_alive_checker = None
         self.goal_queue = Queue(1)
         self.result_queue = Queue(1)
-        self._as = ActionServer(node=ros_node,
+        self._as = ActionServer(node=rospy.node,
                                 action_type=action_type,
                                 action_name=self.name,
                                 execute_callback=self.execute_cb)
@@ -43,30 +45,32 @@ class ActionServerHandler:
     def is_goal_msg_type_undefined(self):
         return Move.Goal.UNDEFINED == self.goal_msg.type
 
-    def execute_cb(self, goal) -> None:
+    def execute_cb(self, goal: ServerGoalHandle) -> None:
         self.goal_queue.put(goal)
-        result_cb = self.result_queue.get()
-        self.client_alive_checker.shutdown()
-        result_cb()
+        result_msg = self.result_queue.get()
+        # self.client_alive_checker.shutdown()
         self.goal_msg = None
+        self.goal_handle = None
         self.result_msg = None
+        return result_msg
 
     def is_client_alive(self) -> bool:
-        return self.client_alive
+        return True
 
     @profile
     def ping_client(self, time):
         client_name = self._as.current_goal.goal.goal_id.id.split('-')[0]
-        self.client_alive = ros_node.rosnode_ping(client_name, max_count=1)
+        self.client_alive = rospy.node.rosnode_ping(client_name, max_count=1)
         if not self.client_alive:
             middleware.logerr(f'Lost connection to Client "{client_name}".')
             self.client_alive_checker.shutdown()
 
     def accept_goal(self) -> None:
         try:
-            self.goal_msg = self.goal_queue.get_nowait()
-            self.client_alive = True
-            self.client_alive_checker = ros_node.create_timer(1.0, callback=self.ping_client)
+            self.goal_handle = self.goal_queue.get_nowait()
+            self.goal_msg = self.goal_handle.request
+            # self.client_alive = True
+            # self.client_alive_checker = rospy.node.create_timer(1.0, callback=self.ping_client)
             self.goal_id += 1
         except Empty:
             return None
@@ -85,25 +89,19 @@ class ActionServerHandler:
         return not self.goal_queue.empty()
 
     def send_feedback(self, message):
-        self._as.publish_feedback(message)
+        self.goal_handle.publish_feedback(message)
 
     def send_preempted(self):
-        def call_me_now():
-            self._as.set_preempted(self.result_msg)
-
-        self.result_queue.put(call_me_now)
+        self.goal_handle.canceled()
+        self.result_queue.put(self.result_msg)
 
     def send_aborted(self):
-        def call_me_now():
-            self._as.set_aborted(self.result_msg)
-
-        self.result_queue.put(call_me_now)
+        self.goal_handle.abort()
+        self.result_queue.put(self.result_msg)
 
     def send_result(self):
-        def call_me_now():
-            self._as.set_succeeded(self.result_msg)
+        self.goal_handle.succeed()
+        self.result_queue.put(self.result_msg)
 
-        self.result_queue.put(call_me_now)
-
-    def is_preempt_requested(self):
-        return self._as.is_preempt_requested()
+    def is_preempt_requested(self) -> bool:
+        return self.goal_handle.is_cancel_requested

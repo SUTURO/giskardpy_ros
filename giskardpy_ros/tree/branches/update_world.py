@@ -1,7 +1,7 @@
 from py_trees.composites import Sequence
 
 from giskard_msgs.action import World
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.action_server import ActionServerHandler
 from giskardpy_ros.tree.behaviors.collision_scene_updater import CollisionSceneUpdater
 from giskardpy_ros.tree.behaviors.goal_received import GoalReceived
@@ -22,7 +22,7 @@ class UpdateWorld(Sequence):
     def __init__(self):
         name = 'update world'
         super().__init__(name, memory=True)
-        GiskardBlackboard().world_action_server = ActionServerHandler(action_name=f'{ros_node.get_name()}/update_world',
+        GiskardBlackboard().world_action_server = ActionServerHandler(action_name=f'{rospy.node.get_name()}/update_world',
                                                                       action_type=World)
         self.goal_received = GoalReceived(GiskardBlackboard().world_action_server)
         self.send_result = SendResult(action_server=GiskardBlackboard().world_action_server)

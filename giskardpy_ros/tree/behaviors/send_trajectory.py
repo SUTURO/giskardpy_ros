@@ -8,7 +8,7 @@ from giskardpy.god_map import god_map
 from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 from giskardpy.model.joints import OneDofJoint, OmniDrive
 from giskardpy.data_types.data_types import PrefixName, Derivatives
-from giskardpy_ros import ros_node
+from giskardpy_ros.ros2 import rospy
 
 try:
     import pr2_controllers_msgs.msg
@@ -132,7 +132,7 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
 
         overriding this shit because of the fucking prints
         """
-        current_time = ros_node.get_clock().now()
+        current_time = rospy.node.get_clock().now()
         # self.logger.debug("{0}.update()".format(self.__class__.__name__))
         if not self.action_client:
             self.feedback_message = 'no action client, did you call setup() on your tree?'
@@ -165,7 +165,7 @@ class SendFollowJointTrajectory(ActionClient, GiskardBehavior):
             raise_to_blackboard(e)
             return py_trees.Status.FAILURE
         if self.action_client.get_state() in [GoalStatus.PREEMPTED, GoalStatus.PREEMPTING]:
-            if ros_node.get_clock().now() > self.max_deadline:
+            if rospy.node.get_clock().now() > self.max_deadline:
                 msg = f'\'{self.namespace}\' preempted, ' \
                       'probably because it took to long to execute the goal.'
                 raise_to_blackboard(ExecutionTimeoutException(msg))
