@@ -1290,7 +1290,7 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         HSRB specific avoid dishwasher door goal
 
-        :param handle_frame_id: Frame id of the door handle
+        :param handle_name: name of the door handle
         :param tip_link: robot link, that grasps the handle
         :param root_link: root link of the kinematic chain
         """

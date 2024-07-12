@@ -24,7 +24,7 @@ class PayloadForceTorque(PayloadMonitor):
                  # threshold_name is needed here for the class to be able to handle the suturo_types appropriately
                  threshold_name: str,
                  topic: str,
-                 # object_type is needed to differentiate between objects with different placing thresholds
+                 # object_type is needed to differentiate between objects with different thresholds
                  object_type: str,
                  name: Optional[str] = None,
                  start_condition: cas.Expression = cas.TrueSymbol,
@@ -52,15 +52,18 @@ class PayloadForceTorque(PayloadMonitor):
                                            data_class=WrenchStamped, callback=self.cb)
 
     def cb(self, data: WrenchStamped):
-        self.rob_force = self.force_T_map_transform(data, 1)
-        self.rob_torque = self.force_T_map_transform(data, 2)
+        self.rob_force = self.force_T_base_transform(data, 1)
+        self.rob_torque = self.force_T_base_transform(data, 2)
 
-    def force_T_map_transform(self, wrench, picker):
+    def force_T_base_transform(self, wrench, picker):
         """
-        The force_T_map_transform method is used to transform the Vector data from the
+        The force_T_base_transform method is used to transform the Vector data from the
         force-torque sensor frame into the HSRs base frame, so that the axis stay
         the same, to ensure that the threshold check is actually done on the correct axis,
         since conversion into the map frame can lead to different values depending on how the map is recorded.
+
+        :param wrench: the wrench of the WrenchStamped, used to get header and force-torque data
+        :param picker: value which is used to determine whether we want to get the force or the torque
         """
         wrench.header.frame_id = self.sensor_frame
 
@@ -82,7 +85,6 @@ class PayloadForceTorque(PayloadMonitor):
 
             return torque_transformed
 
-    # TODO: Add proper checks for all necessary Items!
     def __call__(self):
         rob_force = copy(self.rob_force)
         rob_torque = copy(self.rob_torque)
@@ -197,7 +199,7 @@ class PayloadForceTorque(PayloadMonitor):
             # case for placing bowls
             elif self.object_type == ObjectTypes.OT_Bowl.value:
 
-                force_z_threshold = 35  # 1.0
+                force_z_threshold = 35
 
                 if abs(rob_force.vector.z) >= force_z_threshold:
 

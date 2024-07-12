@@ -1278,7 +1278,6 @@ class MotionGoalWrapper:
         :param tip_group: if tip link is not unique, you can use this to tell Giskard in which group to search.
         :param root_group: if root link is not unique, you can use this to tell Giskard in which group to search.
         :param reference_velocity: m/s
-        :param weight:
         :param absolute: if False, the goal pose is reevaluated if start_condition turns True.
         """
         self.add_motion_goal(motion_goal_class=CartesianPosition.__name__,
@@ -1361,6 +1360,8 @@ class MotionGoalWrapper:
         :param tip_group: if tip_link is not unique, search in this group for matches
         :param reference_linear_velocity: m/s
         :param reference_angular_velocity: rad/s
+        :param weight:
+        :param name:
         """
         self.add_motion_goal(motion_goal_class=GraspBarOffset.__name__,
                              root_link=root_link,
@@ -1531,6 +1532,7 @@ class MotionGoalWrapper:
         Can only handle containers with 1 dof, e.g. drawers or doors.
         :param tip_link: end effector that is grasping the handle
         :param environment_link: name of the handle that was grasped
+        :param special_door: workaround for dishwasher opening motion
         :param tip_group: if tip_link is not unique, search in this group for matches
         :param environment_group: if environment_link is not unique, search in this group for matches
         :param goal_joint_state: goal state for the container. default is maximum joint state.
@@ -1797,6 +1799,17 @@ class MonitorWrapper:
                          name: Optional[str] = None,
                          stay_true: bool = True,
                          start_condition: str = ''):
+        """
+        Can be used if planning wants to use their own grasping and placing actions, only adds force_torque_monitor
+        without manipulations grasping/placing goals
+
+        :param threshold_name: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
+        :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
+        :param topic: name of the topic that the monitor should subscribe to, is hardcoded as '/filtered_raw/diff'
+        :param name: name of the monitor, is optional, so can be left empty
+        :param stay_true: whether the monitor should stay active until it is finished or not
+        :param start_condition: condition for when the monitor should start checking for thresholds
+        """
         return self.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                 name=name,
                                 start_condition=start_condition,
@@ -2391,6 +2404,14 @@ class GiskardWrapper:
         """
         adds monitor functionality for the Placing motion goal, goal now stops if force_threshold is overstepped,
         which means the HSR essentially stops automatically after placing the object.
+
+        :param align: alignment of action, should currently be either "vertical" or an empty string if not needed
+        :param grasp: the direction from which the HSR should Grasp an object, in case of this method it should be direction the HSR is placing from
+        :param goal_pose: where the object should be placed
+        :param threshold_name: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
+        :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
+        :param tip_link: name of the tip link, pre-defined as "hand_palm_link"
+        :param velocity: the velocity that this action should be executed with
         """
 
         sleep = self.monitors.add_sleep(1.5)
@@ -2430,6 +2451,16 @@ class GiskardWrapper:
         The goal now stops if force_threshold/torque_threshold is undershot,
         which means it essentially stops automatically if the HSR for example slips off of a door handle while trying
         to open doors or fails to properly grip an object.
+
+        :param goal_pose: where the object should be placed
+        :param align: alignment of action, should currently be either "vertical" or an empty string if not needed
+        :param grasp: the direction from which the HSR should Grasp an object
+        :param reference_frame_alignment: reference frame to be used for alignment, can be left empty
+        :param object_name: name of the object, needed for offset calculation of reaching goal
+        :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
+        :param threshold_name: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
+        :param root_link: root_link to be used, is optional, so should normally be left empty
+        :param tip_link: name of the tip link, is optional, so can be left empty
         """
         sleep = self.monitors.add_sleep(1.5)
         # gripper_open = self.monitors.add_open_hsr_gripper()
@@ -2462,6 +2493,9 @@ class GiskardWrapper:
         monitor for transportation of objects, currently WIP, but is supposed to register whether an object
         slips out of the HSRs grasp while transporting it (mostly useful for objects like cutlery, which are hard to grasp
         in a very reliant way)
+
+        :param object_type: type of the object that is being transported, needed to determine correct threshold
+        :param threshold_name: name of the motion, should be transport in this case, but the corresponding enum doesn't exist yet
         """
 
         gripper_closed = self.monitors.add_close_hsr_gripper()
@@ -2562,6 +2596,12 @@ class GiskardWrapper:
                                           grasp_bar_offset: float = 0.0,
                                           root_link: str = 'map',
                                           tip_link: str = 'hand_gripper_tool_frame'):
+        """
+        :param handle_frame_id: frame id of the dishwashers handle
+        :param grasp_bar_offset: offset that is applied to the grasping axis
+        :param root_link: root link, in this case the map link
+        :param tip_link: tip link of the gripper, in this case the 'hand_gripper_tool_frame'
+        """
 
         bar_axis = Vector3Stamped()
         bar_axis.header.frame_id = handle_frame_id
