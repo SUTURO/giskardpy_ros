@@ -98,7 +98,7 @@ class PayloadForceTorque(PayloadMonitor):
 
                 if abs(rob_torque.vector.y) > torque_threshold:
                     self.state = True
-                    logging.loginfo(f'HIT GWC: {rob_torque.vector.y}')
+                    logging.loginfo(f'HIT GWC: TORQUE_Y:{rob_torque.vector.y}')
                 else:
                     self.state = False
 
@@ -109,7 +109,7 @@ class PayloadForceTorque(PayloadMonitor):
 
                 if abs(rob_force.vector.z) > force_threshold:
                     self.state = True
-                    logging.loginfo(f'HIT GWC: {rob_force.vector.z};{rob_torque.vector.y}')
+                    logging.loginfo(f'HIT GWC: FORCE_Z:{rob_force.vector.z}')
                 else:
                     self.state = False
 
@@ -154,7 +154,7 @@ class PayloadForceTorque(PayloadMonitor):
 
                     self.state = True
                     logging.loginfo(
-                        f'HIT PLACING!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_force.vector.y}')
+                        f'HIT PLACING!: Z:{rob_force.vector.z}')
                 else:
                     self.state = False
 
@@ -167,7 +167,7 @@ class PayloadForceTorque(PayloadMonitor):
 
                     self.state = True
                     logging.loginfo(
-                        f'HIT CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
+                        f'HIT CUTLERY!: Z:{rob_force.vector.z}')
                 else:
                     self.state = False
 
@@ -194,7 +194,7 @@ class PayloadForceTorque(PayloadMonitor):
 
                     self.state = True
                     logging.loginfo(
-                        f'HIT PLACING: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
+                        f'HIT PLACING: Z:{rob_force.vector.z}')
                 else:
                     self.state = False
             # if no valid object_type has been declared in method parameters
