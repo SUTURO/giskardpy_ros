@@ -2458,6 +2458,11 @@ class GiskardWrapper:
     def monitor_transport_check(self,
                                 object_type: str = "",
                                 threshold_name: str = ""):
+        """
+        monitor for transportation of objects, currently WIP, but is supposed to register whether an object
+        slips out of the HSRs grasp while transporting it (mostly useful for objects like cutlery, which are hard to grasp
+        in a very reliant way)
+        """
 
         gripper_closed = self.monitors.add_close_hsr_gripper()
 
@@ -2477,13 +2482,16 @@ class GiskardWrapper:
                               threshold_name: str = "",
                               root_link: Optional[str] = None,
                               tip_link: Optional[str] = None):
+        """
+        Similar to the grasping monitor, but with an added transport monitor at the end
+        """
 
         self.monitor_grasp_carefully(goal_pose, grasp, align, reference_frame_alignment, object_name, object_type,
                                      threshold_name, root_link, tip_link)
 
         self.monitor_transport_check(object_type, threshold_name)
 
-    # TODO: put logic into giskard Interface of Planning where Monitors and Motions are used,
+    # TODO: put logic into giskard Interface of Planning where Monitors and Motions are used
     # also other hsrb specific methods
     def grasp_bar_offset_goal(self,
                               bar_center: PointStamped,
