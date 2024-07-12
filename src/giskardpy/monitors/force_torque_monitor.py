@@ -109,10 +109,9 @@ class PayloadForceTorque(PayloadMonitor):
 
                 if abs(rob_force.vector.z) > force_threshold:
                     self.state = True
-                    print(f'HIT GWC: {rob_force.vector.z};{rob_torque.vector.y}')
+                    logging.loginfo(f'HIT GWC: {rob_force.vector.z};{rob_torque.vector.y}')
                 else:
                     self.state = False
-                    print(f'MISS GWC: {rob_force.vector.z};{rob_torque.vector.y}')
 
             # case for grasping plate
             # NOT CURRENTLY USED AS PLATES ARE NEITHER PLACED NOR PICKED UP
@@ -135,10 +134,9 @@ class PayloadForceTorque(PayloadMonitor):
 
                 if abs(rob_force.vector.z) > force_threshold:
                     self.state = True
-                    print(rob_force.vector.z)
+                    logging.loginfo(rob_force.vector.z)
                 else:
                     self.state = False
-                    print(f'MISS GWC:{rob_force.vector.z}')
 
             # if no valid object_type has been declared in method parameters
             else:
@@ -163,24 +161,15 @@ class PayloadForceTorque(PayloadMonitor):
             # case for placing cutlery
             elif self.object_type == ObjectTypes.OT_Cutlery.value:
 
-                if (self.threshold_name == ForceTorqueThresholds.FT_PlaceCutlery.value
-                        & self.topic == "compensated/diff"):
-                    self.topic = "filtered_raw"
-                    # TODO: Add proper Thresholds and Checks for placing Cutlery
-                    logging.loginfo(f'filtered Force: {rob_force}')
-                    logging.loginfo(f'filtered Torque: {rob_torque}')
+                force_z_threshold = 35
 
-                    force_z_threshold = 35
+                if abs(rob_force.vector.z) >= force_z_threshold:
 
-                    if abs(rob_force.vector.z) >= force_z_threshold:
-
-                        self.state = True
-                        logging.loginfo(
-                            f'HIT CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
-                    else:
-                        self.state = False
-                        logging.loginfo(
-                            f'MISS CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
+                    self.state = True
+                    logging.loginfo(
+                        f'HIT CUTLERY!: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
+                else:
+                    self.state = False
 
             # case for placing plates
             # NOT CURRENTLY USED AS PLATES ARE NEITHER PLACED NOR PICKED UP
@@ -204,7 +193,8 @@ class PayloadForceTorque(PayloadMonitor):
                 if abs(rob_force.vector.z) >= force_z_threshold:
 
                     self.state = True
-                    print(f'HIT PLACING: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
+                    logging.loginfo(
+                        f'HIT PLACING: X:{rob_force.vector.x};Z:{rob_force.vector.z};Y:{rob_torque.vector.y}')
                 else:
                     self.state = False
             # if no valid object_type has been declared in method parameters
