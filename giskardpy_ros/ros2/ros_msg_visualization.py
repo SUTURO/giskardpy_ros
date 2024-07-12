@@ -9,10 +9,12 @@ from visualization_msgs.msg import MarkerArray, Marker
 from giskardpy.god_map import god_map
 from giskardpy.model.collision_world_syncer import Collisions, Collision
 import giskardpy_ros.ros2.msg_converter as msg_converter
+from giskardpy.model.links import Link
 from giskardpy_ros.ros2.ros2_interface import wait_for_publisher, wait_for_topic_to_appear
 
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
+from giskardpy_ros.utils.decorators import memoize
 
 
 class ROSMsgVisualization:
@@ -23,17 +25,19 @@ class ROSMsgVisualization:
     @profile
     def __init__(self, tf_frame: Optional[str] = None, use_decomposed_meshes: bool = True):
         self.use_decomposed_meshes = use_decomposed_meshes
-        # qos_profile = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
         self.publisher = rospy.node.create_publisher(MarkerArray,
                                                    f'{rospy.node.get_name()}/visualization_marker_array',
                                                10)
-        # wait_for_publisher(self.publisher)
         self.marker_ids = {}
         if tf_frame is None:
             self.tf_root = str(god_map.world.root_link_name)
         else:
             self.tf_root = tf_frame
         GiskardBlackboard().ros_visualizer = self
+
+    @memoize
+    def link_to_marker(self, link: Link):
+        return msg_converter.link_to_visualization_marker(link, self.use_decomposed_meshes).markers
 
     @profile
     def create_world_markers(self, name_space: str = 'planning_visualization') -> List[Marker]:
@@ -43,7 +47,7 @@ class ROSMsgVisualization:
         links = god_map.world.link_names_with_collisions
         for i, link_name in enumerate(links):
             link = god_map.world.links[link_name]
-            link_markers = msg_converter.link_to_visualization_marker(link, self.use_decomposed_meshes).markers
+            link_markers = self.link_to_marker(link)
             for j, marker in enumerate(link_markers):
                 marker.header.frame_id = self.tf_root
                 marker.action = Marker.ADD
