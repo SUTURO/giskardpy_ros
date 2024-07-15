@@ -13,10 +13,10 @@ from giskardpy_ros.configs.giskard import Giskard
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.god_map import god_map
 from utils_for_tests import launch_launchfile
-from utils_for_tests import GiskardTestWrapper
+from utils_for_tests import GiskardTester
 
 
-class BoxyTestWrapper(GiskardTestWrapper):
+class BoxyTester(GiskardTester):
     default_pose = {
         'neck_shoulder_pan_joint': 0.0,
         'neck_shoulder_lift_joint': 0.0,
@@ -101,15 +101,15 @@ class BoxyTestWrapper(GiskardTestWrapper):
 
 
 @pytest.fixture(scope='module')
-def giskard(request, ros) -> BoxyTestWrapper:
+def giskard(request, ros) -> BoxyTester:
     launch_launchfile('package://iai_boxy_description/launch/upload_boxy.launch')
-    c = BoxyTestWrapper()
+    c = BoxyTester()
     request.addfinalizer(c.tear_down)
     return c
 
 
 class TestJointGoals:
-    def test_joint_movement1(self, zero_pose: BoxyTestWrapper):
+    def test_joint_movement1(self, zero_pose: BoxyTester):
         zero_pose.allow_self_collision()
         js = copy(zero_pose.better_pose)
         js['triangle_base_joint'] = zero_pose.default_pose['triangle_base_joint']
@@ -118,7 +118,7 @@ class TestJointGoals:
 
 
 class TestConstraints:
-    def test_pointing(self, better_pose: BoxyTestWrapper):
+    def test_pointing(self, better_pose: BoxyTester):
         tip = 'head_mount_kinect2_rgb_optical_frame'
         goal_point = god_map.world.compute_fk_point('map', better_pose.r_tip)
         z = Vector3Stamped()
@@ -160,7 +160,7 @@ class TestConstraints:
         np.testing.assert_almost_equal(expected_x.point.y, 0, 2)
         np.testing.assert_almost_equal(expected_x.point.x, 0, 2)
 
-    def test_open_drawer(self, kitchen_setup: BoxyTestWrapper):
+    def test_open_drawer(self, kitchen_setup: BoxyTester):
         handle_frame_id = 'iai_kitchen/sink_area_left_middle_drawer_handle'
         handle_name = 'sink_area_left_middle_drawer_handle'
         bar_axis = Vector3Stamped()

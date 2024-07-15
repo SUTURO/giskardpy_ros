@@ -3,7 +3,8 @@ from typing import Dict, Optional, List, Tuple
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped
 
 import giskard_msgs.msg as giskard_msgs
-from giskard_msgs.action._move import Move_Result
+from giskard_msgs.action._move import Move_Result, Move_Goal
+from giskard_msgs.action._world import World_Result
 from giskard_msgs.msg import CollisionEntry
 
 from giskard_msgs.srv import GetGroupInfo_Response, DyeGroup_Response
@@ -14,22 +15,22 @@ from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 
 class OldGiskardWrapper(GiskardWrapper):
 
-    def __init__(self, node_name: str = 'giskard'):
-        super().__init__(node_name, avoid_name_conflict=True)
+    def __init__(self, giskard_node_name: str = 'giskard'):
+        super().__init__(giskard_node_name, avoid_name_conflict=True)
 
     def execute(self, wait: bool = True, add_default: bool = True) -> Move_Result:
         if add_default:
             self.add_default_end_motion_conditions()
         return super().execute(wait)
 
-    def projection(self, wait: bool = True) -> MoveResult:
+    def projection(self, wait: bool = True) -> Move_Result:
         self.add_default_end_motion_conditions()
         return super().projection(wait)
 
-    def _create_action_goal(self) -> MoveGoal:
+    def _create_action_goal(self) -> Move_Goal:
         if not self.motion_goals._collision_entries:
             self.motion_goals.avoid_all_collisions()
-        action_goal = MoveGoal()
+        action_goal = Move_Goal()
         action_goal.monitors = self.monitors.get_monitors()
         action_goal.goals = self.motion_goals.get_goals()
         self.clear_motion_goals_and_monitors()
@@ -664,7 +665,7 @@ class OldGiskardWrapper(GiskardWrapper):
                 size: Tuple[float, float, float],
                 pose: PoseStamped,
                 parent_link: str = '',
-                parent_link_group: str = '') -> WorldResult:
+                parent_link_group: str = '') -> World_Result:
         """
         Adds a new box to the world tree and attaches it to parent_link.
         If parent_link_group and parent_link are empty, the box will be attached to the world root link, e.g., map.
@@ -686,7 +687,7 @@ class OldGiskardWrapper(GiskardWrapper):
                    radius: float,
                    pose: PoseStamped,
                    parent_link: str = '',
-                   parent_link_group: str = '') -> WorldResult:
+                   parent_link_group: str = '') -> World_Result:
         """
         See add_box.
         """
@@ -702,7 +703,7 @@ class OldGiskardWrapper(GiskardWrapper):
                  pose: PoseStamped,
                  parent_link: str = '',
                  parent_link_group: str = '',
-                 scale: Tuple[float, float, float] = (1, 1, 1)) -> WorldResult:
+                 scale: Tuple[float, float, float] = (1, 1, 1)) -> World_Result:
         """
         See add_box.
         :param mesh: path to the mesh location, can be ros package path, e.g.,
@@ -721,7 +722,7 @@ class OldGiskardWrapper(GiskardWrapper):
                      radius: float,
                      pose: PoseStamped,
                      parent_link: str = '',
-                     parent_link_group: str = '') -> WorldResult:
+                     parent_link_group: str = '') -> World_Result:
         """
         See add_box.
         """
@@ -732,7 +733,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                        pose=pose,
                                        parent_link=parent_link)
 
-    def remove_group(self, name: str) -> WorldResult:
+    def remove_group(self, name: str) -> World_Result:
         """
         Removes a group and all links and joints it contains from the world.
         Be careful, you can remove parts of the robot like that.
@@ -742,7 +743,7 @@ class OldGiskardWrapper(GiskardWrapper):
     def update_parent_link_of_group(self,
                                     name: str,
                                     parent_link: str,
-                                    parent_link_group: Optional[str] = '') -> WorldResult:
+                                    parent_link_group: Optional[str] = '') -> World_Result:
         """
         Removes the joint connecting the root link of a group and attaches it to a parent_link.
         The object will not move relative to the world's root link in this process.
@@ -767,7 +768,7 @@ class OldGiskardWrapper(GiskardWrapper):
                  pose: PoseStamped,
                  parent_link: str = '',
                  parent_link_group: str = '',
-                 js_topic: Optional[str] = '') -> WorldResult:
+                 js_topic: Optional[str] = '') -> World_Result:
         """
         Adds a urdf to the world.
         :param name: name the group containing the urdf will have.
@@ -809,7 +810,7 @@ class OldGiskardWrapper(GiskardWrapper):
         """
         return self.world.get_controlled_joints(group_name=group_name)
 
-    def update_group_pose(self, group_name: str, new_pose: PoseStamped) -> WorldResult:
+    def update_group_pose(self, group_name: str, new_pose: PoseStamped) -> World_Result:
         """
         Overwrites the pose specified in the joint that connects the two groups.
         :param group_name: Name of the group that will move
@@ -819,7 +820,7 @@ class OldGiskardWrapper(GiskardWrapper):
         return self.world.update_group_pose(group_name=group_name, new_pose=new_pose)
 
     def register_group(self, new_group_name: str, root_link_name: str,
-                       root_link_group_name: str) -> WorldResult:
+                       root_link_group_name: str) -> World_Result:
         """
         Register a new group for reference in collision checking. All child links of root_link_name will belong to it.
         :param new_group_name: Name of the new group.
@@ -831,7 +832,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                    root_link_name=root_link_name,
                                    root_link_group_name=root_link_group_name)
 
-    def clear_world(self) -> WorldResult:
+    def clear_world(self) -> World_Result:
         """
         Resets the world to what it was when Giskard was launched.
         """

@@ -9,19 +9,19 @@ from giskardpy_ros.configs.iai_robots.tracy import TracyStandAloneRobotInterface
     TracyCollisionAvoidanceConfig
 from giskardpy.goals.tracebot import InsertCylinder
 from utils_for_tests import launch_launchfile
-from utils_for_tests import GiskardTestWrapper
+from utils_for_tests import GiskardTester
 
 
 @pytest.fixture(scope='module')
 def giskard(request, ros):
     launch_launchfile('package://iai_tracy_description/launch/upload.launch')
-    c = TracebotTestWrapper()
+    c = TracebotTester()
     # c = TracebotTestWrapperMujoco()
     request.addfinalizer(c.tear_down)
     return c
 
 
-class TracebotTestWrapper(GiskardTestWrapper):
+class TracebotTester(GiskardTester):
     default_pose = {
         'left_shoulder_pan_joint': 0,
         'left_shoulder_lift_joint': -1.57,
@@ -67,12 +67,12 @@ class TracebotTestWrapper(GiskardTestWrapper):
 
 
 class TestTracebot:
-    def test_joint_goal(self, zero_pose: TracebotTestWrapper):
+    def test_joint_goal(self, zero_pose: TracebotTester):
         zero_pose.set_joint_goal(zero_pose.better_pose)
         zero_pose.allow_all_collisions()
         zero_pose.execute()
 
-    def test_place_cylinder(self, better_pose: TracebotTestWrapper):
+    def test_place_cylinder(self, better_pose: TracebotTester):
         cylinder_name = 'C'
         cylinder_height = 0.121
         hole_point = PointStamped()
@@ -99,7 +99,7 @@ class TestTracebot:
 
 
 class TestCartGoals:
-    def test_move_left_hand(self, zero_pose: TracebotTestWrapper):
+    def test_move_left_hand(self, zero_pose: TracebotTester):
         box_pose = PoseStamped()
         box_pose.header.frame_id = zero_pose.default_root
         box_pose.pose.orientation.w = 1

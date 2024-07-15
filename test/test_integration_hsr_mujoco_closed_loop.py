@@ -16,10 +16,10 @@ from giskardpy_ros.configs.iai_robots.hsr import WorldWithHSRConfig, HSRCollisio
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.god_map import god_map
 from utils_for_tests import launch_launchfile
-from utils_for_tests import compare_poses, GiskardTestWrapper
+from utils_for_tests import compare_poses, GiskardTester
 
 
-class HSRTestWrapper(GiskardTestWrapper):
+class HSRTester(GiskardTester):
     default_pose = {
         'arm_flex_joint': 0.0,
         'arm_lift_joint': 0.0,
@@ -66,14 +66,14 @@ class HSRTestWrapper(GiskardTestWrapper):
 @pytest.fixture(scope='module')
 def giskard(request, ros):
     launch_launchfile('package://hsr_description/launch/upload_hsrb.launch')
-    c = HSRTestWrapper()
+    c = HSRTester()
     # c = HSRTestWrapperMujoco()
     request.addfinalizer(c.tear_down)
     return c
 
 
 @pytest.fixture()
-def box_setup(zero_pose: HSRTestWrapper) -> HSRTestWrapper:
+def box_setup(zero_pose: HSRTester) -> HSRTester:
     p = PoseStamped()
     p.header.frame_id = 'map'
     p.pose.position.x = 1.2
@@ -86,7 +86,7 @@ def box_setup(zero_pose: HSRTestWrapper) -> HSRTestWrapper:
 
 class TestJointGoals:
 
-    def test_mimic_joints(self, zero_pose: HSRTestWrapper):
+    def test_mimic_joints(self, zero_pose: HSRTester):
         arm_lift_joint = zero_pose.world.search_for_joint_name('arm_lift_joint')
         zero_pose.open_gripper()
         hand_T_finger_current = zero_pose.world.compute_fk('hand_palm_link', 'hand_l_distal_link')
@@ -118,7 +118,7 @@ class TestJointGoals:
         base_T_torso2 = zero_pose.world.compute_fk('base_footprint', 'torso_lift_link')
         compare_poses(base_T_torso2.pose, base_T_torso.pose)
 
-    def test_mimic_joints2(self, zero_pose: HSRTestWrapper):
+    def test_mimic_joints2(self, zero_pose: HSRTester):
         arm_lift_joint = zero_pose.world.search_for_joint_name('arm_lift_joint')
         zero_pose.open_gripper()
 
@@ -144,7 +144,7 @@ class TestJointGoals:
         base_T_torso2 = zero_pose.world.compute_fk('base_footprint', 'torso_lift_link')
         compare_poses(base_T_torso2.pose, base_T_torso.pose)
 
-    def test_mimic_joints3(self, zero_pose: HSRTestWrapper):
+    def test_mimic_joints3(self, zero_pose: HSRTester):
         arm_lift_joint = zero_pose.world.search_for_joint_name('arm_lift_joint')
         zero_pose.open_gripper()
         tip = 'head_pan_link'
@@ -168,7 +168,7 @@ class TestJointGoals:
         base_T_torso2 = zero_pose.world.compute_fk('base_footprint', 'torso_lift_link')
         compare_poses(base_T_torso2.pose, base_T_torso.pose)
 
-    def test_mimic_joints4(self, zero_pose: HSRTestWrapper):
+    def test_mimic_joints4(self, zero_pose: HSRTester):
         ll, ul = zero_pose.world.get_joint_velocity_limits('hsrb/arm_lift_joint')
         assert ll == -0.2
         assert ul == 0.2
@@ -195,7 +195,7 @@ class TestCartGoals:
                                        parent_link_group='hsrb')
         kitchen_setup.world.save_graph_pdf(god_map.tmp_folder)
 
-    def test_move_base(self, zero_pose: HSRTestWrapper):
+    def test_move_base(self, zero_pose: HSRTester):
         map_T_odom = PoseStamped()
         map_T_odom.header.frame_id = 'map'
         map_T_odom.pose.position.x = 1
@@ -211,7 +211,7 @@ class TestCartGoals:
         zero_pose.allow_all_collisions()
         zero_pose.execute()
 
-    def test_move_base_1m_forward(self, zero_pose: HSRTestWrapper):
+    def test_move_base_1m_forward(self, zero_pose: HSRTester):
         map_T_odom = PoseStamped()
         map_T_odom.header.frame_id = 'map'
         map_T_odom.pose.position.x = 1
@@ -219,7 +219,7 @@ class TestCartGoals:
         zero_pose.allow_all_collisions()
         zero_pose.move_base(map_T_odom)
 
-    def test_move_base_1m_left(self, zero_pose: HSRTestWrapper):
+    def test_move_base_1m_left(self, zero_pose: HSRTester):
         map_T_odom = PoseStamped()
         map_T_odom.header.frame_id = 'map'
         map_T_odom.pose.position.y = 1
@@ -227,7 +227,7 @@ class TestCartGoals:
         zero_pose.allow_all_collisions()
         zero_pose.move_base(map_T_odom)
 
-    def test_move_base_1m_diagonal(self, zero_pose: HSRTestWrapper):
+    def test_move_base_1m_diagonal(self, zero_pose: HSRTester):
         map_T_odom = PoseStamped()
         map_T_odom.header.frame_id = 'map'
         map_T_odom.pose.position.x = 1
@@ -236,14 +236,14 @@ class TestCartGoals:
         zero_pose.allow_all_collisions()
         zero_pose.move_base(map_T_odom)
 
-    def test_move_base_rotate(self, zero_pose: HSRTestWrapper):
+    def test_move_base_rotate(self, zero_pose: HSRTester):
         map_T_odom = PoseStamped()
         map_T_odom.header.frame_id = 'map'
         map_T_odom.pose.orientation = Quaternion(*quaternion_about_axis(np.pi / 3, [0, 0, 1]))
         zero_pose.allow_all_collisions()
         zero_pose.move_base(map_T_odom)
 
-    def test_move_base_forward_rotate(self, zero_pose: HSRTestWrapper):
+    def test_move_base_forward_rotate(self, zero_pose: HSRTester):
         map_T_odom = PoseStamped()
         map_T_odom.header.frame_id = 'map'
         map_T_odom.pose.position.x = 1
@@ -251,7 +251,7 @@ class TestCartGoals:
         zero_pose.allow_all_collisions()
         zero_pose.move_base(map_T_odom)
 
-    def test_rotate_gripper(self, zero_pose: HSRTestWrapper):
+    def test_rotate_gripper(self, zero_pose: HSRTester):
         r_goal = PoseStamped()
         r_goal.header.frame_id = zero_pose.tip
         r_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi, [0, 0, 1]))
@@ -262,7 +262,7 @@ class TestCartGoals:
 
 class TestConstraints:
 
-    def test_open_fridge(self, kitchen_setup: HSRTestWrapper):
+    def test_open_fridge(self, kitchen_setup: HSRTester):
         handle_frame_id = 'iai_kitchen/iai_fridge_door_handle'
         handle_name = 'iai_fridge_door_handle'
         kitchen_setup.open_gripper()
@@ -330,13 +330,13 @@ class TestConstraints:
 
 class TestCollisionAvoidanceGoals:
 
-    def test_self_collision_avoidance_empty(self, zero_pose: HSRTestWrapper):
+    def test_self_collision_avoidance_empty(self, zero_pose: HSRTester):
         zero_pose.execute()
         current_state = zero_pose.world.state.to_position_dict()
         current_state = {k.short_name: v for k, v in current_state.items()}
         zero_pose.compare_joint_state(current_state, zero_pose.default_pose)
 
-    def test_self_collision_avoidance(self, zero_pose: HSRTestWrapper):
+    def test_self_collision_avoidance(self, zero_pose: HSRTester):
         r_goal = PoseStamped()
         r_goal.header.frame_id = zero_pose.tip
         r_goal.pose.position.z = 0.5
@@ -344,7 +344,7 @@ class TestCollisionAvoidanceGoals:
         zero_pose.set_cart_goal(r_goal, zero_pose.tip)
         zero_pose.execute()
 
-    def test_self_collision_avoidance2(self, zero_pose: HSRTestWrapper):
+    def test_self_collision_avoidance2(self, zero_pose: HSRTester):
         js = {
             'arm_flex_joint': 0.0,
             'arm_lift_joint': 0.0,
@@ -365,7 +365,7 @@ class TestCollisionAvoidanceGoals:
         zero_pose.set_cart_goal(goal_pose, zero_pose.tip)
         zero_pose.execute()
 
-    def test_attached_collision1(self, box_setup: HSRTestWrapper):
+    def test_attached_collision1(self, box_setup: HSRTester):
         box_name = 'asdf'
         box_pose = PoseStamped()
         box_pose.header.frame_id = 'map'
@@ -391,7 +391,7 @@ class TestCollisionAvoidanceGoals:
         base_goal.pose.orientation.w = 1
         box_setup.move_base(base_goal)
 
-    def test_collision_avoidance(self, zero_pose: HSRTestWrapper):
+    def test_collision_avoidance(self, zero_pose: HSRTester):
         js = {'arm_flex_joint': -np.pi / 2}
         zero_pose.set_joint_goal(js)
         zero_pose.execute()

@@ -3,6 +3,7 @@ from copy import deepcopy
 from threading import Thread
 
 from giskard_msgs.action import World
+from giskard_msgs.action._world import World_Result, World_Goal
 from giskard_msgs.srv import GetGroupNames, GetGroupInfo, DyeGroup, GetGroupInfo_Response, GetGroupInfo_Request, \
     GetGroupNames_Request, GetGroupNames_Response, DyeGroup_Response, DyeGroup_Request
 from py_trees.common import Status
@@ -57,19 +58,19 @@ class ProcessWorldUpdate(GiskardBehavior):
 
     def process_goal(self):
         req = self.action_server.goal_msg
-        result = World.Result()
+        result = World_Result()
         try:
-            if req.operation == World.Goal.ADD:
+            if req.operation == World_Goal.ADD:
                 self.add_object(req)
-            elif req.operation == World.Goal.UPDATE_PARENT_LINK:
+            elif req.operation == World_Goal.UPDATE_PARENT_LINK:
                 self.update_parent_link(req)
-            elif req.operation == World.Goal.UPDATE_POSE:
+            elif req.operation == World_Goal.UPDATE_POSE:
                 self.update_group_pose(req)
-            elif req.operation == World.Goal.REGISTER_GROUP:
+            elif req.operation == World_Goal.REGISTER_GROUP:
                 self.register_group(req)
-            elif req.operation == World.Goal.REMOVE:
+            elif req.operation == World_Goal.REMOVE:
                 self.remove_object(req.group_name)
-            elif req.operation == World.Goal.REMOVE_ALL:
+            elif req.operation == World_Goal.REMOVE_ALL:
                 self.clear_world()
             else:
                 raise InvalidWorldOperationException(f'Received invalid operation code: {req.operation}')
@@ -97,7 +98,6 @@ class ProcessWorldUpdate(GiskardBehavior):
         # make sure robots are at the front
         groups = list(sorted(groups, key=lambda elem: elem not in god_map.world.robot_names))
         res.group_names = groups
-        print(res)
         return res
 
     @profile
@@ -120,7 +120,7 @@ class ProcessWorldUpdate(GiskardBehavior):
         return res
 
     @profile
-    def add_object(self, req: World.Goal) -> None:
+    def add_object(self, req: World_Goal) -> None:
         group_name = req.group_name
         if group_name in god_map.world.groups:
             raise DuplicateNameException(f'Group with name \'{req.group_name}\' already exists.')
@@ -167,7 +167,7 @@ class ProcessWorldUpdate(GiskardBehavior):
             raise NotImplementedError('tf_root_link_name is not implemented')
 
     @profile
-    def update_group_pose(self, req: World.Goal):
+    def update_group_pose(self, req: World_Goal):
         if req.group_name not in god_map.world.groups:
             raise UnknownGroupException(f'Can\'t update pose of unknown group: \'{req.group_name}\'')
         group = god_map.world.groups[req.group_name]
@@ -178,7 +178,7 @@ class ProcessWorldUpdate(GiskardBehavior):
         god_map.world.notify_state_change()
 
     @profile
-    def update_parent_link(self, req: World.Goal):
+    def update_parent_link(self, req: World_Goal):
         parent_link = msg_converter.link_name_msg_to_prefix_name(req.parent_link, god_map.world)
         if req.group_name not in god_map.world.groups:
             raise UnknownGroupException(f'Can\'t attach to unknown group: \'{req.group_name}\'')
@@ -215,7 +215,7 @@ class ProcessWorldUpdate(GiskardBehavior):
         # self.clear_markers()
         middleware.loginfo('Cleared world.')
 
-    def register_group(self, req: World.Goal):
+    def register_group(self, req: World_Goal):
         link_name = msg_converter.link_name_msg_to_prefix_name(req.parent_link, god_map.world)
         god_map.world.register_group(name=req.group_name, root_link_name=link_name)
         middleware.loginfo(f'Registered new group \'{req.group_name}\'')

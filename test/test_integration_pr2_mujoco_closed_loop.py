@@ -21,12 +21,12 @@ from giskardpy.qp.qp_controller_config import QPControllerConfig, SupportedQPSol
 from giskardpy_ros.goals.realtime_goals import CarryMyBullshit
 from giskardpy.motion_graph.tasks.task import WEIGHT_BELOW_CA
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
-from test_integration_pr2 import PR2TestWrapper, TestJointGoals, pocky_pose
+from test_integration_pr2 import PR2Tester, TestJointGoals, pocky_pose
 from giskardpy.goals.weight_scaling_goals import MaxManipulabilityLinWeight
 import giskardpy_ros.ros1.msg_converter as msg_converter
 
 
-class PR2TestWrapperMujoco(PR2TestWrapper):
+class PR2TestWrapperMujoco(PR2Tester):
     better_pose = {'r_shoulder_pan_joint': -1.7125,
                    'r_shoulder_lift_joint': -0.25672,
                    'r_upper_arm_roll_joint': -1.46335,
@@ -93,7 +93,7 @@ def giskard(request, ros):
 
 
 class TestJointGoalsMujoco(TestJointGoals):
-    def test_joint_goal(self, zero_pose: PR2TestWrapper):
+    def test_joint_goal(self, zero_pose: PR2Tester):
         js = {
             # 'torso_lift_joint': 0.2999225173357618,
             'head_pan_joint': 0.041880780651479044,
@@ -117,7 +117,7 @@ class TestJointGoalsMujoco(TestJointGoals):
         zero_pose.allow_all_collisions()
         zero_pose.execute()
 
-    def test_joint_goal_projection(self, zero_pose: PR2TestWrapper):
+    def test_joint_goal_projection(self, zero_pose: PR2Tester):
         js = {
             'torso_lift_joint': 0.2999225173357618,
             'head_pan_joint': 0.041880780651479044,
@@ -152,21 +152,21 @@ class TestJointGoalsMujoco(TestJointGoals):
 
 
 class TestMoveBaseGoals:
-    def test_left_1m(self, zero_pose: PR2TestWrapper):
+    def test_left_1m(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.y = 1
         base_goal.pose.orientation.w = 1
         zero_pose.move_base(base_goal)
 
-    def test_left_1cm(self, zero_pose: PR2TestWrapper):
+    def test_left_1cm(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.y = 0.01
         base_goal.pose.orientation.w = 1
         zero_pose.move_base(base_goal)
 
-    def test_forward_left_rotate(self, zero_pose: PR2TestWrapper):
+    def test_forward_left_rotate(self, zero_pose: PR2Tester):
         map_T_odom = PoseStamped()
         map_T_odom.header.frame_id = 'map'
         map_T_odom.pose.position.x = 1
@@ -183,7 +183,7 @@ class TestMoveBaseGoals:
         zero_pose.allow_all_collisions()
         zero_pose.move_base(base_goal)
 
-    def test_circle(self, zero_pose: PR2TestWrapper):
+    def test_circle(self, zero_pose: PR2Tester):
         center = PointStamped()
         center.header.frame_id = zero_pose.default_root
         zero_pose.set_json_goal(constraint_type='Circle',
@@ -196,7 +196,7 @@ class TestMoveBaseGoals:
         zero_pose.allow_all_collisions()
         zero_pose.execute()
 
-    def test_stay_put(self, zero_pose: PR2TestWrapper):
+    def test_stay_put(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = zero_pose.default_root
         # base_goal.pose.position.y = 0.05
@@ -205,7 +205,7 @@ class TestMoveBaseGoals:
         zero_pose.set_joint_goal(zero_pose.better_pose)
         zero_pose.move_base(base_goal)
 
-    def test_forward_1m(self, zero_pose: PR2TestWrapper):
+    def test_forward_1m(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 1
@@ -213,7 +213,7 @@ class TestMoveBaseGoals:
         zero_pose.allow_all_collisions()
         zero_pose.move_base(base_goal)
 
-    def test_carry_my_bs(self, zero_pose: PR2TestWrapper):
+    def test_carry_my_bs(self, zero_pose: PR2Tester):
         # zero_pose.set_json_goal('CarryMyBullshit',
         #                         camera_link='head_mount_kinect_rgb_optical_frame',
         #                         laser_topic_name='/laser',
@@ -257,7 +257,7 @@ class TestMoveBaseGoals:
         zero_pose.allow_all_collisions()
         zero_pose.execute(add_local_minimum_reached=False)
 
-    def test_wave(self, zero_pose: PR2TestWrapper):
+    def test_wave(self, zero_pose: PR2Tester):
         center = PointStamped()
         center.header.frame_id = zero_pose.default_root
         zero_pose.allow_all_collisions()
@@ -269,14 +269,14 @@ class TestMoveBaseGoals:
         zero_pose.set_joint_goal(zero_pose.better_pose, check=False)
         zero_pose.execute()
 
-    def test_forward_1cm(self, zero_pose: PR2TestWrapper):
+    def test_forward_1cm(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 0.01
         base_goal.pose.orientation.w = 1
         zero_pose.move_base(base_goal)
 
-    def test_forward_left_1m_1m(self, zero_pose: PR2TestWrapper):
+    def test_forward_left_1m_1m(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 1
@@ -284,7 +284,7 @@ class TestMoveBaseGoals:
         base_goal.pose.orientation.w = 1
         zero_pose.move_base(base_goal)
 
-    def test_forward_left_1cm_1cm(self, zero_pose: PR2TestWrapper):
+    def test_forward_left_1cm_1cm(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 0.01
@@ -292,7 +292,7 @@ class TestMoveBaseGoals:
         base_goal.pose.orientation.w = 1
         zero_pose.move_base(base_goal)
 
-    def test_forward_right_and_rotate(self, zero_pose: PR2TestWrapper):
+    def test_forward_right_and_rotate(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 1
@@ -300,7 +300,7 @@ class TestMoveBaseGoals:
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(-pi / 4, [0, 0, 1]))
         zero_pose.move_base(base_goal)
 
-    def test_forward_then_left(self, zero_pose: PR2TestWrapper):
+    def test_forward_then_left(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 1
@@ -312,20 +312,20 @@ class TestMoveBaseGoals:
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi / 3, [0, 0, 1]))
         zero_pose.move_base(base_goal)
 
-    def test_rotate_pi_half(self, zero_pose: PR2TestWrapper):
+    def test_rotate_pi_half(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(-pi / 2, [0, 0, 1]))
         zero_pose.allow_all_collisions()
         zero_pose.move_base(base_goal)
 
-    def test_rotate_pi(self, zero_pose: PR2TestWrapper):
+    def test_rotate_pi(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(pi, [0, 0, 1]))
         zero_pose.move_base(base_goal)
 
-    def test_rotate_0_001_rad(self, zero_pose: PR2TestWrapper):
+    def test_rotate_0_001_rad(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.orientation = Quaternion(*quaternion_about_axis(0.001, [0, 0, 1]))
@@ -333,7 +333,7 @@ class TestMoveBaseGoals:
 
 
 class TestWorldManipulation:
-    def test_add_urdf_body(self, kitchen_setup: PR2TestWrapper):
+    def test_add_urdf_body(self, kitchen_setup: PR2Tester):
         assert GiskardBlackboard().tree.wait_for_goal.synchronization._number_of_synchronisation_behaviors() == 2
         joint_goal = 0.2
         object_name = kitchen_setup.default_env_name
@@ -382,21 +382,21 @@ class TestWorldManipulation:
 
 class TestConstraints:
 
-    def test_SetSeedConfiguration_execute(self, zero_pose: PR2TestWrapper):
+    def test_SetSeedConfiguration_execute(self, zero_pose: PR2Tester):
         zero_pose.set_seed_configuration(seed_configuration=zero_pose.better_pose)
         zero_pose.set_joint_goal(zero_pose.default_pose)
         zero_pose.execute(expected_error_code=GiskardError.GOAL_INITIALIZATION_ERROR)
 
-    def test_SetSeedConfiguration_execute2(self, zero_pose: PR2TestWrapper):
+    def test_SetSeedConfiguration_execute2(self, zero_pose: PR2Tester):
         zero_pose.set_seed_configuration(seed_configuration=zero_pose.better_pose)
         zero_pose.execute(expected_error_code=GiskardError.CONSTRAINT_INITIALIZATION_ERROR)
 
-    def test_SetSeedConfiguration_project(self, zero_pose: PR2TestWrapper):
+    def test_SetSeedConfiguration_project(self, zero_pose: PR2Tester):
         zero_pose.set_seed_configuration(seed_configuration=zero_pose.better_pose)
         zero_pose.set_joint_goal(zero_pose.default_pose)
         zero_pose.projection()
 
-    def test_real_time_pointing(self, zero_pose: PR2TestWrapper):
+    def test_real_time_pointing(self, zero_pose: PR2Tester):
         vector = Vector3Stamped()
         vector.header.frame_id = 'head_mount_kinect_rgb_optical_frame'
         vector.vector.x = 1
@@ -406,7 +406,7 @@ class TestConstraints:
                                                       pointing_axis=vector)
         zero_pose.execute(add_local_minimum_reached=False)
 
-    def test_bowl_and_cup(self, kitchen_setup: PR2TestWrapper):
+    def test_bowl_and_cup(self, kitchen_setup: PR2Tester):
         # kernprof -lv py.test -s test/test_integration_pr2.py::TestCollisionAvoidanceGoals::test_bowl_and_cup
         bowl_name = 'bowl'
         cup_name = 'cup'
@@ -559,7 +559,7 @@ class TestConstraints:
 
 
 class TestActionServerEvents:
-    def test_interrupt1(self, zero_pose: PR2TestWrapper):
+    def test_interrupt1(self, zero_pose: PR2Tester):
         p = PoseStamped()
         p.header.frame_id = 'base_footprint'
         p.pose.position = Point(1, 0, 0)
@@ -568,7 +568,7 @@ class TestActionServerEvents:
         zero_pose.allow_all_collisions()
         zero_pose.execute(expected_error_code=GiskardError.PREEMPTED, stop_after=1)
 
-    def test_interrupt2(self, zero_pose: PR2TestWrapper):
+    def test_interrupt2(self, zero_pose: PR2Tester):
         p = PoseStamped()
         p.header.frame_id = 'base_footprint'
         p.pose.position = Point(2, 0, 0)
@@ -577,17 +577,17 @@ class TestActionServerEvents:
         zero_pose.allow_all_collisions()
         zero_pose.execute(expected_error_code=GiskardError.PREEMPTED, stop_after=6)
 
-    def test_undefined_type(self, zero_pose: PR2TestWrapper):
+    def test_undefined_type(self, zero_pose: PR2Tester):
         zero_pose.allow_all_collisions()
         zero_pose.send_goal(goal_type=MoveGoal.UNDEFINED, expected_error_code=GiskardError.INVALID_GOAL)
 
-    def test_empty_goal(self, zero_pose: PR2TestWrapper):
+    def test_empty_goal(self, zero_pose: PR2Tester):
         zero_pose.cmd_seq = []
         zero_pose.execute(expected_error_code=GiskardError.INVALID_GOAL)
 
 
 class TestManipulability:
-    def test_manip1(self, zero_pose: PR2TestWrapper):
+    def test_manip1(self, zero_pose: PR2Tester):
         # js = {
         #     # 'torso_lift_joint': 0.2999225173357618,
         #     'head_pan_joint': 0.041880780651479044,
@@ -636,7 +636,7 @@ class TestManipulability:
         zero_pose.execute()
 
 class TestMonitors:
-    def test_only_payload_monitors(self, zero_pose: PR2TestWrapper):
+    def test_only_payload_monitors(self, zero_pose: PR2Tester):
         sleep = zero_pose.monitors.add_sleep(2)
         zero_pose.monitors.add_cancel_motion(start_condition=sleep, error_message='time up',
                                              error_code=GiskardError.SETUP_ERROR)

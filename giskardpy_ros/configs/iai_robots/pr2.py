@@ -1,3 +1,4 @@
+from typing import Optional
 
 from giskardpy.model.collision_avoidance_config import CollisionAvoidanceConfig
 from giskardpy.model.world_config import WorldWithOmniDriveRobot
@@ -9,12 +10,15 @@ from giskardpy_ros.ros2 import ros2_interface
 
 class WorldWithPR2Config(WorldWithOmniDriveRobot):
     def __init__(self, map_name: str = 'map', localization_joint_name: str = 'localization',
-                 odom_link_name: str = 'odom_combined', drive_joint_name: str = 'brumbrum'):
+                 odom_link_name: str = 'odom_combined', drive_joint_name: str = 'brumbrum',
+                 urdf: Optional[str] = None):
         super().__init__(map_name, localization_joint_name, odom_link_name, drive_joint_name)
+        self.urdf = urdf
 
     def setup(self):
-        urdf = ros2_interface.get_robot_description()
-        super().setup(urdf)
+        if self.urdf is None:
+            self.urdf = ros2_interface.get_robot_description()
+        super().setup(self.urdf)
 
         self.set_joint_limits(limit_map={Derivatives.velocity: 2,
                                          Derivatives.jerk: 60},

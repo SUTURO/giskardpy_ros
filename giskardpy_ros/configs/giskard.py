@@ -23,7 +23,6 @@ class Giskard:
     behavior_tree_config: BehaviorTreeConfig = None
     robot_interface_config: RobotInterfaceConfig = None
     qp_controller_config: QPControllerConfig = None
-    action_server_name: str = f'{rospy.node.get_name()}/command'
 
     def __init__(self,
                  world_config: WorldConfig,
@@ -71,6 +70,10 @@ class Giskard:
         for additional_path in additional_monitor_package_paths:
             self.add_monitor_package_name(additional_path)
         god_map.hack = 0
+
+    @property
+    def action_server_name(self) -> str:
+        return f'{rospy.node.get_name()}/command'
 
     def set_defaults(self) -> None:
         self.world_config.set_defaults()

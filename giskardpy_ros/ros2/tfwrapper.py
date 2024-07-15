@@ -2,6 +2,7 @@ from time import sleep
 from typing import Optional, overload, List
 
 import numpy as np
+import rclpy
 import yaml
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, TransformStamped, Pose, Quaternion, Point, \
     Vector3, QuaternionStamped, Transform, TwistStamped
@@ -15,24 +16,28 @@ from giskardpy.middleware import middleware
 from giskardpy.utils.decorators import memoize
 from giskardpy_ros.ros2 import rospy
 
-tfBuffer: Buffer
-tf_listener: TransformListener
+tfBuffer: Buffer = None
+tf_listener: TransformListener = None
 
 
-def init(tf_buffer_size: float = 15) -> None:
+def init(tf_buffer_size: Optional[float] = None) -> None:
     """
     If you want to specify the buffer size, call this function manually, otherwise don't worry about it.
     :param tf_buffer_size: in secs
     :type tf_buffer_size: int
     """
     global tfBuffer, tf_listener
-    tfBuffer = Buffer(Duration(seconds=tf_buffer_size))
-    tf_listener = TransformListener(tfBuffer, node)
-    sleep(5.0)
+    if tf_buffer_size is not None:
+        tf_buffer_size = Duration(seconds=tf_buffer_size)
+    tfBuffer = Buffer(tf_buffer_size)
+    tf_listener = TransformListener(tfBuffer, rospy.node)
+    for i in range(10):
+        sleep(0.1)
+        rclpy.spin_once(rospy.node, timeout_sec=0.1)
     try:
         get_tf_root()
-    except AssertionError as e:
-        middleware.logwarn(e)
+    except Exception as e:
+        middleware.logwarn(str(e))
 
 
 def get_tf_buffer() -> Buffer:
@@ -42,7 +47,7 @@ def get_tf_buffer() -> Buffer:
     return tfBuffer
 
 
-@memoize
+# @memoize
 def get_tf_root() -> str:
     tfBuffer = get_tf_buffer()
     frames = yaml.safe_load(tfBuffer.all_frames_as_yaml())

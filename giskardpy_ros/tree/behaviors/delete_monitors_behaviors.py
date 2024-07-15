@@ -26,7 +26,7 @@ class DeleteMonitor(GiskardBehavior):
     @profile
     def __init__(self, parent: PayloadMonitorSequence, name: str = 'delete\nmonitor'):
         super().__init__(name)
-        self.parent = parent
+        # self.parent = parent
 
     def update(self):
         if self.parent.monitor.get_state():

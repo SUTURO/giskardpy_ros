@@ -14,10 +14,10 @@ from giskardpy_ros.configs.iai_robots.pr2 import PR2CollisionAvoidance, PR2Joint
     WorldWithPR2Config
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy.utils.math import quaternion_from_axis_angle
-from test_integration_pr2 import PR2TestWrapper, TestJointGoals, pocky_pose
+from test_integration_pr2 import PR2Tester, TestJointGoals, pocky_pose
 
 
-class PR2TestWrapperMujoco(PR2TestWrapper):
+class PR2TestWrapperMujoco(PR2Tester):
     def __init__(self):
         self.r_tip = 'r_gripper_tool_frame'
         self.l_tip = 'l_gripper_tool_frame'
@@ -54,7 +54,7 @@ def giskard(request, ros):
 
 
 class TestJointGoalsMujoco(TestJointGoals):
-    def test_joint_goal(self, zero_pose: PR2TestWrapper):
+    def test_joint_goal(self, zero_pose: PR2Tester):
         js = {
             'torso_lift_joint': 0.2999225173357618,
             'head_pan_joint': 0.041880780651479044,
@@ -79,7 +79,7 @@ class TestJointGoalsMujoco(TestJointGoals):
         # zero_pose.set_json_goal('EnableVelocityTrajectoryTracking', enabled=True)
         zero_pose.execute()
 
-    def test_joint_goal_projection(self, zero_pose: PR2TestWrapper):
+    def test_joint_goal_projection(self, zero_pose: PR2Tester):
         js = {
             'torso_lift_joint': 0.2999225173357618,
             'head_pan_joint': 0.041880780651479044,
@@ -120,14 +120,14 @@ class TestJointGoalsMujoco(TestJointGoals):
 
 class TestConstraints:
 
-    def test_SetSeedConfiguration(self, zero_pose: PR2TestWrapper):
+    def test_SetSeedConfiguration(self, zero_pose: PR2Tester):
         zero_pose.set_seed_configuration(seed_configuration=zero_pose.better_pose)
         zero_pose.set_joint_goal(zero_pose.default_pose)
         zero_pose.execute(expected_error_code=GiskardError.GOAL_INITIALIZATION_ERROR)
 
 
 class TestCartGoals:
-    def test_forward_right_and_rotate(self, zero_pose: PR2TestWrapper):
+    def test_forward_right_and_rotate(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 1
@@ -135,7 +135,7 @@ class TestCartGoals:
         base_goal.pose.orientation = Quaternion(*quaternion_from_axis_angle([0, 0, 1], -np.pi / 4))
         zero_pose.move_base(base_goal)
 
-    def test_forward(self, zero_pose: PR2TestWrapper):
+    def test_forward(self, zero_pose: PR2Tester):
         base_goal = PoseStamped()
         base_goal.header.frame_id = 'map'
         base_goal.pose.position.x = 1
@@ -144,7 +144,7 @@ class TestCartGoals:
 
 
 class TestActionServerEvents:
-    def test_interrupt1(self, zero_pose: PR2TestWrapper):
+    def test_interrupt1(self, zero_pose: PR2Tester):
         p = PoseStamped()
         p.header.frame_id = 'base_footprint'
         p.pose.position = Point(1, 0, 0)
@@ -153,7 +153,7 @@ class TestActionServerEvents:
         zero_pose.allow_all_collisions()
         zero_pose.execute(expected_error_code=GiskardError.PREEMPTED, stop_after=1)
 
-    def test_interrupt2(self, zero_pose: PR2TestWrapper):
+    def test_interrupt2(self, zero_pose: PR2Tester):
         p = PoseStamped()
         p.header.frame_id = 'base_footprint'
         p.pose.position = Point(2, 0, 0)
@@ -162,16 +162,16 @@ class TestActionServerEvents:
         zero_pose.allow_all_collisions()
         zero_pose.execute(expected_error_code=GiskardError.PREEMPTED, stop_after=6)
 
-    def test_undefined_type(self, zero_pose: PR2TestWrapper):
+    def test_undefined_type(self, zero_pose: PR2Tester):
         zero_pose.allow_all_collisions()
         zero_pose.send_goal(goal_type=MoveGoal.UNDEFINED,
                             expected_error_code=GiskardError.INVALID_GOAL)
 
-    def test_empty_goal(self, zero_pose: PR2TestWrapper):
+    def test_empty_goal(self, zero_pose: PR2Tester):
         zero_pose.allow_all_collisions()
         zero_pose.execute(expected_error_code=GiskardError.EMPTY_PROBLEM)
 
-    def test_plan_only(self, zero_pose: PR2TestWrapper):
+    def test_plan_only(self, zero_pose: PR2Tester):
         zero_pose.allow_self_collision()
         zero_pose.set_joint_goal(pocky_pose, add_monitor=False)
         zero_pose.projection()

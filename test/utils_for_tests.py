@@ -3,18 +3,19 @@ import keyword
 import os
 from collections import defaultdict
 from copy import deepcopy
-from time import time
+from threading import Thread
+from time import time, sleep
 from typing import Tuple, Optional, List, Dict, Union
 
 import hypothesis.strategies as st
 import numpy as np
-import roslaunch
-import rospy
 from angles import shortest_angular_distance
 from geometry_msgs.msg import PoseStamped, Point, PointStamped, Quaternion, Pose
 from hypothesis import assume
 from hypothesis.strategies import composite
 from numpy import pi
+from rclpy.duration import Duration
+from rclpy.publisher import Publisher
 from sensor_msgs.msg import JointState
 from std_msgs.msg import ColorRGBA
 from tf2_py import LookupException, ExtrapolationException
@@ -22,10 +23,12 @@ from visualization_msgs.msg import Marker
 
 import giskard_msgs.msg as giskard_msgs
 import giskardpy.casadi_wrapper as cas
-import giskardpy_ros.ros1.msg_converter as msg_converter
-import giskardpy_ros.ros1.tfwrapper as tf
+import giskardpy_ros.ros2.msg_converter as msg_converter
+import giskardpy_ros.ros2.tfwrapper as tf
+from giskard_msgs.action._move import Move_Result, Move_Goal
+from giskard_msgs.action._world import World_Result
 from giskard_msgs.msg import GiskardError
-from giskard_msgs.srv import DyeGroupResponse
+from giskard_msgs.srv import DyeGroup_Response
 from giskardpy.data_types.data_types import KeyDefaultDict
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.data_types.exceptions import UnknownGroupException, DuplicateNameException, WorldException
@@ -41,8 +44,8 @@ from giskardpy.qp.qp_solver_ids import SupportedQPSolver
 from giskardpy.utils.utils import suppress_stderr
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper
-from giskardpy_ros.ros1.ros1_interface import make_pose_from_parts
-from giskardpy_ros.ros1.ros_timer import Timer
+from giskardpy_ros.python_interface.python_interface import GiskardWrapperNode
+from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
 BIG_NUMBER = 1e100
@@ -261,18 +264,18 @@ def pykdl_frame_to_numpy(pykdl_frame):
                      [0, 0, 0, 1]])
 
 
-class GiskardTestWrapper(OldGiskardWrapper):
-    default_pose = {}
-    better_pose = {}
+class GiskardTester:
+    default_pose: Dict[str, float]
+    better_pose = Dict[str, float]
     odom_root = 'odom'
+    api: GiskardWrapperNode
+    giskard: Giskard
 
-    def __init__(self,
-                 giskard: Giskard):
+    def __init__(self, giskard: Giskard):
         self.total_time_spend_giskarding = 0
         self.total_time_spend_moving = 0
-        self._alive = True
         self.default_env_name: Optional[str] = None
-        self.env_joint_state_pubs: Dict[str, rospy.Publisher] = {}
+        self.env_joint_state_pubs: Dict[str, Publisher] = {}
 
         self.giskard = giskard
         self.giskard.grow()
@@ -281,25 +284,18 @@ class GiskardTestWrapper(OldGiskardWrapper):
             GiskardBlackboard().tree.turn_off_visualization()
         if 'QP_SOLVER' in os.environ:
             god_map.qp_controller.set_qp_solver(SupportedQPSolver[os.environ['QP_SOLVER']])
-        self.heart = Timer(period=rospy.Duration(GiskardBlackboard().tree.tick_hz), callback=self.heart_beat,
-                           thread_name='giskard_bt')
-        # self.namespaces = namespaces
         self.robot_names = [list(god_map.world.groups.keys())[0]]
-        super().__init__(node_name='tests')
         self.default_root = str(god_map.world.root_link_name)
 
-        def create_publisher(topic):
-            p = rospy.Publisher(topic, JointState, queue_size=10)
-            rospy.sleep(.2)
-            return p
-
-        self.joint_state_publisher = KeyDefaultDict(create_publisher)
         # rospy.sleep(1)
         self.original_number_of_links = len(god_map.world.links)
+        self.heart = Thread(target=GiskardBlackboard().tree.live)
+        self.heart.start()
+        self.api = GiskardWrapperNode(node_name='tests')
 
     def get_odometry_joint(self, group_name: Optional[str] = None) -> Joint:
         if group_name is None:
-            group_name = self.robot_name
+            group_name = self.api.robot_name
         parent_joint_name = god_map.world.groups[group_name].root_link.parent_joint_name
         if parent_joint_name is None:
             raise WorldException('No odometry joint found')
@@ -350,22 +346,12 @@ class GiskardTestWrapper(OldGiskardWrapper):
         behavior_tree = GiskardBlackboard().tree
         c = behavior_tree.count
         while behavior_tree.count < c + number:
-            rospy.sleep(0.001)
+            sleep(0.001)
 
     def dye_group(self, group_name: str, rgba: Tuple[float, float, float, float],
-                  expected_error_codes=(DyeGroupResponse.SUCCESS,)):
+                  expected_error_codes=(DyeGroup_Response.SUCCESS,)):
         res = self.world.dye_group(group_name, rgba)
         assert res.error_codes in expected_error_codes
-
-    def heart_beat(self, timer_thing):
-        if self._alive:
-            GiskardBlackboard().tree.tick()
-
-    def stop_ticking(self):
-        self._alive = False
-
-    def restart_ticking(self):
-        self._alive = True
 
     def print_qp_solver_times(self):
         file_name = f'{god_map.tmp_folder}/benchmark.csv'
@@ -401,10 +387,10 @@ class GiskardTestWrapper(OldGiskardWrapper):
 
     def tear_down(self):
         self.print_qp_solver_times()
-        rospy.sleep(1)
-        self.heart.shutdown()
+        # rospy.sleep(1)
+        # self.heart.shutdown()
         # TODO it is strange that I need to kill the services... should be investigated. (:
-        GiskardBlackboard().tree.kill_all_services()
+        # GiskardBlackboard().tree.kill_all_services()
         giskarding_time = self.total_time_spend_giskarding
         if not GiskardBlackboard().tree.is_standalone():
             giskarding_time -= self.total_time_spend_moving
@@ -478,26 +464,26 @@ class GiskardTestWrapper(OldGiskardWrapper):
     #
 
     def execute(self, expected_error_type: Optional[type(Exception)] = None, stop_after: float = None,
-                wait: bool = True, add_local_minimum_reached: bool = True) -> giskard_msgs.MoveResult:
+                wait: bool = True, add_local_minimum_reached: bool = True) -> Move_Result:
         if add_local_minimum_reached:
-            self.add_default_end_motion_conditions()
+            self.api.add_default_end_motion_conditions()
         return self.send_goal(expected_error_type=expected_error_type, stop_after=stop_after, wait=wait)
 
     def projection(self, expected_error_type: Optional[type(Exception)] = None, wait: bool = True,
-                   add_local_minimum_reached: bool = True) -> giskard_msgs.MoveResult:
+                   add_local_minimum_reached: bool = True) -> Move_Result:
         """
         Plans, but doesn't execute the goal. Useful, if you just want to look at the planning ghost.
         :param wait: this function blocks if wait=True
         :return: result from Giskard
         """
         if add_local_minimum_reached:
-            self.add_default_end_motion_conditions()
+            self.api.add_default_end_motion_conditions()
         last_js = god_map.world.state.to_position_dict()
         for key, value in list(last_js.items()):
             if key not in god_map.world.controlled_joints:
                 del last_js[key]
         result = self.send_goal(expected_error_type=expected_error_type,
-                                goal_type=giskard_msgs.MoveGoal.PROJECTION,
+                                goal_type=Move_Goal.PROJECTION,
                                 wait=wait)
         new_js = god_map.world.state.to_position_dict()
         for key, value in list(new_js.items()):
@@ -507,30 +493,30 @@ class GiskardTestWrapper(OldGiskardWrapper):
         return result
 
     def plan(self, expected_error_type: Optional[type(Exception)] = None, wait: bool = True,
-             add_local_minimum_reached: bool = True) -> giskard_msgs.MoveResult:
+             add_local_minimum_reached: bool = True) -> Move_Result:
         return self.projection(expected_error_type=expected_error_type,
                                wait=wait,
                                add_local_minimum_reached=add_local_minimum_reached)
 
     def send_goal(self,
                   expected_error_type: Optional[type(Exception)] = None,
-                  goal_type: int = giskard_msgs.MoveGoal.EXECUTE,
-                  goal: Optional[giskard_msgs.MoveGoal] = None,
+                  goal_type: int = Move_Goal.EXECUTE,
+                  goal: Optional[Move_Goal] = None,
                   stop_after: Optional[float] = None,
-                  wait: bool = True) -> Optional[giskard_msgs.MoveResult]:
+                  wait: bool = True) -> Optional[Move_Result]:
         try:
             time_spend_giskarding = time()
             if stop_after is not None:
-                super()._send_action_goal(goal_type, wait=False)
-                rospy.sleep(stop_after)
-                self.interrupt()
-                rospy.sleep(1)
-                r = self.get_result(rospy.Duration(10))
+                self.api._send_action_goal(goal_type, wait=False)
+                sleep(stop_after)
+                self.api.interrupt()
+                sleep(1)
+                r = self.api.get_result(Duration(10))
             elif not wait:
-                super()._send_action_goal(goal_type, wait=wait)
+                self.api._send_action_goal(goal_type, wait=wait)
                 return
             else:
-                r = super()._send_action_goal(goal_type, wait=wait)
+                r = self.api._send_action_goal(goal_type, wait=wait)
             self.wait_heartbeats()
             diff = time() - time_spend_giskarding
             self.total_time_spend_giskarding += diff
@@ -609,18 +595,18 @@ class GiskardTestWrapper(OldGiskardWrapper):
     #
 
     def register_group(self, new_group_name: str, root_link_name: giskard_msgs.LinkName):
-        self.world.register_group(new_group_name=new_group_name,
+        self.api.world.register_group(new_group_name=new_group_name,
                                   root_link_name=root_link_name)
         self.wait_heartbeats()
-        assert new_group_name in self.world.get_group_names()
+        assert new_group_name in self.api.world.get_group_names()
 
-    def clear_world(self) -> giskard_msgs.WorldResult:
-        respone = self.world.clear()
+    def clear_world(self) -> World_Result:
+        respone = self.api.world.clear()
         self.wait_heartbeats()
         self.default_env_name = None
         assert respone.error.type == giskard_msgs.GiskardError.SUCCESS
         assert len(god_map.world.groups) == 1
-        assert len(self.world.get_group_names()) == 1
+        assert len(self.api.world.get_group_names()) == 1
         assert self.original_number_of_links == len(god_map.world.links)
         return respone
 
@@ -633,7 +619,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
             old_link_names = god_map.world.groups[name].link_names_as_set
             old_joint_names = god_map.world.groups[name].joint_names
         try:
-            r = self.world.remove_group(name)
+            r = self.api.world.remove_group(name)
             self.wait_heartbeats()
             assert r.error.type == GiskardError.SUCCESS
             # links removed from world
@@ -653,7 +639,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
         except Exception as e:
             assert type(e) == expected_error_type
         assert name not in god_map.world.groups
-        assert name not in self.world.get_group_names()
+        assert name not in self.api.world.get_group_names()
         if name in self.env_joint_state_pubs:
             self.env_joint_state_pubs[name].unregister()
             del self.env_joint_state_pubs[name]
@@ -662,7 +648,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
 
     def detach_group(self, name: str, expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
-            response = self.world.detach_group(name)
+            response = self.api.world.detach_group(name)
             self.wait_heartbeats()
             assert response.error.type == GiskardError.SUCCESS
         except Exception as e:
@@ -679,15 +665,15 @@ class GiskardTestWrapper(OldGiskardWrapper):
         if isinstance(parent_link, str):
             parent_link = giskard_msgs.LinkName(name=parent_link)
         if expected_error_type is None:
-            assert name in self.world.get_group_names()
-            response2 = self.world.get_group_info(name)
+            assert name in self.api.world.get_group_names()
+            response2 = self.api.world.get_group_info(name)
             if pose is not None:  # check if pose is consistent
                 p = self.transform_msg(god_map.world.root_link_name, pose)
                 o_p = god_map.world.groups[name].base_pose
                 compare_poses(p.pose, o_p)
                 compare_poses(o_p, response2.root_link_pose.pose)
             if parent_link and parent_link.group_name != '':  # check if parent group is consistent
-                robot = self.world.get_group_info(parent_link.group_name)
+                robot = self.api.world.get_group_info(parent_link.group_name)
                 assert name in robot.child_groups
                 expected_parent_link = msg_converter.link_name_msg_to_prefix_name(parent_link, god_map.world)
                 real_parent_link = god_map.world.get_parent_link_of_link(god_map.world.groups[name].root_link_name)
@@ -708,7 +694,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
         else:
             if expected_error_type != DuplicateNameException:
                 assert name not in god_map.world.groups
-                assert name not in self.world.get_group_names()
+                assert name not in self.api.world.get_group_names()
 
     def add_box_to_world(self,
                          name: str,
@@ -717,7 +703,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
                          parent_link: Optional[Union[str, giskard_msgs.LinkName]] = None,
                          expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
-            response = self.world.add_box(name=name,
+            response = self.api.world.add_box(name=name,
                                           size=size,
                                           pose=pose,
                                           parent_link=parent_link)
@@ -733,10 +719,10 @@ class GiskardTestWrapper(OldGiskardWrapper):
     def update_group_pose(self, group_name: str, new_pose: PoseStamped,
                           expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
-            response = self.world.update_group_pose(group_name=group_name, new_pose=new_pose)
+            response = self.api.world.update_group_pose(group_name=group_name, new_pose=new_pose)
             self.wait_heartbeats()
             assert response.error.type == GiskardError.SUCCESS
-            info = self.world.get_group_info(group_name)
+            info = self.api.world.get_group_info(group_name)
             map_T_group = tf.transform_pose(god_map.world.root_link_name, new_pose)
             compare_poses(info.root_link_pose.pose, map_T_group.pose)
         except Exception as e:
@@ -749,7 +735,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
                             parent_link: Optional[Union[str, giskard_msgs.LinkName]] = None,
                             expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
-            response = self.world.add_sphere(name=name,
+            response = self.api.world.add_sphere(name=name,
                                              radius=radius,
                                              pose=pose,
                                              parent_link=parent_link)
@@ -770,7 +756,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
                               parent_link: Optional[Union[str, giskard_msgs.LinkName]] = None,
                               expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
-            response = self.world.add_cylinder(name=name,
+            response = self.api.world.add_cylinder(name=name,
                                                height=height,
                                                radius=radius,
                                                pose=pose,
@@ -792,7 +778,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
                           scale: Tuple[float, float, float] = (1, 1, 1),
                           expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
-            response = self.world.add_mesh(name=name,
+            response = self.api.world.add_mesh(name=name,
                                            mesh=mesh,
                                            pose=pose,
                                            parent_link=parent_link,
@@ -817,7 +803,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
                           set_js_topic: Optional[str] = '',
                           expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
-            response = self.world.add_urdf(name=name,
+            response = self.api.world.add_urdf(name=name,
                                            urdf=urdf,
                                            pose=pose,
                                            parent_link=parent_link,
@@ -831,7 +817,9 @@ class GiskardTestWrapper(OldGiskardWrapper):
                                      parent_link=parent_link,
                                      expected_error_type=expected_error_type)
         if set_js_topic:
-            self.env_joint_state_pubs[name] = rospy.Publisher(set_js_topic, JointState, queue_size=10)
+            self.env_joint_state_pubs[name] = rospy.node.create_publisher(JointState,
+                                                                          set_js_topic,
+                                                                          10)
         if self.default_env_name is None:
             self.default_env_name = name
 
@@ -842,7 +830,7 @@ class GiskardTestWrapper(OldGiskardWrapper):
         try:
             if parent_link is None:
                 parent_link = giskard_msgs.LinkName()
-            r = self.world.update_parent_link_of_group(name=name,
+            r = self.api.world.update_parent_link_of_group(name=name,
                                                        parent_link=parent_link)
             self.wait_heartbeats()
             assert r.error.type == GiskardError.SUCCESS
@@ -934,31 +922,6 @@ class GiskardTestWrapper(OldGiskardWrapper):
         self.teleport_base(p)
 
 
-def publish_marker_sphere(position, frame_id='map', radius=0.05, id_=0):
-    m = Marker()
-    m.action = m.ADD
-    m.ns = 'debug'
-    m.id = id_
-    m.type = m.SPHERE
-    m.header.frame_id = frame_id
-    m.pose.position.x = position[0]
-    m.pose.position.y = position[1]
-    m.pose.position.z = position[2]
-    m.color = ColorRGBA(1, 0, 0, 1)
-    m.scale.x = radius
-    m.scale.y = radius
-    m.scale.z = radius
-
-    pub = rospy.Publisher('/visualization_marker', Marker, queue_size=1)
-    start = rospy.get_rostime()
-    while pub.get_num_connections() < 1 and (rospy.get_rostime() - start).to_sec() < 2:
-        # wait for a connection to publisher
-        # you can do whatever you like here or simply do nothing
-        pass
-
-    pub.publish(m)
-
-
 def launch_launchfile(file_name: str):
     launch_file = middleware.resolve_iri(file_name)
     uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
@@ -993,6 +956,6 @@ def publish_marker_vector(start: Point, end: Point, diameter_shaft: float = 0.01
         # wait for a connection to publisher
         # you can do whatever you like here or simply do nothing
         pass
-    rospy.sleep(0.3)
+    sleep(0.3)
 
     pub.publish(m)
