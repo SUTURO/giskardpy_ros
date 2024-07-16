@@ -2655,8 +2655,20 @@ class GiskardWrapper:
                                            root_link=root_link)
 
     def pre_pose_shelf_open(self,
+                            offset_x: float = 0.03,
+                            offset_y: float = 0.01,
+                            offset_z: float = -0.15,
                             left_handle: str = 'shelf_hohc:shelf_door_left:handle',
                             left_door: str = 'shelf_hohc:shelf_door_left'):
+        """
+        Pre-Pose for opening the shelf
+
+        :param offset_x: Depth offset for grasping pose of the handle
+        :param offset_y: Width offset for grasping pose of the handle
+        :param offset_z: Height offset for grasping pose of the handle
+        :param left_handle: Left door handle of the shelf
+        :param left_door: Main Link of the left door
+        """
         if left_door not in self.world.get_group_names():
             self.world.register_group(new_group_name=left_door,
                                       root_link_group_name='suturo_shelf_hohc',
@@ -2664,9 +2676,9 @@ class GiskardWrapper:
 
         first_goal = PoseStamped()
         first_goal.header.frame_id = left_handle
-        first_goal.pose.position.x = 0.03
-        first_goal.pose.position.y = 0.01
-        first_goal.pose.position.z = -0.15
+        first_goal.pose.position.x = offset_x
+        first_goal.pose.position.y = offset_y
+        first_goal.pose.position.z = offset_z
         first_goal.pose.orientation = Quaternion(*quaternion_from_matrix(np.array([[0, 1, 0, 0],
                                                                                    [0, 0, 1, 0],
                                                                                    [1, 0, 0, 0],
@@ -2695,7 +2707,13 @@ class GiskardWrapper:
     def open_shelf_door(self,
                         left_handle: str = 'shelf_hohc:shelf_door_left:handle',
                         left_door: str = 'shelf_hohc:shelf_door_left'):
+        """
+        Opens the shelf door.
+        Requieres the pre-pose to be reached and the gripper to be closed
 
+        :param left_handle: Left door handle of the shelf
+        :param left_door: Main Link of the left door
+        """
         if left_door not in self.world.get_group_names():
             self.world.register_group(new_group_name=left_door,
                                       root_link_group_name='suturo_shelf_hohc',
