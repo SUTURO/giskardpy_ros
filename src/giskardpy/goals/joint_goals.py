@@ -56,13 +56,15 @@ class JointVelocityLimit(Goal):
                                              task_expression=current_joint,
                                              velocity_limit=max_velocity,
                                              lower_slack_limit=0,
-                                             upper_slack_limit=0)
+                                             upper_slack_limit=0,
+                                             name=f'limit_joint:{joint_name}')
             else:
                 task.add_velocity_constraint(lower_velocity_limit=-max_velocity,
                                              upper_velocity_limit=max_velocity,
                                              weight=self.weight,
                                              task_expression=current_joint,
-                                             velocity_limit=max_velocity)
+                                             velocity_limit=max_velocity,
+                                             name=f'limit_joint:{joint_name}')
         self.connect_monitors_to_all_tasks(start_condition, hold_condition, end_condition)
 
 
