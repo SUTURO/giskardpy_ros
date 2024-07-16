@@ -1059,6 +1059,10 @@ class OpenDoorGoal(Goal):
                              w.logic_and(hinge_state_monitor.get_state_expression(),
                                          local_min_mon.get_state_expression()))
 
+        self.add_constraints_of_goal(
+            JointVelocityLimit(joint_names=['wrist_flex_joint', 'wrist_roll_joint'], max_velocity=0.03,
+                               start_condition=handle_state_monitor.get_state_expression()))
+
         self.add_constraints_of_goal(Open(tip_link=tip_link,
                                           environment_link=handle_name,
                                           goal_joint_state=limit_handle,
