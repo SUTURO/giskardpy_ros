@@ -6,10 +6,11 @@ import rospy
 from actionlib import SimpleActionClient
 from controller_manager_msgs.srv import ListControllers, SwitchController, SwitchControllerResponse, \
     ListControllersResponse
-from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3
+from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3, Quaternion
 from nav_msgs.msg import Path
 from rospy import ServiceException
 from shape_msgs.msg import SolidPrimitive
+from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
@@ -32,7 +33,7 @@ from giskardpy.goals.pointing import Pointing
 from giskardpy.goals.pre_push_door import PrePushDoor
 from giskardpy.goals.realtime_goals import RealTimePointing
 from giskardpy.goals.suturo import GraspBarOffset, Reaching, Placing, VerticalMotion, AlignHeight, TakePose, Tilting, \
-    JointRotationGoalContinuous, Mixing, OpenDoorGoal, Retracting, MoveAroundDishwasher
+    JointRotationGoalContinuous, Mixing, OpenDoorGoal, Retracting, MoveAroundDishwasher, MoveAroundDoor
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, PointingAt, \
     VectorsAligned, DistanceToLine
@@ -43,7 +44,7 @@ from giskardpy.monitors.monitors import LocalMinimumReached, TimeAbove, Alternat
 from giskardpy.monitors.overwrite_state_monitors import SetOdometry, SetSeedConfiguration
 from giskardpy.monitors.payload_monitors import Print, Sleep, SetMaxTrajectoryLength, PayloadAlternator
 from giskardpy.monitors.set_prediction_horizon import SetPredictionHorizon
-from giskardpy.tasks.task import WEIGHT_ABOVE_CA
+from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.tree.control_modes import ControlModes
 from giskardpy.utils.utils import kwargs_to_json, get_all_classes_in_package
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
@@ -1738,6 +1739,20 @@ class MotionGoalWrapper:
                                     topic_name='human_pose',
                                     pointing_axis=tip_V_pointing_axis)
 
+    def move_around_door(self,
+                         root_link,
+                         tip_link,
+                         handle_name,
+                         hinge_name,
+                         tip_gripper_axis):
+
+        self.add_motion_goal(motion_goal_class=MoveAroundDoor.__name__,
+                             root_link=root_link,
+                             tip_link=tip_link,
+                             handle_name=handle_name,
+                             hinge_name=hinge_name,
+                             tip_gripper_axis=tip_gripper_axis)
+
 
 class MonitorWrapper:
     _monitors: List[Monitor]
@@ -2638,3 +2653,76 @@ class GiskardWrapper:
                                            tip_normal=x_gripper,
                                            goal_normal=x_goal,
                                            root_link=root_link)
+
+    def pre_pose_shelf_open(self,
+                            left_handle: str = 'shelf_hohc:shelf_door_left:handle',
+                            left_door: str = 'shelf_hohc:shelf_door_left'):
+        if left_door not in self.world.get_group_names():
+            self.world.register_group(new_group_name=left_door,
+                                      root_link_group_name='suturo_shelf_hohc',
+                                      root_link_name=left_door)
+
+        first_goal = PoseStamped()
+        first_goal.header.frame_id = left_handle
+        first_goal.pose.position.x = 0.03
+        first_goal.pose.position.y = 0.01
+        first_goal.pose.position.z = -0.15
+        first_goal.pose.orientation = Quaternion(*quaternion_from_matrix(np.array([[0, 1, 0, 0],
+                                                                                   [0, 0, 1, 0],
+                                                                                   [1, 0, 0, 0],
+                                                                                   [0, 0, 0, 1]])))
+
+        pre_grasp_reached = self.monitors.add_cartesian_pose(goal_pose=first_goal,
+                                                             tip_link='hand_gripper_tool_frame',
+                                                             root_link='map',
+                                                             position_threshold=0.06)
+        self.motion_goals.avoid_all_collisions(end_condition=pre_grasp_reached)
+        self.motion_goals.allow_collision(group1='gripper', group2=left_door,
+                                          start_condition=pre_grasp_reached)
+
+        grasp_reached = self.monitors.add_cartesian_pose(goal_pose=first_goal,
+                                                         tip_link='hand_gripper_tool_frame',
+                                                         root_link='map')
+
+        self.motion_goals.add_cartesian_pose(goal_pose=first_goal,
+                                             tip_link='hand_gripper_tool_frame',
+                                             root_link='map',
+                                             weight=WEIGHT_BELOW_CA,
+                                             end_condition=grasp_reached)
+
+        self.monitors.add_end_motion(start_condition=grasp_reached)
+
+    def open_shelf_door(self,
+                        left_handle: str = 'shelf_hohc:shelf_door_left:handle',
+                        left_door: str = 'shelf_hohc:shelf_door_left'):
+
+        if left_door not in self.world.get_group_names():
+            self.world.register_group(new_group_name=left_door,
+                                      root_link_group_name='suturo_shelf_hohc',
+                                      root_link_name=left_door)
+
+        first_goal = PoseStamped()
+        first_goal.header.frame_id = left_handle
+        first_goal.pose.position.x = 0.03
+        first_goal.pose.position.y = 0.01
+        first_goal.pose.position.z = -0.15
+        first_goal.pose.orientation = Quaternion(*quaternion_from_matrix(np.array([[0, 1, 0, 0],
+                                                                                   [0, 0, 1, 0],
+                                                                                   [1, 0, 0, 0],
+                                                                                   [0, 0, 0, 1]])))
+
+        pre_grasp_reached = self.monitors.add_cartesian_pose(goal_pose=first_goal,
+                                                             tip_link='hand_gripper_tool_frame',
+                                                             root_link='map',
+                                                             position_threshold=0.06)
+        self.motion_goals.avoid_all_collisions(end_condition=pre_grasp_reached)
+        self.motion_goals.allow_collision(group1='gripper', group2=left_door,
+                                          start_condition=pre_grasp_reached)
+
+        self.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame',
+                                             environment_link=left_handle,
+                                             goal_joint_state=-1.7,
+                                             start_condition='')
+
+        local_min = self.monitors.add_local_minimum_reached('done', start_condition='')
+        self.monitors.add_end_motion(local_min)
