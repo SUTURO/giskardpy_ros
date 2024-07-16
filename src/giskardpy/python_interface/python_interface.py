@@ -2709,7 +2709,7 @@ class GiskardWrapper:
                         left_door: str = 'shelf_hohc:shelf_door_left'):
         """
         Opens the shelf door.
-        Requieres the pre-pose to be reached and the gripper to be closed
+        Requires the pre-pose to be reached and the gripper to be closed
 
         :param left_handle: Left door handle of the shelf
         :param left_door: Main Link of the left door
