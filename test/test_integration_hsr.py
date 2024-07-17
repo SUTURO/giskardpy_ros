@@ -737,9 +737,21 @@ class TestSUTURO:
 
     def test_open_door(self, door_setup: HSRTestWrapper):
 
-        handle_name = "suturo_door/suturo_door_area:door_handle_outside"
+        handle_name = "suturo_door/suturo_door_area:door_handle_inside"
 
         door_setup.open_gripper()
+
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = door_setup.tip
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_name
+        x_goal.vector.z = -1
+        door_setup.set_align_planes_goal(tip_link=door_setup.tip,
+                                         tip_normal=x_gripper,
+                                         goal_normal=x_goal,
+                                         root_link='map')
 
         door_setup.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05)
 
@@ -747,14 +759,34 @@ class TestSUTURO:
 
         door_setup.close_gripper()
 
-        door_setup.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=(np.pi / 6),
-                                                    hinge_limit=-(np.pi / 3))
+        door_setup.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=0.35,
+                                                    hinge_limit=-0.8)
 
         door_setup.allow_all_collisions()
 
         door_setup.execute(add_local_minimum_reached=False)
 
         door_setup.open_gripper()
+
+    def test_open_hohc_simon(self, hohc_setup: HSRTestWrapper):
+        hohc_opened_door_joint = 'suturo_shelf_hohc/shelf_hohc:shelf_door_right:joint'
+        hohc_setup.set_env_state({hohc_opened_door_joint: 1.7})
+        hohc_setup.open_gripper()
+
+        left_handle = 'shelf_hohc:shelf_door_left:handle'
+        left_door = 'shelf_hohc:shelf_door_left'
+
+        hohc_setup.pre_pose_shelf_open(left_handle=left_handle,
+                                       left_door=left_door,
+                                       offset_x=0.03,
+                                       offset_y=0.01,
+                                       offset_z=-0.15)
+
+        hohc_setup.execute()
+        hohc_setup.close_gripper()
+
+        hohc_setup.open_shelf_door(left_handle=left_handle, left_door=left_door)
+        hohc_setup.execute()
 
     # FIXME: Compare Pose hinzufügen sobald reaching fertig ist
     # TODO: Weitere Reaching Tests mit anderen Objekten/aus anderen Richtungen hinzufügen

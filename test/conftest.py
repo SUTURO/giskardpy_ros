@@ -45,6 +45,13 @@ def ros(request):
             launch_launchfile('package://suturo_resources/urdf/launch/upload_door_obj.launch')
         except:
             logging.logwarn('door not found')
+    try:
+        rospy.get_param('hohc_description')
+    except:
+        try:
+            launch_launchfile('package://suturo_resources/urdf/launch/upload_hohc_obj.launch')
+        except:
+            logging.logwarn('hohc not found')
     request.addfinalizer(kill_ros)
 
 
@@ -167,6 +174,27 @@ def door_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
                                       pose=kitchen_pose)
     js = {}
     for joint_name in god_map.world.groups[door_name].movable_joint_names:
+        joint = god_map.world.joints[joint_name]
+        if isinstance(joint, OneDofJoint):
+            if god_map.is_standalone():
+                js[str(joint.free_variable.name)] = 0.0
+            else:
+                js[str(joint.free_variable.name.short_name)] = 0.0
+    better_pose.set_env_state(js)
+    return better_pose
+
+@pytest.fixture()
+def hohc_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
+    hohc_name = 'suturo_shelf_hohc'
+    if god_map.is_standalone():
+        hohc_pose = PoseStamped()
+        hohc_pose.header.frame_id = str(better_pose.default_root)
+        hohc_pose.pose.orientation.w = 1
+        better_pose.add_urdf_to_world(name=hohc_name,
+                                      urdf=rospy.get_param('hohc_description'),
+                                      pose=hohc_pose)
+    js = {}
+    for joint_name in god_map.world.groups[hohc_name].movable_joint_names:
         joint = god_map.world.joints[joint_name]
         if isinstance(joint, OneDofJoint):
             if god_map.is_standalone():
