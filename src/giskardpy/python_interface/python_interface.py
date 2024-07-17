@@ -33,7 +33,7 @@ from giskardpy.goals.pointing import Pointing
 from giskardpy.goals.pre_push_door import PrePushDoor
 from giskardpy.goals.realtime_goals import RealTimePointing
 from giskardpy.goals.suturo import GraspBarOffset, Reaching, Placing, VerticalMotion, AlignHeight, TakePose, Tilting, \
-    JointRotationGoalContinuous, Mixing, OpenDoorGoal, Retracting, MoveAroundDishwasher, MoveAroundDoor
+    JointRotationGoalContinuous, Mixing, OpenDoorGoal, Retracting, MoveAroundDishwasher
 from giskardpy.model.utils import make_world_body_box
 from giskardpy.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, PointingAt, \
     VectorsAligned, DistanceToLine
@@ -1738,20 +1738,6 @@ class MotionGoalWrapper:
                                     tip_link='head_center_camera_frame',
                                     topic_name='human_pose',
                                     pointing_axis=tip_V_pointing_axis)
-
-    def move_around_door(self,
-                         root_link,
-                         tip_link,
-                         handle_name,
-                         hinge_name,
-                         tip_gripper_axis):
-
-        self.add_motion_goal(motion_goal_class=MoveAroundDoor.__name__,
-                             root_link=root_link,
-                             tip_link=tip_link,
-                             handle_name=handle_name,
-                             hinge_name=hinge_name,
-                             tip_gripper_axis=tip_gripper_axis)
 
 
 class MonitorWrapper:
