@@ -3,33 +3,25 @@ from copy import deepcopy
 from enum import Enum
 from typing import Optional, Dict
 
-import actionlib
 import numpy as np
-import rospy
-from control_msgs.msg import FollowJointTrajectoryGoal, FollowJointTrajectoryAction
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3, Vector3Stamped, QuaternionStamped, Quaternion
 from std_msgs.msg import ColorRGBA
-
-from giskardpy.goals.open_close import Open
-from giskardpy.god_map import god_map
-from giskardpy.monitors.joint_monitors import JointGoalReached
-from giskardpy.monitors.monitors import ExpressionMonitor, LocalMinimumReached, EndMotion
-from giskardpy.monitors.payload_monitors import Sleep
-from giskardpy.suturo_types import GraspTypes
-from giskardpy.utils.expression_definition_utils import transform_msg, transform_msg_and_turn_to_expr
-
-if 'GITHUB_WORKFLOW' not in os.environ:
-    from tmc_control_msgs.msg import GripperApplyEffortGoal, GripperApplyEffortAction
-from trajectory_msgs.msg import JointTrajectoryPoint
 
 import giskardpy.utils.tfwrapper as tf
 from giskardpy import casadi_wrapper as w, casadi_wrapper as cas
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
 from giskardpy.goals.goal import Goal
-from giskardpy.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.goals.joint_goals import JointPositionList, JointVelocityLimit
+from giskardpy.goals.open_close import Open
+from giskardpy.god_map import god_map
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
+from giskardpy.monitors.joint_monitors import JointGoalReached
+from giskardpy.monitors.monitors import ExpressionMonitor, LocalMinimumReached, EndMotion
+from giskardpy.monitors.payload_monitors import Sleep
+from giskardpy.suturo_types import GraspTypes
+from giskardpy.tasks.task import WEIGHT_ABOVE_CA
+from giskardpy.utils.expression_definition_utils import transform_msg, transform_msg_and_turn_to_expr
 from giskardpy.utils.logging import loginfo, logwarn
 
 if 'GITHUB_WORKFLOW' not in os.environ:
