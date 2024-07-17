@@ -28,7 +28,7 @@ from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.cartesian_goals import CartesianPosition, CartesianOrientation
 from giskardpy.goals.goal import Goal
 from giskardpy.tasks.task import WEIGHT_ABOVE_CA
-from giskardpy.goals.joint_goals import JointPositionList
+from giskardpy.goals.joint_goals import JointPositionList, JointVelocityLimit
 from giskardpy.model.links import BoxGeometry, LinkGeometry, SphereGeometry, CylinderGeometry
 from giskardpy.utils.logging import loginfo, logwarn
 
