@@ -123,16 +123,19 @@ class GiskardBT(BehaviourTree):
     def live(self):
         middleware.loginfo('giskard is ready')
         self.tick_tock(period_ms=1000.0)
-        executer = MultiThreadedExecutor()
-        executer.add_node(rospy.node)
+        self.executer = MultiThreadedExecutor()
+        self.executer.add_node(rospy.node)
         try:
-            executer.spin()
+            self.executer.spin()
         except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
             pass
         finally:
             self.shutdown()
             rclpy.try_shutdown()
         middleware.loginfo('giskard died')
+
+    def stop_spinning(self):
+        self.executer.shutdown()
 
     def kill_all_services(self):
         self.blackboard_exchange.get_blackboard_variables_srv.shutdown()

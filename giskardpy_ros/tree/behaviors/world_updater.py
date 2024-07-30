@@ -74,9 +74,11 @@ class ProcessWorldUpdate(GiskardBehavior):
                 self.clear_world()
             else:
                 raise InvalidWorldOperationException(f'Received invalid operation code: {req.operation}')
+            GiskardBlackboard().world_action_server.set_succeeded()
         except Exception as e:
             traceback.print_exc()
             result.error = msg_converter.exception_to_error_msg(e)
+            GiskardBlackboard().world_action_server.set_aborted()
         self.action_server.result_msg = result
 
     def dye_group(self, req: DyeGroup_Request, res: DyeGroup_Response):

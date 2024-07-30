@@ -1,7 +1,7 @@
 from queue import Queue, Empty
 from typing import Any
 
-from rclpy.action import ActionServer
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.action.server import ServerGoalHandle
 from rclpy.timer import Timer
 
@@ -34,7 +34,17 @@ class ActionServerHandler:
         self._as = ActionServer(node=rospy.node,
                                 action_type=action_type,
                                 action_name=self.name,
-                                execute_callback=self.execute_cb)
+                                execute_callback=self.execute_cb,
+                                goal_callback=self.default_goal_callback,
+                                cancel_callback=self.cancel_callback)
+
+    def default_goal_callback(self, goal_request):
+        middleware.loginfo('goal accepted')
+        return GoalResponse.ACCEPT
+
+    def cancel_callback(self, goal_handle: ServerGoalHandle):
+        middleware.loginfo('Cancel request received')
+        return CancelResponse.ACCEPT
 
     def is_goal_msg_type_execute(self):
         return self.goal_msg.type in [Move.Goal.EXECUTE]
@@ -46,12 +56,15 @@ class ActionServerHandler:
         return Move.Goal.UNDEFINED == self.goal_msg.type
 
     def execute_cb(self, goal: ServerGoalHandle) -> None:
+        middleware.loginfo('putting on queue')
         self.goal_queue.put(goal)
         result_msg = self.result_queue.get()
+        middleware.loginfo('got from queue')
         # self.client_alive_checker.shutdown()
         self.goal_msg = None
         self.goal_handle = None
         self.result_msg = None
+        self.payload()
         return result_msg
 
     def is_client_alive(self) -> bool:
@@ -91,17 +104,17 @@ class ActionServerHandler:
     def send_feedback(self, message):
         self.goal_handle.publish_feedback(message)
 
-    def send_preempted(self):
-        self.goal_handle.canceled()
-        self.result_queue.put(self.result_msg)
+    def set_canceled(self):
+        self.payload = self.goal_handle.canceled
 
-    def send_aborted(self):
-        self.goal_handle.abort()
-        self.result_queue.put(self.result_msg)
+    def set_aborted(self):
+        self.payload = self.goal_handle.abort
+
+    def set_succeeded(self):
+        self.payload = self.goal_handle.succeed
 
     def send_result(self):
-        self.goal_handle.succeed()
         self.result_queue.put(self.result_msg)
 
-    def is_preempt_requested(self) -> bool:
+    def is_cancel_requested(self) -> bool:
         return self.goal_handle.is_cancel_requested

@@ -15,8 +15,6 @@ if TYPE_CHECKING:
     from giskardpy_ros.tree.behaviors.action_server import ActionServerHandler
     from giskardpy_ros.tree.branches.giskard_bt import GiskardBT
 
-blackboard_exception_name = 'exception'
-
 
 class GiskardBlackboard(Client):
     giskard: Giskard
@@ -42,8 +40,6 @@ class GiskardBlackboard(Client):
         self.register_key('control_loop_max_hz', access=Access.WRITE)
         self.register_key('simulation_max_hz', access=Access.WRITE)
         self.register_key('exception', access=Access.WRITE)
-        self.exception = None
-
 
 
 def raise_to_blackboard(exception):
@@ -51,10 +47,12 @@ def raise_to_blackboard(exception):
 
 
 def has_blackboard_exception():
-    return GiskardBlackboard().exception is not None
+    return get_blackboard_exception() is not None
 
 
 def get_blackboard_exception():
+    if not GiskardBlackboard().exists('exception'):
+        GiskardBlackboard().exception = None
     return GiskardBlackboard().exception
 
 

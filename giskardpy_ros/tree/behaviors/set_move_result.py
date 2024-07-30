@@ -25,8 +25,10 @@ class SetMoveResult(GiskardBehavior):
         e = self.get_blackboard_exception()
         if e is None:
             move_result = Move.Result()
+            GiskardBlackboard().move_action_server.set_succeeded()
         else:
             move_result = Move.Result(error=msg_converter.exception_to_error_msg(e))
+            GiskardBlackboard().move_action_server.set_aborted()
 
         trajectory = god_map.trajectory
         joints = [god_map.world.joints[joint_name] for joint_name in god_map.world.movable_joint_names]

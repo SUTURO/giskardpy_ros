@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import keyword
 import os
@@ -272,6 +273,7 @@ class GiskardTester:
     giskard: Giskard
 
     def __init__(self, giskard: Giskard):
+        self.async_loop = asyncio.new_event_loop()
         self.total_time_spend_giskarding = 0
         self.total_time_spend_moving = 0
         self.default_env_name: Optional[str] = None
@@ -292,6 +294,7 @@ class GiskardTester:
         self.heart = Thread(target=GiskardBlackboard().tree.live)
         self.heart.start()
         self.api = GiskardWrapperNode(node_name='tests')
+        self.api.spin_in_background()
 
     def get_odometry_joint(self, group_name: Optional[str] = None) -> Joint:
         if group_name is None:
@@ -342,7 +345,7 @@ class GiskardTester:
             transformed_giskard_obj = god_map.world.transform(target_frame, giskard_obj)
             return msg_converter.to_ros_message(transformed_giskard_obj)
 
-    def wait_heartbeats(self, number=2):
+    def wait_heartbeats(self, number=5):
         behavior_tree = GiskardBlackboard().tree
         c = behavior_tree.count
         while behavior_tree.count < c + number:
@@ -386,12 +389,16 @@ class GiskardTester:
         middleware.loginfo(f'saved benchmark file in {file_name}')
 
     def tear_down(self):
+        # GiskardBlackboard().tree.stop_spinning()
+        middleware.loginfo('111111111111111111111111111111111')
         self.print_qp_solver_times()
+        middleware.loginfo('22222222222222222222222222222222222222222')
         # rospy.sleep(1)
         # self.heart.shutdown()
         # TODO it is strange that I need to kill the services... should be investigated. (:
         # GiskardBlackboard().tree.kill_all_services()
         giskarding_time = self.total_time_spend_giskarding
+        middleware.loginfo('33333333333333333333333333333333333333333')
         if not GiskardBlackboard().tree.is_standalone():
             giskarding_time -= self.total_time_spend_moving
         middleware.loginfo(f'total time spend giskarding: {giskarding_time}')
@@ -467,7 +474,7 @@ class GiskardTester:
                 wait: bool = True, add_local_minimum_reached: bool = True) -> Move_Result:
         if add_local_minimum_reached:
             self.api.add_default_end_motion_conditions()
-        return self.send_goal(expected_error_type=expected_error_type, stop_after=stop_after, wait=wait)
+        return self.async_loop.run_until_complete(self.send_goal(expected_error_type=expected_error_type, stop_after=stop_after, wait=wait))
 
     def projection(self, expected_error_type: Optional[type(Exception)] = None, wait: bool = True,
                    add_local_minimum_reached: bool = True) -> Move_Result:
@@ -498,7 +505,7 @@ class GiskardTester:
                                wait=wait,
                                add_local_minimum_reached=add_local_minimum_reached)
 
-    def send_goal(self,
+    async def send_goal(self,
                   expected_error_type: Optional[type(Exception)] = None,
                   goal_type: int = Move_Goal.EXECUTE,
                   goal: Optional[Move_Goal] = None,
@@ -506,17 +513,17 @@ class GiskardTester:
                   wait: bool = True) -> Optional[Move_Result]:
         try:
             time_spend_giskarding = time()
+            future_goal_accepted = self.api._send_action_goal_async(goal_type)
+            await future_goal_accepted
             if stop_after is not None:
-                self.api._send_action_goal(goal_type, wait=False)
-                sleep(stop_after)
-                self.api.interrupt()
-                sleep(1)
-                r = self.api.get_result(Duration(10))
-            elif not wait:
-                self.api._send_action_goal(goal_type, wait=wait)
-                return
+                await asyncio.sleep(stop_after)
+                cancel_result = await self.api.cancel_goal_async()
+                # assert cancel_result.
+                r = await self.api.get_result()
+            elif wait:
+                r = await self.api.get_result()
             else:
-                r = self.api._send_action_goal(goal_type, wait=wait)
+                return
             self.wait_heartbeats()
             diff = time() - time_spend_giskarding
             self.total_time_spend_giskarding += diff

@@ -12,7 +12,7 @@ from nav_msgs.msg import Path
 from numpy import pi
 from shape_msgs.msg import SolidPrimitive
 import giskard_msgs.msg as giskard_msgs
-from giskard_msgs.msg import WorldBody, CollisionEntry, LinkName
+from giskard_msgs.msg import WorldBody, CollisionEntry, LinkName, GiskardError
 from giskardpy.middleware import middleware
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
@@ -22,7 +22,7 @@ from giskardpy.data_types.exceptions import GiskardException, VelocityLimitUnrea
     MaxTrajectoryLengthException, UnknownGoalException, GoalInitalizationException, LocalMinimumException, \
     DuplicateNameException, CorruptMeshException, UnknownGroupException, UnknownLinkException, \
     InvalidWorldOperationException, CorruptShapeException, TransformException, CorruptURDFException, \
-    SelfCollisionViolatedException, HardConstraintsViolatedException
+    SelfCollisionViolatedException, HardConstraintsViolatedException, PreemptedException
 from giskardpy.goals.cartesian_goals import RelativePositionSequence
 from giskardpy.goals.collision_avoidance import CollisionAvoidanceHint
 from giskardpy.goals.goals_tests import DebugGoal, CannotResolveSymbol
@@ -200,12 +200,12 @@ class PR2Tester(GiskardTester):
     def reset(self):
         self.open_l_gripper()
         self.open_r_gripper()
-        self.register_group('l_gripper',
-                            root_link_name=giskard_msgs.LinkName(name='l_wrist_roll_link',
-                                                                 group_name=self.api.robot_name))
-        self.register_group('r_gripper',
-                            root_link_name=giskard_msgs.LinkName(name='r_wrist_roll_link',
-                                                                 group_name=self.api.robot_name))
+        # self.register_group('l_gripper',
+        #                     root_link_name=giskard_msgs.LinkName(name='l_wrist_roll_link',
+        #                                                          group_name=self.api.robot_name))
+        # self.register_group('r_gripper',
+        #                     root_link_name=giskard_msgs.LinkName(name='r_wrist_roll_link',
+        #                                                          group_name=self.api.robot_name))
 
         # self.register_group('fl_l',
         #                     root_link_group_name=self.robot_name,
@@ -4400,6 +4400,42 @@ class TestWeightScaling:
                    0] >= m_threshold
         assert god_map.debug_expression_manager.evaluated_debug_expressions[f'mIndex{zero_pose.l_tip}'][
                    0] >= m_threshold
+
+
+class TestActionServerEvents:
+    def test_interrupt1(self, zero_pose: PR2Tester):
+        p = PoseStamped()
+        p.header.frame_id = 'base_footprint'
+        p.pose.position = Point(x=100, y=0, z=0)
+        p.pose.orientation = Quaternion(x=0, y=0, z=0, w=1)
+        zero_pose.api.motion_goals.add_cartesian_pose(goal_pose=p, tip_link='base_footprint', root_link='map')
+        zero_pose.api.motion_goals.allow_all_collisions()
+        local_min = zero_pose.api.monitors.add_local_minimum_reached()
+        zero_pose.api.monitors.add_end_motion(start_condition=local_min)
+        zero_pose.execute(expected_error_type=PreemptedException, stop_after=2, add_local_minimum_reached=False)
+
+    def test_interrupt2(self, zero_pose: PR2Tester):
+        p = PoseStamped()
+        p.header.frame_id = 'base_footprint'
+        p.pose.position = Point(2, 0, 0)
+        p.pose.orientation = Quaternion(0, 0, 0, 1)
+        zero_pose.set_cart_goal(goal_pose=p, tip_link='base_footprint', root_link='map')
+        zero_pose.allow_all_collisions()
+        zero_pose.execute(expected_error_code=GiskardError.PREEMPTED, stop_after=6)
+
+    def test_undefined_type(self, zero_pose: PR2Tester):
+        zero_pose.allow_all_collisions()
+        zero_pose.send_goal(goal_type=MoveGoal.UNDEFINED,
+                            expected_error_code=GiskardError.INVALID_GOAL)
+
+    def test_empty_goal(self, zero_pose: PR2Tester):
+        zero_pose.allow_all_collisions()
+        zero_pose.execute(expected_error_code=GiskardError.EMPTY_PROBLEM)
+
+    def test_plan_only(self, zero_pose: PR2Tester):
+        zero_pose.allow_self_collision()
+        zero_pose.set_joint_goal(pocky_pose, add_monitor=False)
+        zero_pose.projection()
 
 # kernprof -lv py.test -s test/test_integration_pr2.py
 # time: [1-9][1-9]*.[1-9]* s
