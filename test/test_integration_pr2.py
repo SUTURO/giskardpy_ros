@@ -2572,8 +2572,8 @@ class TestWorldManipulation:
         object_name = 'muh'
         p = PoseStamped()
         p.header.frame_id = 'map'
-        p.pose.position = Point(1.2, 0, 1.6)
-        p.pose.orientation = Quaternion(0.0, 0.0, 0.47942554, 0.87758256)
+        p.pose.position = Point(x=1.2, y=0.0, z=1.6)
+        p.pose.orientation = Quaternion(x=0.0, y=0.0, z=0.47942554, w=0.87758256)
         zero_pose.add_box_to_world(object_name, size=(1, 1, 1), pose=p)
         zero_pose.add_box_to_world(object_name, size=(1, 1, 1), pose=p,
                                    expected_error_type=DuplicateNameException)

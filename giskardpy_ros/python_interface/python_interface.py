@@ -45,6 +45,7 @@ from giskardpy.utils.utils import get_all_classes_in_package
 from giskardpy_ros.goals.realtime_goals import RealTimePointing, CarryMyBullshit, FollowNavPath
 from giskardpy_ros.ros2.msg_converter import kwargs_to_json
 from giskardpy_ros.utils.utils import make_world_body_box
+from ros2 import msg_converter
 from ros2.ros2_interface import MyActionClient
 
 
@@ -62,13 +63,19 @@ class WorldWrapper:
         self._get_group_names_srv.wait_for_service()
         self.robot_name = self.get_group_names()[0]
 
-    def clear(self) -> Future:
+    def _send_goal(self, goal: World_Goal) -> World_Result:
+        result: World_Result = self._client.send_goal(goal)
+        if result.error.type != GiskardError.SUCCESS:
+            raise msg_converter.error_msg_to_exception(result.error)
+        return result
+
+    def clear(self) -> World_Result:
         """
         Resets the world to what it was when Giskard was launched.
         """
         req = World_Goal()
         req.operation = World_Goal.REMOVE_ALL
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def remove_group(self, name: str) -> World_Result:
         """
@@ -80,7 +87,7 @@ class WorldWrapper:
         req.group_name = str(name)
         req.operation = World_Goal.REMOVE
         req.body = world_body
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def add_box(self,
                 name: str,
@@ -105,7 +112,7 @@ class WorldWrapper:
         req.body = make_world_body_box(size[0], size[1], size[2])
         req.parent_link = parent_link or giskard_msgs.LinkName()
         req.pose = pose
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def add_sphere(self,
                    name: str,
@@ -128,7 +135,7 @@ class WorldWrapper:
         req.body = world_body
         req.pose = pose
         req.parent_link = parent_link
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def add_mesh(self,
                  name: str,
@@ -156,7 +163,7 @@ class WorldWrapper:
         req.body.scale.y = scale[1]
         req.body.scale.z = scale[2]
         req.parent_link = parent_link
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def add_cylinder(self,
                      name: str,
@@ -182,7 +189,7 @@ class WorldWrapper:
         req.body = world_body
         req.pose = pose
         req.parent_link = parent_link
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def update_parent_link_of_group(self,
                                     name: str,
@@ -200,7 +207,7 @@ class WorldWrapper:
         req.operation = World_Goal.UPDATE_PARENT_LINK
         req.group_name = str(name)
         req.parent_link = parent_link
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def detach_group(self, object_name: str) -> World_Result:
         """
@@ -209,7 +216,7 @@ class WorldWrapper:
         req = World_Goal()
         req.group_name = str(object_name)
         req.operation = World_Goal.UPDATE_PARENT_LINK
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def add_urdf(self,
                  name: str,
@@ -240,7 +247,7 @@ class WorldWrapper:
         req.body = urdf_body
         req.pose = pose
         req.parent_link = parent_link
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def dye_group(self, group_name: str, rgba: Tuple[float, float, float, float]) -> DyeGroup_Response:
         """
@@ -288,7 +295,7 @@ class WorldWrapper:
         req.operation = World_Goal.UPDATE_POSE
         req.group_name = group_name
         req.pose = new_pose
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
     def register_group(self, new_group_name: str, root_link_name: Union[str, giskard_msgs.LinkName]) -> World_Result:
         """
@@ -303,7 +310,7 @@ class WorldWrapper:
         req.operation = World_Goal.REGISTER_GROUP
         req.group_name = new_group_name
         req.parent_link = root_link_name
-        return self._client.send_goal(req)
+        return self._send_goal(req)
 
 
 class MotionGoalWrapper:

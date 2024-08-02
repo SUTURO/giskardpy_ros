@@ -83,15 +83,26 @@ class MyActionClient:
                                     action_name=action_name)
         self._client.wait_for_server()
 
+    @property
+    def _event_loop(self) -> asyncio.AbstractEventLoop:
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.new_event_loop()
+
     def send_goal_async(self, goal) -> Future:
         future = self._client.send_goal_async(goal)
         future.add_done_callback(self.__goal_accepted_cb)
         return future
 
     def send_goal(self, goal):
-        async_loop = asyncio.new_event_loop()
-        async_loop.run_until_complete(self.send_goal_async(goal))
-        return async_loop.run_until_complete(self.get_result())
+        # this works in theory too, but not in pycharms debugger, that's why i'm putting it into a function
+        # self._event_loop.run_until_complete(self.send_goal_async(goal))
+        # return self._event_loop.run_until_complete(self.get_result())
+        async def muh():
+            await self.send_goal_async(goal)
+            return await self.get_result()
+        return self._event_loop.run_until_complete(muh())
 
     async def get_result(self):
         await wait_until_not_none(lambda: self._result_future)

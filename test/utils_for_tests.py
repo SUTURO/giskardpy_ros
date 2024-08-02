@@ -338,7 +338,7 @@ class GiskardTester:
         except (LookupException, ExtrapolationException) as e:
             target_frame = god_map.world.search_for_link_name(target_frame)
             try:
-                result_msg.header.frame_id = god_map.world.search_for_link_name(result_msg.header.frame_id)
+                result_msg.header.frame_id = str(god_map.world.search_for_link_name(result_msg.header.frame_id))
             except UnknownGroupException:
                 pass
             giskard_obj = msg_converter.ros_msg_to_giskard_obj(result_msg, god_map.world)
@@ -507,11 +507,11 @@ class GiskardTester:
                                add_local_minimum_reached=add_local_minimum_reached)
 
     async def send_goal(self,
-                  expected_error_type: Optional[type(Exception)] = None,
-                  goal_type: int = Move_Goal.EXECUTE,
-                  goal: Optional[Move_Goal] = None,
-                  stop_after: Optional[float] = None,
-                  wait: bool = True) -> Optional[Move_Result]:
+                        expected_error_type: Optional[type(Exception)] = None,
+                        goal_type: int = Move_Goal.EXECUTE,
+                        goal: Optional[Move_Goal] = None,
+                        stop_after: Optional[float] = None,
+                        wait: bool = True) -> Optional[Move_Result]:
         try:
             time_spend_giskarding = time()
             future_goal_accepted = self.api._send_action_goal_async(goal_type)
@@ -604,7 +604,7 @@ class GiskardTester:
 
     def register_group(self, new_group_name: str, root_link_name: giskard_msgs.LinkName):
         self.api.world.register_group(new_group_name=new_group_name,
-                                  root_link_name=root_link_name)
+                                      root_link_name=root_link_name)
         self.wait_heartbeats()
         assert new_group_name in self.api.world.get_group_names()
 
@@ -712,9 +712,9 @@ class GiskardTester:
                          expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
             response = self.api.world.add_box(name=name,
-                                          size=size,
-                                          pose=pose,
-                                          parent_link=parent_link)
+                                              size=size,
+                                              pose=pose,
+                                              parent_link=parent_link)
             self.wait_heartbeats()
             assert response.error.type == GiskardError.SUCCESS
         except Exception as e:
@@ -744,9 +744,9 @@ class GiskardTester:
                             expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
             response = self.api.world.add_sphere(name=name,
-                                             radius=radius,
-                                             pose=pose,
-                                             parent_link=parent_link)
+                                                 radius=radius,
+                                                 pose=pose,
+                                                 parent_link=parent_link)
             self.wait_heartbeats()
             assert response.error.type == GiskardError.SUCCESS
         except Exception as e:
@@ -765,10 +765,10 @@ class GiskardTester:
                               expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
             response = self.api.world.add_cylinder(name=name,
-                                               height=height,
-                                               radius=radius,
-                                               pose=pose,
-                                               parent_link=parent_link)
+                                                   height=height,
+                                                   radius=radius,
+                                                   pose=pose,
+                                                   parent_link=parent_link)
             self.wait_heartbeats()
             assert response.error.type == GiskardError.SUCCESS
         except Exception as e:
@@ -787,10 +787,10 @@ class GiskardTester:
                           expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
             response = self.api.world.add_mesh(name=name,
-                                           mesh=mesh,
-                                           pose=pose,
-                                           parent_link=parent_link,
-                                           scale=scale)
+                                               mesh=mesh,
+                                               pose=pose,
+                                               parent_link=parent_link,
+                                               scale=scale)
             self.wait_heartbeats()
             assert response.error.type == GiskardError.SUCCESS
         except Exception as e:
@@ -812,10 +812,10 @@ class GiskardTester:
                           expected_error_type: Optional[type(Exception)] = None) -> None:
         try:
             response = self.api.world.add_urdf(name=name,
-                                           urdf=urdf,
-                                           pose=pose,
-                                           parent_link=parent_link,
-                                           js_topic=js_topic)
+                                               urdf=urdf,
+                                               pose=pose,
+                                               parent_link=parent_link,
+                                               js_topic=js_topic)
             self.wait_heartbeats()
             assert response.error.type == GiskardError.SUCCESS
         except Exception as e:
@@ -839,7 +839,7 @@ class GiskardTester:
             if parent_link is None:
                 parent_link = giskard_msgs.LinkName()
             r = self.api.world.update_parent_link_of_group(name=name,
-                                                       parent_link=parent_link)
+                                                           parent_link=parent_link)
             self.wait_heartbeats()
             assert r.error.type == GiskardError.SUCCESS
             self.check_add_object_result(name=name,
