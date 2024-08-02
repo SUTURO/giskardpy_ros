@@ -474,7 +474,8 @@ class GiskardTester:
                 wait: bool = True, add_local_minimum_reached: bool = True) -> Move_Result:
         if add_local_minimum_reached:
             self.api.add_default_end_motion_conditions()
-        return self.async_loop.run_until_complete(self.send_goal(expected_error_type=expected_error_type, stop_after=stop_after, wait=wait))
+        return self.async_loop.run_until_complete(self.send_goal(expected_error_type=expected_error_type,
+                                                                 stop_after=stop_after, wait=wait))
 
     def projection(self, expected_error_type: Optional[type(Exception)] = None, wait: bool = True,
                    add_local_minimum_reached: bool = True) -> Move_Result:

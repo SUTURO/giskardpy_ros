@@ -2780,7 +2780,7 @@ class TestWorldManipulation:
         req.parent_link = LinkName(name=zero_pose.r_tip)
         req.operation = 42
         with pytest.raises(InvalidWorldOperationException):
-            zero_pose.world._send_goal_and_wait(req)
+            zero_pose.world._send_action_goal_async(req)
 
     def test_remove_unkown_group(self, zero_pose: PR2Tester):
         zero_pose.remove_group('muh', expected_error_type=UnknownGroupException)
@@ -2796,7 +2796,7 @@ class TestWorldManipulation:
         req.parent_link = LinkName(name='base_link')
         req.operation = WorldGoal.ADD
         with pytest.raises(CorruptShapeException):
-            zero_pose.world._send_goal_and_wait(req)
+            zero_pose.world._send_action_goal_async(req)
 
     def test_corrupt_shape_error_scale_0(self, zero_pose: PR2Tester):
         p = PoseStamped()
@@ -2808,7 +2808,7 @@ class TestWorldManipulation:
         req.parent_link = LinkName(name='base_link')
         req.operation = WorldGoal.ADD
         with pytest.raises(CorruptShapeException):
-            zero_pose.world._send_goal_and_wait(req)
+            zero_pose.world._send_action_goal_async(req)
 
     def test_busy(self, zero_pose: PR2Tester):
         p = PoseStamped()
@@ -2831,7 +2831,7 @@ class TestWorldManipulation:
         req.parent_link = LinkName(name='base_link')
         req.operation = WorldGoal.ADD
         with pytest.raises(TransformException):
-            zero_pose.world._send_goal_and_wait(req)
+            zero_pose.world._send_action_goal_async(req)
 
     def test_unsupported_options(self, kitchen_setup: PR2Tester):
         wb = WorldBody()
@@ -2848,7 +2848,7 @@ class TestWorldManipulation:
         req.parent_link = giskard_msgs.LinkName(name='base_link')
         req.operation = WorldGoal.ADD
         with pytest.raises(CorruptURDFException):
-            kitchen_setup.world._send_goal_and_wait(req)
+            kitchen_setup.world._send_action_goal_async(req)
 
 
 class TestSelfCollisionAvoidance:

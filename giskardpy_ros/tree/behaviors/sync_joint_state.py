@@ -27,10 +27,10 @@ class SyncJointState(GiskardBehavior):
 
     @record_time
     @profile
-    def setup(self, timeout=0.0):
-        wait_for_topic_to_appear(topic_name=self.joint_state_topic, supported_types=[JointState])
+    def setup(self, **kwargs):
+        # wait_for_topic_to_appear(topic_name=self.joint_state_topic, supported_types=[JointState])
         self.joint_state_sub = rospy.node.create_subscription(JointState, self.joint_state_topic, self.cb, 1)
-        return super().setup(timeout)
+        return super().setup(**kwargs)
 
     def cb(self, data):
         self.data = data
@@ -64,16 +64,16 @@ class SyncJointStatePosition(GiskardBehavior):
         self.joint_state_topic = joint_state_topic
         if not self.joint_state_topic.startswith('/'):
             self.joint_state_topic = '/' + self.joint_state_topic
-        wait_for_topic_to_appear(topic_name=self.joint_state_topic, supported_types=[JointState])
+        # wait_for_topic_to_appear(topic_name=self.joint_state_topic, supported_types=[JointState])
         super().__init__(str(self))
         self.mjs: Optional[JointStates] = None
         self.group_name = group_name
 
     @record_time
     @profile
-    def setup(self, timeout=0.0):
+    def setup(self, **kwargs):
         self.joint_state_sub = rospy.node.create_subscription(JointState, self.joint_state_topic, self.cb, 1)
-        return super().setup(timeout)
+        return super().setup(**kwargs)
 
     def cb(self, data):
         self.msg = data

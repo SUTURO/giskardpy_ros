@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'generic_giskard = scripts.generic_giskard:main'
         ],
     },
 )

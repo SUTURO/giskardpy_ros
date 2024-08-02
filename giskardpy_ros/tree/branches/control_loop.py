@@ -118,7 +118,7 @@ class ControlLoop(AsyncBehavior):
 
     def add_closed_loop_behaviors(self):
         self.insert_child(self.closed_loop_synchronization_sir, 1)
-        self.insert_child(self.ros_time, -2)
+        self.insert_child(SuccessIsRunning('sir', self.ros_time), -2)
         self.insert_child(self.real_kin_sim, -2)
         self.insert_child(self.send_controls, -2)
         self.in_projection = False

@@ -5,18 +5,13 @@ from typing import Dict, Tuple, Optional, List, Union
 
 import numpy as np
 import rclpy
-from action_msgs.srv import CancelGoal, CancelGoal_Request
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped
 from nav_msgs.msg import Path
 from rclpy import Context, Parameter, Future
+from rclpy.client import Client
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from rclpy.action import ActionClient
-from rclpy.action.client import ClientGoalHandle
-from rclpy.client import Client
-from rclpy.time import Time
 from shape_msgs.msg import SolidPrimitive
-from unique_identifier_msgs.msg import UUID
 
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.action import World, Move
@@ -26,7 +21,7 @@ from giskard_msgs.msg import WorldBody, CollisionEntry, MotionGoal, Monitor, Gis
 from giskard_msgs.srv import GetGroupInfo, GetGroupNames, DyeGroup, DyeGroup_Response, DyeGroup_Request, \
     GetGroupNames_Response, GetGroupInfo_Response, GetGroupInfo_Request, GetGroupNames_Request
 from giskardpy.data_types.data_types import goal_parameter
-from giskardpy.data_types.exceptions import LocalMinimumException, GiskardException
+from giskardpy.data_types.exceptions import LocalMinimumException
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.align_to_push_door import AlignToPushDoor
 from giskardpy.goals.cartesian_goals import CartesianPose, DiffDriveBaseGoal, CartesianVelocityLimit, \
@@ -47,12 +42,10 @@ from giskardpy.motion_graph.monitors.overwrite_state_monitors import SetOdometry
 from giskardpy.motion_graph.monitors.payload_monitors import Print, Sleep, SetMaxTrajectoryLength, \
     PayloadAlternator
 from giskardpy.utils.utils import get_all_classes_in_package
-from giskardpy_ros.ros2 import msg_converter
-from giskardpy_ros.ros2.msg_converter import kwargs_to_json
-
 from giskardpy_ros.goals.realtime_goals import RealTimePointing, CarryMyBullshit, FollowNavPath
-from giskardpy_ros.utils.asynio_utils import wait_until_not_none
+from giskardpy_ros.ros2.msg_converter import kwargs_to_json
 from giskardpy_ros.utils.utils import make_world_body_box
+from ros2.ros2_interface import MyActionClient
 
 
 class WorldWrapper:
@@ -65,18 +58,17 @@ class WorldWrapper:
         self._get_group_info_srv = node_handle.create_client(GetGroupInfo, f'{giskard_node_name}/get_group_info')
         self._get_group_names_srv = node_handle.create_client(GetGroupNames, f'{giskard_node_name}/get_group_names')
         self._dye_group_srv = node_handle.create_client(DyeGroup, f'{giskard_node_name}/dye_group')
-        self._client = ActionClient(node_handle, World, f'{giskard_node_name}/update_world')
-        self._client.wait_for_server()
+        self._client = MyActionClient(node_handle, World, f'{giskard_node_name}/update_world')
         self._get_group_names_srv.wait_for_service()
         self.robot_name = self.get_group_names()[0]
 
-    def clear(self) -> World_Result:
+    def clear(self) -> Future:
         """
         Resets the world to what it was when Giskard was launched.
         """
         req = World_Goal()
         req.operation = World_Goal.REMOVE_ALL
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def remove_group(self, name: str) -> World_Result:
         """
@@ -88,20 +80,7 @@ class WorldWrapper:
         req.group_name = str(name)
         req.operation = World_Goal.REMOVE
         req.body = world_body
-        return self._send_goal_and_wait(req)
-
-    def _send_goal_and_wait(self, goal: World_Goal) -> World_Result:
-        future = self._client.send_goal_async(goal)
-        rclpy.spin_until_future_complete(self.node_handle, future)
-        goal_handle: ClientGoalHandle = future.result()
-        result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self.node_handle, result_future)
-        result = result_future.result().result
-        error = msg_converter.error_msg_to_exception(result.error)
-        if error is not None:
-            raise error
-        else:
-            return result
+        return self._client.send_goal(req)
 
     def add_box(self,
                 name: str,
@@ -126,7 +105,7 @@ class WorldWrapper:
         req.body = make_world_body_box(size[0], size[1], size[2])
         req.parent_link = parent_link or giskard_msgs.LinkName()
         req.pose = pose
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def add_sphere(self,
                    name: str,
@@ -149,7 +128,7 @@ class WorldWrapper:
         req.body = world_body
         req.pose = pose
         req.parent_link = parent_link
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def add_mesh(self,
                  name: str,
@@ -177,7 +156,7 @@ class WorldWrapper:
         req.body.scale.y = scale[1]
         req.body.scale.z = scale[2]
         req.parent_link = parent_link
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def add_cylinder(self,
                      name: str,
@@ -203,7 +182,7 @@ class WorldWrapper:
         req.body = world_body
         req.pose = pose
         req.parent_link = parent_link
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def update_parent_link_of_group(self,
                                     name: str,
@@ -221,7 +200,7 @@ class WorldWrapper:
         req.operation = World_Goal.UPDATE_PARENT_LINK
         req.group_name = str(name)
         req.parent_link = parent_link
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def detach_group(self, object_name: str) -> World_Result:
         """
@@ -230,7 +209,7 @@ class WorldWrapper:
         req = World_Goal()
         req.group_name = str(object_name)
         req.operation = World_Goal.UPDATE_PARENT_LINK
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def add_urdf(self,
                  name: str,
@@ -261,7 +240,7 @@ class WorldWrapper:
         req.body = urdf_body
         req.pose = pose
         req.parent_link = parent_link
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def dye_group(self, group_name: str, rgba: Tuple[float, float, float, float]) -> DyeGroup_Response:
         """
@@ -309,7 +288,7 @@ class WorldWrapper:
         req.operation = World_Goal.UPDATE_POSE
         req.group_name = group_name
         req.pose = new_pose
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
     def register_group(self, new_group_name: str, root_link_name: Union[str, giskard_msgs.LinkName]) -> World_Result:
         """
@@ -324,7 +303,7 @@ class WorldWrapper:
         req.operation = World_Goal.REGISTER_GROUP
         req.group_name = new_group_name
         req.parent_link = root_link_name
-        return self._send_goal_and_wait(req)
+        return self._client.send_goal(req)
 
 
 class MotionGoalWrapper:
@@ -1741,11 +1720,6 @@ class MonitorWrapper:
 
 
 class GiskardWrapper:
-    last_feedback: Move.Feedback = None
-    _goal_handle: Optional[ClientGoalHandle]
-    _goal_result: Optional[Move_Result]
-    _result_future: Optional[Future]
-
     def __init__(self, node_handle: Node, giskard_node_name: str = 'giskard', avoid_name_conflict: bool = False):
         """
         Python wrapper for the ROS interface of Giskard.
@@ -1765,8 +1739,7 @@ class GiskardWrapper:
                                               avoid_name_conflict=avoid_name_conflict)
         self.clear_motion_goals_and_monitors()
         giskard_topic = f'{giskard_node_name}/command'
-        self._client = ActionClient(node_handle, Move, giskard_topic)
-        self._client.wait_for_server()
+        self._client = MyActionClient(node_handle, Move, giskard_topic)
         self.clear_motion_goals_and_monitors()
         sleep(.3)
 
@@ -1808,37 +1781,33 @@ class GiskardWrapper:
         self.monitors.reset()
 
     def execute_async(self) -> Future:
+        return self._send_action_goal_async(Move.Goal.EXECUTE)
+
+    def execute(self) -> Move.Result:
         """
-        :param wait: this function blocks if wait=True
         :return: result from giskard
         """
-        return self._send_action_goal_async(Move.Goal.EXECUTE)
+        return self._send_action_goal(Move.Goal.EXECUTE)
 
     def projection_async(self) -> Future:
         return self._send_action_goal_async(Move.Goal.PROJECTION)
 
+    def projection(self) -> Move.Result:
+        """
+        Plans, but doesn't execute the goal. Useful, if you just want to look at the planning ghost.
+        :return: result from Giskard
+        """
+        return self._send_action_goal(Move.Goal.PROJECTION)
+
     def _send_action_goal_async(self, goal_type: int) -> Future:
         goal = self._create_action_goal()
         goal.type = goal_type
-        future = self._client.send_goal_async(goal, feedback_callback=self._feedback_cb)
-        future.add_done_callback(self.__goal_accepted_cb)
-        return future
+        return self._client.send_goal_async(goal)
 
-    def __goal_accepted_cb(self, future: Future):
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.node_handle.get_logger().info('Goal rejected')
-            return
-
-        self._goal_handle = goal_handle
-        self.node_handle.get_logger().info('Goal accepted')
-
-        self._result_future = self._goal_handle.get_result_async()
-        self._result_future.add_done_callback(self.__goal_done_cb)
-
-    def __goal_done_cb(self, future: Future):
-        self.node_handle.get_logger().info(f'Goal result received')
-        self._goal_handle = None
+    def _send_action_goal(self, goal_type: int) -> Move_Result:
+        goal = self._create_action_goal()
+        goal.type = goal_type
+        return self._client.send_goal(goal)
 
     def _create_action_goal(self) -> Move.Goal:
         action_goal = Move.Goal()
@@ -1855,30 +1824,14 @@ class GiskardWrapper:
         return future
 
     async def get_result(self):
-        await wait_until_not_none(lambda: self._result_future)
-        result = await self._result_future
-        self._result_future = None
-        return result.result
-
-    def cancel_all_goals(self):
-        """
-        Stops any goal that Giskard is processing and attempts to halt the robot, even those not send from this client.
-        """
-        # Create request with a goal ID of zero to cancel all goals
-        request = CancelGoal_Request()
-        request.goal_info.goal_id = UUID(uuid=[0] * 16)
-
-        future = self._client._client_handle.send_cancel_request(request)
-        future.add_done_callback(self.cancel_response_callback)
-
-    def _feedback_cb(self, msg: Move.Feedback):
-        self.last_feedback = msg
+        return await self._client.get_result()
 
 
 class GiskardWrapperNode(Node, GiskardWrapper):
     is_spinning: bool
 
-    def __init__(self, node_name: str, giskard_node_name: str = 'giskard', avoid_name_conflict: bool = False,
+    def __init__(self, node_name: str = 'giskard_client', giskard_node_name: str = 'giskard',
+                 avoid_name_conflict: bool = False,
                  *, context: Optional[Context] = None, cli_args: Optional[List[str]] = None,
                  namespace: Optional[str] = None, use_global_arguments: bool = True, enable_rosout: bool = True,
                  start_parameter_services: bool = True, parameter_overrides: Optional[List[Parameter]] = None,
@@ -1893,41 +1846,8 @@ class GiskardWrapperNode(Node, GiskardWrapper):
                       enable_logger_service=enable_logger_service)
         GiskardWrapper.__init__(self, node_handle=self, giskard_node_name=giskard_node_name,
                                 avoid_name_conflict=avoid_name_conflict)
-        self.executer = MultiThreadedExecutor()
+        self.executor = MultiThreadedExecutor()
         self.is_spinning = False
-
-    def execute(self) -> Move.Result:
-        """
-        :param wait: this function blocks if wait=True
-        :return: result from giskard
-        """
-        return self._send_action_goal(Move.Goal.EXECUTE)
-
-    def projection(self) -> Move.Result:
-        """
-        Plans, but doesn't execute the goal. Useful, if you just want to look at the planning ghost.
-        :param wait: this function blocks if wait=True
-        :return: result from Giskard
-        """
-        return self._send_action_goal(Move.Goal.PROJECTION)
-
-    def _send_action_goal(self, goal_type: int) -> Move_Result:
-        """
-        Send goal to Giskard. Use this if you want to specify the goal_type, otherwise stick to wrappers like
-        plan_and_execute.
-        :param goal_type: one of the constants in MoveGoal
-        :param wait: blocks if wait=True
-        :return: result from Giskard
-        """
-        self._send_action_goal_async(goal_type)
-        return self.get_result()
-
-    def cancel_done_cb(self, future):
-        cancel_response = future.result()
-        if len(cancel_response.goals_canceling) > 0:
-            self.get_logger().info('Goal successfully canceled')
-        else:
-            self.get_logger().info('Goal failed to cancel')
 
     def __spin(self):
         self.is_spinning = True
@@ -1938,9 +1858,3 @@ class GiskardWrapperNode(Node, GiskardWrapper):
     def spin_in_background(self):
         self.spinner = Thread(target=self.__spin)
         self.spinner.start()
-
-    # def _spin_until_future_complete(self, future: Future) -> None:
-    #     rclpy.spin_until_future_complete(self.node_handle,  future, executor=self.executor)
-    #
-    # def _spin_once(self) -> None:
-    #     rclpy.spin_once(self.node_handle, executor=self.executor)
