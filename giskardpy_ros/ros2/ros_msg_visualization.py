@@ -58,12 +58,10 @@ class ROSMsgVisualization:
                 marker.ns = name_space
                 marker.header.stamp = time_stamp
                 pose = god_map.collision_scene.get_map_T_geometry(link_name, j)
-                marker.pose = msg_converter.numpy_to_pose_stamped(pose, self.tf_root).pose
-                # if not isinstance(pose, Pose):
-                #     TODO handle this better
-                    # marker.pose = msg_converter.to_ros_message(pose).pose
-                # else:
-                #     marker.pose = pose
+                if not isinstance(pose, Pose):
+                    marker.pose = msg_converter.numpy_to_pose_stamped(pose, self.tf_root).pose
+                else:
+                    marker.pose = pose
                 markers.append(marker)
         return markers
 

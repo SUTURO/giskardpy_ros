@@ -55,7 +55,7 @@ class ActionServerHandler:
     def is_goal_msg_type_undefined(self):
         return Move.Goal.UNDEFINED == self.goal_msg.type
 
-    def execute_cb(self, goal: ServerGoalHandle) -> None:
+    async def execute_cb(self, goal: ServerGoalHandle) -> None:
         middleware.loginfo('putting on queue')
         self.goal_queue.put(goal)
         result_msg = self.result_queue.get()
