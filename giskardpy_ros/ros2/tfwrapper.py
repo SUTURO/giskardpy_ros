@@ -18,26 +18,26 @@ from giskardpy_ros.ros2 import rospy
 
 tfBuffer: Buffer = None
 tf_listener: TransformListener = None
+_node_handle: rclpy.node.Node = None
 
 
-def init(tf_buffer_size: Optional[float] = None) -> None:
+def init(node_handle = None, tf_buffer_size: Optional[float] = None) -> None:
     """
     If you want to specify the buffer size, call this function manually, otherwise don't worry about it.
     :param tf_buffer_size: in secs
     :type tf_buffer_size: int
     """
-    global tfBuffer, tf_listener
+    global tfBuffer, tf_listener, _node_handle
+    _node_handle = node_handle or rospy.node
     if tf_buffer_size is not None:
         tf_buffer_size = Duration(seconds=tf_buffer_size)
     tfBuffer = Buffer(tf_buffer_size)
-    tf_listener = TransformListener(tfBuffer, rospy.node)
-    for i in range(10):
-        sleep(0.1)
-        rclpy.spin_once(rospy.node, timeout_sec=0.1)
+    tf_listener = TransformListener(tfBuffer, _node_handle)
+    sleep(2)
     try:
         get_tf_root()
     except Exception as e:
-        middleware.logwarn(str(e))
+        _node_handle.get_logger().warn(str(e))
 
 
 def get_tf_buffer() -> Buffer:
