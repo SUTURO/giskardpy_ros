@@ -5,23 +5,28 @@ import numpy as np
 from controller_manager_msgs.msg import ControllerState
 from controller_manager_msgs.srv import ListControllers_Response
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Float64MultiArray
 
-from giskardpy.model.collision_avoidance_config import CollisionAvoidanceConfig
-from giskardpy.model.world_config import WorldWithOmniDriveRobot, WorldConfig
-from giskardpy_ros.configs.giskard import RobotInterfaceConfig
-from giskardpy.data_types.data_types import Derivatives, PrefixName
-from giskardpy.model.collision_world_syncer import CollisionCheckerLib
-from giskardpy_ros.ros2 import ros2_interface, rospy
 import giskardpy_ros.ros2.tfwrapper as tf
+from giskardpy.data_types.data_types import Derivatives, PrefixName
+from giskardpy.model.collision_avoidance_config import CollisionAvoidanceConfig
+from giskardpy.model.collision_world_syncer import CollisionCheckerLib
+from giskardpy.model.world_config import WorldConfig
+from giskardpy_ros.configs.giskard import RobotInterfaceConfig
+from giskardpy_ros.ros2 import ros2_interface, rospy
 from giskardpy_ros.ros2.msg_converter import msg_type_as_str
+from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
 
 class GenericWorldConfig(WorldConfig):
-    robot_name = ''
+    robot_name: str = ''
+    robot_description: Optional[str]
+
+    def __init__(self, robot_description: Optional[str]):
+        super().__init__()
+        self.robot_description = robot_description
 
     def setup(self):
-        self.urdf = ros2_interface.get_robot_description()
+        self.urdf = self.robot_description or ros2_interface.get_robot_description()
         self.map_name = PrefixName(tf.get_tf_root())
         with self.world.modify_world():
             self.set_default_limits({Derivatives.velocity: 0.2,
@@ -43,20 +48,25 @@ class GenericRobotInterface(RobotInterfaceConfig):
         self.controller_manager_name = controller_manager_name
 
     def setup(self):
-        controllers: ListControllers_Response = cm.list_controllers(node=rospy.node,
-                                                                    controller_manager_name=self.controller_manager_name)
-        controller: ControllerState
-        for controller in controllers.controller:
-            if controller.state == 'active':
-                if controller.type == 'joint_state_broadcaster/JointStateBroadcaster':
-                    node_name = controller.name
-                    topics = rospy.node.get_publisher_names_and_types_by_node(node_name, '/')
-                    for topic_name, topic_types in topics:
-                        if topic_types[0] == msg_type_as_str(JointState):
-                            self.sync_joint_state_topic(topic_name)
-                            break
-                elif controller.type == 'velocity_controllers/JointGroupVelocityController':
-                    self.add_joint_velocity_group_controller(controller.name)
+        if GiskardBlackboard().tree.is_standalone():
+            self.register_controlled_joints(self.world.movable_joint_names)
+        elif GiskardBlackboard().tree.is_closed_loop():
+            controllers: ListControllers_Response = cm.list_controllers(node=rospy.node,
+                                                                        controller_manager_name=self.controller_manager_name)
+            controller: ControllerState
+            for controller in controllers.controller:
+                if controller.state == 'active':
+                    if controller.type == 'joint_state_broadcaster/JointStateBroadcaster':
+                        node_name = controller.name
+                        topics = rospy.node.get_publisher_names_and_types_by_node(node_name, '/')
+                        for topic_name, topic_types in topics:
+                            if topic_types[0] == msg_type_as_str(JointState):
+                                self.sync_joint_state_topic(topic_name)
+                                break
+                    elif controller.type == 'velocity_controllers/JointGroupVelocityController':
+                        self.add_joint_velocity_group_controller(controller.name)
+        else:
+            raise NotImplementedError('this mode is not implemented yet')
 
 
 class GenericCollisionAvoidance(CollisionAvoidanceConfig):

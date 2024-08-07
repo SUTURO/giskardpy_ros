@@ -28,7 +28,7 @@ base_goal.pose.position.x = 2
 base_goal.pose.orientation.w = 1
 
 # %% init ros node and Giskard Wrapper.
-# This assumes that roslaunch giskardpy_ros giskardpy_pr2_standalone.launch is running.
+# This assumes that roslaunch giskardpy_ros giskardpy_pr2_standalone.launch.py is running.
 rospy.init_node('test')
 
 rospy.loginfo('Instantiating Giskard wrapper.')

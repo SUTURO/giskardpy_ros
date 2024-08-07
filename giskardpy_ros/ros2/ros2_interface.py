@@ -1,7 +1,10 @@
+import os
 import asyncio
 from typing import List, Type, Optional, Tuple
 
 import rclpy
+import xacro
+from ament_index_python import get_package_share_directory
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
 from rclpy import Future
 from rclpy.action.client import ClientGoalHandle
@@ -69,6 +72,12 @@ def wait_for_publisher(publisher):
     #     rospy.sleep(0.1)
 
 
+def load_urdf(file_path: str) -> str:
+    file_path = middleware.resolve_iri(file_path)
+    doc = xacro.process_file(file_path, mappings={'radius': '0.9'})
+    return doc.toprettyxml(indent='  ')
+
+
 class MyActionClient:
     _goal_handle: Optional[ClientGoalHandle]
     _result_future: Optional[Future]
@@ -102,6 +111,7 @@ class MyActionClient:
         async def muh():
             await self.send_goal_async(goal)
             return await self.get_result()
+
         return self._event_loop.run_until_complete(muh())
 
     async def get_result(self):

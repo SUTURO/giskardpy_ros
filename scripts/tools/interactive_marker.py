@@ -1,21 +1,26 @@
 import rclpy
-from rclpy.node import Node
-from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, Marker
+from geometry_msgs.msg import PoseStamped
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
-from geometry_msgs.msg import Point, Quaternion, PoseStamped
+from rclpy import Parameter
+from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, Marker
 from visualization_msgs.msg import InteractiveMarkerFeedback
+
 import giskardpy_ros.ros2.tfwrapper as tf
 from giskardpy_ros.python_interface.python_interface import GiskardWrapperNode
 
 
 class InteractiveMarkerNode:
-    def __init__(self, root_link: str, tip_link: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.root_link = root_link
-        self.tip_link = tip_link
         self.giskard = GiskardWrapperNode('interactive_cartesian_goals')
         self.giskard.spin_in_background()
         tf.init(self.giskard.node_handle)
+
+        self.giskard.declare_parameters(namespace='',
+                                        parameters=[('root_link', Parameter.Type.STRING),
+                                                    ('tip_link', Parameter.Type.STRING)])
+        self.root_link = self.giskard.get_parameter('root_link').value
+        self.tip_link = self.giskard.get_parameter('tip_link').value
 
         # Create an interactive marker server
         self.server = InteractiveMarkerServer(self.giskard.node_handle, 'cartesian_goals')
@@ -23,7 +28,7 @@ class InteractiveMarkerNode:
         # Create an interactive marker
         int_marker = InteractiveMarker()
         int_marker.header.frame_id = self.root_link
-        int_marker.name = "muh"
+        int_marker.name = f'{self.root_link}/{self.tip_link}'
         int_marker.scale = 0.25
 
         # Set the position of the interactive marker
@@ -38,7 +43,7 @@ class InteractiveMarkerNode:
         box_marker.color.r = 0.5
         box_marker.color.g = 0.5
         box_marker.color.b = 0.5
-        box_marker.color.a = 1.0
+        box_marker.color.a = 0.5
 
         # Create a control that contains the marker
         box_control = InteractiveMarkerControl()
@@ -95,8 +100,7 @@ class InteractiveMarkerNode:
 
 def main(args: None = None) -> None:
     rclpy.init(args=args)
-    node = InteractiveMarkerNode(root_link='world',
-                                 tip_link='tool_link')
+    node = InteractiveMarkerNode()
     node.giskard.node_handle.get_logger().info('interactive marker server running')
     node.giskard.spinner.join()
     rclpy.shutdown()

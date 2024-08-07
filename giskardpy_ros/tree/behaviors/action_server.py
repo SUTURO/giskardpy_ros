@@ -1,5 +1,5 @@
 from queue import Queue, Empty
-from typing import Any
+from typing import Any, Optional
 
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.action.server import ServerGoalHandle
@@ -20,7 +20,8 @@ class ActionServerHandler:
     name: str
     client_alive_checker: Timer
     client_alive: bool
-    goal_handle: ServerGoalHandle
+    cancel_requested: bool = False
+    goal_handle: Optional[ServerGoalHandle]
 
     @record_time
     def __init__(self, action_name: str, action_type: Any):
@@ -31,6 +32,7 @@ class ActionServerHandler:
         self.client_alive_checker = None
         self.goal_queue = Queue(1)
         self.result_queue = Queue(1)
+        self.goal_handle = None
         self._as = ActionServer(node=rospy.node,
                                 action_type=action_type,
                                 action_name=self.name,
@@ -39,7 +41,10 @@ class ActionServerHandler:
                                 cancel_callback=self.cancel_callback)
 
     def default_goal_callback(self, goal_request):
-        middleware.loginfo('goal accepted')
+        if self.goal_handle is not None:
+            middleware.loginfo('cancelling old goal')
+            self.cancel_requested = True
+        middleware.loginfo('new goal accepted')
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, goal_handle: ServerGoalHandle):
@@ -56,14 +61,14 @@ class ActionServerHandler:
         return Move.Goal.UNDEFINED == self.goal_msg.type
 
     async def execute_cb(self, goal: ServerGoalHandle) -> None:
-        middleware.loginfo('putting on queue')
         self.goal_queue.put(goal)
         result_msg = self.result_queue.get()
-        middleware.loginfo('got from queue')
+        middleware.loginfo('sending response')
         # self.client_alive_checker.shutdown()
         self.goal_msg = None
         self.goal_handle = None
         self.result_msg = None
+        self.cancel_requested = False
         self.payload()
         return result_msg
 
@@ -117,4 +122,4 @@ class ActionServerHandler:
         self.result_queue.put(self.result_msg)
 
     def is_cancel_requested(self) -> bool:
-        return self.goal_handle.is_cancel_requested
+        return self.cancel_requested or self.goal_handle.is_cancel_requested
