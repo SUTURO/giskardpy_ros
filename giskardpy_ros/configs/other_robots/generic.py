@@ -24,7 +24,7 @@ class GenericWorldConfig(WorldConfig):
         self.urdf = ros2_interface.get_robot_description()
         self.map_name = PrefixName(tf.get_tf_root())
         with self.world.modify_world():
-            self.set_default_limits({Derivatives.velocity: 1,
+            self.set_default_limits({Derivatives.velocity: 0.2,
                                      Derivatives.acceleration: np.inf,
                                      Derivatives.jerk: 30})
             self.add_robot_urdf(self.urdf, self.robot_name)
