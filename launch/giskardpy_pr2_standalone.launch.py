@@ -27,9 +27,14 @@ def generate_launch_description():
             ),
         ]
     )
+    upload_pr2_launch = os.path.join(get_package_share_directory('iai_pr2_description'),
+                                     'launch', 'upload_pr2.launch.py')
 
     return LaunchDescription([
         # Static transform publisher (example, modify as needed for your robot)
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(upload_pr2_launch)
+        ),
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
@@ -37,13 +42,13 @@ def generate_launch_description():
             output='screen',
             arguments=['0', '0', '0', '0', '0', '0', 'map', 'base_footprint']
         ),
-        # Node(
-        #     package='giskardpy_ros',
-        #     executable='generic_giskard_standalone',
-        #     name='giskard',
-        #     parameters=[{'robot_description': robot_description}],
-        #     output='screen',
-        # ),
+        Node(
+            package='giskardpy_ros',
+            executable='generic_giskard_standalone',
+            name='giskard',
+            # parameters=[{'robot_description': robot_description}],
+            output='screen',
+        ),
         Node(
             package='giskardpy_ros',
             executable='interactive_marker',

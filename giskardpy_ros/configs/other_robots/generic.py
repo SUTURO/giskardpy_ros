@@ -25,14 +25,18 @@ class GenericWorldConfig(WorldConfig):
         super().__init__()
         self.robot_description = robot_description
 
+    def get_tf_root_that_is_not_in_world(self) -> str:
+        tf_roots = tf.get_tf_roots()
+        return tf_roots.difference(self.world.link_names_as_set).pop()
+
     def setup(self):
         self.urdf = self.robot_description or ros2_interface.get_robot_description()
-        self.map_name = PrefixName(tf.get_tf_root())
         with self.world.modify_world():
             self.set_default_limits({Derivatives.velocity: 0.2,
                                      Derivatives.acceleration: np.inf,
                                      Derivatives.jerk: 30})
             self.add_robot_urdf(self.urdf, self.robot_name)
+            self.map_name = PrefixName(self.get_tf_root_that_is_not_in_world())
             root_link_name = self.get_root_link_of_group(self.robot_group_name)
             if root_link_name.short_name != self.map_name.short_name:
                 self.add_empty_link(self.map_name)

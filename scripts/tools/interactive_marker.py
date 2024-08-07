@@ -2,6 +2,8 @@ import rclpy
 from geometry_msgs.msg import PoseStamped
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from rclpy import Parameter
+from rclpy.duration import Duration
+from rclpy.time import Time
 from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, Marker
 from visualization_msgs.msg import InteractiveMarkerFeedback
 
@@ -32,6 +34,8 @@ class InteractiveMarkerNode:
         int_marker.scale = 0.25
 
         # Set the position of the interactive marker
+        self.giskard.get_logger().info(f'waiting for transform {self.root_link} {self.tip_link}')
+        tf.wait_for_transform(self.root_link, self.tip_link, Time(), Duration(seconds=1000))
         int_marker.pose = tf.lookup_pose(self.root_link, self.tip_link).pose
 
         # Create a marker for the interactive marker

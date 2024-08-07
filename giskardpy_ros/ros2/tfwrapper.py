@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Optional, overload, List
+from typing import Optional, overload, List, Set
 
 import numpy as np
 import rclpy
@@ -21,7 +21,7 @@ tf_listener: TransformListener = None
 _node_handle: rclpy.node.Node = None
 
 
-def init(node_handle = None, tf_buffer_size: Optional[float] = None) -> None:
+def init(node_handle=None, tf_buffer_size: Optional[float] = None) -> None:
     """
     If you want to specify the buffer size, call this function manually, otherwise don't worry about it.
     :param tf_buffer_size: in secs
@@ -48,12 +48,17 @@ def get_tf_buffer() -> Buffer:
 
 
 # @memoize
-def get_tf_root() -> str:
+def get_tf_roots() -> Set[str]:
     tfBuffer = get_tf_buffer()
     frames = yaml.safe_load(tfBuffer.all_frames_as_yaml())
     frames_with_parent = set(frames.keys())
     frame_parents = set(x['parent'] for x in frames.values())
     tf_roots = frame_parents.difference(frames_with_parent)
+    return tf_roots
+
+
+def get_tf_root() -> str:
+    tf_roots = get_tf_roots()
     assert len(tf_roots) < 2, f'There are more than one tf tree: {tf_roots}.'
     assert len(tf_roots) > 0, 'There is no tf tree.'
     return tf_roots.pop()

@@ -111,8 +111,9 @@ class Giskard:
         non_controlled_joints = set(world.movable_joint_names).difference(set(world.controlled_joints))
         if len(world.controlled_joints) == 0 and len(world.joints) > 0:
             raise SetupException('No joints are flagged as controlled.')
-        middleware.loginfo(f'The following joints are non-fixed according to the urdf, '
-                           f'but not flagged as controlled: {non_controlled_joints}.')
+        if len(non_controlled_joints) > 0:
+            middleware.loginfo(f'The following joints are non-fixed according to the urdf, '
+                               f'but not flagged as controlled: {non_controlled_joints}.')
 
     def add_goal_package_name(self, package_name: str):
         new_goals = get_all_classes_in_package(package_name, Goal)
