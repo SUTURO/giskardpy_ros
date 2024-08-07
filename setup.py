@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'generic_giskard = scripts.generic_giskard:main',
-            'interactive_marker = scripts.interactive_marker:main'
+            'interactive_marker = scripts.tools.interactive_marker:main'
         ],
     },
 )
