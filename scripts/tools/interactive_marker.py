@@ -22,7 +22,7 @@ class InteractiveMarkerNode:
 
         # Create an interactive marker
         int_marker = InteractiveMarker()
-        int_marker.header.frame_id = "base_link"
+        int_marker.header.frame_id = self.root_link
         int_marker.name = "muh"
         int_marker.scale = 0.25
 
