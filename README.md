@@ -1,5 +1,5 @@
 # Giskardpy_ros
-A motion control framework for ROS implemented using [Giskardpy](https://github.com/SemRoCo/giskardpy/tree/giskard_library).
+A motion control framework for ROS2 implemented using [Giskardpy](https://github.com/SemRoCo/giskardpy/tree/giskard_library).
 
 ## Installation instructions for Ubuntu 24.04 + Jazzy
 
