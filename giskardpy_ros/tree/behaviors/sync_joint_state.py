@@ -6,6 +6,7 @@ from sensor_msgs.msg import JointState
 from giskardpy.data_types.data_types import JointStates
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.god_map import god_map
+from giskardpy.middleware import middleware
 from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 
 from giskardpy_ros.ros2 import rospy
@@ -73,6 +74,7 @@ class SyncJointStatePosition(GiskardBehavior):
     @profile
     def setup(self, **kwargs):
         self.joint_state_sub = rospy.node.create_subscription(JointState, self.joint_state_topic, self.cb, 1)
+        middleware.loginfo(f'Subscribed to {self.joint_state_topic}')
         return super().setup(**kwargs)
 
     def cb(self, data):
