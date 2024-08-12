@@ -21,7 +21,7 @@ class InteractiveMarkerNode:
         # self.giskard.declare_parameters(namespace='',
         #                                 parameters=[('root_link', Parameter.Type.STRING),
         #                                             ('tip_link', Parameter.Type.STRING)])
-        self.root_link = 'pr2'#self.giskard.get_parameter('root_link').value
+        self.root_link = 'map'#self.giskard.get_parameter('root_link').value
         self.tip_link = 'r_gripper_tool_frame'#self.giskard.get_parameter('tip_link').value
 
         # Create an interactive marker server

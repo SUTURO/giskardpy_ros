@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from giskardpy.data_types.data_types import PrefixName
 from giskardpy_ros.tree.behaviors.joint_group_vel_controller_publisher import JointGroupVelController
@@ -17,5 +17,5 @@ class SendControls(RunningSelector):
     def add_joint_velocity_group_controllers(self, cmd_topic: str, joints: List[PrefixName]):
         self.add_child(JointGroupVelController(cmd_topic=cmd_topic, joints=joints))
 
-    def add_send_cmd_velocity(self, cmd_vel_topic: str, joint_name: PrefixName = None):
-        self.add_child(SendCmdVelTwist(cmd_vel_topic))
+    def add_send_cmd_velocity(self, topic_name: str, joint_name: Optional[PrefixName] = None):
+        self.add_child(SendCmdVelTwist(topic_name=topic_name, joint_name=joint_name))

@@ -379,6 +379,8 @@ def ros_msg_to_giskard_obj(msg, world: WorldTree):
         return ros_joint_state_to_giskard_joint_state(msg)
     elif isinstance(msg, geometry_msgs.PoseStamped):
         return pose_stamped_to_trans_matrix(msg, world)
+    elif isinstance(msg, geometry_msgs.Pose):
+        return pose_to_trans_matrix(msg)
     elif isinstance(msg, geometry_msgs.PointStamped):
         return point_stamped_to_point3(msg, world)
     elif isinstance(msg, geometry_msgs.Vector3Stamped):
@@ -458,6 +460,15 @@ def pose_stamped_to_trans_matrix(msg: geometry_msgs.PoseStamped, world: WorldTre
     result = cas.TransMatrix.from_point_rotation_matrix(point=p,
                                                         rotation_matrix=R,
                                                         reference_frame=world.search_for_link_name(msg.header.frame_id))
+    return result
+
+def pose_to_trans_matrix(msg: geometry_msgs.Pose) -> cas.TransMatrix:
+    p = cas.Point3.from_xyz(msg.position.x, msg.position.y, msg.position.z)
+    R = cas.Quaternion.from_xyzw(msg.orientation.x, msg.orientation.y,
+                                 msg.orientation.z, msg.orientation.w).to_rotation_matrix()
+    result = cas.TransMatrix.from_point_rotation_matrix(point=p,
+                                                        rotation_matrix=R,
+                                                        reference_frame=None)
     return result
 
 

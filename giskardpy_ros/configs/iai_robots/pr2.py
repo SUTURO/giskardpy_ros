@@ -1,24 +1,52 @@
 from typing import Optional
 
+import numpy as np
+
 from giskardpy.model.collision_avoidance_config import CollisionAvoidanceConfig
 from giskardpy.model.world_config import WorldWithOmniDriveRobot
 from giskardpy_ros.configs.giskard import RobotInterfaceConfig
-from giskardpy.data_types.data_types import Derivatives
+from giskardpy.data_types.data_types import Derivatives, PrefixName
 from giskardpy.model.collision_world_syncer import CollisionCheckerLib
+from giskardpy_ros.configs.other_robots.generic import GenericWorldConfig
 from giskardpy_ros.ros2 import ros2_interface
 
 
-class WorldWithPR2Config(WorldWithOmniDriveRobot):
-    def __init__(self, map_name: str = 'map', localization_joint_name: str = 'localization',
+class WorldWithPR2Config(GenericWorldConfig):
+    def __init__(self, localization_joint_name: str = 'localization',
                  odom_link_name: str = 'odom_combined', drive_joint_name: str = 'brumbrum',
                  urdf: Optional[str] = None):
-        super().__init__(map_name, localization_joint_name, odom_link_name, drive_joint_name)
-        self.urdf = urdf
+        super().__init__()
+        self.localization_joint_name = localization_joint_name
+        self.odom_link_name = odom_link_name
+        self.drive_joint_name = drive_joint_name
+        self.robot_description = urdf
 
     def setup(self):
-        if self.urdf is None:
-            self.urdf = ros2_interface.get_robot_description()
-        super().setup(self.urdf)
+        self.set_default_limits({Derivatives.velocity: 0.2,
+                                 Derivatives.acceleration: np.inf,
+                                 Derivatives.jerk: 30})
+        self.map_name = PrefixName(self.get_tf_root_that_is_not_in_world())
+        self.add_empty_link(self.map_name)
+        self.urdf = self.robot_description or ros2_interface.get_robot_description()
+        self.add_robot_urdf(self.urdf, self.robot_name)
+
+
+        root_link_name = self.get_root_link_of_group(self.robot_name)
+
+        self.add_omni_drive_joint(name=self.drive_joint_name,
+                                  parent_link_name=self.map_name,
+                                  child_link_name=root_link_name,
+                                  translation_limits={
+                                      Derivatives.velocity: 0.2,
+                                      Derivatives.acceleration: 1,
+                                      Derivatives.jerk: 5,
+                                  },
+                                  rotation_limits={
+                                      Derivatives.velocity: 0.2,
+                                      Derivatives.acceleration: 1,
+                                      Derivatives.jerk: 5
+                                  },
+                                  robot_group_name=self.robot_group_name)
 
         self.set_joint_limits(limit_map={Derivatives.velocity: 2,
                                          Derivatives.jerk: 60},
@@ -107,66 +135,9 @@ class PR2VelocityMujocoInterface(RobotInterfaceConfig):
         self.drive_joint_name = drive_joint_name
 
     def setup(self):
-        self.sync_6dof_joint_with_tf_frame(joint_name=self.localization_joint_name,
-                                           tf_parent_frame=self.map_name,
-                                           tf_child_frame=self.odom_link_name)
-        self.sync_joint_state_topic('pr2/joint_states')
-        self.sync_odometry_topic('/pr2/base_footprint', self.drive_joint_name)
-        self.add_joint_velocity_controller(namespaces=[
-            'pr2/torso_lift_velocity_controller',
-            'pr2/r_upper_arm_roll_velocity_controller',
-            'pr2/r_shoulder_pan_velocity_controller',
-            'pr2/r_shoulder_lift_velocity_controller',
-            'pr2/r_forearm_roll_velocity_controller',
-            'pr2/r_elbow_flex_velocity_controller',
-            'pr2/r_wrist_flex_velocity_controller',
-            'pr2/r_wrist_roll_velocity_controller',
-            'pr2/l_upper_arm_roll_velocity_controller',
-            'pr2/l_shoulder_pan_velocity_controller',
-            'pr2/l_shoulder_lift_velocity_controller',
-            'pr2/l_forearm_roll_velocity_controller',
-            'pr2/l_elbow_flex_velocity_controller',
-            'pr2/l_wrist_flex_velocity_controller',
-            'pr2/l_wrist_roll_velocity_controller',
-            'pr2/head_pan_velocity_controller',
-            'pr2/head_tilt_velocity_controller',
-        ])
-
-        self.add_base_cmd_velocity(cmd_vel_topic='/pr2/cmd_vel',
-                                   joint_name=self.drive_joint_name)
-
-
-class PR2VelocityIAIInterface(RobotInterfaceConfig):
-    map_name: str
-    localization_joint_name: str
-    odom_link_name: str
-    drive_joint_name: str
-
-    def __init__(self,
-                 map_name: str = 'map',
-                 localization_joint_name: str = 'localization',
-                 odom_link_name: str = 'odom_combined',
-                 drive_joint_name: str = 'brumbrum'):
-        self.map_name = map_name
-        self.localization_joint_name = localization_joint_name
-        self.odom_link_name = odom_link_name
-        self.drive_joint_name = drive_joint_name
-
-    def setup(self):
-        self.sync_6dof_joint_with_tf_frame(joint_name=self.localization_joint_name,
-                                           tf_parent_frame=self.map_name,
-                                           tf_child_frame=self.odom_link_name)
-        self.sync_joint_state_topic('/joint_states')
-        self.sync_odometry_topic('/robot_pose_ekf/odom_combined', self.drive_joint_name)
-        self.add_joint_velocity_group_controller(namespace='l_arm_joint_group_velocity_controller')
-        self.add_joint_velocity_group_controller(namespace='r_arm_joint_group_velocity_controller')
-        self.add_joint_position_controller(namespaces=[
-            'head_pan_position_controller',
-            'head_tilt_position_controller',
-        ])
-
-        self.add_base_cmd_velocity(cmd_vel_topic='/base_controller/command',
-                                   joint_name=self.drive_joint_name)
+        self.discover_interfaces_from_controller_manager()
+        self.sync_odometry_topic('/odom', self.drive_joint_name)
+        self.add_base_cmd_velocity(cmd_vel_topic='/cmd_vel')
 
 
 class PR2CollisionAvoidance(CollisionAvoidanceConfig):
@@ -207,71 +178,3 @@ class PR2CollisionAvoidance(CollisionAvoidanceConfig):
                                                     number_of_repeller=2,
                                                     soft_threshold=0.2,
                                                     hard_threshold=0.1)
-
-
-class PR2JointTrajServerIAIInterface(RobotInterfaceConfig):
-    map_name: str
-    localization_joint_name: str
-    odom_link_name: str
-    drive_joint_name: str
-
-    def __init__(self,
-                 map_name: str = 'map',
-                 localization_joint_name: str = 'localization',
-                 odom_link_name: str = 'odom_combined',
-                 drive_joint_name: str = 'brumbrum'):
-        self.map_name = map_name
-        self.localization_joint_name = localization_joint_name
-        self.odom_link_name = odom_link_name
-        self.drive_joint_name = drive_joint_name
-
-    def setup(self):
-        self.sync_6dof_joint_with_tf_frame(joint_name=self.localization_joint_name,
-                                           tf_parent_frame=self.map_name,
-                                           tf_child_frame=self.odom_link_name)
-        self.sync_joint_state_topic('/joint_states')
-        self.sync_odometry_topic('/robot_pose_ekf/odom_combined', self.drive_joint_name)
-        fill_velocity_values = False
-        self.add_follow_joint_trajectory_server(namespace='/l_arm_controller',
-                                                fill_velocity_values=fill_velocity_values)
-        self.add_follow_joint_trajectory_server(namespace='/r_arm_controller',
-                                                fill_velocity_values=fill_velocity_values)
-        self.add_follow_joint_trajectory_server(namespace='/torso_controller',
-                                                fill_velocity_values=fill_velocity_values)
-        self.add_follow_joint_trajectory_server(namespace='/head_traj_controller',
-                                                fill_velocity_values=fill_velocity_values)
-        self.add_base_cmd_velocity(cmd_vel_topic='/base_controller/command',
-                                   track_only_velocity=True,
-                                   joint_name=self.drive_joint_name)
-
-
-class PR2JointTrajServerUnrealInterface(RobotInterfaceConfig):
-    map_name: str
-    localization_joint_name: str
-    odom_link_name: str
-    drive_joint_name: str
-
-    def __init__(self,
-                 map_name: str = 'map',
-                 localization_joint_name: str = 'localization',
-                 odom_link_name: str = 'odom_combined',
-                 drive_joint_name: str = 'brumbrum'):
-        self.map_name = map_name
-        self.localization_joint_name = localization_joint_name
-        self.odom_link_name = odom_link_name
-        self.drive_joint_name = drive_joint_name
-
-    def setup(self):
-        self.sync_6dof_joint_with_tf_frame(joint_name=self.localization_joint_name,
-                                           tf_parent_frame=self.map_name,
-                                           tf_child_frame=self.odom_link_name)
-        self.sync_joint_state_topic('/joint_states')
-        self.sync_odometry_topic('/base_odometry/odom', self.drive_joint_name)
-        fill_velocity_values = False
-        self.add_follow_joint_trajectory_server(namespace='/whole_body_controller',
-                                                fill_velocity_values=fill_velocity_values)
-        self.add_follow_joint_trajectory_server(namespace='/head_traj_controller',
-                                                fill_velocity_values=fill_velocity_values)
-        self.add_base_cmd_velocity(cmd_vel_topic='/base_controller/command',
-                                   track_only_velocity=True,
-                                   joint_name=self.drive_joint_name)

@@ -33,7 +33,7 @@ def init(node_handle=None, tf_buffer_size: Optional[float] = None) -> None:
         tf_buffer_size = Duration(seconds=tf_buffer_size)
     tfBuffer = Buffer(tf_buffer_size)
     tf_listener = TransformListener(tfBuffer, _node_handle)
-    sleep(2)
+    sleep(4)
     try:
         get_tf_root()
     except Exception as e:

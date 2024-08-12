@@ -33,47 +33,25 @@ class GenericWorldConfig(WorldConfig):
         if len(tf_roots) == 1:
             return tf_roots.pop()
         frames_not_in_world = tf_roots.difference(self.world.link_names_as_set)
-        if len(tf_roots.difference(self.world.link_names_as_set)) > 0:
-            return tf_roots.difference(self.world.link_names_as_set).pop()
+        if len(frames_not_in_world) > 0:
+            return frames_not_in_world.pop()
         return self.world.groups[list(self.world.group_names)[0]].root_link_name.short_name
 
     def setup(self):
+        self.map_name = PrefixName(self.get_tf_root_that_is_not_in_world())
         self.urdf = self.robot_description or ros2_interface.get_robot_description()
-        with self.world.modify_world():
-            self.set_default_limits({Derivatives.velocity: 0.2,
-                                     Derivatives.acceleration: np.inf,
-                                     Derivatives.jerk: 30})
-            self.add_robot_urdf(self.urdf, self.robot_name)
-            self.add_drive_joint_from_controller_manager(robot_name=self.robot_name)
-            self.map_name = PrefixName(self.get_tf_root_that_is_not_in_world())
-            root_link_name = self.get_root_link_of_group(self.robot_name)
-            if root_link_name.short_name != self.map_name.short_name:
-                self.add_empty_link(self.map_name)
-                self.add_fixed_joint(parent_link=self.map_name, child_link=root_link_name)
-            else:
-                self.map_name = root_link_name
+        self.add_robot_urdf(self.urdf, self.robot_name)
 
-    def add_drive_joint_from_controller_manager(self, robot_name: str) -> None:
-        controllers: ListControllers_Response = cm.list_controllers(node=rospy.node,
-                                                                    controller_manager_name=self.controller_manager_name)
-        controller: ControllerState
-        for controller in controllers.controller:
-            if controller.state == 'active':
-                if controller.type == 'diff_drive_controller/DiffDriveController':
-                    node_name = controller.name
-                    request = GetParameters_Request()
-                    request.names = ['odom_frame_id', 'base_frame_id']
-                    res: GetParameters_Response = cm.controller_manager_services.service_caller(node=rospy.node,
-                                                                  service_name=f'{node_name}/get_parameters',
-                                                                  service_type=GetParameters,
-                                                                  request=request)
-                    odom_frame_id = res.values[0].string_value
-                    base_frame_id = res.values[1].string_value
-                    self.add_empty_link(odom_frame_id)
-                    self.add_diff_drive_joint(name=node_name,
-                                              parent_link_name=odom_frame_id,
-                                              child_link_name=base_frame_id,
-                                              robot_group_name=robot_name)
+        self.set_default_limits({Derivatives.velocity: 0.2,
+                                 Derivatives.acceleration: np.inf,
+                                 Derivatives.jerk: 30})
+
+        root_link_name = self.get_root_link_of_group(self.robot_name)
+        if root_link_name.short_name != self.map_name.short_name:
+            self.add_empty_link(self.map_name)
+            self.add_fixed_joint(parent_link=self.map_name, child_link=root_link_name)
+        else:
+            self.map_name = root_link_name
 
 
 class GenericRobotInterface(RobotInterfaceConfig):

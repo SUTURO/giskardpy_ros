@@ -51,14 +51,14 @@ class RobotInterfaceConfig(ABC):
     def control_mode(self) -> ControlModes:
         return GiskardBlackboard().tree.control_mode
 
-    def sync_odometry_topic(self, odometry_topic: str, joint_name: str):
+    def sync_odometry_topic(self, odometry_topic: str, joint_name: Optional[str] = None):
         """
         Tell Giskard to sync an odometry joint added during by the world config.
         """
         joint_name = self.world.search_for_joint_name(joint_name)
         self.tree.wait_for_goal.synchronization.sync_odometry_topic(odometry_topic, joint_name)
         if GiskardBlackboard().tree.is_closed_loop():
-            self.tree.control_loop_branch.closed_loop_synchronization.sync_odometry_topic_no_lock(
+            self.tree.control_loop_branch.closed_loop_synchronization.sync_odometry_topic(
                 odometry_topic,
                 joint_name)
 
@@ -101,7 +101,7 @@ class RobotInterfaceConfig(ABC):
         """
         # joint_name = self.world.search_for_joint_name(joint_name)
         if GiskardBlackboard().tree.is_closed_loop():
-            self.tree.control_loop_branch.send_controls.add_send_cmd_velocity(cmd_vel_topic=cmd_vel_topic)
+            self.tree.control_loop_branch.send_controls.add_send_cmd_velocity(topic_name=cmd_vel_topic)
         elif GiskardBlackboard().tree.is_open_loop():
             self.tree.execute_traj.add_base_traj_action_server(cmd_vel_topic=cmd_vel_topic)
 

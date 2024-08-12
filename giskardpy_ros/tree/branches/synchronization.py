@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from py_trees.common import Status
 from py_trees.composites import Sequence
@@ -8,7 +8,7 @@ from giskardpy_ros.tree.behaviors.collision_scene_updater import CollisionSceneU
 from giskardpy_ros.tree.behaviors.notify_state_change import NotifyStateChange
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.behaviors.sync_joint_state import SyncJointState, SyncJointStatePosition
-from giskardpy_ros.tree.behaviors.sync_odometry import SyncOdometry, SyncOdometryNoLock
+from giskardpy_ros.tree.behaviors.sync_odometry import SyncOdometry
 from giskardpy_ros.tree.behaviors.sync_tf_frames import SyncTfFrames
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
@@ -53,12 +53,8 @@ class Synchronization(Sequence):
         behavior = SyncJointStatePosition(group_name=group_name, joint_state_topic=topic_name)
         self.insert_child(child=behavior, index=0)
 
-    def sync_odometry_topic(self, topic_name: str, joint_name: PrefixName):
+    def sync_odometry_topic(self, topic_name: str, joint_name: Optional[PrefixName] = None):
         behavior = SyncOdometry(topic_name, joint_name)
-        self.insert_child(child=behavior, index=0)
-
-    def sync_odometry_topic_no_lock(self, topic_name: str, joint_name: PrefixName):
-        behavior = SyncOdometryNoLock(topic_name, joint_name)
         self.insert_child(child=behavior, index=0)
 
     def remove_group_behaviors(self, group_name: str):

@@ -48,7 +48,7 @@ def wait_for_topic_to_appear(topic_name: str,
 def get_robot_description(topic: str = '/robot_description') -> str:
     qos_profile = QoSProfile(depth=10)
     qos_profile.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
-    return wait_for_message(String, rospy.node, topic, qos_profile=qos_profile, time_to_wait=5)[1].data
+    return wait_for_message(String, rospy.node, topic, qos_profile=qos_profile, time_to_wait=10)[1].data
 
 
 def search_for_publisher_with_type(node_name: str, topic_type):
