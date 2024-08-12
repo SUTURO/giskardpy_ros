@@ -1,13 +1,9 @@
-from abc import ABC
-from typing import Optional
-
 import numpy as np
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 from py_trees.common import Status
 
 from giskardpy.god_map import god_map
 from giskardpy.middleware import middleware
-from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 from giskardpy.model.joints import OmniDrive, DiffDrive
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
@@ -15,40 +11,24 @@ from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
 
 
 # can be used during closed-loop control, instead of for tracking a trajectory
-class SendCmdVel(GiskardBehavior, ABC):
+class SendCmdVelTwist(GiskardBehavior):
     supported_state_types = [Twist]
 
     @profile
-    def __init__(self, cmd_vel_topic: str, goal_time_tolerance: float = 1, track_only_velocity: bool = False,
-                 joint_name: Optional[str] = None):
-        self.cmd_vel_topic = cmd_vel_topic
-        super().__init__(str(self))
+    def __init__(self, controller_node_name: str):
+        super().__init__(controller_node_name)
         self.threshold = np.array([0.0, 0.0, 0.0])
-        raise NotImplementedError()
-        # self.goal_time_tolerance = rospy.Duration(goal_time_tolerance)
-        self.track_only_velocity = track_only_velocity
+        self.cmd_topic = self.search_for_subscriber_with_type(TwistStamped)
+        self.vel_pub = rospy.node.create_publisher(TwistStamped, self.cmd_topic, 10)
 
-        wait_for_topic_to_appear(self.cmd_vel_topic, self.supported_state_types)
-
-        self.vel_pub = rospy.node.create_publisher(Twist, self.cmd_vel_topic, 10)
-
-        if joint_name is None:
-            for joint in god_map.world.joints.values():
-                if isinstance(joint, (OmniDrive, DiffDrive)):
-                    # FIXME can only handle one drive
-                    # self.controlled_joints = [joint]
-                    self.joint = joint
-            if not hasattr(self, 'joint'):
-                #TODO
-                pass
-        else:
-            joint_name = god_map.world.search_for_joint_name(joint_name)
-            self.joint = god_map.world.joints[joint_name]
+        # find joint from odom and base link in controller manager
+        for joint in god_map.world.joints.values():
+            if isinstance(joint, (OmniDrive, DiffDrive)):
+                # FIXME can only handle one drive
+                # self.controlled_joints = [joint]
+                self.joint = joint
         god_map.world.register_controlled_joints([self.joint.name])
-        middleware.loginfo(f'Received controlled joints from \'{cmd_vel_topic}\'.')
-
-    def __str__(self):
-        return f'{super().__str__()} ({self.cmd_vel_topic})'
+        middleware.loginfo(f'Created publisher for {self.cmd_topic}.')
 
     def solver_cmd_to_twist(self, cmd) -> Twist:
         twist = Twist()

@@ -4,6 +4,7 @@ import controller_manager as cm
 import numpy as np
 from controller_manager_msgs.msg import ControllerState
 from controller_manager_msgs.srv import ListControllers_Response
+from rcl_interfaces.srv import GetParameters, GetParameters_Request, GetParameters_Response
 from sensor_msgs.msg import JointState
 
 import giskardpy_ros.ros2.tfwrapper as tf
@@ -20,14 +21,21 @@ from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 class GenericWorldConfig(WorldConfig):
     robot_name: str = ''
     robot_description: Optional[str]
+    controller_manager_name: str
 
-    def __init__(self, robot_description: Optional[str]):
+    def __init__(self, robot_description: Optional[str] = None, controller_manager_name: str = 'controller_manager'):
         super().__init__()
         self.robot_description = robot_description
+        self.controller_manager_name = controller_manager_name
 
     def get_tf_root_that_is_not_in_world(self) -> str:
         tf_roots = tf.get_tf_roots()
-        return tf_roots.difference(self.world.link_names_as_set).pop()
+        if len(tf_roots) == 1:
+            return tf_roots.pop()
+        frames_not_in_world = tf_roots.difference(self.world.link_names_as_set)
+        if len(tf_roots.difference(self.world.link_names_as_set)) > 0:
+            return tf_roots.difference(self.world.link_names_as_set).pop()
+        return self.world.groups[list(self.world.group_names)[0]].root_link_name.short_name
 
     def setup(self):
         self.urdf = self.robot_description or ros2_interface.get_robot_description()
@@ -36,13 +44,36 @@ class GenericWorldConfig(WorldConfig):
                                      Derivatives.acceleration: np.inf,
                                      Derivatives.jerk: 30})
             self.add_robot_urdf(self.urdf, self.robot_name)
+            self.add_drive_joint_from_controller_manager(robot_name=self.robot_name)
             self.map_name = PrefixName(self.get_tf_root_that_is_not_in_world())
-            root_link_name = self.get_root_link_of_group(self.robot_group_name)
+            root_link_name = self.get_root_link_of_group(self.robot_name)
             if root_link_name.short_name != self.map_name.short_name:
                 self.add_empty_link(self.map_name)
                 self.add_fixed_joint(parent_link=self.map_name, child_link=root_link_name)
             else:
                 self.map_name = root_link_name
+
+    def add_drive_joint_from_controller_manager(self, robot_name: str) -> None:
+        controllers: ListControllers_Response = cm.list_controllers(node=rospy.node,
+                                                                    controller_manager_name=self.controller_manager_name)
+        controller: ControllerState
+        for controller in controllers.controller:
+            if controller.state == 'active':
+                if controller.type == 'diff_drive_controller/DiffDriveController':
+                    node_name = controller.name
+                    request = GetParameters_Request()
+                    request.names = ['odom_frame_id', 'base_frame_id']
+                    res: GetParameters_Response = cm.controller_manager_services.service_caller(node=rospy.node,
+                                                                  service_name=f'{node_name}/get_parameters',
+                                                                  service_type=GetParameters,
+                                                                  request=request)
+                    odom_frame_id = res.values[0].string_value
+                    base_frame_id = res.values[1].string_value
+                    self.add_empty_link(odom_frame_id)
+                    self.add_diff_drive_joint(name=node_name,
+                                              parent_link_name=odom_frame_id,
+                                              child_link_name=base_frame_id,
+                                              robot_group_name=robot_name)
 
 
 class GenericRobotInterface(RobotInterfaceConfig):
@@ -55,20 +86,7 @@ class GenericRobotInterface(RobotInterfaceConfig):
         if GiskardBlackboard().tree.is_standalone():
             self.register_controlled_joints(self.world.movable_joint_names)
         elif GiskardBlackboard().tree.is_closed_loop():
-            controllers: ListControllers_Response = cm.list_controllers(node=rospy.node,
-                                                                        controller_manager_name=self.controller_manager_name)
-            controller: ControllerState
-            for controller in controllers.controller:
-                if controller.state == 'active':
-                    if controller.type == 'joint_state_broadcaster/JointStateBroadcaster':
-                        node_name = controller.name
-                        topics = rospy.node.get_publisher_names_and_types_by_node(node_name, '/')
-                        for topic_name, topic_types in topics:
-                            if topic_types[0] == msg_type_as_str(JointState):
-                                self.sync_joint_state_topic(topic_name)
-                                break
-                    elif controller.type == 'velocity_controllers/JointGroupVelocityController':
-                        self.add_joint_velocity_group_controller(controller.name)
+            self.discover_interfaces_from_controller_manager()
         else:
             raise NotImplementedError('this mode is not implemented yet')
 

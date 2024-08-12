@@ -5,7 +5,9 @@ from typing import List, Type, Optional, Tuple
 import rclpy
 import xacro
 from ament_index_python import get_package_share_directory
+from controller_manager import controller_manager_services
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
+from rcl_interfaces.srv import GetParameters_Request, GetParameters_Response, GetParameters
 from rclpy import Future
 from rclpy.action.client import ClientGoalHandle
 from rclpy.node import Node
@@ -46,20 +48,29 @@ def wait_for_topic_to_appear(topic_name: str,
 def get_robot_description(topic: str = '/robot_description') -> str:
     qos_profile = QoSProfile(depth=10)
     qos_profile.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
-    return wait_for_message(String, rospy.node, topic, qos_profile=qos_profile)[1].data
+    return wait_for_message(String, rospy.node, topic, qos_profile=qos_profile, time_to_wait=5)[1].data
 
 
 def search_for_publisher_with_type(node_name: str, topic_type):
     topics = rospy.node.get_publisher_names_and_types_by_node(node_name, '/')
-    return __search_in_topic_list(node_name, topics, topic_type)
+    return _search_in_topic_list(node_name, topics, topic_type)
 
 
 def search_for_subscriber_with_type(node_name: str, topic_type):
     topics = rospy.node.get_subscriber_names_and_types_by_node(node_name, '/')
-    return __search_in_topic_list(node_name, topics, topic_type)
+    return _search_in_topic_list(node_name=node_name, topic_list=topics, topic_type=topic_type)
 
 
-def __search_in_topic_list(node_name: str, topic_list: List[Tuple[str, list]], topic_type: str):
+def get_parameters(parameters: List[str], node_name: str = 'controller_manager') -> GetParameters_Response:
+    req = GetParameters_Request()
+    req.names = parameters
+    return controller_manager_services.service_caller(node=rospy.node,
+                                                      service_name=f'{node_name}/get_parameters',
+                                                      service_type=GetParameters,
+                                                      request=req,
+                                                      service_timeout=10)
+
+def _search_in_topic_list(node_name: str, topic_list: List[Tuple[str, list]], topic_type: str):
     for topic_name, topic_types in topic_list:
         if topic_types[0] == msg_type_as_str(topic_type):
             return topic_name
@@ -76,6 +87,13 @@ def load_urdf(file_path: str) -> str:
     file_path = middleware.resolve_iri(file_path)
     doc = xacro.process_file(file_path, mappings={'radius': '0.9'})
     return doc.toprettyxml(indent='  ')
+
+
+class ControllerManager:
+    name: str
+
+    def __init__(self, name: str = 'controller_manager'):
+        self.name = name
 
 
 class MyActionClient:

@@ -37,4 +37,4 @@ class ROS2Wrapper(MiddlewareWrapper):
                 result += f'{real_path}/{suffix}'
             return result
         else:
-            return path
+            return path.replace('file://', '')
