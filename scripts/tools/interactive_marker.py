@@ -18,25 +18,21 @@ class InteractiveMarkerNode:
         self.giskard.spin_in_background()
         tf.init(self.giskard.node_handle)
 
-        self.giskard.declare_parameters(namespace='',
-                                        parameters=[('root_link', Parameter.Type.STRING),
-                                                    ('tip_link', Parameter.Type.STRING)])
-        self.root_link = self.giskard.get_parameter('root_link').value
-        self.tip_link = self.giskard.get_parameter('tip_link').value
+        # self.giskard.declare_parameters(namespace='',
+        #                                 parameters=[('root_link', Parameter.Type.STRING),
+        #                                             ('tip_link', Parameter.Type.STRING)])
+        self.root_link = 'pr2'#self.giskard.get_parameter('root_link').value
+        self.tip_link = 'r_gripper_tool_frame'#self.giskard.get_parameter('tip_link').value
 
         # Create an interactive marker server
         self.server = InteractiveMarkerServer(self.giskard.node_handle, 'cartesian_goals')
 
         # Create an interactive marker
         int_marker = InteractiveMarker()
-        int_marker.header.frame_id = self.root_link
+        int_marker.header.frame_id = self.tip_link
         int_marker.name = f'{self.root_link}/{self.tip_link}'
         int_marker.scale = 0.25
-
-        # Set the position of the interactive marker
-        self.giskard.get_logger().info(f'waiting for transform {self.root_link} {self.tip_link}')
-        tf.wait_for_transform(self.root_link, self.tip_link, Time(), Duration(seconds=1000))
-        int_marker.pose = tf.lookup_pose(self.root_link, self.tip_link).pose
+        int_marker.pose.orientation.w = 1.0
 
         # Create a marker for the interactive marker
         box_marker = Marker()
@@ -77,6 +73,8 @@ class InteractiveMarkerNode:
         # 'commit' changes and send to all clients
         self.server.applyChanges()
 
+        self.int_marker = int_marker
+
     def add_control(self, int_marker: InteractiveMarker, name: str, interaction_mode: int, x: float, y: float, z: float,
                     w: float) -> None:
         control = InteractiveMarkerControl()
@@ -100,6 +98,17 @@ class InteractiveMarkerNode:
             self.giskard.motion_goals.allow_all_collisions()
             self.giskard.add_default_end_motion_conditions()
             self.giskard.execute_async()
+
+            # reset marker pose
+            self.int_marker.pose.position.x = 0.0
+            self.int_marker.pose.position.y = 0.0
+            self.int_marker.pose.position.z = 0.0
+            self.int_marker.pose.orientation.x = 0.0
+            self.int_marker.pose.orientation.y = 0.0
+            self.int_marker.pose.orientation.z = 0.0
+            self.int_marker.pose.orientation.w = 1.0
+            self.server.insert(self.int_marker)
+            self.server.applyChanges()
 
 
 def main(args: None = None) -> None:
