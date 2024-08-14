@@ -1,20 +1,17 @@
-from typing import Optional
+from typing import Optional, Tuple
 
-import controller_manager as cm
 import numpy as np
-from controller_manager_msgs.msg import ControllerState
-from controller_manager_msgs.srv import ListControllers_Response
-from rcl_interfaces.srv import GetParameters, GetParameters_Request, GetParameters_Response
-from sensor_msgs.msg import JointState
+from nav_msgs.msg import Odometry
 
 import giskardpy_ros.ros2.tfwrapper as tf
 from giskardpy.data_types.data_types import Derivatives, PrefixName
+from giskardpy.data_types.exceptions import UnknownLinkException
 from giskardpy.model.collision_avoidance_config import CollisionAvoidanceConfig
 from giskardpy.model.collision_world_syncer import CollisionCheckerLib
 from giskardpy.model.world_config import WorldConfig
 from giskardpy_ros.configs.giskard import RobotInterfaceConfig
 from giskardpy_ros.ros2 import ros2_interface, rospy
-from giskardpy_ros.ros2.msg_converter import msg_type_as_str
+from giskardpy_ros.ros2.ros2_interface import wait_for_message, search_for_unique_publisher_of_type
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
 
@@ -23,13 +20,16 @@ class GenericWorldConfig(WorldConfig):
     robot_description: Optional[str]
     controller_manager_name: str
 
-    def __init__(self, robot_description: Optional[str] = None, controller_manager_name: str = 'controller_manager'):
+    def __init__(self,
+                 robot_description: Optional[str] = None,
+                 controller_manager_name: str = 'controller_manager'):
         super().__init__()
         self.robot_description = robot_description
         self.controller_manager_name = controller_manager_name
 
+    @profile
     def get_tf_root_that_is_not_in_world(self) -> str:
-        tf_roots = tf.get_tf_roots()
+        tf_roots = set(tf.get_tf_roots())
         if len(tf_roots) == 1:
             return tf_roots.pop()
         frames_not_in_world = tf_roots.difference(self.world.link_names_as_set)
@@ -37,21 +37,54 @@ class GenericWorldConfig(WorldConfig):
             return frames_not_in_world.pop()
         return self.world.groups[list(self.world.group_names)[0]].root_link_name.short_name
 
+    @profile
     def setup(self):
-        self.map_name = PrefixName(self.get_tf_root_that_is_not_in_world())
-        self.urdf = self.robot_description or ros2_interface.get_robot_description()
-        self.add_robot_urdf(self.urdf, self.robot_name)
-
         self.set_default_limits({Derivatives.velocity: 0.2,
                                  Derivatives.acceleration: np.inf,
                                  Derivatives.jerk: 30})
+        global_tf_frame = self.get_tf_root_that_is_not_in_world()
+        self.map_name = PrefixName(global_tf_frame)
+        self.urdf = self.robot_description or ros2_interface.get_robot_description()
+        self.add_robot_urdf(self.urdf, self.robot_name)
 
         root_link_name = self.get_root_link_of_group(self.robot_name)
-        if root_link_name.short_name != self.map_name.short_name:
-            self.add_empty_link(self.map_name)
-            self.add_fixed_joint(parent_link=self.map_name, child_link=root_link_name)
-        else:
-            self.map_name = root_link_name
+        # gather frames between tf root and robot root
+        chain = tf.get_frame_chain(global_tf_frame, root_link_name.short_name)
+        # add all missing frames to world
+        for i, tf_frame in enumerate(chain):
+            try:
+                world_link_name = self.world.search_for_link_name(tf_frame)
+            except UnknownLinkException as e:
+                world_link_name = PrefixName(tf_frame)
+                self.add_empty_link(world_link_name)
+            chain[i] = world_link_name
+        odom_frames = self.has_odom()
+        for link1, link2 in zip(chain, chain[1:]):
+            if (link1, link2) == odom_frames:
+                self.add_omni_drive_joint(name='brumbrum',
+                                          parent_link_name=link1,
+                                          child_link_name=link2,
+                                          translation_limits={
+                                              Derivatives.velocity: 0.2,
+                                              Derivatives.acceleration: 1,
+                                              Derivatives.jerk: 5,
+                                          },
+                                          rotation_limits={
+                                              Derivatives.velocity: 0.2,
+                                              Derivatives.acceleration: 1,
+                                              Derivatives.jerk: 5
+                                          },
+                                          robot_group_name=self.robot_group_name)
+            else:
+                self.add_fixed_joint(parent_link=link1, child_link=link2)
+
+    def has_odom(self) -> Optional[Tuple[str, str]]:
+        try:
+            topic_name = search_for_unique_publisher_of_type(Odometry)
+            message: Odometry = wait_for_message(Odometry, rospy.node, topic_name, qos_profile=10)[1]
+            return message.header.frame_id, message.child_frame_id
+        except Exception as e:
+            return None
 
 
 class GenericRobotInterface(RobotInterfaceConfig):
@@ -65,6 +98,13 @@ class GenericRobotInterface(RobotInterfaceConfig):
             self.register_controlled_joints(self.world.movable_joint_names)
         elif GiskardBlackboard().tree.is_closed_loop():
             self.discover_interfaces_from_controller_manager()
+            try:
+                self.world.get_drive_joint()
+                self.sync_odometry_topic()
+                self.add_base_cmd_velocity()
+            except ValueError as e:
+                # no drive joint, so no need to add odom and cmd vel topic
+                pass
         else:
             raise NotImplementedError('this mode is not implemented yet')
 

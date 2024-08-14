@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 
 from controller_manager_msgs.msg import ControllerState
 from controller_manager_msgs.srv import ListControllers_Response
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64MultiArray
 
 from giskardpy.god_map import god_map
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.ros2.msg_converter import msg_type_as_str
-from giskardpy_ros.ros2.ros2_interface import search_for_subscriber_with_type, get_parameters, \
-    search_for_publisher_with_type
+from giskardpy_ros.ros2.ros2_interface import search_for_subscriber_of_node_with_type, get_parameters, \
+    search_for_publisher_of_node_with_type, search_for_subscribers_of_type, search_for_unique_publisher_of_type, \
+    search_for_unique_subscriber_of_type
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy_ros.tree.branches.giskard_bt import GiskardBT
 from giskardpy_ros.tree.control_modes import ControlModes
@@ -51,11 +54,13 @@ class RobotInterfaceConfig(ABC):
     def control_mode(self) -> ControlModes:
         return GiskardBlackboard().tree.control_mode
 
-    def sync_odometry_topic(self, odometry_topic: str, joint_name: Optional[str] = None):
+    def sync_odometry_topic(self, odometry_topic: Optional[str] = None, joint_name: Optional[str] = None):
         """
         Tell Giskard to sync an odometry joint added during by the world config.
         """
-        joint_name = self.world.search_for_joint_name(joint_name)
+        if odometry_topic is None:
+            odometry_topic = search_for_unique_publisher_of_type(Odometry)
+        joint_name = self.world.get_drive_joint(joint_name=joint_name).name
         self.tree.wait_for_goal.synchronization.sync_odometry_topic(odometry_topic, joint_name)
         if GiskardBlackboard().tree.is_closed_loop():
             self.tree.control_loop_branch.closed_loop_synchronization.sync_odometry_topic(
@@ -90,7 +95,8 @@ class RobotInterfaceConfig(ABC):
                 topic_name=topic_name)
 
     def add_base_cmd_velocity(self,
-                              cmd_vel_topic: str,
+                              cmd_vel_topic: Optional[str] = None,
+                              joint_name: Optional[PrefixName] = None,
                               track_only_velocity: bool = False):
         """
         Tell Giskard how it can control an odom joint of the robot.
@@ -99,13 +105,17 @@ class RobotInterfaceConfig(ABC):
                                     the tracking smoother but less accurate.
         :param joint_name: name of the omni or diff drive joint. Doesn't need to be specified if there is only one.
         """
-        # joint_name = self.world.search_for_joint_name(joint_name)
+        if cmd_vel_topic is None:
+            cmd_vel_topic = search_for_unique_subscriber_of_type(Twist)
         if GiskardBlackboard().tree.is_closed_loop():
-            self.tree.control_loop_branch.send_controls.add_send_cmd_velocity(topic_name=cmd_vel_topic)
+            self.tree.control_loop_branch.send_controls.add_send_cmd_velocity(topic_name=cmd_vel_topic,
+                                                                              joint_name=joint_name)
         elif GiskardBlackboard().tree.is_open_loop():
-            self.tree.execute_traj.add_base_traj_action_server(cmd_vel_topic=cmd_vel_topic)
+            self.tree.execute_traj.add_base_traj_action_server(cmd_vel_topic=cmd_vel_topic,
+                                                               track_only_velocity=track_only_velocity)
 
-    def register_controlled_joints(self, joint_names: List[str], group_name: Optional[str] = None):
+    def register_controlled_joints(self, joint_names: List[Union[str, PrefixName]], group_name: Optional[str] = None) \
+            -> None:
         """
         Tell Giskard which joints can be controlled. Giskard can usually figure this out on its own.
         Only used in standalone mode.
@@ -151,12 +161,12 @@ class RobotInterfaceConfig(ABC):
         for controller in controllers_to_add:
             if controller.state == 'active':
                 if controller.type == 'joint_state_broadcaster/JointStateBroadcaster':
-                    topic_name = search_for_publisher_with_type(topic_type=JointState,
-                                                                node_name=controller.name)
+                    topic_name = search_for_publisher_of_node_with_type(topic_type=JointState,
+                                                                        node_name=controller.name)
                     self.sync_joint_state_topic(topic_name)
                 elif controller.type == 'velocity_controllers/JointGroupVelocityController':
-                    cmt_topic = search_for_subscriber_with_type(topic_type=Float64MultiArray,
-                                                                node_name=controller.name)
+                    cmt_topic = search_for_subscriber_of_node_with_type(topic_type=Float64MultiArray,
+                                                                        node_name=controller.name)
                     joints = get_parameters(parameters=['joints'],
                                             node_name=controller.name).values[0].string_array_value
                     self.add_joint_velocity_group_controller(cmd_topic=cmt_topic, joints=joints)

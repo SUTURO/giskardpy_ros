@@ -1,14 +1,11 @@
 from typing import Optional
 
-from geometry_msgs.msg import PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from py_trees.common import Status
 
 from giskardpy.data_types.data_types import PrefixName
 from giskardpy.god_map import god_map
 from giskardpy.middleware import middleware
-from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
-from giskardpy.model.joints import OmniDrive
 from giskardpy_ros.ros2 import rospy, msg_converter
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard

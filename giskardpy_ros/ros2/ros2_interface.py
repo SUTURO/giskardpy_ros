@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import List, Type, Optional, Tuple
+from typing import List, Type, Optional, Tuple, Union, Any
 
 import rclpy
 import xacro
@@ -13,7 +13,7 @@ from rclpy.action.client import ClientGoalHandle
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy
-from rclpy.wait_for_message import wait_for_message
+from rclpy.wait_for_message import wait_for_message as rclpy_wait_for_message
 from std_msgs.msg import String
 
 from giskardpy.middleware import middleware
@@ -45,20 +45,65 @@ def wait_for_topic_to_appear(topic_name: str,
             rospy.sleep(sleep_time)
 
 
+def wait_for_message(msg_type,
+                     node: 'Node',
+                     topic: str,
+                     *,
+                     qos_profile: Union[QoSProfile, int] = 10,
+                     time_to_wait=-1) -> Tuple[bool, Any]:
+    while True:
+        try:
+            result = rclpy_wait_for_message(msg_type=msg_type, node=node, topic=topic, qos_profile=qos_profile)
+            if result[1] is not None:
+                return result
+        except Exception as e:
+            node.get_logger().info(f'waiting for message from {topic}.')
+
+
 def get_robot_description(topic: str = '/robot_description') -> str:
     qos_profile = QoSProfile(depth=10)
     qos_profile.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
-    return wait_for_message(String, rospy.node, topic, qos_profile=qos_profile, time_to_wait=10)[1].data
+    return wait_for_message(String, rospy.node, topic, qos_profile=qos_profile)[1].data
 
 
-def search_for_publisher_with_type(node_name: str, topic_type):
+def search_for_publisher_of_node_with_type(node_name: str, topic_type):
     topics = rospy.node.get_publisher_names_and_types_by_node(node_name, '/')
-    return _search_in_topic_list(node_name, topics, topic_type)
+    return _search_in_topic_list(node_name=node_name, topic_list=topics, topic_type=topic_type)[0]
 
 
-def search_for_subscriber_with_type(node_name: str, topic_type):
+def search_for_subscriber_of_node_with_type(node_name: str, topic_type):
     topics = rospy.node.get_subscriber_names_and_types_by_node(node_name, '/')
-    return _search_in_topic_list(node_name=node_name, topic_list=topics, topic_type=topic_type)
+    return _search_in_topic_list(node_name=node_name, topic_list=topics, topic_type=topic_type)[0]
+
+
+def search_for_publishers_of_type(topic_type) -> List[str]:
+    topics = _search_in_topic_list(topic_list=rospy.node.get_topic_names_and_types(), topic_type=topic_type)
+    matches = []
+    for topic_name in topics:
+        if len(rospy.node.get_publishers_info_by_topic(topic_name)) > 0:
+            matches.append(topic_name)
+    return matches
+
+
+def search_for_unique_publisher_of_type(topic_type) -> str:
+    topic_names = search_for_publishers_of_type(topic_type)
+    assert len(topic_names) == 1, f'Found too many {msg_type_as_str(topic_type)} topics: {topic_names}.'
+    return topic_names[0]
+
+
+def search_for_unique_subscriber_of_type(topic_type) -> str:
+    topic_names = search_for_subscribers_of_type(topic_type)
+    assert len(topic_names) == 1, f'Found too many {msg_type_as_str(topic_type)} topics: {topic_names}.'
+    return topic_names[0]
+
+
+def search_for_subscribers_of_type(topic_type) -> List[str]:
+    topics = _search_in_topic_list(topic_list=rospy.node.get_topic_names_and_types(), topic_type=topic_type)
+    matches = []
+    for topic_name in topics:
+        if len(rospy.node.get_subscriptions_info_by_topic(topic_name)) > 0:
+            matches.append(topic_name)
+    return matches
 
 
 def get_parameters(parameters: List[str], node_name: str = 'controller_manager') -> GetParameters_Response:
@@ -70,11 +115,19 @@ def get_parameters(parameters: List[str], node_name: str = 'controller_manager')
                                                       request=req,
                                                       service_timeout=10)
 
-def _search_in_topic_list(node_name: str, topic_list: List[Tuple[str, list]], topic_type: str):
+
+def _search_in_topic_list(topic_list: List[Tuple[str, list]], topic_type: str, node_name: Optional[str] = None) \
+        -> List[str]:
+    matches = []
     for topic_name, topic_types in topic_list:
         if topic_types[0] == msg_type_as_str(topic_type):
-            return topic_name
-    raise AttributeError(f'Node {node_name} has no subscriber of type {topic_type}')
+            matches.append(topic_name)
+    if matches:
+        return matches
+    if node_name is not None:
+        raise AttributeError(f'Node {node_name} has no topic of type {topic_type}.')
+    else:
+        raise AttributeError(f'Didn\'t find topic of type {topic_type}.')
 
 
 def wait_for_publisher(publisher):

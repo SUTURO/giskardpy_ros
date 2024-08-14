@@ -1,11 +1,15 @@
+import io
 from time import sleep
 from typing import Optional, overload, List, Set
-
+import networkx as nx
 import numpy as np
 import rclpy
 import yaml
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, TransformStamped, Pose, Quaternion, Point, \
     Vector3, QuaternionStamped, Transform, TwistStamped
+from graphviz import Source
+from networkx import MultiDiGraph
+from networkx.drawing.nx_pydot import read_dot
 from rclpy.duration import Duration
 from rclpy.time import Time
 from tf2_geometry_msgs import do_transform_pose, do_transform_vector3, do_transform_point, do_transform_pose_stamped
@@ -29,6 +33,7 @@ def init(node_handle=None, tf_buffer_size: Optional[float] = None) -> None:
     """
     global tfBuffer, tf_listener, _node_handle
     _node_handle = node_handle or rospy.node
+    _node_handle.get_logger().info('initializing tf')
     if tf_buffer_size is not None:
         tf_buffer_size = Duration(seconds=tf_buffer_size)
     tfBuffer = Buffer(tf_buffer_size)
@@ -38,6 +43,7 @@ def init(node_handle=None, tf_buffer_size: Optional[float] = None) -> None:
         get_tf_root()
     except Exception as e:
         _node_handle.get_logger().warn(str(e))
+    _node_handle.get_logger().info('initialized tf')
 
 
 def get_tf_buffer() -> Buffer:
@@ -48,13 +54,25 @@ def get_tf_buffer() -> Buffer:
 
 
 # @memoize
-def get_tf_roots() -> Set[str]:
+def get_tf_roots() -> List[str]:
+    graph = get_graph()
+    return [node for node in graph.nodes() if not list(graph.predecessors(node))]
+
+
+def get_graph() -> MultiDiGraph:
     tfBuffer = get_tf_buffer()
-    frames = yaml.safe_load(tfBuffer.all_frames_as_yaml())
-    frames_with_parent = set(frames.keys())
-    frame_parents = set(x['parent'] for x in frames.values())
-    tf_roots = frame_parents.difference(frames_with_parent)
-    return tf_roots
+    dot_string = tfBuffer._allFramesAsDot()
+    cleaned_dot_string = dot_string.replace("\n", " ")
+
+    dot_file = io.StringIO(cleaned_dot_string)
+    graph = read_dot(dot_file)
+    return graph
+
+
+def get_frame_chain(target_frame: str, source_frame: str) -> List[str]:
+    graph = get_graph()
+    return nx.shortest_path(graph, source=target_frame, target=source_frame)
+
 
 
 def get_tf_root() -> str:

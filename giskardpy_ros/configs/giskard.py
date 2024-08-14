@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import traceback
 from typing import Optional, List
+
+import rclpy
 
 from giskardpy.model.world_config import WorldConfig
 from giskardpy_ros.ros2 import rospy
@@ -133,5 +136,9 @@ class Giskard:
         """
         Start Giskard.
         """
-        self.grow()
-        GiskardBlackboard().tree.live()
+        try:
+            self.grow()
+            GiskardBlackboard().tree.live()
+        except Exception as e:
+            traceback.print_exc()
+            rclpy.shutdown()

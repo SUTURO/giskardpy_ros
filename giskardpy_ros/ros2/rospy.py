@@ -18,6 +18,7 @@ def heart():
             rclpy.spin_once(node, executor=executor, timeout_sec=0.1)
     except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
         pass
+    node.get_logger().info('Giskard died.')
 
 
 def init_node(node_name: str):
