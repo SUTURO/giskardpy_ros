@@ -14,6 +14,7 @@ from shape_msgs.msg import SolidPrimitive
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import WorldBody, CollisionEntry, LinkName, GiskardError
 from giskardpy.middleware import middleware
+from giskardpy.model.world_config import WorldWithOmniDriveRobot
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.configs.iai_robots.pr2 import PR2CollisionAvoidance, PR2StandaloneInterface, WorldWithPR2Config
@@ -160,8 +161,8 @@ class PR2Tester(GiskardTester):
         doc = xacro.process_file(xacro_file, mappings={'radius': '0.9'})
         robot_desc = doc.toprettyxml(indent='  ')
         if giskard is None:
-            giskard = Giskard(world_config=WorldWithPR2Config(drive_joint_name=drive_joint_name,
-                                                              urdf=robot_desc),
+            giskard = Giskard(world_config=WorldWithOmniDriveRobot(drive_joint_name=drive_joint_name,
+                                                                   urdf=robot_desc),
                               robot_interface_config=PR2StandaloneInterface(drive_joint_name=drive_joint_name),
                               collision_avoidance_config=PR2CollisionAvoidance(drive_joint_name=drive_joint_name,
                                                                                # collision_checker=CollisionCheckerLib.none),

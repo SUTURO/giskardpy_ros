@@ -390,15 +390,12 @@ class GiskardTester:
 
     def tear_down(self):
         # GiskardBlackboard().tree.stop_spinning()
-        middleware.loginfo('111111111111111111111111111111111')
         self.print_qp_solver_times()
-        middleware.loginfo('22222222222222222222222222222222222222222')
         # rospy.sleep(1)
         # self.heart.shutdown()
         # TODO it is strange that I need to kill the services... should be investigated. (:
         # GiskardBlackboard().tree.kill_all_services()
         giskarding_time = self.total_time_spend_giskarding
-        middleware.loginfo('33333333333333333333333333333333333333333')
         if not GiskardBlackboard().tree.is_standalone():
             giskarding_time -= self.total_time_spend_moving
         middleware.loginfo(f'total time spend giskarding: {giskarding_time}')
