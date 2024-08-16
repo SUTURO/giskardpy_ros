@@ -39,7 +39,7 @@ class ControlLoop(AsyncBehavior):
     controller_plugin: ControllerPlugin
 
     def __init__(self, name: str = 'control_loop', log_traj: bool = True, max_hz: Optional[float] = None):
-        name = f'{name}\nmax_hz: {max_hz}'
+        name = f'{name}\nmax_hz -- {max_hz}'
         super().__init__(name, max_hz=max_hz)
         self.publish_state = PublishState('publish state 2')
         self.publish_state.add_publish_feedback()

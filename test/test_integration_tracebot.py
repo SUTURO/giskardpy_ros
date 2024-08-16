@@ -1,4 +1,3 @@
-import giskardpy_ros.ros1.tfwrapper as tf
 import pytest
 from geometry_msgs.msg import PoseStamped, PointStamped
 
@@ -8,8 +7,8 @@ from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy_ros.configs.iai_robots.tracy import TracyStandAloneRobotInterfaceConfig, TracyWorldConfig, \
     TracyCollisionAvoidanceConfig
 from giskardpy.goals.tracebot import InsertCylinder
-from utils_for_tests import launch_launchfile
-from utils_for_tests import GiskardTester
+from giskardpy_ros.utils.utils_for_tests import launch_launchfile
+from giskardpy_ros.utils.utils_for_tests import GiskardTester
 
 
 @pytest.fixture(scope='module')

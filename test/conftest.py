@@ -4,26 +4,27 @@ from geometry_msgs.msg import PoseStamped
 
 import giskardpy_ros.ros2.tfwrapper as tf
 from giskardpy.god_map import god_map
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy.model.joints import OneDofJoint
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
-from utils_for_tests import GiskardTester
+from giskardpy_ros.utils.utils_for_tests import GiskardTester
 
 
 @pytest.fixture(scope='module')
 def ros(request):
     rospy.init_node('giskard')
-    middleware.loginfo('init ros')
+    get_middleware().loginfo('init ros')
     tf.init()
+    get_middleware().loginfo('done tf init')
 
     def kill_ros():
         try:
             GiskardBlackboard().tree.render()
         except KeyError as e:
-            middleware.logerr(f'Failed to render behavior tree.')
-        middleware.loginfo('shutdown ros')
+            get_middleware().logerr(f'Failed to render behavior tree.')
+        get_middleware().loginfo('shutdown ros')
         rclpy.shutdown()
 
     # try:
@@ -45,7 +46,7 @@ def ros(request):
 
 @pytest.fixture()
 def resetted_giskard(giskard: GiskardTester) -> GiskardTester:
-    middleware.loginfo('resetting giskard')
+    get_middleware().loginfo('resetting giskard')
     giskard.api.clear_motion_goals_and_monitors()
     if GiskardBlackboard().tree.is_standalone() and giskard.has_odometry_joint():
         zero = PoseStamped()

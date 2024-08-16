@@ -6,7 +6,7 @@ from py_trees.common import Status
 
 from giskardpy.data_types.data_types import PrefixName
 from giskardpy.god_map import god_map
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy.model.joints import OmniDrive, DiffDrive
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
@@ -26,7 +26,7 @@ class SendCmdVelTwist(GiskardBehavior):
 
         self.joint = god_map.world.get_drive_joint(joint_name=joint_name)
         god_map.world.register_controlled_joints([self.joint.name])
-        middleware.loginfo(f'Created publisher for {self.cmd_topic}.')
+        get_middleware().loginfo(f'Created publisher for {self.cmd_topic}.')
 
     def solver_cmd_to_twist(self, cmd) -> Twist:
         twist = Twist()

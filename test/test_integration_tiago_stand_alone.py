@@ -1,12 +1,9 @@
 from copy import deepcopy
-from typing import Optional
 
 import numpy as np
 import pytest
 from geometry_msgs.msg import PoseStamped, Quaternion, Point, PointStamped, Vector3Stamped
-from tf.transformations import quaternion_about_axis, quaternion_from_matrix
 
-import giskardpy_ros.ros1.tfwrapper as tf
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy.qp.qp_controller_config import QPControllerConfig
@@ -15,8 +12,8 @@ from giskardpy.model.world_config import WorldWithDiffDriveRobot
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.god_map import god_map
 from giskardpy.data_types.data_types import PrefixName
-from utils_for_tests import launch_launchfile
-from utils_for_tests import GiskardTester
+from giskardpy_ros.utils.utils_for_tests import launch_launchfile
+from giskardpy_ros.utils.utils_for_tests import GiskardTester
 
 
 @pytest.fixture(scope='module')

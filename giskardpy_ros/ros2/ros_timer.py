@@ -2,7 +2,7 @@ import threading
 import time
 from typing import Callable
 
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy.utils.utils import is_running_in_pytest
 

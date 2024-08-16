@@ -4,7 +4,7 @@ import numpy as np
 
 from giskardpy.data_types.data_types import JointStates
 from giskardpy.god_map import god_map
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy.model.trajectory import Trajectory
 from giskardpy_ros.tree.behaviors.plot_trajectory import PlotTrajectory
 
@@ -57,4 +57,4 @@ class PlotDebugExpressions(PlotTrajectory):
                                      **self.kwargs)
             except Exception:
                 traceback.print_exc()
-                middleware.logwarn('failed to save debug.pdf')
+                get_middleware().logwarn('failed to save debug.pdf')

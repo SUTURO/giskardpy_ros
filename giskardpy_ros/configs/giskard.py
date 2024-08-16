@@ -15,7 +15,7 @@ from giskardpy_ros.configs.robot_interface_config import RobotInterfaceConfig
 from giskardpy.data_types.exceptions import GiskardException, SetupException
 from giskardpy.goals.goal import Goal
 from giskardpy.motion_graph.monitors.monitors import Monitor
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy.utils.utils import get_all_classes_in_package
 
@@ -50,7 +50,7 @@ class Giskard:
                                               Giskard will run 'from <additional path> import *' for each additional
                                               path in the list.
         """
-        god_map.tmp_folder = middleware.resolve_iri('package://giskardpy_ros/tmp/')
+        god_map.tmp_folder = get_middleware().resolve_iri('package://giskardpy_ros/tmp/')
         GiskardBlackboard().giskard = self
         self.world_config = world_config
         self.robot_interface_config = robot_interface_config
@@ -91,15 +91,19 @@ class Giskard:
         """
         with god_map.world.modify_world():
             self.world_config.setup()
+        print('-1')
         self.behavior_tree_config._create_behavior_tree()
         self.behavior_tree_config.setup()
+        print('0')
         self.robot_interface_config.setup()
         god_map.world._notify_model_change()
         self.collision_avoidance_config.setup()
         self.collision_avoidance_config._sanity_check()
         god_map.collision_scene.sync()
         self.sanity_check()
+        print('1')
         GiskardBlackboard().tree.setup(rospy.node)
+        print('2')
 
     def sanity_check(self):
         hz = GiskardBlackboard().control_loop_max_hz
@@ -115,21 +119,21 @@ class Giskard:
         if len(world.controlled_joints) == 0 and len(world.joints) > 0:
             raise SetupException('No joints are flagged as controlled.')
         if len(non_controlled_joints) > 0:
-            middleware.loginfo(f'The following joints are non-fixed according to the urdf, '
+            get_middleware().loginfo(f'The following joints are non-fixed according to the urdf, '
                                f'but not flagged as controlled: {non_controlled_joints}.')
 
     def add_goal_package_name(self, package_name: str):
         new_goals = get_all_classes_in_package(package_name, Goal)
         if len(new_goals) == 0:
             raise SetupException(f'No classes of type \'{Goal.__name__}\' found in {package_name}.')
-        middleware.loginfo(f'Made goal classes {new_goals} available Giskard.')
+        get_middleware().loginfo(f'Made goal classes {new_goals} available Giskard.')
         god_map.motion_goal_manager.goal_package_paths.add(package_name)
 
     def add_monitor_package_name(self, package_name: str) -> None:
         new_monitors = get_all_classes_in_package(package_name, Monitor)
         if len(new_monitors) == 0:
             raise SetupException(f'No classes of type \'{Monitor.__name__}\' found in \'{package_name}\'.')
-        middleware.loginfo(f'Made Monitor classes \'{new_monitors}\' available Giskard.')
+        get_middleware().loginfo(f'Made Monitor classes \'{new_monitors}\' available Giskard.')
         god_map.monitor_manager.monitor_package_paths.add(package_name)
 
     def live(self):

@@ -16,7 +16,7 @@ from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 from rclpy.wait_for_message import wait_for_message as rclpy_wait_for_message
 from std_msgs.msg import String
 
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.ros2.msg_converter import msg_type_as_str
 from giskardpy_ros.utils.asynio_utils import wait_until_not_none
@@ -29,7 +29,7 @@ def wait_for_topic_to_appear(topic_name: str,
     waiting_message = f'Waiting for topic \'{topic_name}\' to appear...'
     msg_type = None
     while msg_type is None and not rospy.is_shutdown():
-        middleware.loginfo(waiting_message)
+        get_middleware().loginfo(waiting_message)
         try:
             rostopic.get_info_text(topic_name)
             msg_type, _, _ = rostopic.get_topic_class(topic_name)
@@ -39,7 +39,7 @@ def wait_for_topic_to_appear(topic_name: str,
                 raise TypeError(f'Topic of type \'{msg_type}\' is not supported. '
                                 f'Must be one of: \'{supported_types}\'')
             else:
-                middleware.loginfo(f'\'{topic_name}\' appeared.')
+                get_middleware().loginfo(f'\'{topic_name}\' appeared.')
                 return msg_type
         except (ROSException, ROSTopicException) as e:
             rospy.sleep(sleep_time)
@@ -137,7 +137,7 @@ def wait_for_publisher(publisher):
 
 
 def load_urdf(file_path: str) -> str:
-    file_path = middleware.resolve_iri(file_path)
+    file_path = get_middleware().resolve_iri(file_path)
     doc = xacro.process_file(file_path, mappings={'radius': '0.9'})
     return doc.toprettyxml(indent='  ')
 

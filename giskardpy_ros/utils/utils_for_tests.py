@@ -35,7 +35,7 @@ from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.data_types.exceptions import UnknownGroupException, DuplicateNameException, WorldException
 from giskardpy.goals.diff_drive_goals import DiffDriveTangentialToPoint, KeepHandInWorkspace
 from giskardpy.god_map import god_map
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy.model.collision_world_syncer import Collisions, Collision, CollisionEntry
 from giskardpy.model.joints import OneDofJoint, OmniDrive, DiffDrive, Joint
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA
@@ -184,32 +184,32 @@ def position_dict_to_joint_states(joint_state_dict: Dict[str, float]) -> JointSt
 
 
 def pr2_urdf():
-    path = middleware.resolve_iri('package://giskardpy/test/urdfs/pr2_with_base.urdf')
+    path = get_middleware().resolve_iri('package://giskardpy/test/urdfs/pr2_with_base.urdf')
     with open(path, 'r') as f:
         urdf_string = f.read()
     return urdf_string
 
 
 def pr2_without_base_urdf():
-    with open('urdfs/pr2.urdf', 'r') as f:
+    with open('../../test/urdfs/pr2.urdf', 'r') as f:
         urdf_string = f.read()
     return urdf_string
 
 
 def base_bot_urdf():
-    with open('urdfs/2d_base_bot.urdf', 'r') as f:
+    with open('../../test/urdfs/2d_base_bot.urdf', 'r') as f:
         urdf_string = f.read()
     return urdf_string
 
 
 def donbot_urdf():
-    with open('urdfs/iai_donbot.urdf', 'r') as f:
+    with open('../../test/urdfs/iai_donbot.urdf', 'r') as f:
         urdf_string = f.read()
     return urdf_string
 
 
 def boxy_urdf():
-    with open('urdfs/boxy.urdf', 'r') as f:
+    with open('../../test/urdfs/boxy.urdf', 'r') as f:
         urdf_string = f.read()
     return urdf_string
 
@@ -273,6 +273,7 @@ class GiskardTester:
     giskard: Giskard
 
     def __init__(self, giskard: Giskard):
+        print('0.0')
         self.async_loop = asyncio.new_event_loop()
         self.total_time_spend_giskarding = 0
         self.total_time_spend_moving = 0
@@ -282,7 +283,7 @@ class GiskardTester:
         self.giskard = giskard
         self.giskard.grow()
         if god_map.is_in_github_workflow():
-            middleware.loginfo('Inside github workflow, turning off visualization')
+            get_middleware().loginfo('Inside github workflow, turning off visualization')
             GiskardBlackboard().tree.turn_off_visualization()
         if 'QP_SOLVER' in os.environ:
             god_map.qp_controller.set_qp_solver(SupportedQPSolver[os.environ['QP_SOLVER']])
@@ -386,7 +387,7 @@ class GiskardTester:
                                         str(int(god_map.qp_controller.max_derivative)),
                                         str(times)])
 
-        middleware.loginfo(f'saved benchmark file in {file_name}')
+        get_middleware().loginfo(f'saved benchmark file in {file_name}')
 
     def tear_down(self):
         # GiskardBlackboard().tree.stop_spinning()
@@ -398,9 +399,9 @@ class GiskardTester:
         giskarding_time = self.total_time_spend_giskarding
         if not GiskardBlackboard().tree.is_standalone():
             giskarding_time -= self.total_time_spend_moving
-        middleware.loginfo(f'total time spend giskarding: {giskarding_time}')
-        middleware.loginfo(f'total time spend moving: {self.total_time_spend_moving}')
-        middleware.loginfo('stopping tree')
+        get_middleware().loginfo(f'total time spend giskarding: {giskarding_time}')
+        get_middleware().loginfo(f'total time spend moving: {self.total_time_spend_moving}')
+        get_middleware().loginfo('stopping tree')
 
     def set_env_state(self, joint_state: Dict[str, float], object_name: Optional[str] = None):
         if object_name is None:
@@ -446,9 +447,9 @@ class GiskardTester:
     #
 
     def teleport_base(self, goal_pose, group_name: Optional[str] = None):
-        done = self.monitors.add_set_seed_odometry(base_pose=goal_pose, group_name=group_name)
-        self.allow_all_collisions()
-        self.monitors.add_end_motion(start_condition=done)
+        done = self.api.monitors.add_set_seed_odometry(base_pose=goal_pose, group_name=group_name)
+        self.api.motion_goals.allow_all_collisions()
+        self.api.monitors.add_end_motion(start_condition=done)
         self.execute(add_local_minimum_reached=False)
 
     def set_keep_hand_in_workspace(self, tip_link, map_frame=None, base_footprint=None):
@@ -527,7 +528,7 @@ class GiskardTester:
             self.total_time_spend_giskarding += diff
             self.total_time_spend_moving += (len(god_map.trajectory.keys()) *
                                              god_map.qp_controller.sample_period)
-            middleware.logwarn(f'Goal processing took {diff}')
+            get_middleware().logwarn(f'Goal processing took {diff}')
             result_exception = msg_converter.error_msg_to_exception(r.error)
             if expected_error_type is not None:
                 assert type(result_exception) == expected_error_type, \
@@ -928,7 +929,7 @@ class GiskardTester:
 
 
 def launch_launchfile(file_name: str):
-    launch_file = middleware.resolve_iri(file_name)
+    launch_file = get_middleware().resolve_iri(file_name)
     uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
     roslaunch.configure_logging(uuid)
     launch = roslaunch.parent.ROSLaunchParent(uuid, [launch_file])

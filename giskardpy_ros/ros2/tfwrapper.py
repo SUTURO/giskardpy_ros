@@ -16,7 +16,7 @@ from tf2_geometry_msgs import do_transform_pose, do_transform_vector3, do_transf
 from tf2_py import InvalidArgumentException
 from tf2_ros import Buffer, TransformListener
 
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy.utils.decorators import memoize
 from giskardpy_ros.ros2 import rospy
 

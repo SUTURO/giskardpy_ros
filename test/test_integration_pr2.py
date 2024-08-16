@@ -7,17 +7,17 @@ import numpy as np
 import pytest
 import xacro
 from ament_index_python import get_package_share_directory
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, Vector3Stamped, PointStamped, QuaternionStamped, Pose
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Vector3Stamped, PointStamped, QuaternionStamped
 from nav_msgs.msg import Path
 from numpy import pi
 from shape_msgs.msg import SolidPrimitive
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import WorldBody, CollisionEntry, LinkName, GiskardError
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy.model.world_config import WorldWithOmniDriveRobot
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
-from giskardpy_ros.configs.iai_robots.pr2 import PR2CollisionAvoidance, PR2StandaloneInterface, WorldWithPR2Config
+from giskardpy_ros.configs.iai_robots.pr2 import PR2CollisionAvoidance, PR2StandaloneInterface
 from giskardpy.qp.qp_controller_config import SupportedQPSolver, QPControllerConfig
 from giskardpy.data_types.exceptions import GiskardException, VelocityLimitUnreachableException, \
     MaxTrajectoryLengthException, UnknownGoalException, GoalInitalizationException, LocalMinimumException, \
@@ -34,10 +34,8 @@ from giskardpy.god_map import god_map
 from giskardpy.model.utils import hacky_urdf_parser_fix
 from giskardpy.data_types.data_types import PrefixName
 from giskardpy.motion_graph.tasks.task import WEIGHT_BELOW_CA, WEIGHT_ABOVE_CA, WEIGHT_COLLISION_AVOIDANCE
-from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
-from utils_for_tests import launch_launchfile
-from utils_for_tests import compare_poses, publish_marker_vector, GiskardTester, compare_points
+from giskardpy_ros.utils.utils_for_tests import compare_poses, publish_marker_vector, GiskardTester, compare_points
 from giskardpy.goals.weight_scaling_goals import MaxManipulabilityLinWeight, BaseArmWeightScaling
 
 # scopes = ['module', 'class', 'function']
@@ -232,7 +230,9 @@ class PR2Tester(GiskardTester):
 def giskard(request, ros):
     # launch_launchfile('package://iai_pr2_description/launch/upload_pr2_calibrated_with_ft2.launch')
     # launch_launchfile('package://iai_pr2_description/launch/upload_pr2_cableguide.launch')
+    print('init pr2 tester')
     c = PR2Tester()
+    print(' done init pr2 tester')
     # c = PR2TestWrapperMujoco()
     request.addfinalizer(c.tear_down)
     return c
@@ -1588,13 +1588,7 @@ class TestConstraints:
             lower_limit2 = center - joint_range / 2. * (1 - percentage / 100.)
             assert upper_limit2 >= position >= lower_limit2
 
-    def test_pointing_kitchen(self, better_pose: PR2Tester):
-        base_goal = PoseStamped()
-        base_goal.header.frame_id = 'base_footprint'
-        base_goal.pose.position.y = -1
-        base_goal.pose.orientation.w = 1
-        better_pose.teleport_base(base_goal)
-
+    def test_pointing(self, better_pose: PR2Tester):
         tip = 'head_mount_kinect_rgb_link'
         goal_point = better_pose.compute_fk_point(root_link='map', tip_link='r_gripper_tool_frame')
         pointing_axis = Vector3Stamped()
@@ -2706,7 +2700,7 @@ class TestWorldManipulation:
 
     def test_single_joint_urdf(self, zero_pose: PR2Tester):
         object_name = 'spoon'
-        path = middleware.resolve_iri('package://giskardpy_ros/test/spoon/urdf/spoon.urdf')
+        path = get_middleware().resolve_iri('package://giskardpy_ros/test/spoon/urdf/spoon.urdf')
         with open(path, 'r') as f:
             urdf_str = hacky_urdf_parser_fix(f.read())
         pose = PoseStamped()

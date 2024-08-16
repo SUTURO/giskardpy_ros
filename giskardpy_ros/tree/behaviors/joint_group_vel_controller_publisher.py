@@ -5,7 +5,7 @@ from std_msgs.msg import Float64MultiArray
 
 from giskardpy.data_types.data_types import PrefixName
 from giskardpy.god_map import god_map
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
@@ -24,7 +24,7 @@ class JointGroupVelController(GiskardBehavior):
         self.joint_names = joints
         god_map.world.register_controlled_joints(self.joint_names)
         self.msg = None
-        middleware.loginfo(f'Created publisher for {self.cmd_topic} for {self.joint_names}')
+        get_middleware().loginfo(f'Created publisher for {self.cmd_topic} for {self.joint_names}')
 
     @catch_and_raise_to_blackboard
     @record_time

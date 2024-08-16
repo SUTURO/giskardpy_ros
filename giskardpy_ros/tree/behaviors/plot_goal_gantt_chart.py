@@ -11,7 +11,7 @@ from giskardpy.motion_graph.monitors.monitors import Monitor, EndMotion, CancelM
 from giskardpy.god_map import god_map
 from giskardpy.motion_graph.tasks.task import TaskState
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
-from giskardpy.middleware import middleware
+from giskardpy.middleware import get_middleware
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy.utils.decorators import record_time
 from giskardpy.utils.utils import create_path
@@ -54,7 +54,7 @@ class PlotGanttChart(GiskardBehavior):
 
         create_path(file_name)
         plt.savefig(file_name)
-        middleware.loginfo(f'Saved gantt chart to {file_name}.')
+        get_middleware().loginfo(f'Saved gantt chart to {file_name}.')
 
     def plot_history(self,
                      history: List[Tuple[float, List[Optional[TaskState]]]],
@@ -110,7 +110,7 @@ class PlotGanttChart(GiskardBehavior):
             file_name = god_map.tmp_folder + f'gantt_charts/goal_{GiskardBlackboard().move_action_server.goal_id}.pdf'
             self.plot_gantt_chart(goals, monitors, file_name)
         except Exception as e:
-            middleware.logwarn(f'Failed to create goal gantt chart: {e}.')
+            get_middleware().logwarn(f'Failed to create goal gantt chart: {e}.')
             traceback.print_exc()
 
         return Status.SUCCESS
