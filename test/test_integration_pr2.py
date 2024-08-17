@@ -230,9 +230,7 @@ class PR2Tester(GiskardTester):
 def giskard(request, ros):
     # launch_launchfile('package://iai_pr2_description/launch/upload_pr2_calibrated_with_ft2.launch')
     # launch_launchfile('package://iai_pr2_description/launch/upload_pr2_cableguide.launch')
-    print('init pr2 tester')
     c = PR2Tester()
-    print(' done init pr2 tester')
     # c = PR2TestWrapperMujoco()
     request.addfinalizer(c.tear_down)
     return c
@@ -319,79 +317,73 @@ class TestJointGoals:
             'l_wrist_flex_joint': -0.1,
             'l_wrist_roll_joint': -6.062015047706399,
         }
-        # zero_pose.set_joint_goal(js)
-        # zero_pose.add_joint_goal_monitor('asdf', goal_state=js, threshold=0.005, crucial=False)
-        zero_pose.set_joint_goal(goal_state=js)
-        zero_pose.allow_all_collisions()
-        # zero_pose.set_json_goal('EnableVelocityTrajectoryTracking', enabled=True)
+        zero_pose.api.motion_goals.add_joint_position(goal_state=js)
+        zero_pose.api.motion_goals.allow_all_collisions()
         zero_pose.projection()
 
-        zero_pose.set_joint_goal(goal_state=js)
-        zero_pose.allow_all_collisions()
-        # zero_pose.set_json_goal('EnableVelocityTrajectoryTracking', enabled=True)
+        zero_pose.api.motion_goals.add_joint_position(goal_state=js)
+        zero_pose.api.motion_goals.allow_all_collisions()
         zero_pose.execute()
 
-        zero_pose.set_seed_configuration(zero_pose.better_pose)
-        zero_pose.set_joint_goal(goal_state=js)
-        zero_pose.allow_all_collisions()
-        # zero_pose.set_json_goal('EnableVelocityTrajectoryTracking', enabled=True)
+        zero_pose.api.monitors.add_set_seed_configuration(zero_pose.better_pose)
+        zero_pose.api.motion_goals.add_joint_position(goal_state=js)
+        zero_pose.api.motion_goals.allow_all_collisions()
         zero_pose.projection()
 
     def test_gripper_goal(self, zero_pose: PR2Tester):
         js = {
             'r_gripper_l_finger_joint': 0.55
         }
-        zero_pose.set_joint_goal(js)
-        zero_pose.allow_all_collisions()
+        zero_pose.api.motion_goals.add_joint_position(js)
+        zero_pose.api.motion_goals.allow_all_collisions()
         zero_pose.execute()
 
     def test_joint_movement1(self, zero_pose: PR2Tester):
-        zero_pose.allow_all_collisions()
-        zero_pose.set_joint_goal(pocky_pose)
+        zero_pose.api.motion_goals.allow_all_collisions()
+        zero_pose.api.motion_goals.add_joint_position(pocky_pose)
         zero_pose.execute()
 
     def test_partial_joint_state_goal1(self, zero_pose: PR2Tester):
-        zero_pose.allow_self_collision()
+        zero_pose.api.motion_goals.allow_self_collision()
         js = dict(list(pocky_pose.items())[:3])
-        zero_pose.set_joint_goal(js)
+        zero_pose.api.motion_goals.add_joint_position(js)
         zero_pose.execute()
 
     def test_continuous_joint1(self, zero_pose: PR2Tester):
-        zero_pose.allow_all_collisions()
-        # zero_pose.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
+        zero_pose.api.motion_goals.allow_all_collisions()
         js = {'r_wrist_roll_joint': -pi}
-        zero_pose.set_joint_goal(js)
+        zero_pose.api.motion_goals.add_joint_position(js)
         zero_pose.execute()
 
     def test_continuous_joint2(self, zero_pose: PR2Tester):
-        zero_pose.allow_self_collision()
+        zero_pose.api.motion_goals.allow_self_collision()
         # zero_pose.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
         js = {'r_wrist_roll_joint': -pi,
               'l_wrist_roll_joint': -2.1 * pi, }
-        zero_pose.set_joint_goal(js)
+        zero_pose.api.motion_goals.add_joint_position(js)
         zero_pose.execute()
 
     def test_prismatic_joint1(self, zero_pose: PR2Tester):
-        zero_pose.allow_all_collisions()
+        zero_pose.api.motion_goals.allow_all_collisions()
         js = {'torso_lift_joint': 0.1}
-        zero_pose.set_joint_goal(js)
+        zero_pose.api.motion_goals.add_joint_position(js)
         zero_pose.execute()
 
     def test_revolute_joint1(self, zero_pose: PR2Tester):
-        zero_pose.allow_all_collisions()
+        zero_pose.api.motion_goals.allow_all_collisions()
         js = {'r_elbow_flex_joint': -1}
-        zero_pose.set_joint_goal(js)
+        zero_pose.api.motion_goals.add_joint_position(js)
         zero_pose.execute()
 
     def test_unlimited_joint_goal(self, zero_pose: PR2Tester):
-        zero_pose.allow_all_collisions()
-        zero_pose.motion_goals.add_motion_goal(motion_goal_class=UnlimitedJointGoal.__name__,
-                                               joint_name='r_elbow_flex_joint',
-                                               goal_position=-3)
+        zero_pose.api.motion_goals.allow_all_collisions()
+        zero_pose.api.motion_goals.add_motion_goal(motion_goal_class=UnlimitedJointGoal.__name__,
+                                                   joint_name='r_elbow_flex_joint',
+                                                   goal_position=-3)
         zero_pose.execute()
 
     def test_hard_joint_limits(self, zero_pose: PR2Tester):
-        zero_pose.allow_self_collision()
+        zero_pose.api.motion_goals.allow_self_collision()
         r_elbow_flex_joint = god_map.world.search_for_joint_name('r_elbow_flex_joint')
         torso_lift_joint = god_map.world.search_for_joint_name('torso_lift_joint')
         head_pan_joint = god_map.world.search_for_joint_name('head_pan_joint')
@@ -402,17 +394,17 @@ class TestJointGoals:
         goal_js = {'r_elbow_flex_joint': r_elbow_flex_joint_limits[0] - 0.2,
                    'torso_lift_joint': torso_lift_joint_limits[0] - 0.2,
                    'head_pan_joint': head_pan_joint_limits[0] - 0.2}
-        zero_pose.set_joint_goal(goal_js, add_monitor=False)
+        zero_pose.api.motion_goals.add_joint_position(goal_js, add_monitor=False)
         zero_pose.execute()
         js = {'torso_lift_joint': 0.32}
-        zero_pose.set_joint_goal(js)
+        zero_pose.api.motion_goals.add_joint_position(js)
         zero_pose.execute()
 
         goal_js = {'r_elbow_flex_joint': r_elbow_flex_joint_limits[1] + 0.2,
                    'torso_lift_joint': torso_lift_joint_limits[1] + 0.2,
                    'head_pan_joint': head_pan_joint_limits[1] + 0.2}
 
-        zero_pose.set_joint_goal(goal_js, add_monitor=False)
+        zero_pose.api.motion_goals.add_joint_position(goal_js, add_monitor=False)
         zero_pose.execute()
 
 

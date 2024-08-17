@@ -488,9 +488,9 @@ class GiskardTester:
         for key, value in list(last_js.items()):
             if key not in god_map.world.controlled_joints:
                 del last_js[key]
-        result = self.send_goal(expected_error_type=expected_error_type,
-                                goal_type=Move_Goal.PROJECTION,
-                                wait=wait)
+        result = self.async_loop.run_until_complete(self.send_goal(expected_error_type=expected_error_type,
+                                                                   goal_type=Move_Goal.PROJECTION,
+                                                                   wait=wait))
         new_js = god_map.world.state.to_position_dict()
         for key, value in list(new_js.items()):
             if key not in god_map.world.controlled_joints:

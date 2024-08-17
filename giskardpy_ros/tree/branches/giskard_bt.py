@@ -213,9 +213,9 @@ def render_dot_tree(
     )
     filenames: Dict[str, str] = {}
     for extension, writer in {
-        "dot": graph.write,
+        # "dot": graph.write,
         "png": graph.write_png,
-        "svg": graph.write_svg,
+        # "svg": graph.write_svg,
     }.items():
         filename = filename_wo_extension + "." + extension
         pathname = os.path.join(target_directory, filename)

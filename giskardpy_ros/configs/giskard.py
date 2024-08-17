@@ -91,19 +91,15 @@ class Giskard:
         """
         with god_map.world.modify_world():
             self.world_config.setup()
-        print('-1')
         self.behavior_tree_config._create_behavior_tree()
         self.behavior_tree_config.setup()
-        print('0')
         self.robot_interface_config.setup()
         god_map.world._notify_model_change()
         self.collision_avoidance_config.setup()
         self.collision_avoidance_config._sanity_check()
         god_map.collision_scene.sync()
         self.sanity_check()
-        print('1')
         GiskardBlackboard().tree.setup(rospy.node)
-        print('2')
 
     def sanity_check(self):
         hz = GiskardBlackboard().control_loop_max_hz
