@@ -380,7 +380,6 @@ def dot_tree(
     graph.set_edge_defaults(fontname="times-roman")
     (node_shape, node_colour, node_font_colour) = get_node_attributes(root)
     label, color = get_node_label(root.name, root)
-    node_font_colour = color
     node_root = pydot.Node(
         name=root.name,
         label=label,
@@ -389,6 +388,7 @@ def dot_tree(
         fillcolor=node_colour,
         fontsize=fontsize,
         fontcolor=node_font_colour,
+        color=color,
     )
     graph.add_node(node_root)
     behaviour_id_name_map = {root.id: root.name}
@@ -414,7 +414,7 @@ def dot_tree(
                 # Node attributes can be found on page 5 of
                 #    https://graphviz.gitlab.io/_pages/pdf/dot.1.pdf
                 # Attributes that may be useful: tooltip, xlabel
-                label, node_font_colour = get_node_label(node_name, c)
+                label, color = get_node_label(node_name, c)
                 node = pydot.Node(
                     name=node_name,
                     label=label,
@@ -560,7 +560,7 @@ def add_children_stats_to_parent(parent: Composite) -> None:
         names2 = [c.name for c in children]
         for name, child in zip(names2, children):
             original_child = get_original_node(child)
-            if isinstance(original_child, Composite):
+            if isinstance(original_child, (Composite, Decorator)):
                 add_children_stats_to_parent(original_child)
 
             if not hasattr(parent, '__times'):
@@ -572,11 +572,9 @@ def add_children_stats_to_parent(parent: Composite) -> None:
                 time_dict = {}
             for function_name in time_function_names:
                 if function_name in time_dict:
-                    if function_name not in parent.__times:
-                        parent.__times = deepcopy(time_dict)
-                    else:
-                        for i, (v1, v2) in enumerate(zip(parent.__times[function_name], time_dict[function_name])):
-                            if i > len(parent.__times[function_name]):
-                                parent.__times[function_name].append(v2)
-                            else:
-                                parent.__times[function_name][i] = v1 + v2
+                    parent_len = len(parent.__times[function_name])
+                    child_len = len(time_dict[function_name])
+                    max_len = max(parent_len, child_len)
+                    parent_padded = np.pad(parent.__times[function_name], (0, max_len - parent_len), 'constant')
+                    child_padded = np.pad(time_dict[function_name], (0, max_len - child_len), 'constant')
+                    parent.__times[function_name] = parent_padded + child_padded
