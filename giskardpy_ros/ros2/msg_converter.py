@@ -206,21 +206,29 @@ def trajectory_to_ros_trajectory(data: Trajectory,
     return trajectory_msg
 
 
+@profile
 def world_to_tf_message(world: WorldTree, include_prefix: bool) -> tf2_msgs.TFMessage:
     tf_msg = tf2_msgs.TFMessage()
-    for joint_name, joint in world.joints.items():
-        p_T_c = world.compute_fk(root_link=joint.parent_link_name, tip_link=joint.child_link_name)
-        if include_prefix:
-            parent_link_name = joint.parent_link_name
-            child_link_name = joint.child_link_name
-        else:
-            parent_link_name = joint.parent_link_name.short_name
-            child_link_name = joint.child_link_name.short_name
-        p_T_c.reference_frame = parent_link_name
-        p_T_c.child_frame = child_link_name
-        p_T_c = trans_matrix_to_transform_stamped(p_T_c)
-        p_T_c.header.stamp = rospy.node.get_clock().now().to_msg()
-        tf_msg.transforms.append(p_T_c)
+    tf = world._fk_computer.compute_tf()
+    current_time = rospy.node.get_clock().now()
+    tf_msg.transforms = world.create_tf_message_batch(len(world._fk_computer.tf))
+    for i, (parent_link_name, child_link_name) in enumerate(world._fk_computer.tf):
+        pose = tf[i]
+        if not include_prefix:
+            parent_link_name = parent_link_name.short_name
+            child_link_name = child_link_name.short_name
+
+        p_T_c = tf_msg.transforms[i]
+        p_T_c.header.frame_id = str(parent_link_name)
+        p_T_c.header.stamp = current_time
+        p_T_c.child_frame_id = str(child_link_name)
+        p_T_c.transform.translation.x = pose[0]
+        p_T_c.transform.translation.y = pose[1]
+        p_T_c.transform.translation.z = pose[2]
+        p_T_c.transform.rotation.x = pose[3]
+        p_T_c.transform.rotation.y = pose[4]
+        p_T_c.transform.rotation.z = pose[5]
+        p_T_c.transform.rotation.w = pose[6]
     return tf_msg
 
 
@@ -461,6 +469,7 @@ def pose_stamped_to_trans_matrix(msg: geometry_msgs.PoseStamped, world: WorldTre
                                                         rotation_matrix=R,
                                                         reference_frame=world.search_for_link_name(msg.header.frame_id))
     return result
+
 
 def pose_to_trans_matrix(msg: geometry_msgs.Pose) -> cas.TransMatrix:
     p = cas.Point3.from_xyz(msg.position.x, msg.position.y, msg.position.z)
