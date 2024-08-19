@@ -126,12 +126,12 @@ class GiskardBT(BehaviourTree):
         self.cleanup_control_loop.remove_reset_world_state()
 
     def live(self):
-        get_middleware().loginfo('giskard is ready')
+        get_middleware().loginfo('Giskard is ready.')
         self.tick_tock(period_ms=1000.0)
         rospy.spinner_thread.join()
         self.shutdown()
         rclpy.try_shutdown()
-        get_middleware().loginfo('giskard died')
+        get_middleware().loginfo('Giskard died.')
 
     def stop_spinning(self):
         self.executer.shutdown()

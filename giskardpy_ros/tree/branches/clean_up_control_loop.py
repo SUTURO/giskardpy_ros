@@ -11,6 +11,7 @@ from giskardpy_ros.tree.behaviors.plot_trajectory import PlotTrajectory
 from giskardpy_ros.tree.behaviors.publish_feedback import PublishFeedback
 from giskardpy_ros.tree.behaviors.reset_joint_state import ResetWorldState
 from giskardpy_ros.tree.behaviors.time import TimePlugin
+from giskardpy_ros.tree.behaviors.visualization import VisualizeTrajectory
 from giskardpy.utils.decorators import toggle_on, toggle_off
 
 
@@ -35,6 +36,9 @@ class CleanupControlLoop(Sequence):
 
     def add_plot_debug_trajectory(self, normalize_position: bool = False, wait: bool = False):
         self.add_child(PlotDebugExpressions('plot debug trajectory', wait=wait, normalize_position=normalize_position))
+
+    def add_visualize_trajectory(self):
+        self.add_child(VisualizeTrajectory())
 
     def add_plot_gantt_chart(self):
         self.insert_child(PlotGanttChart(), 0)

@@ -10,6 +10,7 @@ import std_msgs.msg as std_msgs
 import tf2_msgs.msg as tf2_msgs
 import trajectory_msgs.msg as trajectory_msgs
 import visualization_msgs.msg as visualization_msgs
+from geometry_msgs.msg import TransformStamped
 from giskard_msgs.msg import GiskardError
 from rclpy.duration import Duration
 from rclpy.time import Time
@@ -31,6 +32,7 @@ from giskardpy.motion_graph.tasks.task import Task
 from giskardpy.utils.math import quaternion_from_rotation_matrix
 from giskardpy.utils.utils import get_all_classes_in_module
 from giskardpy_ros.ros2 import rospy
+from giskardpy_ros.ros2.visualization_mode import VisualizationMode
 
 
 # TODO probably needs some consistency check
@@ -57,9 +59,13 @@ def to_visualization_marker(data):
         return link_geometry_to_visualization_marker(data)
 
 
-def link_to_visualization_marker(data: Link, use_decomposed_meshes: bool) -> visualization_msgs.MarkerArray:
+def link_to_visualization_marker(data: Link, mode: VisualizationMode) -> visualization_msgs.MarkerArray:
     markers = visualization_msgs.MarkerArray()
-    for collision in data.collisions:
+    if mode.is_visual():
+        geometries = data.visuals
+    else:
+        geometries = data.collisions
+    for collision in geometries:
         if isinstance(collision, BoxGeometry):
             marker = link_geometry_box_to_visualization_marker(collision)
         elif isinstance(collision, CylinderGeometry):
@@ -67,9 +73,12 @@ def link_to_visualization_marker(data: Link, use_decomposed_meshes: bool) -> vis
         elif isinstance(collision, SphereGeometry):
             marker = link_geometry_sphere_to_visualization_marker(collision)
         elif isinstance(collision, MeshGeometry):
-            marker = link_geometry_mesh_to_visualization_marker(collision, use_decomposed_meshes)
+            marker = link_geometry_mesh_to_visualization_marker(collision, mode)
+            if mode.is_visual():
+                marker.mesh_use_embedded_materials = True
+                marker.color = std_msgs.ColorRGBA()
         else:
-            raise GiskardException('failed conversion')
+            raise GiskardException(f'Can\'t convert {type(collision)} to visualization marker.')
         markers.markers.append(marker)
     return markers
 
@@ -77,6 +86,7 @@ def link_to_visualization_marker(data: Link, use_decomposed_meshes: bool) -> vis
 def link_geometry_to_visualization_marker(data: LinkGeometry) -> visualization_msgs.Marker:
     marker = visualization_msgs.Marker()
     marker.color = color_rgba_to_ros_msg(data.color)
+    marker.pose = to_ros_message(data.link_T_geometry).pose
     return marker
 
 
@@ -107,11 +117,11 @@ def link_geometry_box_to_visualization_marker(data: BoxGeometry) -> visualizatio
     return marker
 
 
-def link_geometry_mesh_to_visualization_marker(data: MeshGeometry, use_decomposed_meshes: bool) \
+def link_geometry_mesh_to_visualization_marker(data: MeshGeometry, mode: VisualizationMode) \
         -> visualization_msgs.Marker:
     marker = link_geometry_to_visualization_marker(data)
     marker.type = visualization_msgs.Marker.MESH_RESOURCE
-    if use_decomposed_meshes:
+    if mode.is_collision_decomposed():
         marker.mesh_resource = 'file://' + data.collision_file_name_absolute
     else:
         marker.mesh_resource = 'file://' + data.file_name_absolute
@@ -210,8 +220,8 @@ def trajectory_to_ros_trajectory(data: Trajectory,
 def world_to_tf_message(world: WorldTree, include_prefix: bool) -> tf2_msgs.TFMessage:
     tf_msg = tf2_msgs.TFMessage()
     tf = world._fk_computer.compute_tf()
-    current_time = rospy.node.get_clock().now()
-    tf_msg.transforms = world.create_tf_message_batch(len(world._fk_computer.tf))
+    current_time = rospy.node.get_clock().now().to_msg()
+    tf_msg.transforms = create_tf_message_batch(len(world._fk_computer.tf))
     for i, (parent_link_name, child_link_name) in enumerate(world._fk_computer.tf):
         pose = tf[i]
         if not include_prefix:
@@ -498,3 +508,11 @@ def quaternion_stamped_to_quaternion(msg: geometry_msgs.QuaternionStamped, world
 
 def collision_entry_msg_to_giskard(msg: giskard_msgs.CollisionEntry) -> CollisionEntry:
     return CollisionEntry(msg.type, msg.distance, msg.group1, msg.group2)
+
+
+__tf_messages: List[TransformStamped] = [TransformStamped() for _ in range(10000)]
+
+
+def create_tf_message_batch(size: int) -> List[TransformStamped]:
+    global __tf_messages
+    return __tf_messages[:size]

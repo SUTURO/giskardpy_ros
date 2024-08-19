@@ -11,7 +11,7 @@ from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard, G
 
 class CleanUp(GiskardBehavior):
     @profile
-    def __init__(self, name, clear_markers=True):
+    def __init__(self, name, clear_markers=False):
         super().__init__(name)
         self.clear_markers_ = clear_markers
         self.marker_pub = rospy.node.create_publisher(MarkerArray,
@@ -31,7 +31,7 @@ class CleanUp(GiskardBehavior):
         if self.clear_markers_:
             self.clear_markers()
         GiskardBlackboard().giskard.set_defaults()
-        god_map.world.fast_all_fks = None
+        god_map.world.compiled_all_fks = None
         god_map.collision_scene.reset_cache()
         god_map.collision_scene.clear_collision_matrix()
         god_map.closest_point = Collisions(1)

@@ -166,7 +166,7 @@ class PR2Tester(GiskardTester):
                                                                                # collision_checker=CollisionCheckerLib.none),
                                                                                ),
                               behavior_tree_config=StandAloneBTConfig(debug_mode=True,
-                                                                      publish_tf=False,
+                                                                      publish_tf=True,
                                                                       simulation_max_hz=None),
                               # qp_controller_config=QPControllerConfig(qp_solver=SupportedQPSolver.gurobi))
                               qp_controller_config=QPControllerConfig())

@@ -1,3 +1,5 @@
+from copy import deepcopy
+from enum import Enum
 from typing import Optional, List
 
 import numpy as np
@@ -8,11 +10,13 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 from giskardpy.god_map import god_map
 from giskardpy.model.collision_world_syncer import Collisions, Collision
+from giskardpy.model.trajectory import Trajectory
 import giskardpy_ros.ros2.msg_converter as msg_converter
 from giskardpy.model.links import Link
 from giskardpy_ros.ros2.ros2_interface import wait_for_publisher, wait_for_topic_to_appear
 
 from giskardpy_ros.ros2 import rospy
+from giskardpy_ros.ros2.visualization_mode import VisualizationMode
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy_ros.utils.decorators import memoize
 
@@ -21,47 +25,68 @@ class ROSMsgVisualization:
     red = ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
     yellow = ColorRGBA(r=1.0, g=1.0, b=0.0, a=1.0)
     green = ColorRGBA(r=0.0, g=1.0, b=0.0, a=1.0)
+    mode: VisualizationMode
+    frame_locked: bool
+    world_version: int
 
     @profile
-    def __init__(self, tf_frame: Optional[str] = None, use_decomposed_meshes: bool = True):
-        self.use_decomposed_meshes = use_decomposed_meshes
-        self.publisher = rospy.node.create_publisher(MarkerArray,
-                                                   f'{rospy.node.get_name()}/visualization_marker_array',
-                                               10)
+    def __init__(self,
+                 visualization_topic: str = 'visualization_marker_array',
+                 mode: VisualizationMode = VisualizationMode.CollisionsDecomposed):
+        self.mode = mode
+        self.frame_locked = self.mode in [VisualizationMode.VisualsFrameLocked,
+                                          VisualizationMode.CollisionsFrameLocked,
+                                          VisualizationMode.CollisionsDecomposedFrameLocked]
+        self.publisher = rospy.node.create_publisher(msg_type=MarkerArray,
+                                                     topic=f'{rospy.node.get_name()}/{visualization_topic}',
+                                                     qos_profile=10)
         self.marker_ids = {}
-        if tf_frame is None:
-            self.tf_root = str(god_map.world.root_link_name)
-        else:
-            self.tf_root = tf_frame
+        self.tf_root = str(god_map.world.root_link_name)
         GiskardBlackboard().ros_visualizer = self
+        self.world_version = -1
 
     @memoize
     def link_to_marker(self, link: Link):
-        return msg_converter.link_to_visualization_marker(link, self.use_decomposed_meshes).markers
+        return msg_converter.link_to_visualization_marker(link, self.mode).markers
+
+    def has_world_changed(self) -> bool:
+        if self.world_version != god_map.world.model_version:
+            self.world_version = god_map.world.model_version
+            return True
+        return False
 
     @profile
-    def create_world_markers(self, name_space: str = 'planning_visualization') -> List[Marker]:
-        # todo add caching
+    def create_world_markers(self, name_space: str = 'world', marker_id_offset: int = 0) -> List[Marker]:
         markers = []
         time_stamp = rospy.node.get_clock().now().to_msg()
-        links = god_map.world.link_names_with_collisions
+        if self.mode in [VisualizationMode.Visuals, VisualizationMode.VisualsFrameLocked]:
+            links = god_map.world.link_names
+        else:
+            links = god_map.world.link_names_with_collisions
         for i, link_name in enumerate(links):
             link = god_map.world.links[link_name]
-            link_markers = self.link_to_marker(link)
-            for j, marker in enumerate(link_markers):
-                marker.header.frame_id = self.tf_root
+            collision_markers = msg_converter.link_to_visualization_marker(data=link, mode=self.mode).markers
+            for j, marker in enumerate(collision_markers):
+                if self.frame_locked:
+                    marker.header.frame_id = link_name.short_name
+                else:
+                    marker.header.frame_id = self.tf_root
                 marker.action = Marker.ADD
                 link_id_key = f'{link_name}_{j}'
                 if link_id_key not in self.marker_ids:
                     self.marker_ids[link_id_key] = len(self.marker_ids)
-                marker.id = self.marker_ids[link_id_key]
+                marker.id = self.marker_ids[link_id_key] + marker_id_offset
                 marker.ns = name_space
                 marker.header.stamp = time_stamp
-                pose = god_map.collision_scene.get_map_T_geometry(link_name, j)
-                if not isinstance(pose, Pose):
-                    marker.pose = msg_converter.numpy_to_pose_stamped(pose, self.tf_root).pose
+                # pose = god_map.collision_scene.get_map_T_geometry(link_name, j)
+                # if not isinstance(pose, Pose):
+                #     marker.pose = msg_converter.numpy_to_pose_stamped(pose, self.tf_root).pose
+                # else:
+                #     marker.pose = pose
+                if self.frame_locked:
+                    marker.frame_locked = True
                 else:
-                    marker.pose = pose
+                    marker.pose = god_map.collision_scene.get_map_T_geometry(link_name, j)
                 markers.append(marker)
         return markers
 
@@ -118,19 +143,46 @@ class ROSMsgVisualization:
         return [m]
 
     @profile
-    def publish_markers(self):
+    def publish_markers(self, world_ns: str = 'world', collision_ns: str = 'collisions') -> None:
+        if not self.mode == VisualizationMode.Nothing:
+            marker_array = MarkerArray()
+            if not self.frame_locked or self.frame_locked and self.has_world_changed():
+                marker_array.markers.extend(self.create_world_markers(name_space=world_ns))
+            marker_array.markers.extend(self.create_collision_markers(name_space=collision_ns))
+            self.publisher.publish(marker_array)
+
+    def publish_trajectory_markers(self, trajectory: Trajectory, every_x: int = 10,
+                                   start_alpha: float = 0.5, stop_alpha: float = 1.0,
+                                   namespace: str = 'trajectory') -> None:
+        self.clear_marker(namespace)
         marker_array = MarkerArray()
-        marker_array.markers.extend(self.create_world_markers())
-        marker_array.markers.extend(self.create_collision_markers())
+
+        def compute_alpha(i):
+            if i < 0 or i >= len(trajectory):
+                raise ValueError("Index i is out of range")
+            return start_alpha + i * (stop_alpha - start_alpha) / (len(trajectory) - 1)
+
+        with god_map.world.reset_joint_state_context():
+            for point_id, joint_state in trajectory.items():
+                if point_id % every_x == 0 or point_id == len(trajectory) - 1:
+                    god_map.world.state = joint_state
+                    god_map.world.notify_state_change()
+                    if self.mode not in [VisualizationMode.Visuals, VisualizationMode.VisualsFrameLocked]:
+                        god_map.collision_scene.sync()
+                    markers = self.create_world_markers(name_space=namespace,
+                                                        marker_id_offset=len(marker_array.markers))
+                    for m in markers:
+                        m.color.a = compute_alpha(point_id)
+                    marker_array.markers.extend(deepcopy(markers))
         self.publisher.publish(marker_array)
 
-    def clear_marker(self):
+    def clear_marker(self, ns: str):
         msg = MarkerArray()
         for i in self.marker_ids.values():
             marker = Marker()
             marker.action = Marker.DELETE
             marker.id = i
-            marker.ns = 'planning_visualization'
+            marker.ns = ns
             msg.markers.append(marker)
         self.publisher.publish(msg)
         self.marker_ids = {}
