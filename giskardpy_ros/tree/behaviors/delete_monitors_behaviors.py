@@ -7,6 +7,7 @@ from giskardpy.data_types.data_types import TaskState
 from giskardpy.god_map import god_map
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
+from line_profiler import profile
 
 if TYPE_CHECKING:
     from giskardpy_ros.tree.branches.payload_monitor_sequence import PayloadMonitorSequence

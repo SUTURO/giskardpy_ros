@@ -1,6 +1,7 @@
 from copy import deepcopy
 from enum import Enum
-from typing import Optional, List
+from line_profiler import profile
+from typing import Optional, List, Dict
 
 import numpy as np
 from geometry_msgs.msg import Vector3, Point, PoseStamped, Pose
@@ -8,11 +9,13 @@ from rclpy.qos import QoSProfile, QoSDurabilityPolicy
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import MarkerArray, Marker
 
+from giskardpy.data_types.data_types import PrefixName
 from giskardpy.god_map import god_map
 from giskardpy.model.collision_world_syncer import Collisions, Collision
 from giskardpy.model.trajectory import Trajectory
 import giskardpy_ros.ros2.msg_converter as msg_converter
 from giskardpy.model.links import Link
+from giskardpy.utils.decorators import clear_memo
 from giskardpy_ros.ros2.ros2_interface import wait_for_publisher, wait_for_topic_to_appear
 
 from giskardpy_ros.ros2 import rospy
@@ -46,12 +49,13 @@ class ROSMsgVisualization:
         self.world_version = -1
 
     @memoize
-    def link_to_marker(self, link: Link):
-        return msg_converter.link_to_visualization_marker(link, self.mode).markers
+    def link_to_marker(self, link: Link) -> List[Marker]:
+        return msg_converter.link_to_visualization_marker(data=link, mode=self.mode).markers
 
     def has_world_changed(self) -> bool:
         if self.world_version != god_map.world.model_version:
             self.world_version = god_map.world.model_version
+            # clear_memo(self.link_to_marker)
             return True
         return False
 
@@ -65,7 +69,7 @@ class ROSMsgVisualization:
             links = god_map.world.link_names_with_collisions
         for i, link_name in enumerate(links):
             link = god_map.world.links[link_name]
-            collision_markers = msg_converter.link_to_visualization_marker(data=link, mode=self.mode).markers
+            collision_markers = self.link_to_marker(link)
             for j, marker in enumerate(collision_markers):
                 if self.frame_locked:
                     marker.header.frame_id = link_name.short_name
@@ -78,11 +82,6 @@ class ROSMsgVisualization:
                 marker.id = self.marker_ids[link_id_key] + marker_id_offset
                 marker.ns = name_space
                 marker.header.stamp = time_stamp
-                # pose = god_map.collision_scene.get_map_T_geometry(link_name, j)
-                # if not isinstance(pose, Pose):
-                #     marker.pose = msg_converter.numpy_to_pose_stamped(pose, self.tf_root).pose
-                # else:
-                #     marker.pose = pose
                 if self.frame_locked:
                     marker.frame_locked = True
                 else:

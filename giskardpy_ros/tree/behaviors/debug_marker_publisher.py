@@ -7,6 +7,7 @@ from py_trees.common import Status
 from std_msgs.msg import ColorRGBA
 from tf2_msgs.msg import TFMessage
 from visualization_msgs.msg import Marker, MarkerArray
+from line_profiler import profile
 
 import giskardpy.casadi_wrapper as w
 from giskardpy.god_map import god_map

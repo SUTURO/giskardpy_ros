@@ -10,7 +10,7 @@ from giskardpy.data_types.exceptions import GiskardException
 from giskardpy.middleware import get_middleware
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.ros2 import rospy
-
+from line_profiler import profile
 
 class ActionServerHandler:
     """

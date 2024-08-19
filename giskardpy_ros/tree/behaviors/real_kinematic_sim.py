@@ -5,6 +5,7 @@ from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
 from giskardpy.utils.utils import is_running_in_pytest
+from line_profiler import profile
 
 
 class RealKinSimPlugin(GiskardBehavior):

@@ -9,6 +9,7 @@ from giskardpy.middleware import get_middleware
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy.utils.decorators import record_time
 import giskardpy_ros.ros2.msg_converter as msg_converter
+from line_profiler import profile
 
 
 class SetMoveResult(GiskardBehavior):

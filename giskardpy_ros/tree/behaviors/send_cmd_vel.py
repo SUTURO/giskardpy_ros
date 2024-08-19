@@ -11,6 +11,7 @@ from giskardpy.model.joints import OmniDrive, DiffDrive
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
+from line_profiler import profile
 
 
 # can be used during closed-loop control, instead of for tracking a trajectory

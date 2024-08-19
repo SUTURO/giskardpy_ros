@@ -9,6 +9,7 @@ from giskardpy_ros.ros2.ros2_interface import wait_for_topic_to_appear
 from giskardpy.model.joints import OneDofJoint, OmniDrive
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy_ros.ros2 import rospy
+from line_profiler import profile
 
 try:
     import pr2_controllers_msgs.msg

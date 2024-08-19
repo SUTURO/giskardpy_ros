@@ -7,6 +7,7 @@ from giskardpy.qp.qp_controller import QPController
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
+from line_profiler import profile
 
 
 class PublishDebugExpressions(GiskardBehavior):

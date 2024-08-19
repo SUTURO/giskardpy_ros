@@ -1,5 +1,6 @@
 import re
 from typing import List, Union, Dict, Tuple
+from line_profiler import profile
 
 import pydot
 from py_trees.common import Status

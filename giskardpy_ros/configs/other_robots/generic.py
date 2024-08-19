@@ -13,7 +13,7 @@ from giskardpy_ros.configs.giskard import RobotInterfaceConfig
 from giskardpy_ros.ros2 import ros2_interface, rospy
 from giskardpy_ros.ros2.ros2_interface import wait_for_message, search_for_unique_publisher_of_type
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
-
+from line_profiler import profile
 
 class GenericWorldConfig(WorldConfig):
     robot_name: str = ''

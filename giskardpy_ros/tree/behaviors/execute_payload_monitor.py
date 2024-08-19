@@ -6,6 +6,7 @@ from giskardpy.motion_graph.monitors.payload_monitors import PayloadMonitor
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard
+from line_profiler import profile
 
 
 class ExecutePayloadMonitor(GiskardBehavior):

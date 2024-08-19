@@ -1,7 +1,7 @@
 import builtins
 import json
 from typing import Optional, Union, List, Dict, Any
-
+from line_profiler import profile
 import geometry_msgs.msg as geometry_msgs
 import giskard_msgs.msg as giskard_msgs
 import numpy as np
@@ -59,6 +59,7 @@ def to_visualization_marker(data):
         return link_geometry_to_visualization_marker(data)
 
 
+@profile
 def link_to_visualization_marker(data: Link, mode: VisualizationMode) -> visualization_msgs.MarkerArray:
     markers = visualization_msgs.MarkerArray()
     if mode.is_visual():
@@ -83,6 +84,7 @@ def link_to_visualization_marker(data: Link, mode: VisualizationMode) -> visuali
     return markers
 
 
+@profile
 def link_geometry_to_visualization_marker(data: LinkGeometry) -> visualization_msgs.Marker:
     marker = visualization_msgs.Marker()
     marker.color = color_rgba_to_ros_msg(data.color)

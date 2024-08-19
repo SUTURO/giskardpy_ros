@@ -3,6 +3,7 @@ import uuid
 from threading import Thread
 from time import time
 from typing import Optional
+from line_profiler import profile
 
 import rclpy
 from py_trees import behaviour

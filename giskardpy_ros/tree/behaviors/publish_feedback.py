@@ -1,4 +1,5 @@
 from typing import Optional
+from line_profiler import profile
 
 import giskardpy_ros.ros2.msg_converter as msg_converter
 import numpy as np

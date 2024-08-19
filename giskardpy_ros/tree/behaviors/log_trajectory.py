@@ -5,6 +5,7 @@ from py_trees.common import Status
 from giskardpy.god_map import god_map
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
+from line_profiler import profile
 
 
 class LogTrajPlugin(GiskardBehavior):

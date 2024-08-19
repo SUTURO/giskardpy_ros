@@ -19,6 +19,7 @@ from tf2_ros import Buffer, TransformListener
 from giskardpy.middleware import get_middleware
 from giskardpy.utils.decorators import memoize
 from giskardpy_ros.ros2 import rospy
+from line_profiler import profile
 
 tfBuffer: Buffer = None
 tf_listener: TransformListener = None

@@ -7,6 +7,7 @@ from giskardpy.god_map import god_map
 from giskardpy.middleware import get_middleware
 from giskardpy.model.trajectory import Trajectory
 from giskardpy_ros.tree.behaviors.plot_trajectory import PlotTrajectory
+from line_profiler import profile
 
 plot_lock = Lock()
 

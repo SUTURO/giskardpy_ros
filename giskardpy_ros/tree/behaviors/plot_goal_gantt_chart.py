@@ -15,6 +15,7 @@ from giskardpy.middleware import get_middleware
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy.utils.decorators import record_time
 from giskardpy.utils.utils import create_path
+from line_profiler import profile
 
 
 class PlotGanttChart(GiskardBehavior):

@@ -3,6 +3,7 @@ from typing import List, Union, Dict, Tuple
 
 import pydot
 from py_trees.common import Status
+from line_profiler import profile
 
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import ExecutionState

@@ -10,6 +10,7 @@ from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.ros2.tfwrapper import normalize_quaternion_msg
 import giskardpy_ros.ros2.msg_converter as msg_converter
+from line_profiler import profile
 
 class TfPublishingModes(Enum):
     nothing = 0
