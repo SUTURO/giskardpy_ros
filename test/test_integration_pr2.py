@@ -394,8 +394,9 @@ class TestJointGoals:
         goal_js = {'r_elbow_flex_joint': r_elbow_flex_joint_limits[0] - 0.2,
                    'torso_lift_joint': torso_lift_joint_limits[0] - 0.2,
                    'head_pan_joint': head_pan_joint_limits[0] - 0.2}
-        zero_pose.api.motion_goals.add_joint_position(goal_js, add_monitor=False)
-        zero_pose.execute()
+        zero_pose.api.motion_goals.add_joint_position(goal_js)
+        zero_pose.api.add_default_end_motion_conditions()
+        zero_pose.execute(add_monitors_for_everything=False)
         js = {'torso_lift_joint': 0.32}
         zero_pose.api.motion_goals.add_joint_position(js)
         zero_pose.execute()
@@ -404,8 +405,9 @@ class TestJointGoals:
                    'torso_lift_joint': torso_lift_joint_limits[1] + 0.2,
                    'head_pan_joint': head_pan_joint_limits[1] + 0.2}
 
-        zero_pose.api.motion_goals.add_joint_position(goal_js, add_monitor=False)
-        zero_pose.execute()
+        zero_pose.api.motion_goals.add_joint_position(goal_js)
+        zero_pose.api.add_default_end_motion_conditions()
+        zero_pose.execute(add_monitors_for_everything=False)
 
 
 class TestMonitors:
@@ -435,7 +437,7 @@ class TestMonitors:
         local_min = zero_pose.monitors.add_local_minimum_reached()
         zero_pose.monitors.add_end_motion(start_condition=local_min)
         zero_pose.allow_all_collisions()
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_start_of_expression_monitor(self, zero_pose: PR2Tester):
         time_above = zero_pose.monitors.add_time_above(threshold=5)
@@ -444,7 +446,7 @@ class TestMonitors:
 
         zero_pose.motion_goals.add_joint_position(goal_state=zero_pose.default_pose)
         zero_pose.allow_all_collisions()
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
         assert god_map.trajectory.length_in_seconds > 4
 
     def test_joint_sequence(self, zero_pose: PR2Tester):
@@ -463,7 +465,7 @@ class TestMonitors:
                                                   end_condition=f'{end_monitor} and {joint_monitor2}')
         zero_pose.allow_all_collisions()
         zero_pose.monitors.add_end_motion(start_condition=end_monitor)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_cart_goal_sequence_relative(self, zero_pose: PR2Tester):
         pose1 = PoseStamped()
@@ -505,7 +507,7 @@ class TestMonitors:
         zero_pose.allow_all_collisions()
         zero_pose.monitors.add_end_motion(start_condition=' and '.join([end_monitor, monitor2]))
         zero_pose.set_max_traj_length(30)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
         current_pose = zero_pose.compute_fk_pose(root_link=root_link, tip_link=tip_link)
         np.testing.assert_almost_equal(current_pose.pose.position.x, 1, decimal=2)
         np.testing.assert_almost_equal(current_pose.pose.position.y, 1, decimal=2)
@@ -552,7 +554,7 @@ class TestMonitors:
         zero_pose.allow_all_collisions()
         zero_pose.monitors.add_end_motion(start_condition=' and '.join([end_monitor, monitor2]))
         zero_pose.set_max_traj_length(30)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
         current_pose = zero_pose.compute_fk_pose(root_link=root_link, tip_link=tip_link)
         np.testing.assert_almost_equal(current_pose.pose.position.x, 0, decimal=2)
@@ -767,7 +769,7 @@ class TestMonitors:
         #                               group2=bowl_name)
         # kitchen_setup.allow_collision(group1=kitchen_setup.r_gripper_group,
         #                               group2=cup_name)
-        kitchen_setup.execute(add_local_minimum_reached=False)
+        kitchen_setup.execute(add_monitors_for_everything=False)
 
         kitchen_setup.update_parent_link_of_group(name=bowl_name,
                                                   parent_link=kitchen_setup.l_tip)
@@ -852,7 +854,7 @@ class TestMonitors:
                                                           end_condition=' and '.join([cup_placed, bowl_placed]))
         kitchen_setup.monitors.add_end_motion(start_condition=' and '.join([cup_placed, bowl_placed]))
         kitchen_setup.monitors.add_max_trajectory_length(60)
-        kitchen_setup.execute(add_local_minimum_reached=False)
+        kitchen_setup.execute(add_monitors_for_everything=False)
         # %% next goal
         kitchen_setup.update_parent_link_of_group(name=bowl_name, parent_link='map')
         kitchen_setup.update_parent_link_of_group(name=cup_name, parent_link='map')
@@ -872,7 +874,7 @@ class TestMonitors:
                                       group2=bowl_name)
         kitchen_setup.allow_collision(group1=kitchen_setup.r_gripper_group,
                                       group2=cup_name)
-        kitchen_setup.execute(add_local_minimum_reached=False)
+        kitchen_setup.execute(add_monitors_for_everything=False)
 
     def test_sleep(self, zero_pose: PR2Tester):
         alternator = zero_pose.monitors.add_alternator()
@@ -916,7 +918,7 @@ class TestMonitors:
                                                                               left_monitor,
                                                                               base_monitor]))
         zero_pose.monitors.add_max_trajectory_length(120)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
         assert god_map.trajectory.length_in_seconds > 6
         current_pose = zero_pose.compute_fk_pose(root_link='map',
                                                  tip_link='base_footprint')
@@ -946,7 +948,7 @@ class TestMonitors:
         end = zero_pose.monitors.add_end_motion(start_condition=local_min)
         zero_pose.motion_goals.allow_all_collisions()
         zero_pose.set_max_traj_length(30)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_hold_monitors2(self, zero_pose: PR2Tester):
         true = zero_pose.monitors.add_sleep(0.0, name='always true')
@@ -979,7 +981,7 @@ class TestMonitors:
         end = zero_pose.monitors.add_end_motion(start_condition=f'{local_min} and {stayed_put} and {joint_reached}')
         zero_pose.motion_goals.allow_all_collisions()
         zero_pose.set_max_traj_length(30)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_hold_condition_of_monitor(self, zero_pose: PR2Tester):
         sleep = zero_pose.monitors.add_sleep(2, name='sleep')
@@ -989,7 +991,7 @@ class TestMonitors:
 
         zero_pose.motion_goals.add_joint_position(goal_state=zero_pose.better_pose)
         zero_pose.monitors.add_end_motion(start_condition=joint_goal)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_hold_condition_of_monitor2(self, zero_pose: PR2Tester):
         sleep = zero_pose.monitors.add_sleep(1, name='sleep')
@@ -1009,7 +1011,7 @@ class TestMonitors:
         zero_pose.monitors.add_end_motion(start_condition=joint_goal)
         zero_pose.monitors.add_cancel_motion(start_condition=f'not {joint_goal2} and {sleep2}', error_message='fail')
         zero_pose.monitors.add_max_trajectory_length(30)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_end_plus_false_monitor(self, zero_pose: PR2Tester):
         sleep = zero_pose.monitors.add_sleep(0.5, name='sleep')
@@ -1023,14 +1025,14 @@ class TestMonitors:
                                                   start_condition=sleep)
         zero_pose.monitors.add_end_motion(start_condition=f'{joint_goal} and not {joint_goal2}')
         zero_pose.monitors.add_cancel_motion(start_condition=f'{joint_goal} and {joint_goal2}', error_message='fail')
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_only_payload_monitors(self, zero_pose: PR2Tester):
         sleep = zero_pose.monitors.add_sleep(5)
         zero_pose.monitors.add_cancel_motion(start_condition=sleep, error_message='time up',
                                              error_code=GiskardError.SETUP_ERROR)
         zero_pose.allow_all_collisions()
-        zero_pose.execute(add_local_minimum_reached=False, expected_error_code=GiskardError.SETUP_ERROR)
+        zero_pose.execute(add_monitors_for_everything=False, expected_error_code=GiskardError.SETUP_ERROR)
         zero_pose.set_joint_goal(zero_pose.better_pose)
         zero_pose.allow_all_collisions()
         zero_pose.plan_and_execute()
@@ -1056,7 +1058,7 @@ class TestMonitors:
 
         end = zero_pose.monitors.add_end_motion(start_condition=local_min)
         zero_pose.motion_goals.allow_all_collisions()
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_RelativePositionSequence(self, zero_pose: PR2Tester):
         goal1 = PointStamped()
@@ -1118,7 +1120,7 @@ class TestMonitors:
         fake_table_setup.motion_goals.avoid_collision(group1='pr2', group2='pr2', start_condition=monitor1)
         fake_table_setup.monitors.add_end_motion(start_condition=end_monitor)
 
-        fake_table_setup.execute(add_local_minimum_reached=False)
+        fake_table_setup.execute(add_monitors_for_everything=False)
 
         # fake_table_setup.check_cpi_geq(fake_table_setup.get_l_gripper_links(), 0.05)
         # fake_table_setup.check_cpi_leq(['r_gripper_l_finger_tip_link'], 0.04)
@@ -1172,7 +1174,7 @@ class TestConstraints:
                                                laser_frame_id='base_laser_link',
                                                # laser_topics=[],
                                                path=path_msg)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     def test_follow_nav_path2(self, zero_pose: PR2Tester):
         path_msg = Path()
@@ -1197,14 +1199,14 @@ class TestConstraints:
                                                    laser_frame_id='base_laser_link',
                                                    # laser_topics=[],
                                                    path=path_msg)
-        zero_pose.execute(add_local_minimum_reached=False)
+        zero_pose.execute(add_monitors_for_everything=False)
 
     # TODO write buggy constraints that test sanity checks
     def test_empty_problem(self, zero_pose: PR2Tester):
         zero_pose.allow_all_collisions()
         zero_pose.execute(expected_error_code=GiskardError.EMPTY_PROBLEM)
         zero_pose.allow_all_collisions()
-        zero_pose.execute(expected_error_code=GiskardError.EMPTY_PROBLEM, add_local_minimum_reached=False)
+        zero_pose.execute(expected_error_code=GiskardError.EMPTY_PROBLEM, add_monitors_for_everything=False)
 
     def test_add_debug_expr(self, zero_pose: PR2Tester):
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=DebugGoal.__name__)
@@ -4256,7 +4258,7 @@ class TestManipulability:
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=MaxManipulabilityLinWeight.__name__,
                                                root_link='torso_lift_link',
                                                tip_link='l_gripper_tool_frame')
-        zero_pose.execute(add_local_minimum_reached=True)
+        zero_pose.execute(add_monitors_for_everything=True)
 
 
 class TestWeightScaling:
@@ -4416,7 +4418,7 @@ class TestActionServerEvents:
         zero_pose.api.motion_goals.allow_all_collisions()
         local_min = zero_pose.api.monitors.add_local_minimum_reached()
         zero_pose.api.monitors.add_end_motion(start_condition=local_min)
-        zero_pose.execute(expected_error_type=PreemptedException, stop_after=2, add_local_minimum_reached=False)
+        zero_pose.execute(expected_error_type=PreemptedException, stop_after=2, add_monitors_for_everything=False)
 
     def test_interrupt2(self, zero_pose: PR2Tester):
         p = PoseStamped()

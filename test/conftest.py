@@ -55,7 +55,7 @@ def resetted_giskard(giskard: GiskardTester) -> GiskardTester:
         done = giskard.api.monitors.add_set_seed_odometry(zero)
         giskard.api.motion_goals.allow_all_collisions()
         giskard.api.monitors.add_end_motion(start_condition=done)
-        giskard.execute(add_local_minimum_reached=False)
+        giskard.execute(add_monitors_for_everything=False)
     giskard.api.world.clear()
     giskard.reset()
     return giskard
@@ -67,7 +67,7 @@ def zero_pose(resetted_giskard: GiskardTester) -> GiskardTester:
         done = resetted_giskard.api.monitors.add_set_seed_configuration(resetted_giskard.default_pose)
         resetted_giskard.api.motion_goals.allow_all_collisions()
         resetted_giskard.api.monitors.add_end_motion(start_condition=done)
-        resetted_giskard.execute(add_local_minimum_reached=False)
+        resetted_giskard.execute(add_monitors_for_everything=False)
     else:
         resetted_giskard.api.motion_goals.allow_all_collisions()
         resetted_giskard.api.motion_goals.add_joint_position(resetted_giskard.default_pose)
@@ -82,7 +82,7 @@ def better_pose(resetted_giskard: GiskardTester) -> GiskardTester:
         done = resetted_giskard.api.monitors.add_set_seed_configuration(resetted_giskard.better_pose)
         resetted_giskard.api.motion_goals.allow_all_collisions()
         resetted_giskard.api.monitors.add_end_motion(start_condition=done)
-        resetted_giskard.execute(add_local_minimum_reached=False)
+        resetted_giskard.execute(add_monitors_for_everything=False)
     else:
         resetted_giskard.api.motion_goals.allow_all_collisions()
         resetted_giskard.api.motion_goals.add_joint_position(resetted_giskard.better_pose)

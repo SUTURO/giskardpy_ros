@@ -323,7 +323,7 @@ class TestConstraints:
         kitchen_setup.allow_all_collisions()
         # kitchen_setup.set_json_goal('AvoidJointLimits', percentage=40)
 
-        kitchen_setup.execute(add_local_minimum_reached=False)
+        kitchen_setup.execute(add_monitors_for_everything=False)
 
         kitchen_setup.set_env_state({'iai_fridge_door_joint': 0})
 
@@ -394,7 +394,7 @@ class TestConstraints:
 
         kitchen_setup.allow_all_collisions()
         kitchen_setup.monitors.add_end_motion(start_condition=door_open)
-        kitchen_setup.execute(add_local_minimum_reached=False)
+        kitchen_setup.execute(add_monitors_for_everything=False)
 
 
 class TestCollisionAvoidanceGoals:
