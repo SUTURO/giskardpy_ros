@@ -10,6 +10,7 @@ from giskard_msgs.msg import ExecutionState
 from giskardpy.data_types.data_types import TaskState
 from giskardpy.god_map import god_map
 from giskardpy.motion_graph.monitors.monitors import EndMotion, CancelMotion
+from giskardpy_ros.ros2.msg_converter import json_str_to_kwargs
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.behaviors.publish_feedback import giskard_state_to_execution_state
 from giskardpy.middleware import get_middleware
@@ -58,10 +59,16 @@ def format_condition(condition: str) -> str:
 
 def format_monitor_msg(msg: giskard_msgs.Monitor) -> str:
     start_condition = format_condition(msg.start_condition)
+    kwargs = json_str_to_kwargs(msg.kwargs, god_map.world)
+    hold_condition = format_condition(kwargs['hold_condition'])
+    end_condition = format_condition(kwargs['end_condition'])
     return (f'"\'{msg.name}\'\n'
-            f'class: {msg.monitor_class}\n'
             f'----------start_condition:----------\n'
-            f'{start_condition}"')
+            f'{start_condition}\n'
+            f'----------hold_condition:-----------\n'
+            f'{hold_condition}\n'
+            f'-----------end_condition:-----------\n'
+            f'{end_condition}"')
 
 
 def format_task_msg(msg: giskard_msgs.MotionGoal) -> str:

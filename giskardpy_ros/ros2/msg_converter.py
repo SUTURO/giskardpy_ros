@@ -273,17 +273,12 @@ def convert_dictionary_to_ros_message(json):
 def monitor_to_ros_msg(monitor: Monitor) -> giskard_msgs.Monitor:
     msg = giskard_msgs.Monitor()
     msg.name = str(monitor.name)
-    if isinstance(monitor, EndMotion):
-        msg.monitor_class = EndMotion.__name__
-    elif isinstance(monitor, CancelMotion):
-        msg.monitor_class = CancelMotion.__name__
-    else:
-        msg.monitor_class = monitor.__class__.__name__
-        msg.start_condition = god_map.monitor_manager.format_condition(monitor.start_condition, new_line=' ')
-        msg.kwargs = kwargs_to_json({'hold_condition': god_map.monitor_manager.format_condition(monitor.hold_condition,
-                                                                                                new_line=' '),
-                                     'end_condition': god_map.monitor_manager.format_condition(monitor.end_condition,
-                                                                                               new_line=' ')})
+    msg.monitor_class = monitor.__class__.__name__
+    msg.start_condition = god_map.monitor_manager.format_condition(monitor.start_condition, new_line=' ')
+    msg.kwargs = kwargs_to_json({'hold_condition': god_map.monitor_manager.format_condition(monitor.hold_condition,
+                                                                                            new_line=' '),
+                                 'end_condition': god_map.monitor_manager.format_condition(monitor.end_condition,
+                                                                                           new_line=' ')})
     return msg
 
 
