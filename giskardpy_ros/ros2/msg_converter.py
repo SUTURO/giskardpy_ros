@@ -244,24 +244,39 @@ def world_to_tf_message(world: WorldTree, include_prefix: bool) -> tf2_msgs.TFMe
     return tf_msg
 
 
-def json_str_to_kwargs(json_str: str, world: WorldTree) -> Dict[str, Any]:
+def json_str_to_giskard_kwargs(json_str: str, world: WorldTree) -> Dict[str, Any]:
+    ros_kwargs = json_str_to_ros_kwargs(json_str)
+    return ros_kwargs_to_giskard_kwargs(ros_kwargs, world)
+
+
+def json_str_to_ros_kwargs(json_str: str) -> Dict[str, Any]:
     d = json.loads(json_str)
-    return json_to_kwargs(d, world)
+    return json_dict_to_ros_kwargs(d)
 
 
-def json_to_kwargs(d: dict, world: WorldTree) -> Dict[str, Any]:
+def json_dict_to_ros_kwargs(d: Any) -> Dict[str, Any]:
     if isinstance(d, list):
         for i, element in enumerate(d):
-            d[i] = json_to_kwargs(element, world)
+            d[i] = json_dict_to_ros_kwargs(element)
 
     if isinstance(d, dict):
         if 'message_type' in d:
             d = convert_dictionary_to_ros_message(d)
         else:
             for key, value in d.copy().items():
-                d[key] = json_to_kwargs(value, world)
+                d[key] = json_dict_to_ros_kwargs(value)
+    return d
+
+
+def ros_kwargs_to_giskard_kwargs(d: Any, world: WorldTree) -> Dict[str, Any]:
     if is_ros_message(d):
         return ros_msg_to_giskard_obj(d, world)
+    elif isinstance(d, list):
+        for i, element in enumerate(d):
+            d[i] = ros_msg_to_giskard_obj(element, world)
+    elif isinstance(d, dict):
+        for key, value in d.copy().items():
+            d[key] = ros_kwargs_to_giskard_kwargs(value, world)
     return d
 
 

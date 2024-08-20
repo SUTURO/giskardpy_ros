@@ -2310,12 +2310,11 @@ class TestCartGoals:
 
     def test_cart_goal_1eef(self, zero_pose: PR2Tester):
         p = PoseStamped()
-        p.header.stamp = rospy.get_rostime()
         p.header.frame_id = zero_pose.r_tip
-        p.pose.position = Point(-0.1, 0, 0)
-        p.pose.orientation = Quaternion(0, 0, 0, 1)
-        zero_pose.allow_all_collisions()
-        zero_pose.set_cart_goal(p, zero_pose.r_tip, 'base_footprint')
+        p.pose.position.x = -0.1
+        p.pose.orientation.w = 1.0
+        zero_pose.api.motion_goals.allow_all_collisions()
+        zero_pose.api.motion_goals.add_cartesian_pose(goal_pose=p, tip_link=zero_pose.r_tip, root_link='base_footprint')
         zero_pose.execute()
 
     def test_10_cart_goals(self, zero_pose: PR2Tester):

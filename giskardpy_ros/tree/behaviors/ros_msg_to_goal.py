@@ -15,7 +15,7 @@ from giskardpy.model.joints import OmniDrive, DiffDrive
 from giskardpy.motion_graph.monitors.monitors import TimeAbove, LocalMinimumReached, EndMotion, CancelMotion
 from giskardpy.symbol_manager import symbol_manager
 from giskardpy.utils.decorators import record_time
-from giskardpy_ros.ros2.msg_converter import json_str_to_kwargs
+from giskardpy_ros.ros2.msg_converter import json_str_to_giskard_kwargs
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard, GiskardBlackboard
 from line_profiler import profile
@@ -65,7 +65,7 @@ class ParseActionGoal(GiskardBehavior):
             except KeyError:
                 raise UnknownMonitorException(f'unknown monitor type: \'{monitor_msg.monitor_class}\'.')
             try:
-                kwargs = json_str_to_kwargs(monitor_msg.kwargs, god_map.world)
+                kwargs = json_str_to_giskard_kwargs(monitor_msg.kwargs, god_map.world)
                 hold_condition = kwargs.pop('hold_condition')
                 end_condition = kwargs.pop('end_condition')
                 monitor_name_to_state_expr = {str(key): value.get_state_expression() for key, value in
@@ -102,7 +102,7 @@ class ParseActionGoal(GiskardBehavior):
             except KeyError:
                 raise UnknownGoalException(f'unknown constraint {motion_goal.motion_goal_class}.')
             try:
-                params = json_str_to_kwargs(motion_goal.kwargs, god_map.world)
+                params = json_str_to_giskard_kwargs(motion_goal.kwargs, god_map.world)
                 if motion_goal.name == '':
                     motion_goal.name = None
                 start_condition = god_map.monitor_manager.logic_str_to_expr(motion_goal.start_condition,

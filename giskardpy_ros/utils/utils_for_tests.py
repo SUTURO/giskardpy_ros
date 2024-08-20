@@ -34,12 +34,14 @@ from giskardpy.data_types.data_types import KeyDefaultDict
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.data_types.exceptions import UnknownGroupException, DuplicateNameException, WorldException, \
     LocalMinimumException
+from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPoseStraight
 from giskardpy.goals.diff_drive_goals import DiffDriveTangentialToPoint, KeepHandInWorkspace
 from giskardpy.goals.joint_goals import JointPositionList
 from giskardpy.god_map import god_map
 from giskardpy.middleware import get_middleware
 from giskardpy.model.collision_world_syncer import Collisions, Collision, CollisionEntry
 from giskardpy.model.joints import OneDofJoint, OmniDrive, DiffDrive, Joint
+from giskardpy.motion_graph.monitors.cartesian_monitors import PoseReached
 from giskardpy.motion_graph.monitors.joint_monitors import JointGoalReached
 from giskardpy.motion_graph.monitors.overwrite_state_monitors import SetSeedConfiguration
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA
@@ -51,7 +53,7 @@ from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper
 from giskardpy_ros.python_interface.python_interface import GiskardWrapperNode
 from giskardpy_ros.ros2 import rospy
-from giskardpy_ros.ros2.msg_converter import json_to_kwargs, json_str_to_kwargs
+from giskardpy_ros.ros2.msg_converter import json_dict_to_ros_kwargs, json_str_to_giskard_kwargs, json_str_to_ros_kwargs
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
 BIG_NUMBER = 1e100
@@ -476,17 +478,19 @@ class GiskardTester:
     goal_monitor_map = {
         JointPositionList.__name__: JointGoalReached.__name__,
         SetSeedConfiguration.__name__: JointGoalReached.__name__,
+        CartesianPose.__name__: PoseReached.__name__,
+        CartesianPoseStraight.__name__: PoseReached.__name__,
     }
 
     def add_monitor_for_everything(self):
         for goal in self.api.motion_goals._goals:
             if goal.motion_goal_class in self.goal_monitor_map:
                 monitor_class = self.goal_monitor_map[goal.motion_goal_class]
-                kwargs = json_str_to_kwargs(goal.kwargs, god_map.world)
+                ros_kwargs = json_str_to_ros_kwargs(goal.kwargs)
                 new_monitor = self.api.monitors.add_monitor(monitor_class=monitor_class,
                                                             name=f'{goal.name}/{monitor_class}',
                                                             start_condition=goal.start_condition,
-                                                            **kwargs)
+                                                            **ros_kwargs)
                 if goal.end_condition:
                     goal.end_condition = f'({goal.end_condition}) and {new_monitor}'
                 else:
