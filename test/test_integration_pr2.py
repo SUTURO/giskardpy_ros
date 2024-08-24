@@ -1,29 +1,22 @@
 from __future__ import division
-import os
+
 from copy import deepcopy
 from typing import Optional
 
+import giskard_msgs.msg as giskard_msgs
 import numpy as np
 import pytest
-import xacro
-from ament_index_python import get_package_share_directory
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, Vector3Stamped, PointStamped, QuaternionStamped
 from giskard_msgs.action._move import Move_Goal
 from giskard_msgs.action._world import World_Goal
+from giskard_msgs.msg import WorldBody, CollisionEntry, LinkName
 from nav_msgs.msg import Path
 from numpy import pi
 from rclpy.duration import Duration
+from rclpy.time import Time
 from shape_msgs.msg import SolidPrimitive
-import giskard_msgs.msg as giskard_msgs
-from giskard_msgs.msg import WorldBody, CollisionEntry, LinkName
-from giskardpy.middleware import get_middleware
-from giskardpy.model.world_config import WorldWithOmniDriveRobot
-from giskardpy.motion_graph.monitors.set_prediction_horizon import SetQPSolver
-from giskardpy.utils.math import quaternion_from_axis_angle, quaternion_from_rotation_matrix
-from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
-from giskardpy_ros.configs.giskard import Giskard
-from giskardpy_ros.configs.iai_robots.pr2 import PR2CollisionAvoidance, PR2StandaloneInterface
-from giskardpy.qp.qp_controller_config import SupportedQPSolver, QPControllerConfig
+
+from giskardpy.data_types.data_types import PrefixName
 from giskardpy.data_types.exceptions import GiskardException, VelocityLimitUnreachableException, \
     MaxTrajectoryLengthException, UnknownGoalException, GoalInitalizationException, LocalMinimumException, \
     DuplicateNameException, CorruptMeshException, UnknownGroupException, UnknownLinkException, \
@@ -35,15 +28,23 @@ from giskardpy.goals.collision_avoidance import CollisionAvoidanceHint
 from giskardpy.goals.goals_tests import DebugGoal, CannotResolveSymbol
 from giskardpy.goals.joint_goals import JointVelocityLimit, UnlimitedJointGoal
 from giskardpy.goals.tracebot import InsertCylinder
+from giskardpy.goals.weight_scaling_goals import MaxManipulabilityLinWeight, BaseArmWeightScaling
 from giskardpy.god_map import god_map
+from giskardpy.middleware import get_middleware
 from giskardpy.model.utils import hacky_urdf_parser_fix
-from giskardpy.data_types.data_types import PrefixName
+from giskardpy.model.world_config import WorldWithOmniDriveRobot
+from giskardpy.motion_graph.monitors.set_prediction_horizon import SetQPSolver
 from giskardpy.motion_graph.tasks.task import WEIGHT_BELOW_CA, WEIGHT_ABOVE_CA, WEIGHT_COLLISION_AVOIDANCE
+from giskardpy.qp.qp_controller_config import SupportedQPSolver, QPControllerConfig
+from giskardpy.utils.math import quaternion_from_axis_angle, quaternion_from_rotation_matrix
+from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.iai_robots.pr2 import PR2CollisionAvoidance, PR2StandaloneInterface
 from giskardpy_ros.goals.realtime_goals import FollowNavPath
 from giskardpy_ros.ros2 import rospy
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
-from giskardpy_ros.utils.utils_for_tests import compare_poses, publish_marker_vector, GiskardTester, compare_points
-from giskardpy.goals.weight_scaling_goals import MaxManipulabilityLinWeight, BaseArmWeightScaling
+from giskardpy_ros.utils.utils import load_xacro
+from giskardpy_ros.utils.utils_for_tests import compare_poses, GiskardTester, compare_points
 
 # scopes = ['module', 'class', 'function']
 pocky_pose = {'r_elbow_flex_joint': -1.29610152504,
@@ -161,10 +162,7 @@ class PR2Tester(GiskardTester):
         # self.l_gripper = rospy.ServiceProxy('l_gripper_simulator/set_joint_states', SetJointState)
         self.odom_root = 'odom_combined'
         drive_joint_name = 'brumbrum'
-        package_share_directory = get_package_share_directory('iai_pr2_description')
-        xacro_file = os.path.join(package_share_directory, 'robots', 'pr2_with_ft2_cableguide.xacro')
-        doc = xacro.process_file(xacro_file, mappings={'radius': '0.9'})
-        robot_desc = doc.toprettyxml(indent='  ')
+        robot_desc = load_xacro('package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro')
         if giskard is None:
             giskard = Giskard(world_config=WorldWithOmniDriveRobot(drive_joint_name=drive_joint_name,
                                                                    urdf=robot_desc),
@@ -590,9 +588,9 @@ class TestMonitors:
         better_pose.dye_group(cylinder_name, (0, 0, 1, 1))
 
         better_pose.api.motion_goals.add_motion_goal(motion_goal_class=InsertCylinder.__name__,
-                                                 cylinder_name=cylinder_name,
-                                                 cylinder_height=0.121,
-                                                 hole_point=hole_point)
+                                                     cylinder_name=cylinder_name,
+                                                     cylinder_height=0.121,
+                                                     hole_point=hole_point)
         better_pose.api.motion_goals.allow_all_collisions()
         better_pose.execute()
 
@@ -884,9 +882,9 @@ class TestMonitors:
         kitchen_setup.api.monitors.add_max_trajectory_length(60)
         kitchen_setup.api.motion_goals.avoid_all_collisions()
         kitchen_setup.api.motion_goals.allow_collision(group1=kitchen_setup.l_gripper_group,
-                                      group2=bowl_name)
+                                                       group2=bowl_name)
         kitchen_setup.api.motion_goals.allow_collision(group1=kitchen_setup.r_gripper_group,
-                                      group2=cup_name)
+                                                       group2=cup_name)
         kitchen_setup.execute(add_monitors_for_everything=False)
 
     def test_sleep(self, zero_pose: PR2Tester):
@@ -1011,7 +1009,8 @@ class TestMonitors:
         sleep2 = zero_pose.api.monitors.add_sleep(1, name='sleep2', start_condition=sleep)
         joint_goal = zero_pose.api.monitors.add_joint_position(name='joint reached',
                                                                goal_state=zero_pose.better_pose)
-        teleport = zero_pose.api.monitors.add_api.monitors.add_set_seed_configuration(seed_configuration=zero_pose.default_pose)
+        teleport = zero_pose.api.monitors.add_api.monitors.add_set_seed_configuration(
+            seed_configuration=zero_pose.default_pose)
         joint_goal2 = zero_pose.api.monitors.add_joint_position(name='joint reached2',
                                                                 goal_state=zero_pose.default_pose,
                                                                 threshold=0.03,
@@ -1115,16 +1114,16 @@ class TestMonitors:
         monitor1 = fake_table_setup.api.monitors.add_time_above(threshold=1)
 
         monitor2 = fake_table_setup.api.monitors.add_cartesian_pose(name='pose1',
-                                                                root_link=root_link,
-                                                                tip_link=tip_link,
-                                                                goal_pose=pose1)
+                                                                    root_link=root_link,
+                                                                    tip_link=tip_link,
+                                                                    goal_pose=pose1)
         end_monitor = fake_table_setup.api.monitors.add_local_minimum_reached(start_condition=monitor2)
         # simple cartisian goal 2m to the front
         fake_table_setup.api.motion_goals.add_cartesian_pose(goal_pose=pose1,
-                                                         name='g1',
-                                                         root_link=root_link,
-                                                         tip_link=tip_link,
-                                                         end_condition=f'{monitor2} and {end_monitor}')
+                                                             name='g1',
+                                                             root_link=root_link,
+                                                             tip_link=tip_link,
+                                                             end_condition=f'{monitor2} and {end_monitor}')
         collision_entry = CollisionEntry()
         collision_entry.type = CollisionEntry.AVOID_COLLISION
         collision_entry.distance = -1
@@ -1341,8 +1340,8 @@ class TestConstraints:
 
         zero_pose.api.motion_goals.allow_all_collisions()
         zero_pose.api.motion_goals.add_cartesian_position(root_link=zero_pose.default_root,
-                                       tip_link=tip,
-                                       goal_point=p)
+                                                          tip_link=tip,
+                                                          goal_point=p)
         zero_pose.execute()
 
     def test_CartesianPosition1(self, zero_pose: PR2Tester):
@@ -1364,10 +1363,10 @@ class TestConstraints:
 
         zero_pose.api.motion_goals.allow_all_collisions()
         zero_pose.api.motion_goals.add_cartesian_position(root_link=tip,
-                                       root_group=zero_pose.api.robot_name,
-                                       tip_link=pocky,
-                                       tip_group='box',
-                                       goal_point=p)
+                                                          root_group=zero_pose.api.robot_name,
+                                                          tip_link=pocky,
+                                                          tip_group='box',
+                                                          goal_point=p)
         zero_pose.execute()
 
     def test_CartesianPose(self, zero_pose: PR2Tester):
@@ -1463,7 +1462,7 @@ class TestConstraints:
 
         zero_pose.add_sphere_to_world('sphere', 0.05, pose=object_pose)
 
-        publish_marker_vector(start_pose.pose.position, map_T_goal_position.pose.position)
+        # publish_marker_vector(start_pose.pose.position, map_T_goal_position.pose.position) # todo
         zero_pose.api.motion_goals.allow_self_collision(zero_pose.api.robot_name)
         goal_position_p = deepcopy(goal_position)
         goal_position_p.header.frame_id = 'base_link'
@@ -1493,7 +1492,7 @@ class TestConstraints:
 
         better_pose.add_sphere_to_world('sphere', 0.05, pose=object_pose)
 
-        publish_marker_vector(start_pose.pose.position, map_T_goal_position.pose.position)
+        # publish_marker_vector(start_pose.pose.position, map_T_goal_position.pose.position) # todo
 
         goal = deepcopy(object_pose)
         goal.pose.position.x -= 0.1
@@ -1631,58 +1630,58 @@ class TestConstraints:
         kitchen_setup.api.motion_goals.allow_all_collisions()
         kitchen_setup.execute()
 
-        # base_goal = PoseStamped()
-        # base_goal.header.frame_id = 'pr2/base_footprint'
-        # base_goal.pose.position.y = 2
-        q = quaternion_from_axis_angle([0, 0, 1], 1, )
-        # base_goal.pose.orientation = Quaternion(x=q[0], y=q[1], z=[2], w=[3)
-        # kitchen_setup.set_pointing_goal(tip_link=tip, goal_point=goal_point, pointing_axis=pointing_axis,
-        #                                 root_link=kitchen_setup.default_root, add_monitor=False)
-        # gaya_pose2 = deepcopy(kitchen_setup.better_pose)
-        # del gaya_pose2['head_pan_joint']
-        # del gaya_pose2['head_tilt_joint']
-        # kitchen_setup.api.motion_goals.add_joint_position(gaya_pose2)
-        # kitchen_setup.api.motion_goals.allow_all_collisions()
-        # kitchen_setup.move_base(base_goal)
-        #
-        # current_x = Vector3Stamped()
-        # current_x.header.frame_id = tip
-        # current_x.vector.x = 1
-        #
-        # expected_x = kitchen_setup.transform_msg(tip, goal_point)
-        # np.testing.assert_almost_equal(expected_x.point.y, 0, 1)
-        # np.testing.assert_almost_equal(expected_x.point.z, 0, 1)
-        #
-        # rospy.loginfo("Starting looking")
-        # tip = 'head_mount_kinect_rgb_link'
-        # goal_point = kitchen_setup.compute_fk_point('map', kitchen_setup.r_tip)
-        # goal_point.header.stamp = rospy.Time()
-        # pointing_axis = Vector3Stamped()
-        # pointing_axis.header.frame_id = tip
-        # pointing_axis.vector.x = 1
-        # kitchen_setup.set_pointing_goal(tip_link=tip, goal_point=goal_point, pointing_axis=pointing_axis,
-        #                                 root_link=kitchen_setup.r_tip, add_monitor=False)
-        #
-        # rospy.loginfo("Starting pointing")
-        # r_goal = PoseStamped()
-        # r_goal.header.frame_id = kitchen_setup.r_tip
-        # r_goal.pose.position.x -= 0.3
-        # r_goal.pose.position.z += 0.6
-        # r_goal.pose.orientation.w = 1
-        # r_goal = kitchen_setup.transform_msg(kitchen_setup.default_root, r_goal)
-        # q = quaternion_from_rotation_matrix([[0, 0, -1, 0],
-        #                                                               [0, 1, 0, 0],
-        #                                                               [1, 0, 0, 0],
-        #                                                               [0, 0, 0, 1]])
-        # r_goal.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3)
-        # r_goal.header.frame_id = kitchen_setup.r_tip
-        # kitchen_setup.api.motion_goals.add_cartesian_pose(goal_pose=r_goal,
-        #                             tip_link=kitchen_setup.r_tip,
-        #                             root_link='base_footprint',
-        #                             weight=WEIGHT_BELOW_CA,
-        #                             add_monitor=False)
-        # kitchen_setup.api.motion_goals.allow_all_collisions()
-        # kitchen_setup.execute()
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'pr2/base_footprint'
+        base_goal.pose.position.y = 2.0
+        q = quaternion_from_axis_angle([0, 0, 1], 1)
+        base_goal.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+        kitchen_setup.api.motion_goals.add_pointing(tip_link=tip, goal_point=goal_point, pointing_axis=pointing_axis,
+                                                    root_link=kitchen_setup.default_root)
+        gaya_pose2 = deepcopy(kitchen_setup.better_pose)
+        del gaya_pose2['head_pan_joint']
+        del gaya_pose2['head_tilt_joint']
+        kitchen_setup.api.motion_goals.add_joint_position(gaya_pose2)
+        kitchen_setup.api.motion_goals.allow_all_collisions()
+        kitchen_setup.move_base(base_goal)
+
+        current_x = Vector3Stamped()
+        current_x.header.frame_id = tip
+        current_x.vector.x = 1
+
+        expected_x = kitchen_setup.transform_msg(tip, goal_point)
+        np.testing.assert_almost_equal(expected_x.point.y, 0, 1)
+        np.testing.assert_almost_equal(expected_x.point.z, 0, 1)
+
+        get_middleware().loginfo("Starting looking")
+        tip = 'head_mount_kinect_rgb_link'
+        goal_point = kitchen_setup.compute_fk_point('map', kitchen_setup.r_tip)
+        goal_point.header.stamp = Time().to_msg()
+        pointing_axis = Vector3Stamped()
+        pointing_axis.header.frame_id = tip
+        pointing_axis.vector.x = 1
+        kitchen_setup.api.motion_goals.add_pointing(tip_link=tip, goal_point=goal_point, pointing_axis=pointing_axis,
+                                                    root_link=kitchen_setup.r_tip)
+
+        get_middleware().loginfo("Starting pointing")
+        r_goal = PoseStamped()
+        r_goal.header.frame_id = kitchen_setup.r_tip
+        r_goal.pose.position.x -= 0.3
+        r_goal.pose.position.z += 0.6
+        r_goal.pose.orientation.w = 1
+        r_goal = kitchen_setup.transform_msg(kitchen_setup.default_root, r_goal)
+        q = quaternion_from_rotation_matrix([[0, 0, -1, 0],
+                                             [0, 1, 0, 0],
+                                             [1, 0, 0, 0],
+                                             [0, 0, 0, 1]])
+        r_goal.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+        r_goal.header.frame_id = kitchen_setup.r_tip
+        kitchen_setup.api.motion_goals.add_cartesian_pose(goal_pose=r_goal,
+                                                          tip_link=kitchen_setup.r_tip,
+                                                          root_link='base_footprint',
+                                                          weight=WEIGHT_BELOW_CA)
+        kitchen_setup.api.motion_goals.allow_all_collisions()
+        kitchen_setup.api.add_default_end_motion_conditions()
+        kitchen_setup.execute(add_monitors_for_everything=False)
 
     def test_open_drawer(self, kitchen_setup: PR2Tester):
         handle_frame_id = 'iai_kitchen/sink_area_left_middle_drawer_handle'
@@ -1699,11 +1698,11 @@ class TestConstraints:
         tip_grasp_axis.vector.z = 1
 
         kitchen_setup.api.motion_goals.add_grasp_bar(root_link=kitchen_setup.default_root,
-                                         tip_link=kitchen_setup.l_tip,
-                                         tip_grasp_axis=tip_grasp_axis,
-                                         bar_center=bar_center,
-                                         bar_axis=bar_axis,
-                                         bar_length=0.4)
+                                                     tip_link=kitchen_setup.l_tip,
+                                                     tip_grasp_axis=tip_grasp_axis,
+                                                     bar_center=bar_center,
+                                                     bar_axis=bar_axis,
+                                                     bar_length=0.4)
         x_gripper = Vector3Stamped()
         x_gripper.header.frame_id = str(PrefixName(kitchen_setup.l_tip, 'pr2'))
         x_gripper.vector.x = 1
@@ -1720,7 +1719,7 @@ class TestConstraints:
         kitchen_setup.execute()
 
         kitchen_setup.api.motion_goals.add_open_container(tip_link=kitchen_setup.l_tip,
-                                              environment_link=handle_name)
+                                                          environment_link=handle_name)
         kitchen_setup.api.motion_goals.allow_all_collisions()  # makes execution faster
         kitchen_setup.execute()  # send goal to Giskard
         # Update kitchen object
@@ -1728,15 +1727,15 @@ class TestConstraints:
 
         # Close drawer partially
         kitchen_setup.api.motion_goals.add_open_container(tip_link=kitchen_setup.l_tip,
-                                              environment_link=handle_name,
-                                              goal_joint_state=0.2)
+                                                          environment_link=handle_name,
+                                                          goal_joint_state=0.2)
         kitchen_setup.api.motion_goals.allow_all_collisions()  # makes execution faster
         kitchen_setup.execute()  # send goal to Giskard
         # Update kitchen object
         kitchen_setup.set_env_state({'sink_area_left_middle_drawer_main_joint': 0.2})
 
         kitchen_setup.api.motion_goals.add_close_container(tip_link=kitchen_setup.l_tip,
-                                               environment_link=handle_name)
+                                                           environment_link=handle_name)
         kitchen_setup.api.motion_goals.allow_all_collisions()  # makes execution faster
         kitchen_setup.execute()  # send goal to Giskard
         # Update kitchen object
@@ -1773,11 +1772,11 @@ class TestConstraints:
         tip_grasp_axis.vector.z = 1
 
         kitchen_setup.api.motion_goals.add_grasp_bar(root_link=kitchen_setup.default_root,
-                                         tip_link=hand,
-                                         tip_grasp_axis=tip_grasp_axis,
-                                         bar_center=bar_center,
-                                         bar_axis=bar_axis,
-                                         bar_length=.3)
+                                                     tip_link=hand,
+                                                     tip_grasp_axis=tip_grasp_axis,
+                                                     bar_center=bar_center,
+                                                     bar_axis=bar_axis,
+                                                     bar_length=.3)
         # kitchen_setup.api.motion_goals.allow_collision([], 'kitchen', [handle_name])
         # kitchen_setup.api.motion_goals.allow_all_collisions()
 
@@ -1797,16 +1796,17 @@ class TestConstraints:
         kitchen_setup.execute()
 
         kitchen_setup.api.motion_goals.add_open_container(tip_link=hand,
-                                              environment_link=handle_name,
-                                              goal_joint_state=goal_angle)
+                                                          environment_link=handle_name,
+                                                          goal_joint_state=goal_angle)
         # kitchen_setup.api.motion_goals.allow_all_collisions()
-        kitchen_setup.api.motion_goals.allow_collision(group1=kitchen_setup.default_env_name, group2=kitchen_setup.r_gripper_group)
+        kitchen_setup.api.motion_goals.allow_collision(group1=kitchen_setup.default_env_name,
+                                                       group2=kitchen_setup.r_gripper_group)
         kitchen_setup.execute()
         kitchen_setup.set_env_state({'sink_area_dish_washer_door_joint': goal_angle})
 
         kitchen_setup.api.motion_goals.add_open_container(tip_link=hand,
-                                              environment_link=handle_name,
-                                              goal_joint_state=0)
+                                                          environment_link=handle_name,
+                                                          goal_joint_state=0)
         kitchen_setup.api.motion_goals.allow_all_collisions()
         kitchen_setup.execute()
         kitchen_setup.set_env_state({'sink_area_dish_washer_door_joint': 0})
@@ -1832,19 +1832,19 @@ class TestConstraints:
         tip_grasp_axis.vector.y = 1
 
         kitchen_setup.api.motion_goals.add_align_to_push_door(root_link=kitchen_setup.default_root,
-                                                  tip_link=hand,
-                                                  door_handle=handle_name,
-                                                  door_object=door_name,
-                                                  tip_gripper_axis=tip_grasp_axis)
+                                                              tip_link=hand,
+                                                              door_handle=handle_name,
+                                                              door_object=door_name,
+                                                              tip_gripper_axis=tip_grasp_axis)
         kitchen_setup.execute()
 
         # # # close the gripper
         kitchen_setup.api.motion_goals.add_joint_position(goal_state={'r_gripper_l_finger_joint': 0.0})
 
         kitchen_setup.api.motion_goals.add_pre_push_door(root_link=kitchen_setup.default_root,
-                                             tip_link=hand,
-                                             door_handle=handle_name,
-                                             door_object=door_name)
+                                                         tip_link=hand,
+                                                         door_handle=handle_name,
+                                                         door_object=door_name)
 
         kitchen_setup.api.motion_goals.allow_collision(group1=door_obj, group2=kitchen_setup.r_gripper_group)
         kitchen_setup.execute()
@@ -1858,8 +1858,8 @@ class TestConstraints:
                                      root_link_name=LinkName(name='r_forearm_link',
                                                              group_name=kitchen_setup.api.world.robot_name))
         kitchen_setup.api.motion_goals.add_open_container(tip_link=hand,
-                                              environment_link=handle_name,
-                                              goal_joint_state=1.3217)
+                                                          environment_link=handle_name,
+                                                          goal_joint_state=1.3217)
 
         kitchen_setup.api.motion_goals.allow_collision(group1=door_obj, group2=right_forearm)
         kitchen_setup.execute()
@@ -1976,11 +1976,11 @@ class TestConstraints:
         tip_grasp_axis.vector.z = 1
 
         kitchen_setup.api.motion_goals.add_grasp_bar(root_link=kitchen_setup.default_root,
-                                         tip_link=kitchen_setup.r_tip,
-                                         tip_grasp_axis=tip_grasp_axis,
-                                         bar_center=bar_center,
-                                         bar_axis=bar_axis,
-                                         bar_length=.4)
+                                                     tip_link=kitchen_setup.r_tip,
+                                                     tip_grasp_axis=tip_grasp_axis,
+                                                     bar_center=bar_center,
+                                                     bar_axis=bar_axis,
+                                                     bar_length=.4)
 
         x_gripper = Vector3Stamped()
         x_gripper.header.frame_id = kitchen_setup.r_tip
@@ -2035,7 +2035,7 @@ class TestConstraints:
         kitchen_setup.execute()
 
         kitchen_setup.api.motion_goals.add_close_container(tip_link=elbow,
-                                               environment_link=handle_name)
+                                                           environment_link=handle_name)
         kitchen_setup.api.motion_goals.allow_all_collisions()
         kitchen_setup.execute()
         kitchen_setup.set_env_state({'iai_fridge_door_joint': 0})
@@ -2056,11 +2056,11 @@ class TestConstraints:
         tip_grasp_axis.vector.z = 1
 
         kitchen_setup.api.motion_goals.add_grasp_bar(root_link=kitchen_setup.default_root,
-                                         tip_link=kitchen_setup.l_tip,
-                                         tip_grasp_axis=tip_grasp_axis,
-                                         bar_center=bar_center,
-                                         bar_axis=bar_axis,
-                                         bar_length=.3)
+                                                     tip_link=kitchen_setup.l_tip,
+                                                     tip_grasp_axis=tip_grasp_axis,
+                                                     bar_center=bar_center,
+                                                     bar_axis=bar_axis,
+                                                     bar_length=.3)
         # kitchen_setup.api.motion_goals.allow_collision([], 'kitchen', [handle_name])
         kitchen_setup.api.motion_goals.allow_all_collisions()
 
@@ -2080,14 +2080,14 @@ class TestConstraints:
         kitchen_setup.execute()
 
         kitchen_setup.api.motion_goals.add_open_container(tip_link=kitchen_setup.l_tip,
-                                              environment_link=handle_name,
-                                              goal_joint_state=goal_angle)
+                                                          environment_link=handle_name,
+                                                          goal_joint_state=goal_angle)
         kitchen_setup.api.motion_goals.allow_all_collisions()
         kitchen_setup.execute()
         kitchen_setup.set_env_state({'oven_area_oven_door_joint': goal_angle})
 
         kitchen_setup.api.motion_goals.add_close_container(tip_link=kitchen_setup.l_tip,
-                                               environment_link=handle_name)
+                                                           environment_link=handle_name)
         kitchen_setup.api.motion_goals.allow_all_collisions()
         kitchen_setup.execute()
         kitchen_setup.set_env_state({'oven_area_oven_door_joint': 0})
@@ -2106,11 +2106,11 @@ class TestConstraints:
         tip_grasp_axis.vector.z = 1
 
         kitchen_setup.api.motion_goals.add_grasp_bar(root_link=kitchen_setup.default_root,
-                                         tip_link=kitchen_setup.r_tip,
-                                         tip_grasp_axis=tip_grasp_axis,
-                                         bar_center=bar_center,
-                                         bar_axis=bar_axis,
-                                         bar_length=.3)
+                                                     tip_link=kitchen_setup.r_tip,
+                                                     tip_grasp_axis=tip_grasp_axis,
+                                                     bar_center=bar_center,
+                                                     bar_axis=bar_axis,
+                                                     bar_length=.3)
         kitchen_setup.register_group(new_group_name='handle',
                                      root_link_name=giskard_msgs.LinkName(name='sink_area_dish_washer_door_handle',
                                                                           group_name='iai_kitchen'))
@@ -2648,6 +2648,7 @@ class TestWorldManipulation:
         zero_pose.remove_group(object_name)
 
     def test_add_urdf_body(self, kitchen_setup: PR2Tester):
+        kitchen_urdf = load_xacro('package://iai_kitchen/urdf_obj/iai_kitchen_python.urdf.xacro')
         object_name = kitchen_setup.default_env_name
         kitchen_setup.set_env_state({'sink_area_left_middle_drawer_main_joint': 0.1})
         kitchen_setup.clear_world()
@@ -2663,7 +2664,7 @@ class TestWorldManipulation:
             js_topic = '/kitchen/joint_states'
             set_js_topic = '/kitchen/cram_joint_states'
         kitchen_setup.add_urdf_to_world(name=object_name,
-                                        urdf=rospy.get_param('kitchen_description'),
+                                        urdf=kitchen_urdf,
                                         pose=p,
                                         js_topic=js_topic,
                                         set_js_topic=set_js_topic)
@@ -2674,7 +2675,7 @@ class TestWorldManipulation:
         kitchen_setup.set_env_state({'sink_area_left_middle_drawer_main_joint': 0.1})
         kitchen_setup.remove_group(object_name)
         kitchen_setup.add_urdf_to_world(name=object_name,
-                                        urdf=rospy.get_param('kitchen_description'),
+                                        urdf=kitchen_urdf,
                                         pose=p,
                                         js_topic=js_topic,
                                         set_js_topic=set_js_topic)
@@ -2961,9 +2962,9 @@ class TestSelfCollisionAvoidance:
         box_pose.header.frame_id = 'r_gripper_tool_frame'
         box_pose.pose.orientation.w = 1
         better_pose.api.world.add_box(name=box_name,
-                            size=(0.2, 0.1, 0.1),
-                            pose=box_pose,
-                            parent_link='r_gripper_tool_frame')
+                                      size=(0.2, 0.1, 0.1),
+                                      pose=box_pose,
+                                      parent_link='r_gripper_tool_frame')
 
         get_middleware().loginfo('Set a Cartesian goal for the box')
         box_goal = PoseStamped()
@@ -3803,11 +3804,11 @@ class TestCollisionAvoidanceGoals:
         tip_grasp_axis.header.frame_id = kitchen_setup.l_tip
         tip_grasp_axis.vector.z = 1
         kitchen_setup.api.motion_goals.add_grasp_bar(bar_center=bar_center,
-                                         bar_axis=bar_axis,
-                                         bar_length=0.12,
-                                         tip_link=kitchen_setup.l_tip,
-                                         tip_grasp_axis=tip_grasp_axis,
-                                         root_link=kitchen_setup.default_root)
+                                                     bar_axis=bar_axis,
+                                                     bar_length=0.12,
+                                                     tip_link=kitchen_setup.l_tip,
+                                                     tip_grasp_axis=tip_grasp_axis,
+                                                     root_link=kitchen_setup.default_root)
 
         x = Vector3Stamped()
         x.header.frame_id = kitchen_setup.l_tip
@@ -3887,11 +3888,11 @@ class TestCollisionAvoidanceGoals:
         tip_grasp_axis.vector.z = 1
 
         kitchen_setup.api.motion_goals.add_grasp_bar(bar_center=bar_center,
-                                         bar_axis=bar_axis,
-                                         bar_length=0.4,
-                                         tip_link=kitchen_setup.l_tip,
-                                         tip_grasp_axis=tip_grasp_axis,
-                                         root_link=kitchen_setup.default_root)
+                                                     bar_axis=bar_axis,
+                                                     bar_length=0.4,
+                                                     tip_link=kitchen_setup.l_tip,
+                                                     tip_grasp_axis=tip_grasp_axis,
+                                                     root_link=kitchen_setup.default_root)
         x_gripper = Vector3Stamped()
         x_gripper.header.frame_id = kitchen_setup.l_tip
         x_gripper.vector.x = 1
@@ -3909,7 +3910,7 @@ class TestCollisionAvoidanceGoals:
 
         # open drawer
         kitchen_setup.api.motion_goals.add_open_container(tip_link=kitchen_setup.l_tip,
-                                              environment_link=drawer_handle)
+                                                          environment_link=drawer_handle)
         kitchen_setup.execute()
         kitchen_setup.set_env_state({drawer_joint: 0.48})
 
@@ -4111,7 +4112,7 @@ class TestCollisionAvoidanceGoals:
         base_goal.pose.orientation.w = 1
         kitchen_setup.api.motion_goals.set_avoid_joint_limits_goal(percentage=percentage)
         kitchen_setup.api.motion_goals.allow_collision(group1=tray_name,
-                                      group2=kitchen_setup.l_gripper_group)
+                                                       group2=kitchen_setup.l_gripper_group)
         # kitchen_setup.allow_self_collision()
         # drive back
         kitchen_setup.move_base(base_goal)
@@ -4132,7 +4133,7 @@ class TestCollisionAvoidanceGoals:
         tray_goal.pose.orientation = Quaternion(x=q[0], y=q[1], z=[2], w=[3])
         kitchen_setup.api.motion_goals.set_avoid_joint_limits_goal(percentage=percentage)
         kitchen_setup.api.motion_goals.allow_collision(group1=tray_name,
-                                      group2=kitchen_setup.l_gripper_group)
+                                                       group2=kitchen_setup.l_gripper_group)
         kitchen_setup.api.motion_goals.add_cartesian_pose(tray_goal, tray_name, 'base_footprint')
         kitchen_setup.execute()
 
@@ -4291,7 +4292,7 @@ class TestBenchmark:
             for h in horizons:
                 fake_table_setup.api.monitors.add_api.monitors.add_set_seed_configuration(h)
                 fake_table_setup.api.motion_goals.add_motion_goal(motion_goal_class=SetQPSolver.__name__,
-                                                              qp_solver_id=qp_solver)
+                                                                  qp_solver_id=qp_solver)
                 r_goal = PoseStamped()
                 r_goal.header.frame_id = 'map'
                 r_goal.pose.position.x = 0.8

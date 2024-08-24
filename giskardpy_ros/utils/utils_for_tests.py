@@ -1,5 +1,6 @@
 import asyncio
 import csv
+import inspect
 import keyword
 import os
 from collections import defaultdict
@@ -8,32 +9,27 @@ from threading import Thread
 from time import time, sleep
 from typing import Tuple, Optional, List, Dict, Union
 
+import giskard_msgs.msg as giskard_msgs
 import hypothesis.strategies as st
 import numpy as np
 from angles import shortest_angular_distance
 from geometry_msgs.msg import PoseStamped, Point, PointStamped, Quaternion, Pose
-from hypothesis import assume
-from hypothesis.strategies import composite
-from numpy import pi
-from rclpy.duration import Duration
-from rclpy.publisher import Publisher
-from sensor_msgs.msg import JointState
-from std_msgs.msg import ColorRGBA
-from tf2_py import LookupException, ExtrapolationException
-from visualization_msgs.msg import Marker
-
-import giskard_msgs.msg as giskard_msgs
-import giskardpy.casadi_wrapper as cas
-import giskardpy_ros.ros2.msg_converter as msg_converter
-import giskardpy_ros.ros2.tfwrapper as tf
 from giskard_msgs.action._move import Move_Result, Move_Goal
 from giskard_msgs.action._world import World_Result
 from giskard_msgs.msg import GiskardError
 from giskard_msgs.srv import DyeGroup_Response
-from giskardpy.data_types.data_types import KeyDefaultDict
+from hypothesis import assume
+from hypothesis.strategies import composite
+from numpy import pi
+from rclpy.publisher import Publisher
+from sensor_msgs.msg import JointState
+from tf2_py import LookupException, ExtrapolationException
+
+import giskardpy.casadi_wrapper as cas
+import giskardpy_ros.ros2.msg_converter as msg_converter
+import giskardpy_ros.ros2.tfwrapper as tf
 from giskardpy.data_types.data_types import PrefixName, Derivatives
-from giskardpy.data_types.exceptions import UnknownGroupException, DuplicateNameException, WorldException, \
-    LocalMinimumException
+from giskardpy.data_types.exceptions import UnknownGroupException, DuplicateNameException, WorldException
 from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPoseStraight
 from giskardpy.goals.diff_drive_goals import DiffDriveTangentialToPoint, KeepHandInWorkspace
 from giskardpy.goals.joint_goals import JointPositionList
@@ -43,6 +39,7 @@ from giskardpy.model.collision_world_syncer import Collisions, Collision, Collis
 from giskardpy.model.joints import OneDofJoint, OmniDrive, DiffDrive, Joint
 from giskardpy.motion_graph.monitors.cartesian_monitors import PoseReached
 from giskardpy.motion_graph.monitors.joint_monitors import JointGoalReached
+from giskardpy.motion_graph.monitors.monitors import Monitor
 from giskardpy.motion_graph.monitors.overwrite_state_monitors import SetSeedConfiguration
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.qp.free_variable import FreeVariable
@@ -50,10 +47,9 @@ from giskardpy.qp.qp_controller import available_solvers
 from giskardpy.qp.qp_solver_ids import SupportedQPSolver
 from giskardpy.utils.utils import suppress_stderr
 from giskardpy_ros.configs.giskard import Giskard
-from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper
 from giskardpy_ros.python_interface.python_interface import GiskardWrapperNode
 from giskardpy_ros.ros2 import rospy
-from giskardpy_ros.ros2.msg_converter import json_dict_to_ros_kwargs, json_str_to_giskard_kwargs, json_str_to_ros_kwargs
+from giskardpy_ros.ros2.msg_converter import json_str_to_ros_kwargs
 from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 
 BIG_NUMBER = 1e100
@@ -332,9 +328,9 @@ class GiskardTester:
 
     def set_seed_odometry(self, base_pose, group_name: Optional[str] = None):
         if group_name is None:
-            group_name = self.robot_name
-        self.motion_goals.set_seed_odometry(group_name=group_name,
-                                            base_pose=base_pose)
+            group_name = self.api.robot_name
+        self.api.monitors.add_set_seed_configuration(group_name=group_name,
+                                                     base_pose=base_pose)
 
     def transform_msg(self, target_frame, msg, timeout=1):
         result_msg = deepcopy(msg)
@@ -361,7 +357,7 @@ class GiskardTester:
 
     def dye_group(self, group_name: str, rgba: Tuple[float, float, float, float],
                   expected_error_codes=(DyeGroup_Response.SUCCESS,)):
-        res = self.world.dye_group(group_name, rgba)
+        res = self.api.world.dye_group(group_name, rgba)
         assert res.error_codes in expected_error_codes
 
     def print_qp_solver_times(self):
@@ -414,8 +410,8 @@ class GiskardTester:
         if object_name is None:
             object_name = self.default_env_name
         if GiskardBlackboard().tree.is_standalone():
-            self.set_seed_configuration(joint_state)
-            self.allow_all_collisions()
+            self.api.monitors.add_set_seed_configuration(joint_state)
+            self.api.motion_goals.allow_all_collisions()
             self.execute()
         else:
             joint_state_msg = position_dict_to_joint_states(joint_state)
@@ -460,26 +456,26 @@ class GiskardTester:
         self.execute(add_monitors_for_everything=False)
 
     def set_keep_hand_in_workspace(self, tip_link, map_frame=None, base_footprint=None):
-        self.motion_goals.add_motion_goal(motion_goal_class=KeepHandInWorkspace.__name__,
-                                          tip_link=tip_link,
-                                          map_frame=map_frame,
-                                          base_footprint=base_footprint)
+        self.api.motion_goals.add_motion_goal(motion_goal_class=KeepHandInWorkspace.__name__,
+                                              tip_link=tip_link,
+                                              map_frame=map_frame,
+                                              base_footprint=base_footprint)
 
     def set_diff_drive_tangential_to_point(self, goal_point: PointStamped, weight: float = WEIGHT_ABOVE_CA, **kwargs):
-        self.motion_goals.add_motion_goal(motion_goal_class=DiffDriveTangentialToPoint.__name__,
-                                          goal_point=goal_point,
-                                          weight=weight,
-                                          **kwargs)
+        self.api.motion_goals.add_motion_goal(motion_goal_class=DiffDriveTangentialToPoint.__name__,
+                                              goal_point=goal_point,
+                                              weight=weight,
+                                              **kwargs)
 
     #
     # GENERAL GOAL STUFF ###############################################################################################
     #
 
-    goal_monitor_map = {
-        JointPositionList.__name__: JointGoalReached.__name__,
-        SetSeedConfiguration.__name__: JointGoalReached.__name__,
-        CartesianPose.__name__: PoseReached.__name__,
-        CartesianPoseStraight.__name__: PoseReached.__name__,
+    goal_monitor_map: Dict[str, Monitor] = {
+        JointPositionList.__name__: JointGoalReached,
+        SetSeedConfiguration.__name__: JointGoalReached,
+        CartesianPose.__name__: PoseReached,
+        CartesianPoseStraight.__name__: PoseReached,
     }
 
     def add_monitor_for_everything(self):
@@ -487,10 +483,14 @@ class GiskardTester:
             if goal.motion_goal_class in self.goal_monitor_map:
                 monitor_class = self.goal_monitor_map[goal.motion_goal_class]
                 ros_kwargs = json_str_to_ros_kwargs(goal.kwargs)
-                new_monitor = self.api.monitors.add_monitor(monitor_class=monitor_class,
-                                                            name=f'{goal.name}/{monitor_class}',
+                monitor_kwargs = {}
+                for keyword in inspect.signature(monitor_class.__init__).parameters.keys():
+                    if keyword in ros_kwargs:
+                        monitor_kwargs[keyword] = ros_kwargs[keyword]
+                new_monitor = self.api.monitors.add_monitor(monitor_class=monitor_class.__name__,
+                                                            name=f'{goal.name}/{monitor_class.__name__}',
                                                             start_condition=goal.start_condition,
-                                                            **ros_kwargs)
+                                                            **monitor_kwargs)
                 if goal.end_condition:
                     goal.end_condition = f'({goal.end_condition}) and {new_monitor}'
                 else:
@@ -576,7 +576,7 @@ class GiskardTester:
         t = god_map.trajectory
         whole_last_joint_state = t.get_last().to_position_dict()
         for group_name in self.env_joint_state_pubs:
-            group_joints = self.world.get_group_info(group_name).joint_state.name
+            group_joints = self.api.world.get_group_info(group_name).joint_state.name
             group_last_joint_state = {str(k): v for k, v in whole_last_joint_state.items() if k in group_joints}
             self.set_env_state(group_last_joint_state, group_name)
 
@@ -676,9 +676,9 @@ class GiskardTester:
             assert type(e) == expected_error_type
         assert name not in god_map.world.groups
         assert name not in self.api.world.get_group_names()
-        if name in self.env_joint_state_pubs:
-            self.env_joint_state_pubs[name].unregister()
-            del self.env_joint_state_pubs[name]
+        # if name in self.env_joint_state_pubs: todo
+        #     self.env_joint_state_pubs[name].unregister()
+        #     del self.env_joint_state_pubs[name]
         if name == self.default_env_name:
             self.default_env_name = None
 
@@ -941,11 +941,11 @@ class GiskardTester:
 
     def move_base(self, goal_pose) -> None:
         tip = self.get_odometry_joint().child_link_name
-        monitor = self.monitors.add_cartesian_pose(goal_pose=goal_pose, tip_link=tip.short_name, root_link='map',
-                                                   name='base goal')
-        self.motion_goals.add_cartesian_pose(goal_pose=goal_pose, tip_link=tip.short_name, root_link='map',
-                                             name='base goal',
-                                             end_condition=monitor)
+        monitor = self.api.monitors.add_cartesian_pose(goal_pose=goal_pose, tip_link=tip.short_name, root_link='map',
+                                                       name='base goal')
+        self.api.motion_goals.add_cartesian_pose(goal_pose=goal_pose, tip_link=tip.short_name, root_link='map',
+                                                 name='base goal',
+                                                 end_condition=monitor)
         self.execute()
 
     def reset(self):
@@ -966,32 +966,3 @@ def launch_launchfile(file_name: str):
     with suppress_stderr():
         launch.start()
         # launch.shutdown()
-
-
-def publish_marker_vector(start: Point, end: Point, diameter_shaft: float = 0.01, diameter_head: float = 0.02,
-                          id_: int = 0):
-    """
-    assumes points to be in frame map
-    """
-    m = Marker()
-    m.action = m.ADD
-    m.ns = 'debug'
-    m.id = id_
-    m.type = m.ARROW
-    m.points.append(start)
-    m.points.append(end)
-    m.color = ColorRGBA(1, 0, 0, 1)
-    m.scale.x = diameter_shaft
-    m.scale.y = diameter_head
-    m.scale.z = 0
-    m.header.frame_id = 'map'
-
-    pub = rospy.Publisher('/visualization_marker', Marker, queue_size=1)
-    start = rospy.get_rostime()
-    while pub.get_num_connections() < 1 and (rospy.get_rostime() - start).to_sec() < 2:
-        # wait for a connection to publisher
-        # you can do whatever you like here or simply do nothing
-        pass
-    sleep(0.3)
-
-    pub.publish(m)

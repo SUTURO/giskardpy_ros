@@ -15,6 +15,7 @@ from contextlib import contextmanager
 from functools import cached_property
 from typing import Type, Optional, Dict, Any
 
+import xacro
 from shape_msgs.msg import SolidPrimitive
 
 from giskard_msgs.msg import WorldBody
@@ -55,3 +56,9 @@ def make_urdf_world_body(name, urdf):
     wb.type = wb.URDF_BODY
     wb.urdf = urdf
     return wb
+
+
+def load_xacro(path: str) -> str:
+    path = get_middleware().resolve_iri(path)
+    doc = xacro.process_file(path, mappings={'radius': '0.9'})
+    return doc.toprettyxml(indent='  ')
