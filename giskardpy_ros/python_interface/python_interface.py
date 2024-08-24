@@ -357,6 +357,8 @@ class MotionGoalWrapper:
         name = name or motion_goal_class
         if self.avoid_name_conflict:
             name = f'G{self.number_of_goals()} {name}'
+        if [x for x in self._goals if x.name == name]:
+            raise KeyError(f'Motion Goal named {name} already exists.')
         motion_goal = MotionGoal()
         motion_goal.name = name
         motion_goal.motion_goal_class = motion_goal_class
@@ -1727,7 +1729,7 @@ class MonitorWrapper:
 
 
 class GiskardWrapper:
-    def __init__(self, node_handle: Node, giskard_node_name: str = 'giskard', avoid_name_conflict: bool = False):
+    def __init__(self, node_handle: Node, giskard_node_name: str = 'giskard', avoid_name_conflict: bool = True):
         """
         Python wrapper for the ROS interface of Giskard.
         :param giskard_node_name: node name of Giskard
@@ -1838,7 +1840,7 @@ class GiskardWrapperNode(Node, GiskardWrapper):
     is_spinning: bool
 
     def __init__(self, node_name: str = 'giskard_client', giskard_node_name: str = 'giskard',
-                 avoid_name_conflict: bool = False,
+                 avoid_name_conflict: bool = True,
                  *, context: Optional[Context] = None, cli_args: Optional[List[str]] = None,
                  namespace: Optional[str] = None, use_global_arguments: bool = True, enable_rosout: bool = True,
                  start_parameter_services: bool = True, parameter_overrides: Optional[List[Parameter]] = None,
