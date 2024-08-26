@@ -30,14 +30,18 @@ import giskardpy_ros.ros2.msg_converter as msg_converter
 import giskardpy_ros.ros2.tfwrapper as tf
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.data_types.exceptions import UnknownGroupException, DuplicateNameException, WorldException
-from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPoseStraight
+from giskardpy.goals.align_planes import AlignPlanes
+from giskardpy.goals.cartesian_goals import CartesianPose, CartesianPoseStraight, CartesianOrientation, \
+    CartesianPosition, CartesianPositionStraight
 from giskardpy.goals.diff_drive_goals import DiffDriveTangentialToPoint, KeepHandInWorkspace
 from giskardpy.goals.joint_goals import JointPositionList
+from giskardpy.goals.pointing import Pointing
 from giskardpy.god_map import god_map
 from giskardpy.middleware import get_middleware
 from giskardpy.model.collision_world_syncer import Collisions, Collision, CollisionEntry
 from giskardpy.model.joints import OneDofJoint, OmniDrive, DiffDrive, Joint
-from giskardpy.motion_graph.monitors.cartesian_monitors import PoseReached
+from giskardpy.motion_graph.monitors.cartesian_monitors import PoseReached, VectorsAligned, OrientationReached, \
+    PositionReached, PointingAt
 from giskardpy.motion_graph.monitors.joint_monitors import JointGoalReached
 from giskardpy.motion_graph.monitors.monitors import Monitor
 from giskardpy.motion_graph.monitors.overwrite_state_monitors import SetSeedConfiguration
@@ -476,6 +480,11 @@ class GiskardTester:
         SetSeedConfiguration.__name__: JointGoalReached,
         CartesianPose.__name__: PoseReached,
         CartesianPoseStraight.__name__: PoseReached,
+        CartesianOrientation.__name__: OrientationReached,
+        CartesianPosition.__name__: PositionReached,
+        CartesianPositionStraight.__name__: PositionReached,
+        AlignPlanes.__name__: VectorsAligned,
+        Pointing.__name__: PointingAt,
     }
 
     def add_monitor_for_everything(self):

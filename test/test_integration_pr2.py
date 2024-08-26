@@ -160,7 +160,7 @@ class PR2Tester(GiskardTester):
         self.r_gripper_group = 'r_gripper'
         # self.r_gripper = rospy.ServiceProxy('r_gripper_simulator/set_joint_states', SetJointState)
         # self.l_gripper = rospy.ServiceProxy('l_gripper_simulator/set_joint_states', SetJointState)
-        self.odom_root = 'odom_combined'
+        self.odom_root = 'odom'
         drive_joint_name = 'brumbrum'
         robot_desc = load_xacro('package://iai_pr2_description/robots/pr2_with_ft2_cableguide.xacro')
         if giskard is None:
@@ -1426,18 +1426,16 @@ class TestConstraints:
 
     def test_CartesianOrientation(self, zero_pose: PR2Tester):
         tip = 'base_footprint'
-        root = 'odom_combined'
-        q = QuaternionStamped()
-        q.header.frame_id = tip
+        root = zero_pose.odom_root
+        qs = QuaternionStamped()
+        qs.header.frame_id = tip
         q = quaternion_from_axis_angle([0, 0, 1], 4)
-        q.quaternion = Quaternion(x=q[0], y=q[1], z=[2], w=[3])
+        qs.quaternion = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
 
         zero_pose.api.motion_goals.allow_all_collisions()
         zero_pose.api.motion_goals.add_cartesian_orientation(root_link=root,
-                                                             root_group=None,
                                                              tip_link=tip,
-                                                             tip_group=zero_pose.api.robot_name,
-                                                             goal_orientation=q)
+                                                             goal_orientation=qs)
         zero_pose.execute()
 
     def test_CartesianPoseStraight1(self, zero_pose: PR2Tester):
