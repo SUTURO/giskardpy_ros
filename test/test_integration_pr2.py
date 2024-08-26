@@ -9,7 +9,7 @@ import pytest
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, Vector3Stamped, PointStamped, QuaternionStamped
 from giskard_msgs.action._move import Move_Goal
 from giskard_msgs.action._world import World_Goal
-from giskard_msgs.msg import WorldBody, CollisionEntry, LinkName
+from giskard_msgs.msg import WorldBody, CollisionEntry, LinkName, GiskardError
 from nav_msgs.msg import Path
 from numpy import pi
 from rclpy.duration import Duration
@@ -236,7 +236,7 @@ def giskard(request, ros):
     # launch_launchfile('package://iai_pr2_description/launch/upload_pr2_calibrated_with_ft2.launch')
     # launch_launchfile('package://iai_pr2_description/launch/upload_pr2_cableguide.launch')
     c = PR2Tester()
-    # c = PR2TestWrapperMujoco()
+    # c = PR2TesterMujoco()
     request.addfinalizer(c.tear_down)
     return c
 
@@ -1911,7 +1911,7 @@ class TestConstraints:
         zero_pose.api.motion_goals.add_motion_goal(motion_goal_class='JointPositionList', **kwargs)
         zero_pose.execute(expected_error_type=GoalInitalizationException)
 
-    # def test_align_planes2(self, zero_pose: PR2TestWrapper):
+    # def test_align_planes2(self, zero_pose: PR2Tester):
     #     # FIXME, what should I do with opposite vectors?
     #     x_gripper = Vector3Stamped()
     #     x_gripper.header.frame_id = zero_pose.r_tip
@@ -2461,7 +2461,7 @@ class TestCartGoals:
                                                       root_link=zero_pose.l_tip)
         zero_pose.execute()
 
-    # def test_wiggle1(self, kitchen_setup: PR2TestWrapper):
+    # def test_wiggle1(self, kitchen_setup: PR2Tester):
     #     # FIXME
     #     tray_pose = PoseStamped()
     #     tray_pose.header.frame_id = 'sink_area_surface'
@@ -2642,6 +2642,8 @@ class TestWorldManipulation:
         p.pose.position.y = 0
         p.pose.position.z = 0
         p.pose.orientation.w = 1
+        zero_pose.add_cylinder_to_world(object_name, height=1, radius=1, pose=p)
+        zero_pose.remove_group(object_name)
         zero_pose.add_cylinder_to_world(object_name, height=1, radius=1, pose=p)
         zero_pose.remove_group(object_name)
 
@@ -3257,7 +3259,7 @@ class TestCollisionAvoidanceGoals:
         box_setup.check_cpi_geq(box_setup.get_l_gripper_links(), 0.148)
         box_setup.check_cpi_geq(box_setup.get_r_gripper_links(), 0.088)
 
-    # def test_avoid_collision_drive_into_box(self, box_setup: PR2TestWrapper):
+    # def test_avoid_collision_drive_into_box(self, box_setup: PR2Tester):
     # fixme doesn't work anymore because loop detector is gone
     #     base_goal = PoseStamped()
     #     base_goal.header.frame_id = box_setup.default_root
@@ -4137,7 +4139,7 @@ class TestCollisionAvoidanceGoals:
 
     # TODO FIXME attaching and detach of urdf objects that listen to joint states
 
-    # def test_iis(self, kitchen_setup: PR2TestWrapper):
+    # def test_iis(self, kitchen_setup: PR2Tester):
     #     # rosrun tf static_transform_publisher 0 - 0.2 0.93 1.5707963267948966 0 0 iai_kitchen/table_area_main lid 10
     #     # rosrun tf static_transform_publisher 0 - 0.15 0 0 0 0 lid goal 10
     #     # kitchen_setup.api.motion_goals.add_joint_position(pocky_pose)
@@ -4526,7 +4528,175 @@ class TestActionServerEvents:
         zero_pose.api.motion_goals.add_joint_position(pocky_pose, add_monitor=False)
         zero_pose.projection()
 
+
 # kernprof -lv py.test -s test/test_integration_pr2.py
+
+class TestFeatureFunctions:
+    def test_feature_perpendicular(self, zero_pose: PR2Tester):
+        world_feature = Vector3Stamped()
+        world_feature.header.frame_id = 'map'
+        world_feature.vector.x = 1
+
+        robot_feature = Vector3Stamped()
+        robot_feature.header.frame_id = zero_pose.r_tip
+        robot_feature.vector.x = 1
+
+        zero_pose.api.motion_goals.add_align_perpendicular(root_link='map',
+                                                           tip_link=zero_pose.r_tip,
+                                                           reference_normal=world_feature,
+                                                           tip_normal=robot_feature)
+        zero_pose.execute()
+
+    def test_feature_angle(self, zero_pose: PR2Tester):
+        world_feature = Vector3Stamped()
+        world_feature.header.frame_id = 'map'
+        world_feature.vector.z = 1
+
+        robot_feature = Vector3Stamped()
+        robot_feature.header.frame_id = zero_pose.r_tip
+        robot_feature.vector.z = 1
+
+        zero_pose.api.motion_goals.add_angle(root_link='map',
+                                             tip_link=zero_pose.r_tip,
+                                             reference_vector=world_feature,
+                                             tip_vector=robot_feature,
+                                             lower_angle=0.6,
+                                             upper_angle=0.9)
+        zero_pose.execute()
+
+    def test_feature_height(self, zero_pose: PR2Tester):
+        world_feature = PointStamped()
+        world_feature.header.frame_id = 'map'
+
+        robot_feature = PointStamped()
+        robot_feature.header.frame_id = zero_pose.r_tip
+
+        zero_pose.api.motion_goals.add_height(root_link='map',
+                                              tip_link=zero_pose.r_tip,
+                                              reference_point=world_feature,
+                                              tip_point=robot_feature,
+                                              lower_limit=0.99,
+                                              upper_limit=1)
+        zero_pose.execute()
+
+    def test_feature_distance(self, zero_pose: PR2Tester):
+        world_feature = PointStamped()
+        world_feature.header.frame_id = 'map'
+
+        robot_feature = PointStamped()
+        robot_feature.header.frame_id = zero_pose.r_tip
+
+        zero_pose.api.motion_goals.add_distance(root_link='map',
+                                                tip_link=zero_pose.r_tip,
+                                                reference_point=world_feature,
+                                                tip_point=robot_feature,
+                                                lower_limit=2,
+                                                upper_limit=2)
+        mon = zero_pose.api.monitors.add_distance(root_link='map',
+                                                  tip_link=zero_pose.r_tip,
+                                                  reference_point=world_feature,
+                                                  tip_point=robot_feature,
+                                                  lower_limit=1.99,
+                                                  upper_limit=2.01)
+
+        zero_pose.api.monitors.add_end_motion(mon)
+        zero_pose.execute()
+
+
+class TestEndMotionReason:
+    def test_get_end_motion_reason_simple(self, zero_pose: PR2Tester):
+        goal_point = PointStamped()
+        goal_point.header.frame_id = 'map'
+        goal_point.point = Point(x=2.0, y=2.0, z=2.0)
+        controlled_point = PointStamped()
+        controlled_point.header.frame_id = zero_pose.r_tip
+
+        mon_distance = zero_pose.api.monitors.add_distance(root_link='map',
+                                                           tip_link=zero_pose.r_tip,
+                                                           reference_point=goal_point,
+                                                           tip_point=controlled_point, lower_limit=0, upper_limit=0)
+        zero_pose.api.motion_goals.add_distance(root_link='base_link',
+                                                tip_link=zero_pose.r_tip,
+                                                reference_point=goal_point,
+                                                tip_point=controlled_point, lower_limit=0, upper_limit=0)
+
+        mon_trajectory = zero_pose.api.monitors.add_max_trajectory_length(max_trajectory_length=1)
+        error = GiskardError()
+        error.msg = 'stop motion'
+        error.type = GiskardException.__name__
+        zero_pose.api.monitors.add_cancel_motion(mon_trajectory, error=error)
+        zero_pose.api.monitors.add_end_motion(mon_distance)
+        result = zero_pose.execute(expected_error_type=MaxTrajectoryLengthException, add_monitors_for_everything=False)
+        reason = zero_pose.api.get_end_motion_reason(move_result=result)
+        assert len(reason) == 1 and list(reason.keys())[0] == 'M0 DistanceMonitor'
+
+    def test_get_end_motion_reason_convoluted(self, zero_pose: PR2Tester):
+        goal_point = PointStamped()
+        goal_point.header.frame_id = 'map'
+        goal_point.point = Point(x=2.0, y=2.0, z=2.0)
+        controlled_point = PointStamped()
+        controlled_point.header.frame_id = zero_pose.r_tip
+
+        mon_sleep1 = zero_pose.api.monitors.add_sleep(10, name='sleep1')
+        mon_sleep2 = zero_pose.api.monitors.add_sleep(10, start_condition=mon_sleep1, name='sleep2')
+        mon_distance = zero_pose.api.monitors.add_distance(root_link='map', tip_link=zero_pose.r_tip,
+                                                           reference_point=goal_point,
+                                                           tip_point=controlled_point, lower_limit=0, upper_limit=0,
+                                                           start_condition=mon_sleep2)
+        zero_pose.api.motion_goals.add_distance(root_link='base_link', tip_link=zero_pose.r_tip,
+                                                reference_point=goal_point,
+                                                tip_point=controlled_point, lower_limit=0, upper_limit=0)
+
+        mon_trajectory = zero_pose.api.monitors.add_max_trajectory_length(max_trajectory_length=1)
+        error = GiskardError()
+        error.msg = 'stop motion'
+        error.type = GiskardException.__name__
+        zero_pose.api.monitors.add_cancel_motion(mon_trajectory, error=error)
+        zero_pose.api.monitors.add_end_motion(mon_distance)
+        result = zero_pose.execute(expected_error_type=MaxTrajectoryLengthException,
+                                   add_monitors_for_everything=False)
+        reason = zero_pose.api.get_end_motion_reason(move_result=result)
+        print(reason)
+        assert len(reason) == 3 and list(reason.keys())[0] == 'M2 DistanceMonitor' \
+               and list(reason.keys())[2] == 'M0 sleep1' and list(reason.keys())[1] == 'M1 sleep2'
+
+    def test_multiple_end_motion_monitors(self, zero_pose: PR2Tester):
+        goal_point = PointStamped()
+        goal_point.header.frame_id = 'map'
+        goal_point.point = Point(x=2.0, y=2.0, z=2.0)
+        controlled_point = PointStamped()
+        controlled_point.header.frame_id = zero_pose.r_tip
+
+        mon_sleep1 = zero_pose.api.monitors.add_sleep(10, name='sleep1')
+        mon_sleep2 = zero_pose.api.monitors.add_sleep(10, start_condition=mon_sleep1, name='sleep2')
+        mon_distance = zero_pose.api.monitors.add_distance(root_link='map', tip_link=zero_pose.r_tip,
+                                                           reference_point=goal_point,
+                                                           tip_point=controlled_point, lower_limit=0, upper_limit=0,
+                                                           start_condition=mon_sleep2)
+        zero_pose.api.motion_goals.add_distance(root_link='base_link', tip_link=zero_pose.r_tip,
+                                                reference_point=goal_point,
+                                                tip_point=controlled_point, lower_limit=0, upper_limit=0)
+
+        mon_trajectory = zero_pose.api.monitors.add_max_trajectory_length(max_trajectory_length=1)
+        error = GiskardError()
+        error.msg = 'stop motion'
+        error.type = GiskardException.__name__
+        zero_pose.api.monitors.add_cancel_motion(mon_trajectory, error=error)
+        zero_pose.api.monitors.add_end_motion(mon_distance)
+
+        mon_sleep3 = zero_pose.api.monitors.add_sleep(20, name='sleep3')
+        mon_sleep4 = zero_pose.api.monitors.add_sleep(20, start_condition=mon_sleep3, name='sleep4')
+        zero_pose.api.monitors.add_end_motion(mon_sleep4)
+
+        result = zero_pose.execute(expected_error_type=MaxTrajectoryLengthException,
+                                   add_monitors_for_everything=False)
+        reason = zero_pose.api.get_end_motion_reason(move_result=result)
+        print(reason)
+        assert len(reason) == 5 and list(reason.keys())[0] == 'M2 DistanceMonitor' \
+               and list(reason.keys())[1] == 'M1 sleep2' and list(reason.keys())[2] == 'M0 sleep1' and \
+               list(reason.keys())[3] == 'M7 sleep4' and list(reason.keys())[4] == 'M6 sleep3'
+
+    # kernprof -lv py.test -s test/test_integration_pr2.py
 # time: [1-9][1-9]*.[1-9]* s
 # import pytest
 # pytest.main(['-s', __file__ + '::TestManipulability::test_manip1'])

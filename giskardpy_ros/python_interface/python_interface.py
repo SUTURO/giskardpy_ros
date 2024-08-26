@@ -15,9 +15,9 @@ from shape_msgs.msg import SolidPrimitive
 
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.action import World, Move
-from giskard_msgs.action._move import Move_Result
+from giskard_msgs.action._move import Move_Result, Move_Feedback
 from giskard_msgs.action._world import World_Result, World_Goal
-from giskard_msgs.msg import WorldBody, CollisionEntry, MotionGoal, Monitor, GiskardError, LinkName
+from giskard_msgs.msg import WorldBody, CollisionEntry, MotionGoal, Monitor, GiskardError, LinkName, ExecutionState
 from giskard_msgs.srv import GetGroupInfo, GetGroupNames, DyeGroup, DyeGroup_Response, DyeGroup_Request, \
     GetGroupNames_Response, GetGroupInfo_Response, GetGroupInfo_Request, GetGroupNames_Request
 from giskardpy.data_types.data_types import goal_parameter
@@ -27,6 +27,7 @@ from giskardpy.goals.align_to_push_door import AlignToPushDoor
 from giskardpy.goals.cartesian_goals import CartesianPose, DiffDriveBaseGoal, CartesianVelocityLimit, \
     CartesianOrientation, CartesianPoseStraight, CartesianPosition, CartesianPositionStraight
 from giskardpy.goals.collision_avoidance import CollisionAvoidance
+from giskardpy.goals.feature_functions import DistanceGoal, HeightGoal, AngleGoal, AlignPerpendicular
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPositionList, AvoidJointLimits
 from giskardpy.goals.open_close import Close, Open
@@ -36,6 +37,8 @@ from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
 from giskardpy.motion_graph.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, \
     PointingAt, \
     VectorsAligned, DistanceToLine
+from giskardpy.motion_graph.monitors.feature_monitors import DistanceMonitor, HeightMonitor, AngleMonitor, \
+    PerpendicularMonitor
 from giskardpy.motion_graph.monitors.joint_monitors import JointGoalReached
 from giskardpy.motion_graph.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator, CancelMotion, EndMotion
 from giskardpy.motion_graph.monitors.overwrite_state_monitors import SetOdometry, SetSeedConfiguration
@@ -1296,6 +1299,134 @@ class MotionGoalWrapper:
                              end_condition=end_condition,
                              **kwargs)
 
+    def add_align_perpendicular(self,
+                                reference_normal: Vector3Stamped,
+                                tip_link: Union[str, giskard_msgs.LinkName],
+                                tip_normal: Vector3Stamped,
+                                root_link: Union[str, giskard_msgs.LinkName],
+                                reference_velocity: Optional[float] = None,
+                                weight: Optional[float] = None,
+                                name: Optional[str] = None,
+                                start_condition: str = '',
+                                hold_condition: str = '',
+                                end_condition: str = '',
+                                **kwargs: goal_parameter):
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        self.add_motion_goal(motion_goal_class=AlignPerpendicular.__name__,
+                             tip_normal=tip_normal,
+                             reference_normal=reference_normal,
+                             tip_link=tip_link,
+                             root_link=root_link,
+                             max_vel=reference_velocity,
+                             weight=weight,
+                             name=name,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition,
+                             **kwargs)
+
+    def add_height(self,
+                   reference_point: PointStamped,
+                   tip_point: PointStamped,
+                   tip_link: Union[str, giskard_msgs.LinkName],
+                   root_link: Union[str, giskard_msgs.LinkName],
+                   lower_limit: float,
+                   upper_limit: float,
+                   reference_velocity: Optional[float] = None,
+                   weight: Optional[float] = None,
+                   name: Optional[str] = None,
+                   start_condition: str = '',
+                   hold_condition: str = '',
+                   end_condition: str = '',
+                   **kwargs: goal_parameter):
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        self.add_motion_goal(motion_goal_class=HeightGoal.__name__,
+                             tip_point=tip_point,
+                             reference_point=reference_point,
+                             tip_link=tip_link,
+                             root_link=root_link,
+                             lower_limit=lower_limit,
+                             upper_limit=upper_limit,
+                             max_vel=reference_velocity,
+                             weight=weight,
+                             name=name,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition,
+                             **kwargs)
+
+    def add_distance(self,
+                     reference_point: PointStamped,
+                     tip_point: PointStamped,
+                     tip_link: Union[str, giskard_msgs.LinkName],
+                     root_link: Union[str, giskard_msgs.LinkName],
+                     lower_limit: float,
+                     upper_limit: float,
+                     reference_velocity: Optional[float] = None,
+                     weight: Optional[float] = None,
+                     name: Optional[str] = None,
+                     start_condition: str = '',
+                     hold_condition: str = '',
+                     end_condition: str = '',
+                     **kwargs: goal_parameter):
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        self.add_motion_goal(motion_goal_class=DistanceGoal.__name__,
+                             tip_point=tip_point,
+                             reference_point=reference_point,
+                             tip_link=tip_link,
+                             root_link=root_link,
+                             lower_limit=lower_limit,
+                             upper_limit=upper_limit,
+                             max_vel=reference_velocity,
+                             weight=weight,
+                             name=name,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition,
+                             **kwargs)
+
+    def add_angle(self,
+                  reference_vector: Vector3Stamped,
+                  tip_link: Union[str, giskard_msgs.LinkName],
+                  tip_vector: Vector3Stamped,
+                  root_link: Union[str, giskard_msgs.LinkName],
+                  lower_angle: float,
+                  upper_angle: float,
+                  reference_velocity: Optional[float] = None,
+                  weight: Optional[float] = None,
+                  name: Optional[str] = None,
+                  start_condition: str = '',
+                  hold_condition: str = '',
+                  end_condition: str = '',
+                  **kwargs: goal_parameter):
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        self.add_motion_goal(motion_goal_class=AngleGoal.__name__,
+                             tip_vector=tip_vector,
+                             reference_vector=reference_vector,
+                             tip_link=tip_link,
+                             root_link=root_link,
+                             lower_angle=lower_angle,
+                             upper_angle=upper_angle,
+                             max_vel=reference_velocity,
+                             weight=weight,
+                             name=name,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition,
+                             **kwargs)
+
 
 class MonitorWrapper:
     _monitors: List[Monitor]
@@ -1727,8 +1858,131 @@ class MonitorWrapper:
                                 end_condition=end_condition,
                                 mod=mod)
 
+    def add_vectors_perpendicular(self,
+                                  root_link: Union[str, giskard_msgs.LinkName],
+                                  tip_link: Union[str, giskard_msgs.LinkName],
+                                  reference_normal: Vector3Stamped,
+                                  tip_normal: Vector3Stamped,
+                                  name: Optional[str] = None,
+                                  start_condition: str = '',
+                                  hold_condition: str = '',
+                                  end_condition: Optional[str] = None,
+                                  threshold: float = 0.01) -> str:
+        """
+        True if tip_normal of tip_link is perpendicular to goal_normal within threshold.
+        """
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        return self.add_monitor(monitor_class=PerpendicularMonitor.__name__,
+                                name=name,
+                                root_link=root_link,
+                                tip_link=tip_link,
+                                reference_normal=reference_normal,
+                                tip_normal=tip_normal,
+                                start_condition=start_condition,
+                                hold_condition=hold_condition,
+                                end_condition=end_condition,
+                                threshold=threshold)
+
+    def add_angle(self,
+                  root_link: Union[str, giskard_msgs.LinkName],
+                  tip_link: Union[str, giskard_msgs.LinkName],
+                  reference_vector: Vector3Stamped,
+                  tip_vector: Vector3Stamped,
+                  lower_angle: float,
+                  upper_angle: float,
+                  name: Optional[str] = None,
+                  start_condition: str = '',
+                  hold_condition: str = '',
+                  end_condition: Optional[str] = None) -> str:
+        """
+        True if angle between tip_vector and reference_vector is within lower and upper angle.
+        """
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        return self.add_monitor(monitor_class=AngleMonitor.__name__,
+                                name=name,
+                                root_link=root_link,
+                                tip_link=tip_link,
+                                reference_vector=reference_vector,
+                                tip_vector=tip_vector,
+                                lower_limit=lower_angle,
+                                upper_limit=upper_angle,
+                                start_condition=start_condition,
+                                hold_condition=hold_condition,
+                                end_condition=end_condition)
+
+    def add_height(self,
+                   root_link: Union[str, giskard_msgs.LinkName],
+                   tip_link: Union[str, giskard_msgs.LinkName],
+                   reference_point: PointStamped,
+                   tip_point: PointStamped,
+                   lower_limit: float,
+                   upper_limit: float,
+                   name: Optional[str] = None,
+                   start_condition: str = '',
+                   hold_condition: str = '',
+                   end_condition: Optional[str] = None) -> str:
+        """
+        True if distance along the z-axis of root_link between tip_point and reference_point
+        is within lower and upper limit.
+        """
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        return self.add_monitor(monitor_class=HeightMonitor.__name__,
+                                name=name,
+                                root_link=root_link,
+                                tip_link=tip_link,
+                                reference_point=reference_point,
+                                tip_point=tip_point,
+                                lower_limit=lower_limit,
+                                upper_limit=upper_limit,
+                                start_condition=start_condition,
+                                hold_condition=hold_condition,
+                                end_condition=end_condition)
+
+    def add_distance(self,
+                     root_link: Union[str, giskard_msgs.LinkName],
+                     tip_link: Union[str, giskard_msgs.LinkName],
+                     reference_point: PointStamped,
+                     tip_point: PointStamped,
+                     lower_limit: float,
+                     upper_limit: float,
+                     name: Optional[str] = None,
+                     start_condition: str = '',
+                     hold_condition: str = '',
+                     end_condition: Optional[str] = None) -> str:
+        """
+        True if distance between tip_point and reference_point on the plane (that has the z-axis of
+        root_link as a normal vector) is within lower and upper limit.
+        """
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        return self.add_monitor(monitor_class=DistanceMonitor.__name__,
+                                name=name,
+                                root_link=root_link,
+                                tip_link=tip_link,
+                                reference_point=reference_point,
+                                tip_point=tip_point,
+                                lower_limit=lower_limit,
+                                upper_limit=upper_limit,
+                                start_condition=start_condition,
+                                hold_condition=hold_condition,
+                                end_condition=end_condition)
+
 
 class GiskardWrapper:
+    last_feedback: Move_Feedback = None
+    last_execution_state: ExecutionState = None
+
     def __init__(self, node_handle: Node, giskard_node_name: str = 'giskard', avoid_name_conflict: bool = True):
         """
         Python wrapper for the ROS interface of Giskard.
@@ -1833,7 +2087,60 @@ class GiskardWrapper:
         return future
 
     async def get_result(self):
-        return await self._client.get_result()
+        self.last_execution_state = await self._client.get_result()
+        return self.last_execution_state
+
+    def get_end_motion_reason(self, move_result: Optional[Move_Result] = None, show_all: bool = False) -> Dict[
+        str, bool]:
+        """
+        Analyzes a MoveResult msg to return a list of all monitors that hindered the EndMotion Monitors from becoming active.
+        Uses the last received MoveResult msg from execute() or projection() when not explicitly given.
+        :param move_result: the move_result msg to analyze
+        :param show_all: returns the state of all monitors when show_all==True
+        :return: Dict with monitor name as key and True or False as value
+        """
+        if not move_result and not self.last_execution_state:
+            raise Exception('No MoveResult available to analyze')
+        elif not move_result:
+            execution_state = self.last_execution_state
+        else:
+            execution_state = move_result.execution_state
+
+        result = {}
+        if show_all:
+            return {monitor.name: state for monitor, state in
+                    zip(execution_state.monitors, execution_state.monitor_state)}
+
+        failedEndMotion_ids = []
+        for idx, monitor in enumerate(execution_state.monitors):
+            if monitor.monitor_class == 'EndMotion' and execution_state.monitor_state[idx] == 0:
+                failedEndMotion_ids.append(idx)
+
+        if len(failedEndMotion_ids) == 0:
+            # the end motion was successful
+            return result
+
+        def search_for_monitor_values_in_start_condition(start_condition: str):
+            res = []
+            for monitor, state in zip(execution_state.monitors, execution_state.monitor_state):
+                if f'\'{monitor.name}\'' in start_condition and state == 0:
+                    res.append(monitor)
+            return res
+
+        for endMotion_idx in failedEndMotion_ids:
+            start_condition = execution_state.monitors[endMotion_idx].start_condition
+            false_monitors = search_for_monitor_values_in_start_condition(start_condition=start_condition)
+            # repeatedly search for all inactive monitors in all start_conditions directly
+            # connected to the endMotion start_condition
+            for idx, false_monitor in enumerate(false_monitors):
+                if false_monitors[idx].start_condition != '1.0':
+                    false_monitors.extend(
+                        search_for_monitor_values_in_start_condition(false_monitor.start_condition))
+
+            for mon in false_monitors:
+                result[mon.name] = False
+
+        return result
 
 
 class GiskardWrapperNode(Node, GiskardWrapper):
