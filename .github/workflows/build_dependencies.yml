@@ -35,7 +35,7 @@ jobs:
         name: create venv
         run: |
           python3 -m venv ~/venv
-          source venv/bin/activate
+          source ~/venv/bin/activate
           python3 -m pip install --upgrade pip
           pip3 install -r ~/giskardpy/requirements.txt
           pip3 install -r requirements.txt
@@ -69,7 +69,7 @@ jobs:
       - if: ${{ steps.load-bpb.outputs.cache-hit != 'true' }}
         name: install pybullet
         run: |
-          source venv/bin/activate
+          source ~/venv/bin/activate
           mkdir -p ~/bpb
           cd ~/bpb
           git clone https://github.com/SemRoCo/bullet3.git jazzy
@@ -103,7 +103,7 @@ jobs:
       - if: ${{ steps.load-qpSWIFT.outputs.cache-hit != 'true' }}
         name: compile qpSWIFT
         run: |
-          source venv/bin/activate
+          source ~/venv/bin/activate
           cd ~
           git clone https://github.com/qpSWIFT/qpSWIFT
           cd qpSWIFT
