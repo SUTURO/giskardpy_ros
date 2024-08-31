@@ -44,7 +44,7 @@ jobs:
   test_standalone:
     runs-on: ubuntu-24.04
     container:
-      image: osrf/ros:foxy-desktop
+      image: osrf/ros:jazzy-desktop
     strategy:
       matrix:
         qp_solver: [qpalm, qpSWIFT]
