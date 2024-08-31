@@ -17,7 +17,7 @@ on:
         required: false
 jobs:
   build_and_cache_bpb:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: load bpb
         id: load-bpb
@@ -31,7 +31,7 @@ jobs:
           sudo pip3 install numpy
           mkdir -p ~/bpb
           cd ~/bpb
-          git clone https://github.com/SemRoCo/bullet3.git
+          git clone https://github.com/SemRoCo/bullet3.git jazzy
           cd bullet3
           ./build_better_pybullet.sh
       - if: ${{ steps.load-bpb.outputs.cache-hit != 'true' }}
@@ -45,7 +45,7 @@ jobs:
         name: Setup upterm session
         uses: lhotari/action-upterm@v1
   build_and_cache_qpSWIFT:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - name: load qpSWIFT
         id: load-qpSWIFT
@@ -74,7 +74,7 @@ jobs:
         name: Setup upterm session
         uses: lhotari/action-upterm@v1
   create_pip_cache:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
       - name: load pip cache
