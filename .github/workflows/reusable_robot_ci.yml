@@ -58,20 +58,15 @@ jobs:
           path: 'giskardpy'
           repository: SemRoCo/giskardpy
           ref: giskard_library
-      - name: Install pip dependencies
+      - name: load venv
+        id: load-venv
+        uses: actions/cache@v3
+        with:
+          path: venv
+          key: venv
+      - name: source venv/bin/activate into bashrc
         run: |
-          python3 -m venv venv
-          source venv/bin/activate
-          pip3 install -r giskardpy/requirements.txt
-          cd giskardpy
-          pip3 install .
           echo 'source venv/bin/activate' >> ~/.bashrc
-#      - name: load pip cache
-#        id: pip-load
-#        uses: actions/cache@v3
-#        with:
-#          path: ~/.cache/pip
-#          key: pip
       - if: ${{ matrix.qp_solver == 'qpSWIFT'}}
         name: load qpSWIFT
         id: load-qpSWIFT
@@ -82,7 +77,6 @@ jobs:
       - if: ${{ matrix.qp_solver == 'qpSWIFT'}}
         name: install qpSWIFT python wrapper
         run: |
-          source venv/bin/activate  
           cd ~/qpSWIFT/python
           pip3 install .
       - name: load bpb # -----------------------------------------------------------------------------------------------
