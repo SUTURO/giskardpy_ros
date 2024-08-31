@@ -65,7 +65,7 @@ jobs:
 #      test2: test/test_integration_pr2.py::TestWorld
 #      test3: test/test_integration_pr2.py::TestSelfCollisionAvoidance
 #      test4: test/test_integration_pr2.py::TestInfoServices
-      test5: test/test_integration_pr2.py::TestJointGoals
+      test1: test/test_integration_pr2.py::TestJointGoals
 #      test6: test/test_integration_pr2.py::TestMonitors
 #  tiago:
 #    needs: [ build_dependencies ]
