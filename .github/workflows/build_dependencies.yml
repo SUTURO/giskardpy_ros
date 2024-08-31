@@ -23,16 +23,22 @@ jobs:
         id: load-venv
         uses: actions/cache@v3
         with:
-          path: venv
+          path: ~/venv
           key: venv
       - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          path: '~/giskardpy'
+          repository: SemRoCo/giskardpy
+          ref: giskard_library
       - if: ${{ steps.load-venv.outputs.cache-hit != 'true' }}
         name: create venv
         run: |
-          python3 -m venv venv
+          python3 -m venv ~/venv
           source venv/bin/activate
           python3 -m pip install --upgrade pip
-          pip3 install -r giskardpy_ros/requirements.txt
+          pip3 install -r ~/giskardpy/requirements.txt
+          pip3 install -r requirements.txt
           cd giskardpy
           pip3 install .
       - if: ${{ steps.load-venv.outputs.cache-hit != 'true' }}
@@ -40,7 +46,7 @@ jobs:
         id: cache-venv
         uses: actions/cache/save@v3
         with:
-          path: venv
+          path: ~/venv
           key: venv
       - if: ${{ (always()) && (runner.debug == '1') }}
         name: Setup upterm session
