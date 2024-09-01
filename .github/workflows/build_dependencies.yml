@@ -35,7 +35,6 @@ jobs:
         with:
           path: 'qpSWIFT'
           repository: qpSWIFT/qpSWIFT
-          ref: giskard_library
       - if: ${{ steps.load-venv.outputs.cache-hit != 'true' }}
         name: create venv
         run: |
