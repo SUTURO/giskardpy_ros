@@ -53,32 +53,15 @@ jobs:
 
     steps:
       #load cache ------------------------------------------------------------------------------------------------------
-      - uses: actions/checkout@v3
-        with:
-          path: 'giskardpy'
-          repository: SemRoCo/giskardpy
-          ref: giskard_library
       - name: load venv
         id: load-venv
         uses: actions/cache@v3
         with:
-          path: venv
+          path: ~/venv
           key: venv
       - name: source venv/bin/activate into bashrc
         run: |
-          echo 'source venv/bin/activate' >> ~/.bashrc
-      - if: ${{ matrix.qp_solver == 'qpSWIFT'}}
-        name: load qpSWIFT
-        id: load-qpSWIFT
-        uses: actions/cache@v3
-        with:
-          path: ~/qpSWIFT
-          key: qpSWIFT
-      - if: ${{ matrix.qp_solver == 'qpSWIFT'}}
-        name: install qpSWIFT python wrapper
-        run: |
-          cd ~/qpSWIFT/python
-          pip3 install .
+          echo 'source ~/venv/bin/activate' >> ~/.bashrc
       - name: load bpb # -----------------------------------------------------------------------------------------------
         id: load-bpb
         uses: actions/cache@v3
