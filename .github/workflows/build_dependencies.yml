@@ -54,6 +54,7 @@ jobs:
         uses: lhotari/action-upterm@v1
   build_and_cache_bpb:
     runs-on: ubuntu-24.04
+    needs: build_and_cache_venv
     steps:
       - name: load venv
         id: load-venv
@@ -88,6 +89,7 @@ jobs:
         uses: lhotari/action-upterm@v1
   build_and_cache_qpSWIFT:
     runs-on: ubuntu-24.04
+    needs: build_and_cache_venv
     steps:
       - name: load venv
         id: load-venv
