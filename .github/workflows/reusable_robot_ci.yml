@@ -59,9 +59,6 @@ jobs:
         with:
           path: ~/venv
           key: venv
-      - name: source venv/bin/activate into bashrc
-        run: |
-          echo 'source ~/venv/bin/activate' >> ~/.bashrc
       - name: load bpb # -----------------------------------------------------------------------------------------------
         id: load-bpb
         uses: actions/cache@v3
@@ -70,11 +67,13 @@ jobs:
           key: bpb
       - name: add bpb to bashrc
         run: |
+          source ~/venv/bin/activate
           cd ~/bpb/bullet3
           echo 'export PYTHONPATH=${PYTHONPATH}':"${PWD}/build_cmake/better_python:${PWD}/examples/pybullet" >> ~/.bashrc
       #pull github deps ================================================================================================
       - name: Create workspace I
         run: |
+          source ~/venv/bin/activate
           source /opt/ros/$ROS_DISTRO/setup.bash
           mkdir -p ~/giskard_ws/src && cd ~/giskard_ws
           colcon build
@@ -82,19 +81,6 @@ jobs:
         with:
           path: 'giskard_ws/src/giskardpy_ros'
           repository: SemRoCo/giskardpy_ros
-      - name: Create workspace II
-        run: |
-          cd ~/giskard_ws
-          vcs import src < src/giskardpy_ros/$ROS_DISTRO.repos 
-          rosdep update --rosdistro=$ROS_DISTRO
-          sudo apt-get update
-          rosdep install --from-paths ./ -i -y --rosdistro ${ROS_DISTRO}
-          colcon build --merge-install
-          source ~/giskard_ws/install/setup.bash
-      - name: install pip dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          pip3 install -r giskard_ws/src/giskardpy/requirements.txt
       - name: Checkout giskard msgs
         uses: actions/checkout@v3
         with:
@@ -151,9 +137,14 @@ jobs:
           ref: main
           submodules: recursive
       # build workspace ------------------------------------------------------------------------------------------------
-      - name: Build workspace
+      - name: Create workspace II
         run: |
+          source ~/venv/bin/activate
           cd ~/giskard_ws
+          vcs import src < src/giskardpy_ros/$ROS_DISTRO.repos 
+          rosdep update --rosdistro=$ROS_DISTRO
+          sudo apt-get update
+          rosdep install --from-paths ./ -i -y --rosdistro ${ROS_DISTRO}
           colcon build --merge-install
           source ~/giskard_ws/install/setup.bash
           echo 'source $GITHUB_WORKSPACE/giskard_ws/install/setup.bash' >> ~/.bashrc
