@@ -57,23 +57,24 @@ jobs:
         id: load-venv
         uses: actions/cache@v3
         with:
-          path: ~/venv
+          path: /root/venv
           key: venv
       - name: load bpb # -----------------------------------------------------------------------------------------------
         id: load-bpb
         uses: actions/cache@v3
         with:
-          path: ~/bpb
+          path: /root/bpb
           key: bpb
       - name: add bpb to bashrc
         run: |
-          source ~/venv/bin/activate
-          cd ~/bpb/bullet3
+          source /root/venv/bin/activate
+          cd /root/bpb/bullet3
           echo 'export PYTHONPATH=${PYTHONPATH}':"${PWD}/build_cmake/better_python:${PWD}/examples/pybullet" >> ~/.bashrc
+          sudo apt install tmux
       #pull github deps ================================================================================================
       - name: Create workspace I
         run: |
-          source ~/venv/bin/activate
+          source /root/venv/bin/activate
           source /opt/ros/$ROS_DISTRO/setup.bash
           mkdir -p ~/giskard_ws/src && cd ~/giskard_ws
           colcon build
@@ -139,7 +140,7 @@ jobs:
       # build workspace ------------------------------------------------------------------------------------------------
       - name: Create workspace II
         run: |
-          source ~/venv/bin/activate
+          source /root/venv/bin/activate
           cd ~/giskard_ws
           vcs import src < src/giskardpy_ros/$ROS_DISTRO.repos 
           rosdep update --rosdistro=$ROS_DISTRO
