@@ -79,7 +79,7 @@ jobs:
         run: |
           source ~/venv/bin/activate
           source /opt/ros/jazzy/setup.bash
-          mkdir -p ~/giskard_ws/src && cd ~/giskard_ws
+          mkdir -p giskard_ws/src && cd giskard_ws
           colcon build
       - uses: actions/checkout@v3
         with:
@@ -144,13 +144,13 @@ jobs:
       - name: Create workspace II
         run: |
           source ~/venv/bin/activate
-          cd ~/giskard_ws
+          cd giskard_ws
           vcs import src < src/giskardpy_ros/jazzy.repos 
           rosdep update --rosdistro=jazzy
           sudo apt-get update
           rosdep install --from-paths ./ -i -y --rosdistro ${ROS_DISTRO}
           colcon build --merge-install
-          source ~/giskard_ws/install/setup.bash
+          source giskard_ws/install/setup.bash
           echo 'source $GITHUB_WORKSPACE/giskard_ws/install/setup.bash' >> ~/.bashrc
       #tests ===========================================================================================================
 #      - if: ${{ (always()) && (runner.debug == '1') }}
