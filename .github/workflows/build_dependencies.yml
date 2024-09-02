@@ -18,8 +18,6 @@ on:
 jobs:
   build_and_cache_venv:
     runs-on: ubuntu-24.04
-    container:
-      image: osrf/ros:jazzy-desktop
     steps:
       - name: load venv
         id: load-venv
