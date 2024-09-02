@@ -78,7 +78,7 @@ jobs:
       - name: Create workspace I
         run: |
           source ~/venv/bin/activate
-          source /opt/ros/$ROS_DISTRO/setup.bash
+          source /opt/ros/jazzy/setup.bash
           mkdir -p ~/giskard_ws/src && cd ~/giskard_ws
           colcon build
       - uses: actions/checkout@v3
@@ -145,17 +145,16 @@ jobs:
         run: |
           source ~/venv/bin/activate
           cd ~/giskard_ws
-          vcs import src < src/giskardpy_ros/$ROS_DISTRO.repos 
-          rosdep update --rosdistro=$ROS_DISTRO
+          vcs import src < src/giskardpy_ros/jazzy.repos 
+          rosdep update --rosdistro=jazzy
           sudo apt-get update
           rosdep install --from-paths ./ -i -y --rosdistro ${ROS_DISTRO}
           colcon build --merge-install
           source ~/giskard_ws/install/setup.bash
           echo 'source $GITHUB_WORKSPACE/giskard_ws/install/setup.bash' >> ~/.bashrc
       #tests ===========================================================================================================
-#      - name: start roscore
-#        run: roscore &
-      - if: ${{ (always()) && (runner.debug == '1') }}
+#      - if: ${{ (always()) && (runner.debug == '1') }}
+      - if: ${{ (always()) }}
         name: Setup upterm session
         uses: lhotari/action-upterm@v1
       - name: run ${{ inputs.test1 }}
