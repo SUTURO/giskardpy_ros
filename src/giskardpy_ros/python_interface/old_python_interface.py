@@ -1,10 +1,32 @@
+import os
+from builtins import Exception
 from typing import Dict, Optional, List, Tuple
 
-from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped
+import actionlib
+import rospy
+from actionlib_msgs.msg import GoalStatus
+from controller_manager_msgs.srv import ListControllers, ListControllersResponse, SwitchController, \
+    SwitchControllerResponse
+from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
+from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
+
+if 'GITHUB_WORKFLOW' not in os.environ:
+    from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
+    from tmc_manipulation_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+from trajectory_msgs.msg import JointTrajectoryPoint
+
+from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult, GiskardError
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
+from giskardpy.data_types import goal_parameter
+from giskardpy.goals.suturo import MoveAroundDishwasher, Placing, Reaching
+from giskardpy.python_interface.python_interface import GiskardWrapper
+from giskardpy.suturo_types import GripperTypes
+from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
+from giskardpy.tree.control_modes import ControlModes
 from giskardpy.data_types.data_types import goal_parameter
 from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
@@ -459,9 +481,13 @@ class OldGiskardWrapper(GiskardWrapper):
     def set_open_container_goal(self,
                                 tip_link: str,
                                 environment_link: str,
+                                special_door: Optional[bool] = False,
                                 tip_group: Optional[str] = None,
                                 environment_group: Optional[str] = None,
                                 goal_joint_state: Optional[float] = None,
+                                start_condition: str = '',
+                                hold_condition: str = '',
+                                end_condition: str = '',
                                 weight=WEIGHT_ABOVE_CA):
         """
         Open a container in an environment.
@@ -479,7 +505,11 @@ class OldGiskardWrapper(GiskardWrapper):
         tip_link = giskard_msgs.LinkName(name=tip_link, group_name=tip_group)
         self.motion_goals.add_open_container(tip_link=tip_link,
                                              environment_link=environment_link,
+                                             special_door=special_door,
                                              goal_joint_state=goal_joint_state,
+                                             start_condition=start_condition,
+                                             hold_condition=hold_condition,
+                                             end_condition=end_condition,
                                              weight=weight)
 
     def set_align_to_push_door_goal(self,
@@ -490,6 +520,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                     tip_gripper_axis: Vector3Stamped,
                                     tip_group: Optional[str] = None,
                                     root_group: Optional[str] = None,
+                                    intermediate_point_scale: Optional[float] = 1,
                                     weight: float = WEIGHT_BELOW_CA):
         """
         Aligns the tip_link with the door_object to push it open. Only works if the door object is part of the urdf.
@@ -504,6 +535,7 @@ class OldGiskardWrapper(GiskardWrapper):
                                                  tip_link=tip_link,
                                                  door_object=door_object,
                                                  door_handle=door_handle,
+                                                 intermediate_point_scale=intermediate_point_scale,
                                                  tip_group=tip_group,
                                                  tip_gripper_axis=tip_gripper_axis,
                                                  root_group=root_group,
@@ -834,3 +866,647 @@ class OldGiskardWrapper(GiskardWrapper):
         Resets the world to what it was when Giskard was launched.
         """
         return self.world.clear()
+
+    def reaching(self,
+                 grasp: str,
+                 align: str,
+                 object_name: str,
+                 object_shape: str,
+                 goal_pose: Optional[PoseStamped] = None,
+                 object_size: Optional[Vector3] = None,
+                 root_link: str = 'map',
+                 tip_link: str = 'hand_palm_link',
+                 velocity: float = 0.2):
+        """
+        :param grasp: direction to grasp from, directions are: front, top, right, left, below
+        :param align: the frame that the wrist frame aligns with, will be ignored if left empty
+        :param object_name: name of object that should be reached
+        :param object_shape: shape of the object (current options are cylinder, sphere and rectangle)
+        :param goal_pose: position of the goal that should be reached
+        :param object_size: size of the object as a Vector3 (in meters)
+        :param root_link: the root link, usually map
+        :param tip_link: the tip link, normally hand_palm_link
+        :param velocity: velocity of executed movement
+        """
+
+        self.motion_goals.add_reaching(grasp=grasp,
+                                       align=align,
+                                       object_name=object_name,
+                                       object_shape=object_shape,
+                                       goal_pose=goal_pose,
+                                       object_size=object_size,
+                                       root_link=root_link,
+                                       tip_link=tip_link,
+                                       velocity=velocity)
+
+    def placing(self,
+                context,
+                goal_pose: PoseStamped,
+                tip_link: str = 'hand_palm_link',
+                velocity: float = 0.02):
+
+        self.motion_goals.add_placing(context=context,
+                                      goal_pose=goal_pose,
+                                      tip_link=tip_link,
+                                      velocity=velocity)
+
+    def vertical_motion(self,
+                        action: str,
+                        distance: float = 0.02,
+                        root_link: str = 'base_link',
+                        tip_link: str = 'hand_palm_link'):
+
+        self.motion_goals.add_vertical_motion(action=action,
+                                              distance=distance,
+                                              root_link=root_link,
+                                              tip_link=tip_link)
+
+    def retract(self,
+                object_name: str,
+                distance: float = 0.1,
+                reference_frame: str = 'base_link',
+                root_link: str = 'map',
+                tip_link: str = 'base_link',
+                velocity: float = 0.2):
+
+        self.motion_goals.add_retract(object_name=object_name,
+                                      distance=distance,
+                                      reference_frame=reference_frame,
+                                      root_link=root_link,
+                                      tip_link=tip_link,
+                                      velocity=velocity)
+
+    def align_height(self,
+                     object_name: str,
+                     goal_pose: PoseStamped,
+                     object_height: float,
+                     from_above: bool = False,
+                     root_link: str = 'map',
+                     tip_link: str = 'hand_gripper_tool_frame'):
+
+        self.motion_goals.add_align_height(from_above=from_above,
+                                           object_name=object_name,
+                                           goal_pose=goal_pose,
+                                           object_height=object_height,
+                                           root_link=root_link,
+                                           tip_link=tip_link)
+
+    def test_goal(self,
+                  goal_name: str,
+                  **kwargs):
+
+        self.motion_goals.add_test_goal(goal_name=goal_name,
+                                        **kwargs)
+
+    def take_pose(self,
+                  pose_keyword: str):
+
+        self.motion_goals.add_take_pose(pose_keyword=pose_keyword)
+
+    def tilting(self,
+                tilt_direction: Optional[str] = None,
+                tilt_angle: Optional[float] = None,
+                tip_link: str = 'wrist_roll_joint',
+                ):
+
+        self.motion_goals.add_tilting(direction=tilt_direction,
+                                      angle=tilt_angle,
+                                      tip_link=tip_link)
+
+    def joint_rotation_continuous(self,
+                                  joint_name: str,
+                                  joint_center: float,
+                                  joint_range: float,
+                                  trajectory_length: float = 20,
+                                  target_speed: float = 1,
+                                  period_length: float = 1.0):
+
+        self.motion_goals.add_joint_rotation_continuous(joint_name=joint_name,
+                                                        joint_center=joint_center,
+                                                        joint_range=joint_range,
+                                                        trajectory_length=trajectory_length,
+                                                        target_speed=target_speed,
+                                                        period_length=period_length)
+
+    def mixing(self,
+               mixing_time=20,
+               weight: float = WEIGHT_ABOVE_CA):
+
+        self.motion_goals.add_mixing(mixing_time=mixing_time,
+                                     weight=weight)
+
+    def open_environment(self,
+                         tip_link: str,
+                         environment_link: str,
+                         tip_group: Optional[str] = None,
+                         environment_group: Optional[str] = None,
+                         goal_joint_state: Optional[float] = None,
+                         weight: float = WEIGHT_ABOVE_CA):
+
+        self.motion_goals.add_open_environment(tip_link=tip_link,
+                                               environment_link=environment_link,
+                                               tip_group=tip_group,
+                                               environment_group=environment_group,
+                                               goal_joint_state=goal_joint_state,
+                                               weight=weight)
+
+    def move_base(self, target_pose: PoseStamped):
+        """
+        moving the hsr through the move_base interface from Toyota
+        :param target_pose: the pose where robot moves to
+        """
+        cli = actionlib.SimpleActionClient('/move_base/move', MoveBaseAction)
+
+        cli.wait_for_server()
+
+        goal = MoveBaseGoal()
+        goal.target_pose = target_pose
+
+        cli.send_goal(goal)
+
+        cli.wait_for_result()
+
+        action_state = cli.get_state()
+        if action_state == GoalStatus.SUCCEEDED:
+            rospy.loginfo("Navigation Succeeded")
+
+    def change_gripper_state(self, gripper_state: str):
+        """
+        Rework proposal for the gripper,
+        Now uses Enums via suturo_types.py, which in case of this function acts
+        as a list of possible gripping commands. This also makes it possible
+        to add gripping forces for specific object types.
+        :param gripper_state: the state that the gripper shall assume
+        """
+        if self.is_standalone():
+            if gripper_state == GripperTypes.OPEN.value:
+                self.set_joint_goal({
+                    'hand_motor_joint': 1.2
+                })
+                self.execute()
+
+            elif gripper_state == GripperTypes.CLOSE.value:
+                self.set_joint_goal({
+                    'hand_motor_joint': 0.0
+                })
+                self.execute()
+
+            elif gripper_state == GripperTypes.NEUTRAL.value:
+                self.set_joint_goal({
+                    'hand_motor_joint': 0.6
+                })
+                self.execute()
+            else:
+                rospy.logwarn("gripper_state {} not found".format(gripper_state))
+        else:
+            if gripper_state == GripperTypes.OPEN.value:
+                self._move_gripper_force(0.8)
+
+            elif gripper_state == GripperTypes.CLOSE.value:
+                self._move_gripper_force(-0.8)
+
+            elif gripper_state == GripperTypes.NEUTRAL.value:
+                self._set_gripper_joint_position(0.5)
+            else:
+                rospy.logwarn("gripper_state {} not found".format(gripper_state))
+
+    def _move_gripper_force(self, force: float = 0.8):
+        """
+        Closes the gripper with the given force.
+        :param force: force to grasp which should be between 0.2 and 0.8 (N)
+        :return: applied effort
+        """
+        _gripper_apply_force_client = actionlib.SimpleActionClient('/hsrb/gripper_controller/grasp',
+                                                                   GripperApplyEffortAction)
+
+        try:
+            if not _gripper_apply_force_client.wait_for_server(rospy.Duration(
+                    10)):
+                raise Exception('/hsrb/gripper_controller/grasp does not exist')
+        except Exception as e:
+            rospy.logerr(e)
+            return
+
+        rospy.loginfo("Closing gripper with force: {}".format(force))
+        f = force  # max(min(0.8, force), 0.2)
+        goal = GripperApplyEffortGoal()
+        goal.effort = f
+        _gripper_apply_force_client.send_goal(goal)
+
+    def _set_gripper_joint_position(self, position):
+        """
+        Sets the gripper joint to the given position
+        :param position: goal position of the joint -0.105 to 1.239 rad
+        :return: error_code of FollowJointTrajectoryResult
+        """
+        _gripper_controller = actionlib.SimpleActionClient('/hsrb/gripper_controller/follow_joint_trajectory',
+                                                           FollowJointTrajectoryAction)
+
+        # Wait for connection
+        try:
+            if not _gripper_controller.wait_for_server(rospy.Duration(10)):
+                raise Exception('/hsrb/gripper_controller/follow_joint_trajectory does not exist')
+        except Exception as e:
+            rospy.logerr(e)
+
+        pos = max(min(1.239, position), -0.105)
+        goal = FollowJointTrajectoryGoal()
+        goal.trajectory.joint_names = [u'hand_motor_joint']
+        p = JointTrajectoryPoint()
+        p.positions = [pos]
+        p.velocities = [0]
+        p.effort = [0.1]
+        p.time_from_start = rospy.Time(1)
+        goal.trajectory.points = [p]
+        _gripper_controller.send_goal(goal)
+
+    def is_standalone(self) -> bool:
+        return self.world.get_control_mode() == ControlModes.standalone
+
+    def real_time_pointer(self, tip_link, topic_name, root_link, pointing_axis, endless_mode):
+        """
+        Wrapper for RealTimePointing and EndlessMode,
+        which is used for person live-tracking.
+        """
+
+        self.motion_goals.add_real_time_pointing(tip_link=tip_link,
+                                                 topic_name=topic_name,
+                                                 root_link=root_link,
+                                                 pointing_axis=pointing_axis)
+
+    def continuous_pointing_head(self):
+        """
+        Uses real_time_pointer for continuous tracking of a human_pose.
+        """
+        tip_V_pointing_axis: Vector3Stamped = Vector3Stamped()
+        tip_V_pointing_axis.header.frame_id = 'head_center_camera_frame'
+        tip_V_pointing_axis.vector.z = 1
+
+        self.real_time_pointer(root_link='map',
+                               tip_link='head_center_camera_frame',
+                               topic_name='human_pose',
+                               endless_mode=True,
+                               pointing_axis=tip_V_pointing_axis)
+
+    def check_controllers_active(self,
+                                 stopped_controllers: Optional[List] = None,
+                                 running_controllers: Optional[List] = None):
+        """
+        Checks if the arm_trajectory_controller and head_trajectory_controller are stopped
+        and the realtime_body_controller_real is running
+
+        :param stopped_controllers: controllers that have to be in state stopped or initialized
+        :param running_controllers: controllers that have to be in state running
+        """
+        if stopped_controllers is None:
+            stopped_controllers = []
+        if running_controllers is None:
+            running_controllers = []
+
+        resp: ListControllersResponse = self.list_controller_srv()
+        controller_dict = {controller.name: controller for controller in resp.controller}
+
+        if (all(controller_dict[con].state == 'stopped' or controller_dict[con].state == 'initialized' for con in
+                stopped_controllers) and all(controller_dict[con].state == 'running' for con in running_controllers)):
+            return True
+        return False
+
+    def set_closed_loop_controllers(self,
+                                    stop: Optional[List] = None,
+                                    start: Optional[List] = None,
+                                    switch_controller_srv: Optional[
+                                        str] = '/hsrb/controller_manager/switch_controller') -> SwitchControllerResponse:
+        """
+        Start and Stop controllers for via the designated switch_controller service
+        """
+
+        if stop is None:
+            stop = ['arm_trajectory_controller', 'head_trajectory_controller']
+        if start is None:
+            start = ['realtime_body_controller_real']
+
+        start_controllers = start
+        stop_controllers = stop
+        strictness: int = 1
+        start_asap: bool = False
+        timeout: float = 0.0
+
+        rospy.wait_for_service(switch_controller_srv)
+        srv_switch_con = rospy.ServiceProxy(name=switch_controller_srv,
+                                            service_class=SwitchController)
+
+        resp: SwitchControllerResponse = srv_switch_con(start_controllers,
+                                                        stop_controllers,
+                                                        strictness,
+                                                        start_asap,
+                                                        timeout)
+        return resp
+
+    def set_open_door_goal(self,
+                           tip_link: str,
+                           door_handle_link: str,
+                           name: str = None):
+        """
+        Adds OpenDoorGoal to motion goal execution plan
+
+        :param tip_link: Link that is grasping the door handle
+        :param door_handle_link: Link of the door handle of the door that is to be opened
+        :param name: Name of the Goal for distinction between similar goals
+        """
+        self.motion_goals.add_open_door_goal(tip_link=tip_link,
+                                             door_handle_link=door_handle_link,
+                                             name=name)
+
+    def set_hsrb_open_door_goal(self,
+                                door_handle_link: str,
+                                tip_link: str = 'hand_gripper_tool_frame',
+                                name: str = 'HSRB_open_door'):
+        """
+        HSRB specific open door goal wrapper
+
+        :param door_handle_link: Link of the door handle
+        :param tip_link: Link that's grasping the door handle
+        :param name: name of the goal for distinction between same goals
+        """
+
+        self.set_open_door_goal(tip_link=tip_link,
+                                door_handle_link=door_handle_link,
+                                name=name)
+
+    def set_hsrb_door_handle_grasp(self,
+                                   handle_name: str,
+                                   handle_bar_length: float = 0,
+                                   tip_link: str = 'hand_gripper_tool_frame',
+                                   root_link: str = 'map',
+                                   bar_axis_v: Vector3 = Vector3(0, 1, 0),
+                                   tip_grasp_axis_v: Vector3 = Vector3(1, 0, 0)):
+        """
+        HSRB specific set_grasp_bar_goal, that only needs handle_name of the door_handle
+
+        :param handle_name: URDF link that represents the door handle
+        :param handle_bar_length: length of the door handle
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        :param bar_axis_v: Vector for changing the orientation of the door handle
+        :param tip_grasp_axis_v: Vector for the orientation of the tip grasp link
+        """
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_name
+        bar_axis.vector = bar_axis_v
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_name
+        bar_center.point.y = 0.045
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector = tip_grasp_axis_v
+
+        self.set_grasp_bar_goal(root_link=root_link,
+                                tip_link=tip_link,
+                                tip_grasp_axis=tip_grasp_axis,
+                                bar_center=bar_center,
+                                bar_axis=bar_axis,
+                                bar_length=handle_bar_length)
+
+    def set_hsrb_dishwasher_door_around(self,
+                                        handle_name: str,
+                                        root_link: str = 'map',
+                                        tip_link: str = 'hand_gripper_tool_frame'):
+        """
+        HSRB specific avoid dishwasher door goal
+
+        :param handle_name: name of the door handle
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        self.motion_goals.add_motion_goal(motion_goal_class=MoveAroundDishwasher.__name__,
+                                          handle_name=handle_name,
+                                          root_link=root_link,
+                                          tip_link=tip_link)
+
+    def set_hsrb_align_to_push_door_goal(self,
+                                         handle_name: str,
+                                         hinge_frame_id: str,
+                                         tip_link: str = 'hand_gripper_tool_frame',
+                                         root_link: str = 'map'):
+        """
+        HSRB specific push door open goal of dishwasher
+
+        :param handle_name: name of the door handle
+        :param hinge_frame_id: Frame id of the door hinge
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.y = 1
+
+        self.set_align_to_push_door_goal(root_link=root_link,
+                                         tip_link=tip_link,
+                                         door_handle=handle_name,
+                                         door_object=hinge_frame_id,
+                                         tip_gripper_axis=tip_grasp_axis,
+                                         intermediate_point_scale=0.95)
+
+    def set_hsrb_pre_push_door_goal(self,
+                                    handle_name: str,
+                                    hinge_frame_id: str,
+                                    root_link: str = 'map',
+                                    tip_link: str = 'hand_gripper_tool_frame'):
+        """
+        HSRB specific pre push door open goal of dishwasher
+
+        :param handle_name: name of the door handle
+        :param hinge_frame_id: Frame id of the door hinge
+        :param tip_link: robot link, that grasps the handle
+        :param root_link: root link of the kinematic chain
+        """
+
+        self.set_pre_push_door_goal(root_link=root_link,
+                                    tip_link=tip_link,
+                                    door_handle=handle_name,
+                                    door_object=hinge_frame_id)
+
+    def set_hsrb_dishwasher_door_handle_grasp(self,
+                                              handle_frame_id: str,
+                                              grasp_bar_offset: float = 0.0,
+                                              root_link: str = 'map',
+                                              tip_link: str = 'hand_gripper_tool_frame'):
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.y = 1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.x = 1
+
+        grasp_axis_offset = Vector3Stamped()
+        grasp_axis_offset.header.frame_id = handle_frame_id
+        grasp_axis_offset.vector.x = -grasp_bar_offset
+
+        self.set_grasp_bar_offset_goal(root_link=root_link,
+                                       tip_link=tip_link,
+                                       tip_grasp_axis=tip_grasp_axis,
+                                       bar_center=bar_center,
+                                       bar_axis=bar_axis,
+                                       bar_length=.4,
+                                       grasp_axis_offset=grasp_axis_offset)
+
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = tip_link
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+
+        self.set_align_planes_goal(tip_link=tip_link,
+                                   tip_normal=x_gripper,
+                                   goal_normal=x_goal,
+                                   root_link=root_link)
+
+    def set_grasp_bar_offset_goal(self,
+                                  bar_center: PointStamped,
+                                  bar_axis: Vector3Stamped,
+                                  bar_length: float,
+                                  tip_link: str,
+                                  tip_grasp_axis: Vector3Stamped,
+                                  root_link: str,
+                                  grasp_axis_offset: Vector3Stamped,
+                                  tip_group: Optional[str] = None,
+                                  root_group: Optional[str] = None,
+                                  reference_linear_velocity: Optional[float] = None,
+                                  reference_angular_velocity: Optional[float] = None,
+                                  weight: float = WEIGHT_ABOVE_CA,
+                                  add_monitor: bool = True,
+                                  **kwargs: goal_parameter):
+        """
+        Like a CartesianPose but with more freedom.
+        tip_link is allowed to be at any point along bar_axis, that is without bar_center +/- bar_length.
+        It will align tip_grasp_axis with bar_axis, but allows rotation around it.
+        :param root_link: root link of the kinematic chain
+        :param tip_link: tip link of the kinematic chain
+        :param tip_grasp_axis: axis of tip_link that will be aligned with bar_axis
+        :param bar_center: center of the bar to be grasped
+        :param bar_axis: alignment of the bar to be grasped
+        :param bar_length: length of the bar to be grasped
+        :param grasp_axis_offset: offset of the tip_link to the bar_center
+        :param root_group: if root_link is not unique, search in this group for matches
+        :param tip_group: if tip_link is not unique, search in this group for matches
+        :param reference_linear_velocity: m/s
+        :param reference_angular_velocity: rad/s
+        :param weight:
+        :param add_monitor: if True, adds a monitor as end_condition to check if the goal was reached.
+        """
+        end_condition = ''
+        if add_monitor:
+            monitor_name1 = self.monitors.add_distance_to_line(root_link=root_link,
+                                                               tip_link=tip_link,
+                                                               center_point=bar_center,
+                                                               line_axis=bar_axis,
+                                                               line_length=bar_length,
+                                                               root_group=root_group,
+                                                               tip_group=tip_group)
+            monitor_name2 = self.monitors.add_vectors_aligned(root_link=root_link,
+                                                              tip_link=tip_link,
+                                                              goal_normal=bar_axis,
+                                                              tip_normal=tip_grasp_axis,
+                                                              root_group=root_group,
+                                                              tip_group=tip_group)
+            end_condition = f'{monitor_name1} and {monitor_name2}'
+        self.motion_goals.add_grasp_bar_offset(end_condition=end_condition,
+                                               root_link=root_link,
+                                               tip_link=tip_link,
+                                               tip_grasp_axis=tip_grasp_axis,
+                                               bar_center=bar_center,
+                                               bar_axis=bar_axis,
+                                               bar_length=bar_length,
+                                               grasp_axis_offset=grasp_axis_offset,
+                                               root_group=root_group,
+                                               tip_group=tip_group,
+                                               reference_linear_velocity=reference_linear_velocity,
+                                               reference_angular_velocity=reference_angular_velocity,
+                                               weight=weight,
+                                               **kwargs)
+
+    def monitor_placing_in_old(self,
+                               grasp: str,
+                               align: str,
+                               goal_pose: PoseStamped,
+                               threshold_name: str = "",
+                               object_type: str = "",
+                               tip_link: str = 'hand_palm_link',
+                               velocity: float = 0.02):
+        """
+        adds monitor functionality for the Placing motion goal, goal now stops if force_threshold is overstepped,
+        which means the HSR essentially stops automatically after placing the object.
+        """
+
+        sleep = self.monitors.add_sleep(1.5)
+        force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                                         name=PayloadForceTorque.__name__,
+                                                         start_condition='',
+                                                         threshold_name=threshold_name,
+                                                         object_type=object_type)
+
+        self.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
+                                          goal_pose=goal_pose,
+                                          align=align,
+                                          grasp=grasp,
+                                          tip_link=tip_link,
+                                          velocity=velocity,
+                                          end_condition=f'{force_torque_trigger} and {sleep}')
+
+        local_min = self.monitors.add_local_minimum_reached()
+
+        self.monitors.add_cancel_motion(local_min, "",
+                                        GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
+        self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
+        self.monitors.add_max_trajectory_length(100)
+
+    def monitor_grasp_carefully_in_old(self,
+                                       align: str,
+                                       grasp: str,
+                                       goal_pose: PoseStamped = None,
+                                       reference_frame_alignment: Optional[str] = None,
+                                       object_name: str = "",
+                                       object_type: str = "",
+                                       threshold_name: str = "",
+                                       root_link: Optional[str] = None,
+                                       tip_link: Optional[str] = None):
+        """
+            adds monitor functionality to the reaching goal, thus making the original GraspCarefully motion goal redundant.
+            The goal now stops if force_threshold/torque_threshold is undershot,
+            which means it essentially stops automatically if the HSR for example slips off of a door handle while trying
+            to open doors or fails to properly grip an object.
+            """
+        sleep = self.monitors.add_sleep(1.5)
+        # gripper_open = self.monitors.add_open_hsr_gripper()
+        force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                                         name=PayloadForceTorque.__name__,
+                                                         start_condition='',
+                                                         threshold_name=threshold_name,
+                                                         object_type=object_type)
+
+        self.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
+                                          goal_pose=goal_pose,
+                                          grasp=grasp,
+                                          align=align,
+                                          reference_frame_alignment=reference_frame_alignment,
+                                          object_name=object_name,
+                                          root_link=root_link,
+                                          tip_link=tip_link,
+                                          end_condition=f'{force_torque_trigger} and {sleep}')
+
+        local_min = self.monitors.add_local_minimum_reached()
+
+        self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_GRASPING_MISSED_OBJECT)
+        self.monitors.add_end_motion(start_condition=f'{force_torque_trigger} or {local_min}')
+        self.monitors.add_max_trajectory_length(100)

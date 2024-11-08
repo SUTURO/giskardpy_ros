@@ -5,6 +5,14 @@ from giskardpy.model.collision_avoidance_config import CollisionAvoidanceConfig
 from giskardpy.model.world_config import WorldConfig
 from giskardpy_ros.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
 from giskardpy.data_types.data_types import PrefixName, Derivatives
+import giskardpy.utils.tfwrapper as tf
+from giskardpy.configs.collision_avoidance_config import CollisionAvoidanceConfig
+from giskardpy.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
+from giskardpy.configs.world_config import WorldConfig
+from giskardpy.data_types import PrefixName, Derivatives
+from giskardpy.god_map import god_map
+from giskardpy.model.utils import robot_name_from_urdf_string
+from giskardpy.utils import logging
 
 
 class WorldWithHSRConfig(WorldConfig):
@@ -36,6 +44,14 @@ class WorldWithHSRConfig(WorldConfig):
                             joint_name=self.localization_joint_name)
         self.add_empty_link(PrefixName(self.odom_link_name))
         self.add_robot_urdf(urdf=rospy.get_param(self.robot_description_name))
+
+        try:
+            self.check_for_link_name(link_name='hand_gripper_tool_frame')
+        except ValueError as e:
+            logging.logwarn(f'Could not find Hand Gripper Tool Frame Exception: {e}')
+        else:
+            logging.loginfo(f'Hand Gripper Tool Frame Found')
+
         root_link_name = self.get_root_link_of_group(self.robot_group_name)
         self.add_omni_drive_joint(parent_link_name=self.odom_link_name,
                                   child_link_name=root_link_name,
@@ -58,6 +74,34 @@ class WorldWithHSRConfig(WorldConfig):
             Derivatives.jerk: 10,
         },
             joint_name='arm_lift_joint')
+        self.world.register_group(name='gripper',
+                                  root_link_name=self.world.search_for_link_name('wrist_roll_link'),
+                                  actuated=False)
+
+
+class SuturoArenaWithHSRConfig(WorldWithHSRConfig):
+
+    def __init__(self, map_name: str = 'map',
+                 localization_joint_name: str = 'localization',
+                 odom_link_name: str = 'odom',
+                 drive_joint_name: str = 'brumbrum',
+                 description_name: str = 'robot_description',
+                 environment_description: str = 'kitchen_description',
+                 environment_name: str = 'iai_kitchen'):
+        super().__init__(map_name, localization_joint_name, odom_link_name, drive_joint_name, description_name)
+        self.environment_name = environment_description
+        self.kitchen_name = environment_name
+
+    def setup(self):
+        super().setup()
+        urdf = rospy.get_param(self.environment_name)
+        god_map.world.add_urdf(urdf=urdf,
+                               group_name=self.kitchen_name,
+                               actuated=False)
+        root_link_name = self.get_root_link_of_group(self.kitchen_name)
+        kitchen_pose = tf.lookup_pose(self.map_name, 'iai_kitchen/urdf_main')
+        self.add_fixed_joint(parent_link=self.map_name, child_link=root_link_name,
+                             homogenous_transform=tf.pose_to_np(kitchen_pose.pose))
 
 
 class HSRCollisionAvoidanceConfig(CollisionAvoidanceConfig):
@@ -118,10 +162,22 @@ class HSRVelocityInterface(RobotInterfaceConfig):
         self.sync_joint_state_topic('/hsrb/joint_states')
         self.sync_odometry_topic('/hsrb/odom', self.drive_joint_name)
 
-        self.add_joint_velocity_group_controller(namespace='/hsrb/realtime_body_controller_real')
+        self.add_joint_velocity_group_controller(namespace='hsrb/realtime_body_controller_real')
 
         self.add_base_cmd_velocity(cmd_vel_topic='/hsrb/command_velocity',
                                    joint_name=self.drive_joint_name)
+
+
+class HSRVelocityInterfaceSuturo(HSRVelocityInterface):
+
+    def __init__(self, map_name: str = 'map', localization_joint_name: str = 'localization',
+                 odom_link_name: str = 'odom', drive_joint_name: str = 'brumbrum', environment_name: str = 'iai_kitchen'):
+        super().__init__(map_name, localization_joint_name, odom_link_name, drive_joint_name)
+        self.environment_name = environment_name
+
+    def setup(self):
+        super().setup()
+        self.sync_joint_state_topic('/iai_kitchen/joint_states', group_name=self.environment_name)
 
 
 class HSRJointTrajInterfaceConfig(RobotInterfaceConfig):
@@ -151,12 +207,15 @@ class HSRJointTrajInterfaceConfig(RobotInterfaceConfig):
                                                 fill_velocity_values=True)
         self.add_follow_joint_trajectory_server(namespace='/hsrb/arm_trajectory_controller',
                                                 fill_velocity_values=True)
-        self.add_follow_joint_trajectory_server(namespace='/hsrb/omni_base_controller',
-                                                fill_velocity_values=True,
-                                                path_tolerance={
-                                                    Derivatives.position: 1,
-                                                    Derivatives.velocity: 1,
-                                                    Derivatives.acceleration: 100})
+        self.add_base_cmd_velocity(cmd_vel_topic='/hsrb/command_velocity',
+                                   track_only_velocity=False,
+                                   joint_name=self.drive_joint_name)
+        # self.add_follow_joint_trajectory_server(namespace='/hsrb/omni_base_controller',
+        #                                         fill_velocity_values=True,
+        #                                         path_tolerance={
+        #                                             Derivatives.position: 1,
+        #                                             Derivatives.velocity: 1,
+        #                                             Derivatives.acceleration: 100})
         # self.add_base_cmd_velocity(cmd_vel_topic='/hsrb/command_velocity',
         #                            track_only_velocity=True,
         #                            joint_name=self.drive_joint_name)

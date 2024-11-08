@@ -163,7 +163,7 @@ class BehaviorTreeConfig(ABC):
             GiskardBlackboard().tree.execute_traj.prepare_base_control.add_compile_debug_expressions()
             GiskardBlackboard().tree.execute_traj.base_closed_loop.add_evaluate_debug_expressions(log_traj=False)
 
-    def add_js_publisher(self, topic_name: Optional[str] = None, include_prefix: bool = False):
+    def add_js_publisher(self, topic_name: Optional[str] = 'giskard_joint_states', include_prefix: bool = False):
         """
         Publishes joint states for Giskard's internal state.
         """
@@ -239,14 +239,16 @@ class StandAloneBTConfig(BehaviorTreeConfig):
         if self.publish_js:
             self.add_js_publisher(include_prefix=self.include_prefix)
         if self.publish_free_variables:
-            self.add_free_variable_publisher()
+            self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
+            # self.add_js_publisher(include_prefix=False, topic_name='giskard_joint_states')
 
 
 class OpenLoopBTConfig(BehaviorTreeConfig):
     def __init__(self,
                  debug_mode: bool = False,
-                 control_loop_max_hz: float = 50,
+                 publish_free_variables: bool = False, add_tf_pub: bool = False,
                  visualization_mode: VisualizationMode = VisualizationMode.CollisionsDecomposed,
+                 control_loop_max_hz: float = 50,
                  simulation_max_hz: Optional[float] = None):
         """
         The default behavior tree for Giskard in open-loop mode. It will first plan the trajectory in simulation mode
@@ -260,6 +262,8 @@ class OpenLoopBTConfig(BehaviorTreeConfig):
         if god_map.is_in_github_workflow():
             debug_mode = False
         self.debug_mode = debug_mode
+        self.publish_free_variables = publish_free_variables
+        self.add_tf_pub = add_tf_pub
         self.visualization_mode = visualization_mode
 
     def setup(self):
@@ -277,13 +281,19 @@ class OpenLoopBTConfig(BehaviorTreeConfig):
             #     # publish_lbA=True,
             #     # publish_ubA=True
             # )
+        if self.publish_free_variables:
+            self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
+        if self.add_tf_pub:
+            self.add_tf_publisher(include_prefix=True, mode=TfPublishingModes.all)
 
 
 class ClosedLoopBTConfig(BehaviorTreeConfig):
     def __init__(self, debug_mode: bool = False,
                  control_loop_max_hz: float = 50,
                  visualization_mode: VisualizationMode = VisualizationMode.CollisionsDecomposed,
-                 simulation_max_hz: Optional[float] = None):
+                 simulation_max_hz: Optional[float] = None,
+                 publish_free_variables: bool = False,
+                 add_tf_pub: bool = False):
         """
         The default configuration for Giskard in closed loop mode. Make use to set up the robot interface accordingly.
         :param debug_mode: If True, will publish debug data on topics. This will significantly slow down the control loop.
@@ -294,6 +304,8 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
         if god_map.is_in_github_workflow():
             debug_mode = False
         self.debug_mode = debug_mode
+        self.publish_free_variables = publish_free_variables
+        self.add_tf_pub = add_tf_pub
         self.visualization_mode = visualization_mode
 
     def setup(self):
@@ -312,3 +324,7 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
             #     # publish_lbA=True,
             #     # publish_ubA=True
             # )
+        if self.publish_free_variables:
+            self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
+        if self.add_tf_pub:
+            self.add_tf_publisher(include_prefix=True, mode=TfPublishingModes.all)

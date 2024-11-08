@@ -8,8 +8,13 @@ from py_trees import Status
 from visualization_msgs.msg import MarkerArray
 
 from giskard_msgs.msg import WorldResult, WorldGoal
+from giskard_msgs.msg import WorldResult, WorldGoal, GiskardError
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupNamesRequest, GetGroupInfoResponse, GetGroupInfoRequest, \
     DyeGroupResponse, GetGroupNames, GetGroupInfo, DyeGroup, DyeGroupRequest
+from py_trees import Status
+from tf2_py import TransformException
+from visualization_msgs.msg import MarkerArray
+
 from giskardpy.data_types.data_types import JointStates, PrefixName
 from giskardpy.data_types.exceptions import UnknownGroupException, \
     TransformException, DuplicateNameException, InvalidWorldOperationException
@@ -23,6 +28,7 @@ from giskardpy_ros.tree.blackboard_utils import GiskardBlackboard
 from giskardpy.utils.decorators import record_time
 from giskardpy_ros.ros1.tfwrapper import transform_pose
 import giskardpy_ros.ros1.msg_converter as msg_converter
+from std_srvs.srv import Trigger, TriggerRequest, TriggerResponse
 
 
 class ProcessWorldUpdate(GiskardBehavior):
@@ -40,6 +46,8 @@ class ProcessWorldUpdate(GiskardBehavior):
         self.get_group_names = rospy.Service('~get_group_names', GetGroupNames, self.get_group_names_cb)
         self.get_group_info = rospy.Service('~get_group_info', GetGroupInfo, self.get_group_info_cb)
         self.dye_group = rospy.Service('~dye_group', DyeGroup, self.dye_group)
+        self.get_control_mode = rospy.Service('~get_control_mode', Trigger, self.get_control_mode_cb)
+        # self.dump_state_srv = rospy.Service('~dump_state', Trigger, self.dump_state_cb)
         return super().setup(timeout)
 
     def update(self) -> Status:
@@ -76,6 +84,13 @@ class ProcessWorldUpdate(GiskardBehavior):
             traceback.print_exc()
             result.error = msg_converter.exception_to_error_msg(e)
         self.action_server.result_msg = result
+
+    def get_control_mode_cb(self, req: TriggerRequest) -> TriggerResponse:
+        control_mode = god_map.tree.control_mode
+        res = TriggerResponse()
+        res.success = True
+        res.message = str(control_mode).split('.')[1]
+        return res
 
     def dye_group(self, req: DyeGroupRequest):
         res = DyeGroupResponse()

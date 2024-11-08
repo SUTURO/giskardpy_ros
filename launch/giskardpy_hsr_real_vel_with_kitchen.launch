@@ -3,7 +3,7 @@
 
     <include file="$(find hsr_velocity_controller)/launch/switch_to_velocity_controllers.launch" />
 
-    <node pkg="giskardpy" type="iai_hsr_real_time.py" name="giskard" output="screen">
+    <node pkg="giskardpy" type="iai_hsr_real_time_with_kitchen.py" name="giskard" output="screen">
         <param name="debug_mode" value="$(arg debug_mode)" />
     </node>
 
@@ -15,6 +15,8 @@
     </node>
 
     <node pkg="giskardpy" type="switch_controllers.py" name="giskard_joy_switch_controllers" output="screen" />
+
+    <node pkg="giskardpy" type="force_torque_raw_filter.py" name="force_torque_raw_filter" output="screen" />
 
     <node pkg="giskardpy" type="interactive_marker.py" name="giskard_interactive_marker" output="screen">
         <rosparam param="enable_self_collision">False</rosparam>
