@@ -5,14 +5,9 @@ from giskardpy.model.collision_avoidance_config import CollisionAvoidanceConfig
 from giskardpy.model.world_config import WorldConfig
 from giskardpy_ros.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
 from giskardpy.data_types.data_types import PrefixName, Derivatives
-import giskardpy.utils.tfwrapper as tf
-from giskardpy.configs.collision_avoidance_config import CollisionAvoidanceConfig
-from giskardpy.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
-from giskardpy.configs.world_config import WorldConfig
-from giskardpy.data_types import PrefixName, Derivatives
 from giskardpy.god_map import god_map
-from giskardpy.model.utils import robot_name_from_urdf_string
-from giskardpy.utils import logging
+from giskardpy_ros.ros1 import tfwrapper as tf
+from giskardpy.middleware import get_middleware
 
 
 class WorldWithHSRConfig(WorldConfig):
@@ -48,9 +43,9 @@ class WorldWithHSRConfig(WorldConfig):
         try:
             self.check_for_link_name(link_name='hand_gripper_tool_frame')
         except ValueError as e:
-            logging.logwarn(f'Could not find Hand Gripper Tool Frame Exception: {e}')
+            get_middleware().logwarn(f'Could not find Hand Gripper Tool Frame Exception: {e}')
         else:
-            logging.loginfo(f'Hand Gripper Tool Frame Found')
+            get_middleware().loginfo(f'Hand Gripper Tool Frame Found')
 
         root_link_name = self.get_root_link_of_group(self.robot_group_name)
         self.add_omni_drive_joint(parent_link_name=self.odom_link_name,
