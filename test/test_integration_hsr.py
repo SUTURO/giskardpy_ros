@@ -68,9 +68,7 @@ class HSRTestWrapper(GiskardTestWrapper):
         self.execute()
 
     def reset(self):
-        self.register_group(new_group_name='gripper',
-                            root_link_name=LinkName(name='hand_palm_link',
-                                                    group_name=self.robot_name))
+        pass
 
 
 @pytest.fixture(scope='module')
