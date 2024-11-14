@@ -88,7 +88,7 @@ jobs:
         with:
           path: 'giskardpy'
           repository: SuTuRo/giskardpy
-          ref: giskard_library
+          ref: robocup_giskard_library
       - name: install pip dependencies
         run: |
           python3 -m pip install --upgrade pip
