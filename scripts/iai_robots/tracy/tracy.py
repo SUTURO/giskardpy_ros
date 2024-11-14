@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.configs.giskard import Giskard
-from giskardpy.configs.iai_robots.tracy import TracyWorldConfig, TracyCollisionAvoidanceConfig, \
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.iai_robots.tracy import TracyWorldConfig, TracyCollisionAvoidanceConfig, \
     TracyJointTrajServerMujocoInterface
 
 if __name__ == '__main__':

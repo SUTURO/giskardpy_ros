@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.python_interface import GiskardWrapper
-import giskardpy.utils.tfwrapper as tf
+from giskardpy_ros.python_interface.python_interface import GiskardWrapper
+import giskardpy_ros.ros1.tfwrapper as tf
 
 
 rospy.init_node('evn_uploader')

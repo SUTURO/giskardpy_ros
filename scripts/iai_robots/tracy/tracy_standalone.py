@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
-from giskardpy.configs.giskard import Giskard
-from giskardpy.configs.iai_robots.tracy import TracyWorldConfig, TracyCollisionAvoidanceConfig, \
+from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.iai_robots.tracy import TracyWorldConfig, TracyCollisionAvoidanceConfig, \
     TracyStandAloneRobotInterfaceConfig
 
 if __name__ == '__main__':
