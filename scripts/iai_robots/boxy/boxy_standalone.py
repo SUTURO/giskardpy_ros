@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
-from giskardpy.configs.giskard import Giskard
-from giskardpy.configs.iai_robots.boxy import BoxyCollisionAvoidanceConfig, BoxyStandaloneInterfaceConfig
-from giskardpy.configs.iai_robots.donbot import WorldWithBoxyBaseConfig
+from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.iai_robots.boxy import BoxyCollisionAvoidanceConfig, BoxyStandaloneInterfaceConfig
+from giskardpy_ros.configs.iai_robots.donbot import WorldWithBoxyBaseConfig
 
 if __name__ == '__main__':
     rospy.init_node('giskard')

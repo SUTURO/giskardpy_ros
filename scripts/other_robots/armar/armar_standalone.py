@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
-from giskardpy.configs.giskard import Giskard
-from giskardpy.configs.other_robots.armar import WorldWithArmarConfig, ArmarCollisionAvoidanceConfig, \
+from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.other_robots.armar import WorldWithArmarConfig, ArmarCollisionAvoidanceConfig, \
     ArmarStandaloneInterface
 
 if __name__ == '__main__':

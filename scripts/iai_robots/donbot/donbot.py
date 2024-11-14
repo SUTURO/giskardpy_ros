@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.configs.giskard import Giskard
-from giskardpy.configs.iai_robots.donbot import WorldWithBoxyBaseConfig, DonbotCollisionAvoidanceConfig, \
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.iai_robots.donbot import WorldWithBoxyBaseConfig, DonbotCollisionAvoidanceConfig, \
     DonbotJointTrajInterfaceConfig
 
 if __name__ == '__main__':

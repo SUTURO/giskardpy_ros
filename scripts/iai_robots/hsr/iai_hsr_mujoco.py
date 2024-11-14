@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.configs.behavior_tree_config import ClosedLoopBTConfig
-from giskardpy.configs.giskard import Giskard
-from giskardpy.configs.iai_robots.hsr import WorldWithHSRConfig, HSRCollisionAvoidanceConfig, \
+from giskardpy_ros.configs.behavior_tree_config import ClosedLoopBTConfig
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.iai_robots.hsr import WorldWithHSRConfig, HSRCollisionAvoidanceConfig, \
     HSRMujocoVelocityInterface, HSRMujocoPositionInterface
-from giskardpy.configs.qp_controller_config import QPControllerConfig, SupportedQPSolver
+from giskardpy.qp.qp_controller_config import QPControllerConfig, SupportedQPSolver
 
 if __name__ == '__main__':
     rospy.init_node('giskard')

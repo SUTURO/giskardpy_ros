@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import rospy
-from giskardpy.python_interface import GiskardWrapper
-from giskardpy.utils import logging
+from giskardpy_ros.python_interface.python_interface import GiskardWrapper
+from giskardpy.utils.utils import get_middleware
 
 if __name__ == '__main__':
     rospy.init_node('clear_world')
     giskard = GiskardWrapper()
-    result = giskard.clear_world()
+    result = giskard.world.clear()
     if result.error_codes == result.SUCCESS:
-        logging.loginfo('World cleared.')
+        get_middleware().loginfo('World cleared.')
     else:
-        logging.logwarn(f'Failed to clear world {result}.')
+        get_middleware().logwarn(f'Failed to clear world {result}.')

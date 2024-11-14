@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.configs.behavior_tree_config import ClosedLoopBTConfig
-from giskardpy.configs.giskard import Giskard
-from giskardpy.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, \
+from giskardpy_ros.configs.behavior_tree_config import ClosedLoopBTConfig
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, \
     SuturoArenaWithHSRConfig, HSRVelocityInterfaceSuturo
 
 if __name__ == '__main__':

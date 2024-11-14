@@ -1,7 +1,8 @@
+import profile
 from typing import Dict
 
 from giskardpy.casadi_wrapper import CompiledFunction
-from giskardpy.data_types import PrefixName, TaskState
+from giskardpy.data_types.data_types import PrefixName, TaskState
 from giskardpy.god_map import god_map
 from giskardpy.motion_graph.graph_node import MotionGraphNode
 import giskardpy.casadi_wrapper as cas
