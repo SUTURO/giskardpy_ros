@@ -169,7 +169,7 @@ def apartment_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
 @pytest.fixture()
 def door_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
     door_name = 'suturo_door'
-    if GiskardBlackboard().is_standalone():
+    if GiskardBlackboard().tree.is_standalone():
         kitchen_pose = PoseStamped()
         kitchen_pose.header.frame_id = str(better_pose.default_root)
         kitchen_pose.pose.orientation.w = 1
@@ -180,7 +180,7 @@ def door_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
     for joint_name in god_map.world.groups[door_name].movable_joint_names:
         joint = god_map.world.joints[joint_name]
         if isinstance(joint, OneDofJoint):
-            if GiskardBlackboard().is_standalone():
+            if GiskardBlackboard().tree.is_standalone():
                 js[str(joint.free_variable.name)] = 0.0
             else:
                 js[str(joint.free_variable.name.short_name)] = 0.0
@@ -190,7 +190,7 @@ def door_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
 @pytest.fixture()
 def hohc_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
     hohc_name = 'suturo_shelf_hohc'
-    if GiskardBlackboard().is_standalone():
+    if GiskardBlackboard().tree.is_standalone():
         hohc_pose = PoseStamped()
         hohc_pose.header.frame_id = str(better_pose.default_root)
         hohc_pose.pose.orientation.w = 1
@@ -201,7 +201,7 @@ def hohc_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
     for joint_name in god_map.world.groups[hohc_name].movable_joint_names:
         joint = god_map.world.joints[joint_name]
         if isinstance(joint, OneDofJoint):
-            if GiskardBlackboard().is_standalone():
+            if GiskardBlackboard().tree.is_standalone():
                 js[str(joint.free_variable.name)] = 0.0
             else:
                 js[str(joint.free_variable.name.short_name)] = 0.0

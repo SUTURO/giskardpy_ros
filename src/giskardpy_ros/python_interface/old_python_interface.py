@@ -1408,15 +1408,11 @@ class OldGiskardWrapper(GiskardWrapper):
                                                                tip_link=tip_link,
                                                                center_point=bar_center,
                                                                line_axis=bar_axis,
-                                                               line_length=bar_length,
-                                                               root_group=root_group,
-                                                               tip_group=tip_group)
+                                                               line_length=bar_length)
             monitor_name2 = self.monitors.add_vectors_aligned(root_link=root_link,
                                                               tip_link=tip_link,
                                                               goal_normal=bar_axis,
-                                                              tip_normal=tip_grasp_axis,
-                                                              root_group=root_group,
-                                                              tip_group=tip_group)
+                                                              tip_normal=tip_grasp_axis)
             end_condition = f'{monitor_name1} and {monitor_name2}'
         self.motion_goals.add_grasp_bar_offset(end_condition=end_condition,
                                                root_link=root_link,
@@ -1426,8 +1422,6 @@ class OldGiskardWrapper(GiskardWrapper):
                                                bar_axis=bar_axis,
                                                bar_length=bar_length,
                                                grasp_axis_offset=grasp_axis_offset,
-                                               root_group=root_group,
-                                               tip_group=tip_group,
                                                reference_linear_velocity=reference_linear_velocity,
                                                reference_angular_velocity=reference_angular_velocity,
                                                weight=weight,

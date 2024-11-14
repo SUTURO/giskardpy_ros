@@ -452,7 +452,7 @@ class TestConstraints:
 
         kitchen_setup.set_joint_goal(kitchen_setup.better_pose)
         kitchen_setup.allow_self_collision()
-        kitchen_setup.plan_and_execute()
+        kitchen_setup.execute()
 
         kitchen_setup.close_gripper()
 
@@ -499,7 +499,7 @@ class TestConstraints:
 
         kitchen_setup.close_gripper()
 
-        current_pose = god_map.world.compute_fk_pose(root='map', tip=kitchen_setup.tip)
+        current_pose = kitchen_setup.compute_fk_pose(root_link='map', tip_link=kitchen_setup.tip)
 
         kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
                                               environment_link=handle_name,
@@ -637,7 +637,7 @@ class TestConstraints:
                                                                 handle_name=handle_name,
                                                                 hinge_frame_id=door_hinge_frame_id)
 
-        kitchen_setup.plan_and_execute()
+        kitchen_setup.execute()
 
         kitchen_setup.close_gripper()
 
@@ -647,7 +647,7 @@ class TestConstraints:
                                                            hinge_frame_id=door_hinge_frame_id)
 
         kitchen_setup.allow_collision(kitchen_setup.default_env_name, kitchen_setup.gripper_group)
-        kitchen_setup.plan_and_execute()
+        kitchen_setup.execute()
 
         kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
                                               environment_link=handle_name,
@@ -862,7 +862,7 @@ class TestSUTURO:
         zero_pose.add_box_to_world(box_name, (0.07, 0.04, 0.1), box_pose)
 
         zero_pose.take_pose("pre_align_height")
-        zero_pose.plan_and_execute()
+        zero_pose.execute()
 
         zero_pose.open_gripper()
 
@@ -877,11 +877,11 @@ class TestSUTURO:
                                                    tip_link='hand_palm_link')
 
             zero_pose.allow_self_collision()
-            zero_pose.plan_and_execute()
+            zero_pose.execute()
 
             zero_pose.reset_base()
             zero_pose.take_pose("pre_align_height")
-            zero_pose.plan_and_execute()
+            zero_pose.execute()
 
         zero_pose.close_gripper()
 
@@ -954,7 +954,7 @@ class TestSUTURO:
                                                        tip_link='hand_palm_link')
 
                 zero_pose.allow_self_collision()
-                zero_pose.plan_and_execute()
+                zero_pose.execute()
                 m_P_g = (god_map.world.
                          compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
@@ -977,7 +977,7 @@ class TestSUTURO:
                                                pose_keyword='park')
 
         zero_pose.allow_self_collision()
-        zero_pose.plan_and_execute()
+        zero_pose.execute()
 
         sleep = zero_pose.monitors.add_sleep(seconds=0.1)
         local_min = zero_pose.monitors.add_local_minimum_reached(stay_true=False)
@@ -1017,10 +1017,10 @@ class TestSUTURO:
                                                pose_keyword='park')
 
         zero_pose.allow_self_collision()
-        zero_pose.plan_and_execute()
+        zero_pose.execute()
 
         sleep = zero_pose.monitors.add_sleep(seconds=0.1)
-        local_min = zero_pose.monitors.add_local_minimum_reached(stay_true=False)
+        local_min = zero_pose.monitors.add_local_minimum_reached()
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='Retracting',
                                                distance=0.3,
@@ -1052,7 +1052,7 @@ class TestSUTURO:
         retraction_base_pose.pose.orientation.w = -0.0006187669689175172
 
         sleep = zero_pose.monitors.add_sleep(seconds=0.1)
-        local_min = zero_pose.monitors.add_local_minimum_reached(stay_true=False)
+        local_min = zero_pose.monitors.add_local_minimum_reached()
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='Retracting',
                                                distance=0.3,
@@ -1104,7 +1104,7 @@ class TestSUTURO:
                                                    pose_keyword='pre_align_height')
 
             zero_pose.allow_self_collision()
-            zero_pose.plan_and_execute()
+            zero_pose.execute()
 
             action = 'grasping'
             from_above = mode
@@ -1123,7 +1123,7 @@ class TestSUTURO:
                                                    tip_link='hand_palm_link')
 
             zero_pose.allow_self_collision()
-            zero_pose.plan_and_execute()
+            zero_pose.execute()
             cord_data = (god_map.world.
                          compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
@@ -1163,11 +1163,11 @@ class TestSUTURO:
                                                pose_keyword='pre_align_height')
 
         zero_pose.allow_self_collision()
-        zero_pose.plan_and_execute()
+        zero_pose.execute()
 
         for direction in directions:
             sleep = zero_pose.monitors.add_sleep(seconds=0.1)
-            local_min = zero_pose.monitors.add_local_minimum_reached(stay_true=False)
+            local_min = zero_pose.monitors.add_local_minimum_reached()
 
             zero_pose.motion_goals.add_motion_goal(motion_goal_class='Tilting',
                                                    direction=direction,
@@ -1252,10 +1252,9 @@ class TestSUTURO:
                                                    max_velocity=None)
 
             zero_pose.allow_self_collision()
-            zero_pose.plan_and_execute()
+            zero_pose.execute()
 
-            m_P_g = (god_map.world.
-                     compute_fk_pose('map', 'hand_gripper_tool_frame'))
+            m_P_g = (zero_pose.compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
             compare_poses(m_P_g.pose, assert_poses[pose])
 
@@ -1305,7 +1304,7 @@ class TestSUTURO:
                                                tip_link='hand_palm_link')
 
         zero_pose.allow_self_collision()
-        zero_pose.plan_and_execute()
+        zero_pose.execute()
 
         m_P_g = (god_map.world.
                  compute_fk_pose('map', 'hand_gripper_tool_frame'))
