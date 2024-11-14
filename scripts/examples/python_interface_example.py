@@ -2,8 +2,8 @@ import rospy
 from geometry_msgs.msg import PoseStamped
 
 from giskardpy.goals.joint_goals import JointPositionList
-from giskardpy.motion_graph.monitors import JointGoalReached
-from giskardpy.python_interface.python_interface import GiskardWrapper
+from giskardpy.motion_graph.monitors.joint_monitors import JointGoalReached
+from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 
 # %% Define goals for later
 right_arm_goal = {'r_shoulder_pan_joint': -1.7125,

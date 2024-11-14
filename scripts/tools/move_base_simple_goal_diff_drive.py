@@ -2,8 +2,8 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 
-from giskardpy.data_types import PrefixName
-from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
+from giskardpy.data_types.data_types import PrefixName
+from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper
 
 
 def call_back(goal: PoseStamped):

@@ -9,6 +9,16 @@ from controller_manager_msgs.srv import ListControllers, SwitchController, Switc
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3, Quaternion
 from nav_msgs.msg import Path
 from shape_msgs.msg import SolidPrimitive
+
+from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath
+from giskardpy_ros.tree.control_modes import ControlModes
+from goals.realtime_goals import RealTimePointing
+from goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
+    AlignHeight, TakePose, Tilting, JointRotationGoalContinuous, Mixing, OpenDoorGoal
+from motion_graph.monitors.force_torque_monitor import PayloadForceTorque
+from motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
+from motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
@@ -2447,7 +2457,7 @@ class MonitorWrapper:
         """
         The monitor will send a force to the HSR's gripper to open it.
         """
-        from giskardpy.monitors.hsr_gripper import OpenHsrGripper
+        from giskardpy.motion_graph.monitors.hsr_gripper import OpenHsrGripper
         name = name or OpenHsrGripper.__name__
         return self.add_monitor(monitor_class=OpenHsrGripper.__name__,
                                 name=name,
@@ -2457,7 +2467,7 @@ class MonitorWrapper:
         """
         The monitor will send a force to the HSR's gripper to close it.
         """
-        from giskardpy.monitors.hsr_gripper import CloseHsrGripper
+        from giskardpy.motion_graph.monitors.hsr_gripper import CloseHsrGripper
         name = name or CloseHsrGripper.__name__
         return self.add_monitor(monitor_class=CloseHsrGripper.__name__,
                                 name=name,
@@ -2762,6 +2772,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
+        # FIXME: How to Error?
         self.monitors.add_cancel_motion(local_min, "",
                                         GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
@@ -2813,6 +2824,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
+        # FIXME: How to Error?
         self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_GRASPING_MISSED_OBJECT)
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)

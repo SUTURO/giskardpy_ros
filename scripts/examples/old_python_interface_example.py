@@ -1,7 +1,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, Vector3Stamped, PointStamped
 
-from giskardpy.python_interface.old_python_interface import OldGiskardWrapper
+from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper
 
 # create goal joint state dictionary
 start_joint_state = {'r_elbow_flex_joint': -1.29610152504,

@@ -10,7 +10,7 @@ from controller_manager_msgs.srv import ListControllers, ListControllersResponse
 from geometry_msgs.msg import PoseStamped, PointStamped, QuaternionStamped, Vector3Stamped, Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
-from giskardpy.monitors.force_torque_monitor import PayloadForceTorque
+from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
 
 if 'GITHUB_WORKFLOW' not in os.environ:
     from tmc_control_msgs.msg import GripperApplyEffortAction, GripperApplyEffortGoal
@@ -21,12 +21,9 @@ from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult, 
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
-from giskardpy.data_types import goal_parameter
 from giskardpy.goals.suturo import MoveAroundDishwasher, Placing, Reaching
-from giskardpy.python_interface.python_interface import GiskardWrapper
-from giskardpy.suturo_types import GripperTypes
-from giskardpy.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
-from giskardpy.tree.control_modes import ControlModes
+from giskardpy.data_types.suturo_types import GripperTypes
+from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy.data_types.data_types import goal_parameter
 from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA

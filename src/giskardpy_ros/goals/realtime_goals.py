@@ -1032,7 +1032,7 @@ class FollowNavPath(Goal):
         for id_, scan in self.last_scan.items():
             base_laser_age = current_time - scan.header.stamp.to_sec()
             if base_laser_age > self.laser_scan_age_threshold:
-                logging.logwarn(f'last base laser scan is too old: {base_laser_age}')
+                get_middleware().logwarn(f'last base laser scan is too old: {base_laser_age}')
                 self.closest_laser_left[id_] = self.laser_distance_threshold_width
                 self.closest_laser_right[id_] = -self.laser_distance_threshold_width
                 self.closest_laser_reading[id_] = 0
@@ -1056,7 +1056,7 @@ class FollowNavPath(Goal):
                 m_line.points.append(p)
             ms.markers.append(m_line)
         except Exception as e:
-            logging.logwarn('failed to create traj marker')
+            get_middleware().logwarn('failed to create traj marker')
         self.pub.publish(ms)
 
     def publish_laser_thresholds(self):

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import rospy
 
-from giskardpy.configs.behavior_tree_config import StandAloneBTConfig
-from giskardpy.configs.giskard import Giskard
-from giskardpy.configs.iai_robots.stretch import StretchCollisionAvoidanceConfig, StretchStandaloneInterface
-from giskardpy.configs.iai_robots.tiago import TiagoCollisionAvoidanceConfig, TiagoStandaloneInterface
-from giskardpy.configs.world_config import WorldWithDiffDriveRobot
+from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
+from giskardpy_ros.configs.giskard import Giskard
+from giskardpy_ros.configs.iai_robots.stretch import StretchCollisionAvoidanceConfig, StretchStandaloneInterface
+from giskardpy.model.world_config import WorldWithDiffDriveRobot
+
 
 if __name__ == '__main__':
     rospy.init_node('giskard')
