@@ -10,6 +10,7 @@ from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, Quatern
 from nav_msgs.msg import Path
 from shape_msgs.msg import SolidPrimitive
 
+from data_types.data_types import PrefixName
 from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath
 from giskardpy_ros.tree.control_modes import ControlModes
 from goals.realtime_goals import RealTimePointing
@@ -1499,8 +1500,8 @@ class MotionGoalWrapper:
                              **kwargs)
 
     def hsrb_open_door_goal(self,
-                            door_handle_link: str,
-                            tip_link: str = 'hand_gripper_tool_frame',
+                            door_handle_link: Union[str, giskard_msgs.LinkName],
+                            tip_link: Union[str, giskard_msgs.LinkName] = giskard_msgs.LinkName(name='hand_gripper_tool_frame'),
                             name: str = 'HSRB_open_door',
                             handle_limit: Optional[float] = (np.pi / 6),
                             hinge_limit: Optional[float] = -(np.pi / 4)):
@@ -1513,7 +1514,6 @@ class MotionGoalWrapper:
         :param handle_limit: Limits the handle opening to given value
         :param hinge_limit: Limits the hinge opening to given value
         """
-
         self.add_open_door_goal(tip_link=tip_link,
                                 door_handle_link=door_handle_link,
                                 name=name,
@@ -1820,8 +1820,8 @@ class MotionGoalWrapper:
                              weight=weight)
 
     def add_open_door_goal(self,
-                           tip_link: str,
-                           door_handle_link: str,
+                           tip_link: Union[str, giskard_msgs.LinkName],
+                           door_handle_link: Union[str, giskard_msgs.LinkName],
                            name: str = None,
                            handle_limit: Optional[float] = None,
                            hinge_limit: Optional[float] = None):
@@ -1834,6 +1834,10 @@ class MotionGoalWrapper:
         :param handle_limit: Limits the handle opening to given value
         :param hinge_limit: Limits the hinge opening to given value
         """
+        if isinstance(door_handle_link, str):
+            door_handle_link = giskard_msgs.LinkName(name=door_handle_link)
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
         self.add_motion_goal(motion_goal_class=OpenDoorGoal.__name__,
                              tip_link=tip_link,
                              door_handle_link=door_handle_link,

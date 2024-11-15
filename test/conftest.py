@@ -168,16 +168,16 @@ def apartment_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
 
 @pytest.fixture()
 def door_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
-    door_name = 'suturo_door'
+    better_pose.default_env_name = 'suturo_door'
     if GiskardBlackboard().tree.is_standalone():
         kitchen_pose = PoseStamped()
         kitchen_pose.header.frame_id = str(better_pose.default_root)
         kitchen_pose.pose.orientation.w = 1
-        better_pose.add_urdf_to_world(name=door_name,
+        better_pose.add_urdf_to_world(name=better_pose.default_env_name,
                                       urdf=rospy.get_param('door_description'),
                                       pose=kitchen_pose)
     js = {}
-    for joint_name in god_map.world.groups[door_name].movable_joint_names:
+    for joint_name in god_map.world.groups[better_pose.default_env_name].movable_joint_names:
         joint = god_map.world.joints[joint_name]
         if isinstance(joint, OneDofJoint):
             if GiskardBlackboard().tree.is_standalone():
@@ -189,16 +189,16 @@ def door_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
 
 @pytest.fixture()
 def hohc_setup(better_pose: GiskardTestWrapper) -> GiskardTestWrapper:
-    hohc_name = 'suturo_shelf_hohc'
+    better_pose.default_env_name = 'suturo_shelf_hohc'
     if GiskardBlackboard().tree.is_standalone():
         hohc_pose = PoseStamped()
         hohc_pose.header.frame_id = str(better_pose.default_root)
         hohc_pose.pose.orientation.w = 1
-        better_pose.add_urdf_to_world(name=hohc_name,
+        better_pose.add_urdf_to_world(name=better_pose.default_env_name,
                                       urdf=rospy.get_param('hohc_description'),
                                       pose=hohc_pose)
     js = {}
-    for joint_name in god_map.world.groups[hohc_name].movable_joint_names:
+    for joint_name in god_map.world.groups[better_pose.default_env_name].movable_joint_names:
         joint = god_map.world.joints[joint_name]
         if isinstance(joint, OneDofJoint):
             if GiskardBlackboard().tree.is_standalone():

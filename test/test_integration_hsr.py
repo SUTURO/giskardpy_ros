@@ -9,7 +9,9 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vect
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
-from giskard_msgs.msg import LinkName, GiskardError
+import giskard_msgs.msg as giskard_msgs
+from data_types.data_types import PrefixName
+from giskard_msgs.msg import GiskardError
 from giskardpy.data_types.exceptions import EmptyProblemException
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
@@ -826,7 +828,7 @@ class TestSUTURO:
 
         door_setup.allow_all_collisions()
 
-        door_setup.execute(add_local_minimum_reached=False)
+        door_setup.execute()
 
         door_setup.open_gripper()
 
@@ -980,7 +982,7 @@ class TestSUTURO:
         zero_pose.execute()
 
         sleep = zero_pose.monitors.add_sleep(seconds=0.1)
-        local_min = zero_pose.monitors.add_local_minimum_reached(stay_true=False)
+        local_min = zero_pose.monitors.add_local_minimum_reached()
 
         action = 'grasping'
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=VerticalMotion.__name__,
@@ -1180,8 +1182,7 @@ class TestSUTURO:
             zero_pose.allow_self_collision()
             zero_pose.execute(add_local_minimum_reached=False)
 
-            cord_data = (god_map.world.
-                         compute_fk_pose('map', 'hand_l_finger_tip_frame'))
+            cord_data = (zero_pose.compute_fk_pose('map', 'hand_l_finger_tip_frame'))
 
             compare_poses(cord_data.pose, tilt_states[direction].pose)
 
