@@ -9,20 +9,10 @@ from controller_manager_msgs.srv import ListControllers, SwitchController, Switc
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3, Quaternion
 from nav_msgs.msg import Path
 from shape_msgs.msg import SolidPrimitive
-
-from data_types.data_types import PrefixName
-from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath
-from giskardpy_ros.tree.control_modes import ControlModes
-from goals.realtime_goals import RealTimePointing
-from goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
-    AlignHeight, TakePose, Tilting, JointRotationGoalContinuous, Mixing, OpenDoorGoal
-from motion_graph.monitors.force_torque_monitor import PayloadForceTorque
-from motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
-from motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
+from giskard_msgs.msg import ExecutionState
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
     Monitor, WorldGoal, WorldAction, WorldResult, GiskardError
 from giskard_msgs.srv import DyeGroupRequest, DyeGroup, GetGroupInfoRequest, DyeGroupResponse
@@ -35,6 +25,7 @@ from giskardpy.goals.align_to_push_door import AlignToPushDoor
 from giskardpy.goals.cartesian_goals import CartesianPose, DiffDriveBaseGoal, CartesianVelocityLimit, \
     CartesianOrientation, CartesianPoseStraight, CartesianPosition, CartesianPositionStraight
 from giskardpy.goals.collision_avoidance import CollisionAvoidance
+from giskardpy.goals.feature_functions import AlignPerpendicular, HeightGoal, AngleGoal, DistanceGoal
 from giskardpy.goals.grasp_bar import GraspBar
 from giskardpy.goals.joint_goals import JointPositionList, AvoidJointLimits
 from giskardpy.goals.open_close import Close, Open
@@ -44,19 +35,26 @@ from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
 from giskardpy.motion_graph.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, \
     PointingAt, \
     VectorsAligned, DistanceToLine
+from giskardpy.motion_graph.monitors.feature_monitors import PerpendicularMonitor, AngleMonitor, HeightMonitor, \
+    DistanceMonitor
 from giskardpy.motion_graph.monitors.joint_monitors import JointGoalReached
 from giskardpy.motion_graph.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator, CancelMotion, EndMotion
 from giskardpy.motion_graph.monitors.overwrite_state_monitors import SetOdometry, SetSeedConfiguration
 from giskardpy.motion_graph.monitors.payload_monitors import Print, Sleep, SetMaxTrajectoryLength, \
     PayloadAlternator
+from giskardpy.utils.utils import get_all_classes_in_package
+from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath
 from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
+from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy_ros.utils.utils import make_world_body_box
-from giskardpy.utils.utils import get_all_classes_in_package
-from giskardpy.goals.feature_functions import AlignPerpendicular, HeightGoal, AngleGoal, DistanceGoal
-from giskardpy.motion_graph.monitors.feature_monitors import PerpendicularMonitor, AngleMonitor, HeightMonitor, \
-    DistanceMonitor
-from giskard_msgs.msg import ExecutionState
+from goals.realtime_goals import RealTimePointing
+from goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
+    AlignHeight, TakePose, Tilting, JointRotationGoalContinuous, Mixing, OpenDoorGoal
+from motion_graph.monitors.force_torque_monitor import PayloadForceTorque
+from motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
+from motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
 class WorldWrapper:
@@ -1501,7 +1499,8 @@ class MotionGoalWrapper:
 
     def hsrb_open_door_goal(self,
                             door_handle_link: Union[str, giskard_msgs.LinkName],
-                            tip_link: Union[str, giskard_msgs.LinkName] = giskard_msgs.LinkName(name='hand_gripper_tool_frame'),
+                            tip_link: Union[str, giskard_msgs.LinkName] = giskard_msgs.LinkName(
+                                name='hand_gripper_tool_frame'),
                             name: str = 'HSRB_open_door',
                             handle_limit: Optional[float] = (np.pi / 6),
                             hinge_limit: Optional[float] = -(np.pi / 4)):
@@ -1629,41 +1628,6 @@ class MotionGoalWrapper:
                                door_handle=handle_name,
                                weight=weight,
                                door_object=hinge_frame_id)
-
-    def open_container_goal(self,
-                            tip_link: str,
-                            environment_link: str,
-                            special_door: Optional[bool] = False,
-                            tip_group: Optional[str] = None,
-                            environment_group: Optional[str] = None,
-                            goal_joint_state: Optional[float] = None,
-                            start_condition: str = '',
-                            hold_condition: str = '',
-                            end_condition: str = '',
-                            weight=WEIGHT_ABOVE_CA):
-        """
-        Open a container in an environment.
-        Only works with the environment was added as urdf.
-        Assumes that a handle has already been grasped.
-        Can only handle containers with 1 dof, e.g. drawers or doors.
-        :param tip_link: end effector that is grasping the handle
-        :param environment_link: name of the handle that was grasped
-        :param special_door: workaround for dishwasher opening motion
-        :param tip_group: if tip_link is not unique, search in this group for matches
-        :param environment_group: if environment_link is not unique, search in this group for matches
-        :param goal_joint_state: goal state for the container. default is maximum joint state.
-        :param weight:
-        """
-        self.add_open_container(tip_link=tip_link,
-                                environment_link=environment_link,
-                                tip_group=tip_group,
-                                special_door=special_door,
-                                environment_group=environment_group,
-                                goal_joint_state=goal_joint_state,
-                                start_condition=start_condition,
-                                hold_condition=hold_condition,
-                                end_condition=end_condition,
-                                weight=weight)
 
     # TODO: change object_size Vector3Stamped instead
     def add_reaching(self,
@@ -2737,7 +2701,7 @@ class GiskardWrapper:
 
         return result
 
-   # SuTuRo Goals start here! (Only add SuTuRo goals which actually need monitors for stopping conditions etc.)
+    # SuTuRo Goals start here! (Only add SuTuRo goals which actually need monitors for stopping conditions etc.)
     def monitor_placing(self,
                         align: str,
                         grasp: str,

@@ -482,9 +482,6 @@ class OldGiskardWrapper(GiskardWrapper):
                                 tip_group: Optional[str] = None,
                                 environment_group: Optional[str] = None,
                                 goal_joint_state: Optional[float] = None,
-                                start_condition: str = '',
-                                hold_condition: str = '',
-                                end_condition: str = '',
                                 weight=WEIGHT_ABOVE_CA):
         """
         Open a container in an environment.
@@ -504,9 +501,6 @@ class OldGiskardWrapper(GiskardWrapper):
                                              environment_link=environment_link,
                                              special_door=special_door,
                                              goal_joint_state=goal_joint_state,
-                                             start_condition=start_condition,
-                                             hold_condition=hold_condition,
-                                             end_condition=end_condition,
                                              weight=weight)
 
     def set_align_to_push_door_goal(self,

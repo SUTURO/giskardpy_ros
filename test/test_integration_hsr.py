@@ -619,9 +619,9 @@ class TestConstraints:
 
         kitchen_setup.close_gripper()
 
-        kitchen_setup.motion_goals.open_container_goal(tip_link=kitchen_setup.tip,
-                                                       environment_link=handle_name,
-                                                       goal_joint_state=1.5)
+        kitchen_setup.motion_goals.add_open_container(tip_link=kitchen_setup.tip,
+                                                      environment_link=handle_name,
+                                                      goal_joint_state=1.5)
 
         kitchen_setup.allow_all_collisions()
         kitchen_setup.execute()
