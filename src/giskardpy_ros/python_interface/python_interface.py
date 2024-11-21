@@ -2967,8 +2967,7 @@ class GiskardWrapper:
         """
         if left_door not in self.world.get_group_names():
             self.world.register_group(new_group_name=left_door,
-                                      root_link_group_name='suturo_shelf_hohc',
-                                      root_link_name=left_door)
+                                      root_link_name=giskard_msgs.LinkName(name=left_door, group_name='suturo_shelf_hohc'))
 
         first_goal = PoseStamped()
         first_goal.header.frame_id = left_handle
