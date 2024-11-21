@@ -957,8 +957,9 @@ class TestSUTURO:
 
                 zero_pose.allow_self_collision()
                 zero_pose.execute()
-                m_P_g = (god_map.world.
-                         compute_fk_pose('map', 'hand_gripper_tool_frame'))
+                root_link = god_map.world.search_for_link_name('map')
+                tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+                m_P_g = (god_map.world.compute_fk(root_link, tip_link))
 
                 # FIXME: compare poses doesn't work, i guess because of changes to reaching/grasping
                 # compare_poses(m_P_g.pose, grasp_states[grasp, align_vertical_mode].pose)
