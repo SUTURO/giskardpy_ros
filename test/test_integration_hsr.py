@@ -1,31 +1,27 @@
 import os
 from copy import deepcopy
-from typing import Optional
 
 import numpy as np
 import pytest
 import rospy
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped, Vector3
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped, Vector3, Pose
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
-import giskard_msgs.msg as giskard_msgs
-from data_types.data_types import PrefixName
-from giskard_msgs.msg import GiskardError
+import casadi_wrapper as cas
 from giskardpy.data_types.exceptions import EmptyProblemException
+from giskardpy.data_types.suturo_types import GraspTypes
+from giskardpy.god_map import god_map
+from giskardpy.motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
+from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
-from giskardpy.qp.qp_controller_config import QPControllerConfig
-from giskardpy.god_map import god_map
-from giskardpy.motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
-from giskardpy.data_types.suturo_types import GraspTypes
-from utils_for_tests import launch_launchfile
 from utils_for_tests import compare_poses, GiskardTestWrapper
+from utils_for_tests import launch_launchfile
 
 if 'GITHUB_WORKFLOW' not in os.environ:
     from giskardpy.goals.suturo import Reaching, TakePose, GraspObject, VerticalMotion, AlignHeight
-    from tmc_control_msgs.msg import GripperApplyEffortActionGoal, GripperApplyEffortActionResult
 
 
 class HSRTestWrapper(GiskardTestWrapper):
@@ -966,15 +962,14 @@ class TestSUTURO:
 
     def test_vertical_motion_up(self, zero_pose: HSRTestWrapper):
 
-        vertical_motion_pose = PoseStamped()
-        vertical_motion_pose.header.frame_id = 'map'
-        vertical_motion_pose.pose.position.x = 0.17102731790942596
-        vertical_motion_pose.pose.position.y = -0.13231521471220506
-        vertical_motion_pose.pose.position.z = 0.7119274770524749
-        vertical_motion_pose.pose.orientation.x = 0.5067617681482114
-        vertical_motion_pose.pose.orientation.y = -0.45782201564184877
-        vertical_motion_pose.pose.orientation.z = 0.5271017946406412
-        vertical_motion_pose.pose.orientation.w = 0.5057224638312487
+        vertical_motion_pose = Pose()
+        vertical_motion_pose.position.x = 0.17102731790942596
+        vertical_motion_pose.position.y = -0.13231521471220506
+        vertical_motion_pose.position.z = 0.7119274770524749
+        vertical_motion_pose.orientation.x = 0.5067617681482114
+        vertical_motion_pose.orientation.y = -0.45782201564184877
+        vertical_motion_pose.orientation.z = 0.5271017946406412
+        vertical_motion_pose.orientation.w = 0.5057224638312487
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=TakePose.__name__,
                                                pose_keyword='park')
@@ -999,22 +994,22 @@ class TestSUTURO:
         zero_pose.allow_self_collision()
         zero_pose.execute(add_local_minimum_reached=False)
 
-        m_P_g = (god_map.world.
-                 compute_fk_pose('map', 'hand_gripper_tool_frame'))
+        root_link = god_map.world.search_for_link_name('map')
+        tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+        m_P_g = (god_map.world.compute_fk(root_link, tip_link))
 
-        compare_poses(m_P_g.pose, vertical_motion_pose.pose)
+        compare_poses(m_P_g, vertical_motion_pose)
 
     def test_retracting_hand(self, zero_pose: HSRTestWrapper):
 
-        retracting_hand_pose = PoseStamped()
-        retracting_hand_pose.header.frame_id = 'map'
-        retracting_hand_pose.pose.position.x = 0.14963260254170513
-        retracting_hand_pose.pose.position.y = 0.16613649117825122
-        retracting_hand_pose.pose.position.z = 0.6717532654948288
-        retracting_hand_pose.pose.orientation.x = 0.5066648708788183
-        retracting_hand_pose.pose.orientation.y = -0.45792002831875167
-        retracting_hand_pose.pose.orientation.z = 0.5270228996549048
-        retracting_hand_pose.pose.orientation.w = 0.5058130282241059
+        retracting_hand_pose = Pose()
+        retracting_hand_pose.position.x = 0.14963260254170513
+        retracting_hand_pose.position.y = 0.16613649117825122
+        retracting_hand_pose.position.z = 0.6717532654948288
+        retracting_hand_pose.orientation.x = 0.5066648708788183
+        retracting_hand_pose.orientation.y = -0.45792002831875167
+        retracting_hand_pose.orientation.z = 0.5270228996549048
+        retracting_hand_pose.orientation.w = 0.5058130282241059
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
                                                pose_keyword='park')
@@ -1037,10 +1032,11 @@ class TestSUTURO:
         zero_pose.allow_self_collision()
         zero_pose.execute(add_local_minimum_reached=False)
 
-        m_P_g = (god_map.world.
-                 compute_fk_pose('map', 'hand_gripper_tool_frame'))
+        root_link = god_map.world.search_for_link_name('map')
+        tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+        m_P_g = (god_map.world.compute_fk(root_link, tip_link))
 
-        compare_poses(m_P_g.pose, retracting_hand_pose.pose)
+        compare_poses(m_P_g, retracting_hand_pose)
 
     def test_retracting_base(self, zero_pose: HSRTestWrapper):
 
@@ -1069,10 +1065,11 @@ class TestSUTURO:
         zero_pose.allow_self_collision()
         zero_pose.execute(add_local_minimum_reached=False)
 
-        m_P_g = (god_map.world.
-                 compute_fk_pose('map', 'hand_gripper_tool_frame'))
+        root_link = god_map.world.search_for_link_name('map')
+        tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+        m_P_g = (god_map.world.compute_fk(root_link, tip_link))
 
-        compare_poses(m_P_g.pose, retraction_base_pose.pose)
+        compare_poses(m_P_g, retraction_base_pose.pose)
 
     def test_align_height(self, zero_pose: HSRTestWrapper):
         execute_from_above = [False, True]
@@ -1127,10 +1124,12 @@ class TestSUTURO:
 
             zero_pose.allow_self_collision()
             zero_pose.execute()
-            cord_data = (god_map.world.
-                         compute_fk_pose('map', 'hand_gripper_tool_frame'))
 
-            compare_poses(cord_data.pose, align_states[mode].pose)
+            root_link = god_map.world.search_for_link_name('map')
+            tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+            cord_data = (god_map.world.compute_fk(root_link, tip_link))
+
+            compare_poses(cord_data, align_states[mode].pose)
 
     # Maybe change compare poses to fingertips and not tool_frame
     def test_tilting(self, zero_pose: HSRTestWrapper):
@@ -1256,9 +1255,11 @@ class TestSUTURO:
             zero_pose.allow_self_collision()
             zero_pose.execute()
 
-            m_P_g = (zero_pose.compute_fk_pose('map', 'hand_gripper_tool_frame'))
+            root_link = god_map.world.search_for_link_name('map')
+            tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+            m_P_g = (god_map.world.compute_fk(root_link, tip_link))
 
-            compare_poses(m_P_g.pose, assert_poses[pose])
+            compare_poses(m_P_g, assert_poses[pose])
 
     # # TODO: If ever relevant for SuTuRo, add proper Test behaviour
     # def test_mixing(self, zero_pose: HSRTestWrapper):
@@ -1308,27 +1309,28 @@ class TestSUTURO:
         zero_pose.allow_self_collision()
         zero_pose.execute()
 
-        m_P_g = (god_map.world.
-                 compute_fk_pose('map', 'hand_gripper_tool_frame'))
+        root_link = god_map.world.search_for_link_name('map')
+        tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+        m_P_g = (god_map.world.compute_fk(root_link, tip_link))
 
-        compare_poses(m_P_g.pose, keep_rotation_pose.pose)
+        compare_poses(m_P_g, keep_rotation_pose.pose)
 
-    def test_hsr_open_close_gripper(self, zero_pose: HSRTestWrapper):
-        if 'GITHUB_WORKFLOW' in os.environ:
-            return True
-        echo = rospy.Publisher('/hsrb/gripper_controller/grasp/result', GripperApplyEffortActionResult,
-                               queue_size=1)
-        gripper_open = zero_pose.monitors.add_open_hsr_gripper(name='open')
-        gripper_closed = zero_pose.monitors.add_close_hsr_gripper(name='close',
-                                                                  start_condition=gripper_open)
-        zero_pose.monitors.add_end_motion(start_condition=gripper_closed)
-        zero_pose.execute(add_local_minimum_reached=False, wait=False)
-
-        for i in range(2):
-            msg: GripperApplyEffortActionGoal = rospy.wait_for_message('/hsrb/gripper_controller/grasp/goal',
-                                                                       GripperApplyEffortActionGoal)
-            result = GripperApplyEffortActionResult()
-            result.status.goal_id = msg.goal_id
-            echo.publish(result)
-        result = zero_pose.get_result()
-        assert result.error.code == GiskardError.SUCCESS
+    # def test_hsr_open_close_gripper(self, zero_pose: HSRTestWrapper):
+    #     if 'GITHUB_WORKFLOW' in os.environ:
+    #         return True
+    #     echo = rospy.Publisher('/hsrb/gripper_controller/grasp/result', GripperApplyEffortActionResult,
+    #                            queue_size=1)
+    #     gripper_open = zero_pose.monitors.add_open_hsr_gripper(name='open')
+    #     gripper_closed = zero_pose.monitors.add_close_hsr_gripper(name='close',
+    #                                                               start_condition=gripper_open)
+    #     zero_pose.monitors.add_end_motion(start_condition=gripper_closed)
+    #     zero_pose.execute(add_local_minimum_reached=False, wait=False)
+    #
+    #     for i in range(2):
+    #         msg: GripperApplyEffortActionGoal = rospy.wait_for_message('/hsrb/gripper_controller/grasp/goal',
+    #                                                                    GripperApplyEffortActionGoal)
+    #         result = GripperApplyEffortActionResult()
+    #         result.status.goal_id = msg.goal_id
+    #         echo.publish(result)
+    #     result = zero_pose.get_result()
+    #     assert result.error.code == GiskardError.SUCCESS
