@@ -48,7 +48,7 @@ from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
 from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy_ros.utils.utils import make_world_body_box
-from goals.realtime_goals import RealTimePointing
+from giskardpy_ros.goals.realtime_goals import RealTimePointing
 from goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
     AlignHeight, TakePose, Tilting, JointRotationGoalContinuous, Mixing, OpenDoorGoal
 from motion_graph.monitors.force_torque_monitor import PayloadForceTorque
@@ -934,15 +934,14 @@ class MotionGoalWrapper:
                              **kwargs)
 
     def add_real_time_pointing(self,
-                               tip_link: str,
+                               tip_link: Union[str, giskard_msgs.LinkName],
                                pointing_axis: Vector3Stamped,
-                               root_link: str,
+                               root_link: Union[str, giskard_msgs.LinkName],
                                topic_name: str,
                                tip_group: Optional[str] = None,
                                root_group: Optional[str] = None,
                                max_velocity: float = 0.3,
                                weight: Optional[float] = None,
-                               name: Optional[str] = None,
                                start_condition: str = '',
                                hold_condition: str = '',
                                end_condition: str = '',
@@ -957,6 +956,11 @@ class MotionGoalWrapper:
         :param pointing_axis: the axis of tip_link that will be used for pointing
         :param max_velocity: rad/s
         """
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+
         self.add_motion_goal(motion_goal_class=RealTimePointing.__name__,
                              tip_link=tip_link,
                              tip_group=tip_group,
@@ -966,7 +970,6 @@ class MotionGoalWrapper:
                              pointing_axis=pointing_axis,
                              max_velocity=max_velocity,
                              weight=weight,
-                             name=name,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
                              end_condition=end_condition,

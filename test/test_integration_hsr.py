@@ -759,7 +759,7 @@ class TestSUTURO:
 
     # TODO: add compare pose?
     def test_continuous_pointing(self, zero_pose):
-        pub = rospy.Publisher('/human_pose', PoseStamped, queue_size=10)
+        pub = rospy.Publisher('/human_pose', PointStamped, queue_size=10)
 
         zero_pose.continuous_pointing_head()
         zero_pose.execute(wait=False, add_local_minimum_reached=False)
@@ -768,23 +768,22 @@ class TestSUTURO:
 
         poses = []
 
-        pose = PoseStamped()
+        pose = PointStamped()
         pose.header.frame_id = 'map'
-        pose.pose.orientation.w = 1
-        pose.pose.position.x = 1
-        pose.pose.position.z = 1
+        pose.point.x = 1
+        pose.point.z = 1
 
         poses.append(pose)
 
         pose2 = deepcopy(pose)
-        pose2.pose.position.y = 5
+        pose2.point.y = 5
 
         poses.append(pose2)
 
         pose3 = deepcopy(pose2)
 
-        pose3.pose.position.x = 0.5
-        pose3.pose.position.y = 0
+        pose3.point.x = 0.5
+        pose3.point.y = 0
 
         poses.append(pose3)
 

@@ -1,25 +1,26 @@
 from __future__ import division
-import numpy as np
+
 from typing import Optional, List, Dict, Tuple
 
+import numpy as np
 import rospy
 from geometry_msgs.msg import PointStamped, Point, Vector3
 from nav_msgs.msg import Path
 from sensor_msgs.msg import LaserScan
 from visualization_msgs.msg import MarkerArray, Marker
 
+import giskardpy.casadi_wrapper as cas
+import giskardpy_ros.ros1.msg_converter as msg_converter
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.data_types.exceptions import GoalInitalizationException, ExecutionException
 from giskardpy.goals.goal import Goal
+from giskardpy.goals.pointing import Pointing
 from giskardpy.god_map import god_map
 from giskardpy.middleware import get_middleware
 from giskardpy.model.joints import OmniDrive
 from giskardpy.motion_graph.monitors.monitors import ExpressionMonitor, EndMotion
-from giskardpy.symbol_manager import symbol_manager
 from giskardpy.motion_graph.tasks.task import WEIGHT_BELOW_CA, WEIGHT_COLLISION_AVOIDANCE
-from giskardpy.goals.pointing import Pointing
-import giskardpy.casadi_wrapper as cas
-import giskardpy_ros.ros1.msg_converter as msg_converter
+from giskardpy.symbol_manager import symbol_manager
 from giskardpy.utils.decorators import clear_memo, memoize_with_counter
 from giskardpy_ros.tree.blackboard_utils import raise_to_blackboard
 
@@ -29,14 +30,17 @@ class RealTimePointing(Pointing):
     def __init__(self,
                  tip_link: PrefixName,
                  root_link: PrefixName,
+                 topic_name: str,
                  pointing_axis: cas.Vector3,
+                 name: Optional[str] = None,
                  max_velocity: float = 0.3,
                  weight: float = WEIGHT_BELOW_CA,
                  start_condition: cas.Expression = cas.TrueSymbol,
                  hold_condition: cas.Expression = cas.FalseSymbol,
                  end_condition: cas.Expression = cas.FalseSymbol):
         initial_goal = cas.Point3((1, 0, 1), reference_frame=god_map.world.search_for_link_name('base_footprint'))
-        super().__init__(tip_link=tip_link,
+        super().__init__(name=name,
+                         tip_link=tip_link,
                          goal_point=initial_goal,
                          root_link=root_link,
                          pointing_axis=pointing_axis,
@@ -45,7 +49,7 @@ class RealTimePointing(Pointing):
                          start_condition=start_condition,
                          hold_condition=hold_condition,
                          end_condition=end_condition)
-        self.sub = rospy.Subscriber('muh', PointStamped, self.cb)
+        self.sub = rospy.Subscriber(topic_name, PointStamped, self.cb)
 
     def cb(self, data: PointStamped):
         data = msg_converter.ros_msg_to_giskard_obj(data, god_map.world)
