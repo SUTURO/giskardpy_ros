@@ -3,11 +3,11 @@
 
   <include file="$(find hsr_description)/launch/upload_hsrb.launch"/>
 
-  <node pkg="giskardpy" type="hsr_standalone.py" name="giskard" output="screen">
+  <node pkg="giskardpy_ros" type="hsr_standalone.py" name="giskard" output="screen">
     <param name="debug_mode" value="$(arg debug_mode)" />
   </node>
 
-  <node pkg="giskardpy" type="interactive_marker.py" name="giskard_interactive_marker" output="screen">
+  <node pkg="giskardpy_ros" type="interactive_marker.py" name="giskard_interactive_marker" output="screen">
     <rosparam param="enable_self_collision">False</rosparam>
     <rosparam param="interactive_marker_chains">
       - [odom, base_footprint]
@@ -16,7 +16,7 @@
     </rosparam>
   </node>
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find giskardpy)/launch/rviz_config/standalone.rviz" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find giskardpy_ros)/launch/rviz_config/standalone.rviz" />
 
 </launch>
 
