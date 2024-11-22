@@ -1524,8 +1524,8 @@ class MotionGoalWrapper:
                                handle_bar_length: float = 0,
                                tip_link: str = 'hand_gripper_tool_frame',
                                root_link: str = 'map',
-                               bar_axis_v: Optional[Vector3] = None,
-                               tip_grasp_axis_v: Optional[Vector3] = None):
+                               bar_axis_v: Optional[Vector3Stamped] = None,
+                               tip_grasp_axis_v: Optional[Vector3Stamped] = None):
         """
         HSRB specific set_grasp_bar_goal, that only needs handle_name of the door_handle
 
@@ -1536,7 +1536,6 @@ class MotionGoalWrapper:
         :param bar_axis_v: Vector for changing the orientation of the door handle
         :param tip_grasp_axis_v: Vector for the orientation of the tip grasp link
         """
-        # TODO: actually use Vector3Stamped as parameter instead of Vector3, make handle_name and bar_axis/tip_grasp_axis mutally exclusive
         bar_axis = Vector3Stamped()
         bar_axis.header.frame_id = handle_name
         if bar_axis_v is None:

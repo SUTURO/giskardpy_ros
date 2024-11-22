@@ -824,7 +824,7 @@ class TestSUTURO:
 
         door_setup.allow_all_collisions()
 
-        door_setup.execute()
+        door_setup.execute(add_local_minimum_reached=False)
 
         door_setup.open_gripper()
 
@@ -865,16 +865,15 @@ class TestSUTURO:
         zero_pose.open_gripper()
 
         for grasp in GraspTypes:
-            # print(grasp.value)
             zero_pose.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
                                                    object_name=box_name,
                                                    object_shape='box',
                                                    grasp=grasp.value,
                                                    align='test',
                                                    root_link='map',
-                                                   tip_link='hand_palm_link')
+                                                   tip_link='hand_gripper_tool_frame')
 
-            zero_pose.allow_self_collision()
+            zero_pose.allow_all_collisions()
             zero_pose.execute()
 
             zero_pose.reset_base()
