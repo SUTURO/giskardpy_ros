@@ -3,9 +3,11 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from line_profiler import profile
 from nav_msgs.msg import Odometry
 from py_trees import Status
+from wx.lib.pubsub.policies import msgProtocolTransStage
 
 from giskardpy.data_types.data_types import PrefixName
 from giskardpy.god_map import god_map
+from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1.ros1_interface import wait_for_topic_to_appear
 from giskardpy.model.joints import OmniDrive
 from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
@@ -46,7 +48,8 @@ class SyncOdometry(GiskardBehavior):
     @profile
     def update(self):
         if self.data:
-            self.joint.update_transform(self.data.pose.pose)
+            pose = msg_converter.ros_msg_to_giskard_obj(self.data.pose.pose, god_map.world)
+            self.joint.update_transform(pose)
             self.data = None
             return Status.SUCCESS
         else:
@@ -69,5 +72,6 @@ class SyncOdometryNoLock(SyncOdometry):
     @record_time
     @profile
     def update(self):
-        self.joint.update_transform(self.odom.pose.pose)
+        pose = msg_converter.ros_msg_to_giskard_obj(self.odom.pose.pose, god_map.world)
+        self.joint.update_transform(pose)
         return Status.SUCCESS
