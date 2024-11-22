@@ -49,11 +49,11 @@ from giskardpy_ros.ros1.msg_converter import kwargs_to_json
 from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy_ros.utils.utils import make_world_body_box
 from giskardpy_ros.goals.realtime_goals import RealTimePointing
-from goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
+from giskardpy.goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
     AlignHeight, TakePose, Tilting, JointRotationGoalContinuous, Mixing, OpenDoorGoal
-from motion_graph.monitors.force_torque_monitor import PayloadForceTorque
-from motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
-from motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
+from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
+from giskardpy.motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
+from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
