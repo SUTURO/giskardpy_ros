@@ -8,7 +8,6 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vect
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
-import casadi_wrapper as cas
 from giskardpy.data_types.exceptions import EmptyProblemException
 from giskardpy.data_types.suturo_types import GraspTypes
 from giskardpy.god_map import god_map
@@ -1326,9 +1325,14 @@ class TestSUTURO:
     #
     #     for i in range(2):
     #         msg: GripperApplyEffortActionGoal = rospy.wait_for_message('/hsrb/gripper_controller/grasp/goal',
-    #                                                                    GripperApplyEffortActionGoal)
+    #                                                                    GripperApplyEffortActionGoal)fh
     #         result = GripperApplyEffortActionResult()
     #         result.status.goal_id = msg.goal_id
     #         echo.publish(result)
     #     result = zero_pose.get_result()
     #     assert result.error.code == GiskardError.SUCCESS
+
+
+class TestKitchen:
+    def test_kitchen_drawer1(self, kitchen_setup: HSRTestWrapper):
+        pass
