@@ -3,7 +3,6 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from line_profiler import profile
 from nav_msgs.msg import Odometry
 from py_trees import Status
-from wx.lib.pubsub.policies import msgProtocolTransStage
 
 from giskardpy.data_types.data_types import PrefixName
 from giskardpy.god_map import god_map
