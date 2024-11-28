@@ -3,22 +3,22 @@
 
     <include file="$(find hsr_velocity_controller)/launch/switch_to_velocity_controllers.launch" />
 
-    <node pkg="giskardpy" type="iai_hsr_real_time.py" name="giskard" output="screen">
+    <node pkg="giskardpy_ros" type="iai_hsr_real_time.py" name="giskard" output="screen">
         <param name="debug_mode" value="$(arg debug_mode)" />
     </node>
 
-    <node pkg="giskardpy" type="joystick_e_stop.py" name="giskard_e_stop" output="screen">
+    <node pkg="giskardpy_ros" type="joystick_e_stop.py" name="giskard_e_stop" output="screen">
         <remap from="/joy" to="/hsrb/joy"/>
         <rosparam param="button_ids">
             [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16]
         </rosparam>
     </node>
 
-    <node pkg="giskardpy" type="switch_controllers.py" name="giskard_joy_switch_controllers" output="screen" />
+    <node pkg="giskardpy_ros" type="switch_controllers.py" name="giskard_joy_switch_controllers" output="screen" />
 
-    <node pkg="giskardpy" type="force_torque_raw_filter.py" name="force_torque_raw_filter" output="screen" />
+    <node pkg="giskardpy_ros" type="force_torque_raw_filter.py" name="force_torque_raw_filter" output="screen" />
 
-    <node pkg="giskardpy" type="interactive_marker.py" name="giskard_interactive_marker" output="screen">
+    <node pkg="giskardpy_ros" type="interactive_marker.py" name="giskard_interactive_marker" output="screen">
         <rosparam param="enable_self_collision">False</rosparam>
         <rosparam param="interactive_marker_chains">
           - [odom, base_footprint]
