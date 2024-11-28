@@ -2799,13 +2799,13 @@ class GiskardWrapper:
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
-    def monitor_transport_check(self,
-                                object_type: str = "",
-                                threshold_name: str = ""):
+    def monitor_grasp_check(self,
+                            object_type: str = "",
+                            threshold_name: str = ""):
         """
-        monitor for transportation of objects, currently WIP, but is supposed to register whether an object
-        slips out of the HSRs grasp while transporting it (mostly useful for objects like cutlery, which are hard to grasp
-        in a very reliant way)
+        force_torque_monitor used for grasping, activates when the hsr closes it's gripper and then checks
+        via force_torque whether the necessary threshold has been undershot, thus essentially checking if
+        object has successfully been grasped.
 
         :param object_type: type of the object that is being transported, needed to determine correct threshold
         :param threshold_name: name of the motion, should be transport in this case, but the corresponding enum doesn't exist yet
@@ -2816,6 +2816,26 @@ class GiskardWrapper:
         self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                   name=PayloadForceTorque.__name__,
                                   start_condition=gripper_closed,
+                                  threshold_name=threshold_name,
+                                  object_type=object_type)
+
+    def monitor_place_check(self,
+                            object_type: str = "",
+                            threshold_name: str = ""):
+        """
+        force_torque_monitor used for placing, activates when the hsr it's gripper and then checks
+        via force_torque whether the necessary threshold has been overshot, thus essentially checking if
+        object has successfully been placed.
+
+        :param object_type: type of the object that is being transported, needed to determine correct threshold
+        :param threshold_name: name of the motion, should be transport in this case, but the corresponding enum doesn't exist yet
+        """
+
+        gripper_opened = self.monitors.add_open_hsr_gripper() #won't work like that but ?????
+
+        self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                  name=PayloadForceTorque.__name__,
+                                  start_condition=gripper_opened,
                                   threshold_name=threshold_name,
                                   object_type=object_type)
 
@@ -2836,7 +2856,7 @@ class GiskardWrapper:
         self.monitor_grasp_carefully(goal_pose, grasp, align, reference_frame_alignment, object_name, object_type,
                                      threshold_name, root_link, tip_link)
 
-        self.monitor_transport_check(object_type, threshold_name)
+        #self.monitor_transport_check(object_type, threshold_name)
 
     # TODO: put logic into giskard Interface of Planning where Monitors and Motions are used
     # also other hsrb specific methods
@@ -2969,7 +2989,8 @@ class GiskardWrapper:
         """
         if left_door not in self.world.get_group_names():
             self.world.register_group(new_group_name=left_door,
-                                      root_link_name=giskard_msgs.LinkName(name=left_door, group_name='suturo_shelf_hohc'))
+                                      root_link_name=giskard_msgs.LinkName(name=left_door,
+                                                                           group_name='suturo_shelf_hohc'))
 
         first_goal = PoseStamped()
         first_goal.header.frame_id = left_handle
