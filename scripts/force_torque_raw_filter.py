@@ -50,13 +50,12 @@ class Diff(Job):
         return np.gradient(data) / self.dt
 
 
-class ForceTorqueRawFilter:
+class ForceTorqueFilter:
 
     def __init__(self,
                  input_topic: str,
                  output_topic: str,
                  worker: Job):
-        # TODO: After robocup, rename filter to just ForceTorqueFilter
         """
         The ForceTorqueRawFilter is a filter that takes the signal published by both /hsrb/wrist_wrench/compensated
         and /hsrb/wrist_wrench/raw and applies filters to them (gradient to /hsrb/wrist_wrench/compensated and
@@ -113,7 +112,6 @@ class ForceTorqueRawFilter:
 
     def rebuild_signal(self, F_x: np.ndarray, F_y: np.ndarray, F_z: np.ndarray,
                        T_x: np.ndarray, T_y: np.ndarray, T_z: np.ndarray) -> WrenchStamped:
-
         """
         Rebuilds the signal with the filtered values back into a WrenchStamped
 
@@ -139,16 +137,16 @@ class ForceTorqueRawFilter:
 
 if __name__ == '__main__':
     rospy.init_node('force_torque_raw_filter')
-    force = ForceTorqueRawFilter(input_topic="/hsrb/wrist_wrench/raw",
-                                 output_topic='filtered_raw',
-                                 worker=Filter(fs=100,  # Sample rate, Hz, currently set to Hz of the topic
-                                               cutoff=5,  # Desired cutoff frequency of the filter, Hz
-                                               order=5))  # Order of the filter))
-    diff = ForceTorqueRawFilter(input_topic="/hsrb/wrist_wrench/compensated",
-                                output_topic='compensated/diff',
-                                worker=Diff(dt=0.01))  # Order of the filter))
-    force_diff = ForceTorqueRawFilter(input_topic="filtered_raw",
-                                      output_topic='filtered_raw/diff',
-                                      worker=Diff(dt=0.01))  # Order of the filter))
+    force = ForceTorqueFilter(input_topic="/hsrb/wrist_wrench/raw",
+                              output_topic='filtered_raw',
+                              worker=Filter(fs=100,  # Sample rate, Hz, currently set to Hz of the topic
+                                            cutoff=5,  # Desired cutoff frequency of the filter, Hz
+                                            order=5))  # Order of the filter))
+    diff = ForceTorqueFilter(input_topic="/hsrb/wrist_wrench/compensated",
+                             output_topic='compensated/diff',
+                             worker=Diff(dt=0.01))  # Order of the filter))
+    force_diff = ForceTorqueFilter(input_topic="filtered_raw",
+                                   output_topic='filtered_raw/diff',
+                                   worker=Diff(dt=0.01))  # Order of the filter))
     rospy.loginfo('wrench filter running')
     rospy.spin()
