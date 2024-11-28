@@ -2715,6 +2715,7 @@ class GiskardWrapper:
         """
         adds monitor functionality for the Placing motion goal, goal now stops if force_threshold is overstepped,
         which means the HSR essentially stops automatically after placing the object.
+        (not currently in use, since planning doesn't use our pickup/placing goals)
 
         :param align: alignment of action, should currently be either "vertical" or an empty string if not needed
         :param grasp: the direction from which the HSR should Grasp an object, in case of this method it should be direction the HSR is placing from
@@ -2763,6 +2764,7 @@ class GiskardWrapper:
         The goal now stops if force_threshold/torque_threshold is undershot,
         which means it essentially stops automatically if the HSR for example slips off of a door handle while trying
         to open doors or fails to properly grip an object.
+        (not currently in use, since planning doesn't use our pickup/placing goals)
 
         :param goal_pose: where the object should be placed
         :param align: alignment of action, should currently be either "vertical" or an empty string if not needed
