@@ -2833,32 +2833,13 @@ class GiskardWrapper:
         :param threshold_name: name of the motion, should be transport in this case, but the corresponding enum doesn't exist yet
         """
 
-        gripper_opened = self.monitors.add_open_hsr_gripper() #won't work like that but ?????
+        gripper_opened = self.monitors.add_open_hsr_gripper()
 
         self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                   name=PayloadForceTorque.__name__,
                                   start_condition=gripper_opened,
                                   threshold_name=threshold_name,
                                   object_type=object_type)
-
-    def monitor_full_grasping(self,
-                              goal_pose: PoseStamped,
-                              grasp: str,
-                              align: str,
-                              reference_frame_alignment: Optional[str] = None,
-                              object_name: str = "",
-                              object_type: str = "",
-                              threshold_name: str = "",
-                              root_link: Optional[str] = None,
-                              tip_link: Optional[str] = None):
-        """
-        Similar to the grasping monitor, but with an added transport monitor at the end
-        """
-
-        self.monitor_grasp_carefully(goal_pose, grasp, align, reference_frame_alignment, object_name, object_type,
-                                     threshold_name, root_link, tip_link)
-
-        #self.monitor_transport_check(object_type, threshold_name)
 
     # TODO: put logic into giskard Interface of Planning where Monitors and Motions are used
     # also other hsrb specific methods
