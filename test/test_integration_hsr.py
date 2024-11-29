@@ -8,6 +8,7 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vect
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
+from casadi_wrapper import TransMatrix
 from giskardpy.data_types.exceptions import EmptyProblemException
 from giskardpy.data_types.suturo_types import GraspTypes
 from giskardpy.god_map import god_map
@@ -869,41 +870,8 @@ class TestSUTURO:
     # FIXME: Compare Pose hinzufügen sobald reaching fertig ist
     # TODO: Weitere Reaching Tests mit anderen Objekten/aus anderen Richtungen hinzufügen
     def test_reaching1(self, zero_pose: HSRTestWrapper):
-        box_name = 'asdf'
-        box_pose = PoseStamped()
-        box_pose.header.frame_id = 'map'
-        box_pose.pose.position = Point(1, 0, 0.7)
-        box_pose.pose.orientation = Quaternion(0, 0, 0, 1)
 
-        zero_pose.add_box_to_world(box_name, (0.07, 0.04, 0.1), box_pose)
-
-        zero_pose.take_pose("pre_align_height")
-        zero_pose.execute()
-
-        zero_pose.open_gripper()
-
-        for grasp in GraspTypes:
-            zero_pose.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
-                                                   object_name=box_name,
-                                                   object_shape='box',
-                                                   grasp=grasp.value,
-                                                   align='test',
-                                                   root_link='map',
-                                                   tip_link='hand_gripper_tool_frame')
-
-            zero_pose.allow_all_collisions()
-            zero_pose.execute()
-
-            zero_pose.reset_base()
-            zero_pose.take_pose("pre_align_height")
-            zero_pose.execute()
-
-        zero_pose.close_gripper()
-
-    # FIXME: add all grasp poses
-    def test_grasp_object(self, zero_pose: HSRTestWrapper):
-        grasps = ['front', 'top']
-        align_vertical_modes = ['horizontal', 'vertical']
+        grasps = ['front', 'above', 'left', 'right', 'below']
 
         grasp_pose_1 = PoseStamped()
         grasp_pose_1.header.frame_id = 'map'
@@ -945,37 +913,138 @@ class TestSUTURO:
         grasp_pose_4.pose.orientation.z = -2.5258894636704497e-06
         grasp_pose_4.pose.orientation.w = -7.953924864631972e-08
 
+        grasp_pose_5 = PoseStamped()
+        grasp_pose_5.header.frame_id = 'map'
+        grasp_pose_5.pose.position.x = 0.9999945694917095
+        grasp_pose_5.pose.position.y = 4.234772015936794e-05
+        grasp_pose_5.pose.position.z = 0.6300246315623539
+        grasp_pose_5.pose.orientation.x = -0.7068005682823383
+        grasp_pose_5.pose.orientation.y = 0.7074128615379971
+        grasp_pose_5.pose.orientation.z = -2.5258894636704497e-06
+        grasp_pose_5.pose.orientation.w = -7.953924864631972e-08
+
         grasp_states = {
-            ('front', False): grasp_pose_1,
-            ('front', True): grasp_pose_2,
-            ('top', False): grasp_pose_3,
-            ('top', True): grasp_pose_4,
+            GraspTypes.FRONT: grasp_pose_1,
+            GraspTypes.ABOVE: grasp_pose_2,
+            GraspTypes.LEFT: grasp_pose_3,
+            GraspTypes.RIGHT: grasp_pose_4,
+            GraspTypes.BELOW: grasp_pose_5
         }
 
-        target_pose = PoseStamped()
-        target_pose.pose.position.x = 1
-        target_pose.pose.position.z = 0.7
+        box_name = 'asdf'
+        box_pose = PoseStamped()
+        box_pose.header.frame_id = 'map'
+        box_pose.pose.position = Point(1, 0, 0.7)
+        box_pose.pose.orientation = Quaternion(0, 0, 0, 1)
 
-        offsets = Vector3(0.1, 0, 0)
+        zero_pose.add_box_to_world(box_name, (0.07, 0.04, 0.1), box_pose)
 
-        for grasp in grasps:
-            for align_vertical_mode in align_vertical_modes:
-                zero_pose.motion_goals.add_motion_goal(motion_goal_class=GraspObject.__name__,
-                                                       goal_pose=target_pose,
-                                                       grasp=grasp,
-                                                       offsets=offsets,
-                                                       align=align_vertical_mode,
-                                                       root_link='map',
-                                                       tip_link='hand_palm_link')
+        zero_pose.take_pose("pre_align_height")
+        zero_pose.execute()
 
-                zero_pose.allow_self_collision()
-                zero_pose.execute()
-                root_link = god_map.world.search_for_link_name('map')
-                tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
-                m_P_g = (god_map.world.compute_fk(root_link, tip_link))
+        zero_pose.open_gripper()
 
-                # FIXME: compare poses doesn't work, i guess because of changes to reaching/grasping
-                # compare_poses(m_P_g.pose, grasp_states[grasp, align_vertical_mode].pose)
+        for grasp in GraspTypes:
+            zero_pose.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
+                                                   object_name=box_name,
+                                                   object_shape='box',
+                                                   grasp=grasp.value,
+                                                   align='test',
+                                                   root_link='map',
+                                                   tip_link='hand_gripper_tool_frame')
+
+            zero_pose.allow_all_collisions()
+            zero_pose.execute()
+
+            root_link = god_map.world.search_for_link_name('map')
+            tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+            m_P_g = (god_map.world.compute_fk(root_link, tip_link))
+
+            # FIXME: compare poses doesn't work, i guess because of changes to reaching/grasping
+            compare_poses(m_P_g, grasp_states[grasp])
+
+            zero_pose.reset_base()
+            zero_pose.take_pose("pre_align_height")
+            zero_pose.execute()
+
+        zero_pose.close_gripper()
+
+    # FIXME: add all grasp poses ------ MIGHT BE DEPRECATED -------
+    # def test_grasp_object(self, zero_pose: HSRTestWrapper):
+    #     grasps = ['front', 'top']
+    #     align_vertical_modes = ['horizontal', 'vertical']
+    #
+    #     grasp_pose_1 = PoseStamped()
+    #     grasp_pose_1.header.frame_id = 'map'
+    #     grasp_pose_1.pose.position.x = 1.0701112670482553
+    #     grasp_pose_1.pose.position.y = 0.0001316214338790437
+    #     grasp_pose_1.pose.position.z = 0.6900203701423123
+    #     grasp_pose_1.pose.orientation.x = 0.7071167396552901
+    #     grasp_pose_1.pose.orientation.y = 6.533426136710821e-05
+    #     grasp_pose_1.pose.orientation.z = 0.7070968173260486
+    #     grasp_pose_1.pose.orientation.w = -5.619679601192823e-05
+    #
+    #     grasp_pose_2 = PoseStamped()
+    #     grasp_pose_2.header.frame_id = 'map'
+    #     grasp_pose_2.pose.position.x = 1.0699999955917536
+    #     grasp_pose_2.pose.position.y = 1.1264868679568747e-05
+    #     grasp_pose_2.pose.position.z = 0.6900040048607661
+    #     grasp_pose_2.pose.orientation.x = -0.49989060882740377
+    #     grasp_pose_2.pose.orientation.y = 0.50010930896272
+    #     grasp_pose_2.pose.orientation.z = -0.49972084003542927
+    #     grasp_pose_2.pose.orientation.w = 0.5002790624534303
+    #
+    #     grasp_pose_3 = PoseStamped()
+    #     grasp_pose_3.header.frame_id = 'map'
+    #     grasp_pose_3.pose.position.x = 1.0000098440969631
+    #     grasp_pose_3.pose.position.y = -5.5826046789126e-07
+    #     grasp_pose_3.pose.position.z = 0.6299900562082916
+    #     grasp_pose_3.pose.orientation.x = 0.9999997719507597
+    #     grasp_pose_3.pose.orientation.y = 0.0006753489230108196
+    #     grasp_pose_3.pose.orientation.z = -1.064646728699401e-06
+    #     grasp_pose_3.pose.orientation.w = -1.0617940975076199e-06
+    #
+    #     grasp_pose_4 = PoseStamped()
+    #     grasp_pose_4.header.frame_id = 'map'
+    #     grasp_pose_4.pose.position.x = 0.9999945694917095
+    #     grasp_pose_4.pose.position.y = 4.234772015936794e-05
+    #     grasp_pose_4.pose.position.z = 0.6300246315623539
+    #     grasp_pose_4.pose.orientation.x = -0.7068005682823383
+    #     grasp_pose_4.pose.orientation.y = 0.7074128615379971
+    #     grasp_pose_4.pose.orientation.z = -2.5258894636704497e-06
+    #     grasp_pose_4.pose.orientation.w = -7.953924864631972e-08
+    #
+    #     grasp_states = {
+    #         ('front', False): grasp_pose_1,
+    #         ('front', True): grasp_pose_2,
+    #         ('top', False): grasp_pose_3,
+    #         ('top', True): grasp_pose_4,
+    #     }
+    #
+    #     target_pose = PoseStamped()
+    #     target_pose.pose.position.x = 1
+    #     target_pose.pose.position.z = 0.7
+    #
+    #     offsets = Vector3(0.1, 0, 0)
+    #
+    #     for grasp in grasps:
+    #         for align_vertical_mode in align_vertical_modes:
+    #             zero_pose.motion_goals.add_motion_goal(motion_goal_class=GraspObject.__name__,
+    #                                                    goal_pose=target_pose,
+    #                                                    grasp=grasp,
+    #                                                    offsets=offsets,
+    #                                                    align=align_vertical_mode,
+    #                                                    root_link='map',
+    #                                                    tip_link='hand_palm_link')
+    #
+    #             zero_pose.allow_self_collision()
+    #             zero_pose.execute()
+    #             root_link = god_map.world.search_for_link_name('map')
+    #             tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
+    #             m_P_g = (god_map.world.compute_fk(root_link, tip_link))
+    #
+    #             # FIXME: compare poses doesn't work, i guess because of changes to reaching/grasping
+    #             # compare_poses(m_P_g.pose, grasp_states[grasp, align_vertical_mode].pose)
 
     def test_vertical_motion_up(self, zero_pose: HSRTestWrapper):
 

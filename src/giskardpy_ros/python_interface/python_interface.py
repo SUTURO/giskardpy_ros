@@ -12,6 +12,7 @@ from shape_msgs.msg import SolidPrimitive
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
+from data_types.exceptions import MonitorInitalizationException
 from giskard_msgs.msg import ExecutionState
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
     Monitor, WorldGoal, WorldAction, WorldResult, GiskardError
@@ -2744,8 +2745,7 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached()
 
         # FIXME: How to Error?
-        self.monitors.add_cancel_motion(local_min, "",
-                                        GiskardError.FORCE_TORQUE_MONITOR_PLACING_MISSED_PLACING_LOCATION)
+        self.monitors.add_cancel_motion(local_min, MonitorInitalizationException)
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2797,7 +2797,7 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached()
 
         # FIXME: How to Error?
-        self.monitors.add_cancel_motion(local_min, "", GiskardError.FORCE_TORQUE_MONITOR_GRASPING_MISSED_OBJECT)
+        self.monitors.add_cancel_motion(local_min, MonitorInitalizationException)
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
