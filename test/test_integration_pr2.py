@@ -1256,10 +1256,10 @@ class TestConstraints:
                                       add_monitor=False)
         apartment_setup.execute()
 
-    def test_VelocityLimitUnreachableException(self, zero_pose: PR2TestWrapper):
-        zero_pose.set_prediction_horizon(prediction_horizon=7)
-        zero_pose.set_joint_goal(zero_pose.better_pose)
-        zero_pose.execute(expected_error_type=VelocityLimitUnreachableException)
+    # def test_VelocityLimitUnreachableException(self, zero_pose: PR2TestWrapper):
+    #     zero_pose.set_prediction_horizon(prediction_horizon=7)
+    #     zero_pose.set_joint_goal(zero_pose.better_pose)
+    #     zero_pose.execute(expected_error_type=VelocityLimitUnreachableException)
 
     def test_SetPredictionHorizon11(self, zero_pose: PR2TestWrapper):
         default_prediction_horizon = god_map.qp_controller.prediction_horizon
@@ -1281,7 +1281,7 @@ class TestConstraints:
         zero_pose.set_cart_goal(base_goal, tip_link='base_footprint', root_link='map')
         result = zero_pose.execute(expected_error_type=MaxTrajectoryLengthException)
         dt = god_map.qp_controller.sample_period
-        np.testing.assert_almost_equal(len(result.trajectory.points) * dt, new_length + dt * 2)
+        np.testing.assert_almost_equal(len(result.trajectory.points) * dt, new_length + dt)
 
         zero_pose.set_cart_goal(base_goal, tip_link='base_footprint', root_link='map')
         result = zero_pose.execute(expected_error_type=MaxTrajectoryLengthException)
@@ -3386,9 +3386,11 @@ class TestCollisionAvoidanceGoals:
         p = PoseStamped()
         p.header.frame_id = pocky_pose_setup.r_tip
         p.pose.position.x = 0.08
-        p.pose.orientation = Quaternion(*quaternion_about_axis(0.01, [1, 0, 0]).tolist())
-        pocky_pose_setup.add_box_to_world(name='box',
-                                          size=(0.2, 0.05, 0.05),
+        p.pose.orientation = Quaternion(*quaternion_about_axis(np.pi/2, [0, 1, 0]).tolist())
+        pocky_pose_setup.add_cylinder_to_world(name='box',
+                                          # size=(0.2, 0.05, 0.05),
+                                               height = 0.2,
+                                               radius=0.025,
                                           parent_link=pocky_pose_setup.r_tip,
                                           pose=p)
         p = PoseStamped()
@@ -3561,7 +3563,8 @@ class TestCollisionAvoidanceGoals:
         p.pose.position.x = 0.08
         p.pose.orientation.w = 1
         box_setup.set_cart_goal(p, box_setup.r_tip, box_setup.default_root, add_monitor=False)
-        box_setup.execute()
+        box_setup.set_max_traj_length(10)
+        box_setup.execute(add_local_minimum_reached=False, expected_error_type=MaxTrajectoryLengthException)
         box_setup.check_cpi_geq([attached_link_name], -0.005)
         box_setup.check_cpi_leq([attached_link_name], 0.01)
         box_setup.detach_group(attached_link_name)

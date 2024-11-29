@@ -425,7 +425,7 @@ class TestConstraints:
         kitchen_setup.set_open_container_goal(tip_link=kitchen_setup.tip,
                                               environment_link=handle_name,
                                               goal_joint_state=1.5)
-        # kitchen_setup.motion_goals.add_motion_goal('AvoidJointLimits', percentage=40)
+
         kitchen_setup.allow_all_collisions()
         # kitchen_setup.add_json_goal('AvoidJointLimits')
         kitchen_setup.execute()
@@ -440,7 +440,6 @@ class TestConstraints:
                                               environment_link=handle_name,
                                               goal_joint_state=0)
         kitchen_setup.allow_all_collisions()
-        # kitchen_setup.motion_goals.add_motion_goal('AvoidJointLimits', percentage=40)
 
         kitchen_setup.execute(add_local_minimum_reached=False)
 
@@ -736,6 +735,27 @@ class TestCollisionAvoidanceGoals:
         js = {'arm_flex_joint': 0}
         zero_pose.set_joint_goal(js, add_monitor=False)
         zero_pose.execute()
+
+    #
+    # def test_avoid_collision_touch_hard_threshold(self, box_setup: HSRTestWrapper):
+    #     base_goal = PoseStamped()
+    #     base_goal.header.frame_id = box_setup.default_root
+    #     base_goal.pose.position.x = 0.2
+    #     base_goal.pose.orientation.z = 1
+    #     box_setup.teleport_base(base_goal)
+    #
+    #     box_setup.avoid_collision(min_distance=0.05, group1=box_setup.robot_name)
+    #     box_setup.allow_self_collision()
+    #
+    #     base_goal = PoseStamped()
+    #     base_goal.header.frame_id = 'base_footprint'
+    #     base_goal.pose.position.x = -0.3
+    #     base_goal.pose.orientation.w = 1
+    #     box_setup.set_cart_goal(base_goal, tip_link='base_footprint', root_link='map', weight=WEIGHT_ABOVE_CA)
+    #     box_setup.set_max_traj_length(30)
+    #     box_setup.execute(add_local_minimum_reached=False)
+    #     box_setup.check_cpi_geq(['base_link'], 0.048)
+    #     box_setup.check_cpi_leq(['base_link'], 0.07)
 
 
 class TestAddObject:

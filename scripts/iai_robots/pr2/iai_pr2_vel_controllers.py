@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 import rospy
 
+from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy_ros.configs.behavior_tree_config import ClosedLoopBTConfig
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.configs.iai_robots.pr2 import PR2CollisionAvoidance, WorldWithPR2Config, PR2VelocityIAIInterface
-from giskardpy.qp.qp_controller_config import QPControllerConfig, SupportedQPSolver
 
 
 class WorldWithPR2ConfigBlue(WorldWithPR2Config):
