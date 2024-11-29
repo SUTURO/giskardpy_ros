@@ -7,6 +7,7 @@ from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.configs.iai_robots.hsr import WorldWithHSRConfig, HSRCollisionAvoidanceConfig, \
     HSRVelocityInterface
 from giskardpy_ros.ros1.interface import ROS1Wrapper
+from giskardpy.qp.qp_controller_config import QPControllerConfig
 
 if __name__ == '__main__':
     rospy.init_node('giskard')
@@ -16,5 +17,8 @@ if __name__ == '__main__':
                       collision_avoidance_config=HSRCollisionAvoidanceConfig(),
                       robot_interface_config=HSRVelocityInterface(),
                       behavior_tree_config=ClosedLoopBTConfig(publish_free_variables=True, debug_mode=debug_mode,
-                                                              add_tf_pub=True))
+                                                              add_tf_pub=True),
+                      qp_controller_config=QPControllerConfig(mpc_dt=0.025,
+                                                              prediction_horizon=20,
+                                                              control_dt=0.025))
     giskard.live()

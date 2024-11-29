@@ -65,10 +65,6 @@ class WorldWithHSRConfig(WorldConfig):
                                       Derivatives.jerk: None
                                   },
                                   robot_group_name=self.robot_group_name)
-        self.set_joint_limits(limit_map={
-            Derivatives.jerk: None,
-        },
-            joint_name='arm_lift_joint')
         self.world.register_group(name='gripper',
                                   root_link_name=self.world.search_for_link_name('wrist_roll_link'),
                                   actuated=False)
@@ -155,7 +151,8 @@ class HSRVelocityInterface(RobotInterfaceConfig):
                                            tf_parent_frame=self.map_name,
                                            tf_child_frame=self.odom_link_name)
         self.sync_joint_state_topic('/hsrb/joint_states')
-        self.sync_odometry_topic('/hsrb/odom', self.drive_joint_name)
+        self.sync_odometry_topic('/hsrb/odom', self.drive_joint_name,
+                                 sync_in_control_loop=False)
 
         self.add_joint_velocity_group_controller(namespace='hsrb/realtime_body_controller_real')
 
