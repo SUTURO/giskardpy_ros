@@ -6,7 +6,7 @@ from giskardpy.model.world_config import WorldConfig
 from giskardpy_ros.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
 from giskardpy.data_types.data_types import PrefixName, Derivatives
 from giskardpy.god_map import god_map
-from giskardpy_ros.ros1 import tfwrapper as tf
+from giskardpy_ros.ros1 import tfwrapper as tf, msg_converter
 from giskardpy.middleware import get_middleware
 
 
@@ -92,7 +92,7 @@ class SuturoArenaWithHSRConfig(WorldWithHSRConfig):
         root_link_name = self.get_root_link_of_group(self.kitchen_name)
         kitchen_pose = tf.lookup_pose(self.map_name, 'iai_kitchen/urdf_main')
         self.add_fixed_joint(parent_link=self.map_name, child_link=root_link_name,
-                             homogenous_transform=tf.pose_to_np(kitchen_pose.pose))
+                             homogenous_transform=msg_converter.ros_msg_to_giskard_obj(kitchen_pose.pose, god_map.world))
 
 
 class HSRCollisionAvoidanceConfig(CollisionAvoidanceConfig):
