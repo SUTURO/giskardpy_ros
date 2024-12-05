@@ -1299,7 +1299,7 @@ class TestSUTURO:
         keep_rotation_pose.header.frame_id = 'map'
         keep_rotation_pose.pose.position.x = 0.9402845292991675
         keep_rotation_pose.pose.position.y = -0.7279803708852316
-        keep_rotation_pose.pose.position.z = 0.8994121023446626
+        keep_rotation_pose.pose.position.z = 0.8754144094343888 # 0.8994121023446626
         keep_rotation_pose.pose.orientation.x = 0.015000397751939919
         keep_rotation_pose.pose.orientation.y = -2.1716350146486636e-07
         keep_rotation_pose.pose.orientation.z = 0.999887487627967
