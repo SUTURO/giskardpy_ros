@@ -1,5 +1,6 @@
 import os
 from copy import deepcopy
+from typing import Dict
 
 import numpy as np
 import pytest
@@ -1345,5 +1346,242 @@ class TestSUTURO:
 
 
 class TestKitchen:
-    def test_kitchen_drawer1(self, kitchen_setup: HSRTestWrapper):
-        pass
+    def test_kitchen_island_open(self, kitchen_setup: HSRTestWrapper):
+        open_drawers = []
+
+        # Left Drawers
+        handle_frame_id_lower = 'iai_kitchen/kitchen_island_left_lower_drawer_handle'
+        handle_name_lower = 'kitchen_island_left_lower_drawer_handle'
+        drawer_fix_lower = {'kitchen_island_left_lower_drawer_main_joint': 0}
+        handle_frame_id_upper = 'iai_kitchen/kitchen_island_left_upper_drawer_handle'
+        handle_name_upper = 'kitchen_island_left_upper_drawer_handle'
+        drawer_fix_upper = {'kitchen_island_left_upper_drawer_main_joint': 0}
+
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position = Point(0.2, 1, 0)
+        base_goal.pose.orientation.x = 0
+        base_goal.pose.orientation.y = 0
+        base_goal.pose.orientation.z = 1
+        base_goal.pose.orientation.w = 0.00000013
+
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_lower, handle_name_lower, drawer_fix_lower))
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_upper, handle_name_upper, drawer_fix_upper))
+
+        # Middle Drawers
+        handle_frame_id_lower = 'iai_kitchen/kitchen_island_middle_lower_drawer_handle'
+        handle_name_lower = 'kitchen_island_middle_lower_drawer_handle'
+        drawer_fix_lower = {'kitchen_island_middle_lower_drawer_main_joint': 0}
+        handle_frame_id_upper = 'iai_kitchen/kitchen_island_middle_upper_drawer_handle'
+        handle_name_upper = 'kitchen_island_middle_upper_drawer_handle'
+        drawer_fix_upper = {'kitchen_island_middle_upper_drawer_main_joint': 0}
+
+        base_goal.pose.position = Point(0.2, 1.5, 0)
+
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_lower, handle_name_lower, drawer_fix_lower))
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_upper, handle_name_upper, drawer_fix_upper))
+
+        # Right Drawers
+        handle_frame_id_lower = 'iai_kitchen/kitchen_island_right_lower_drawer_handle'
+        handle_name_lower = 'kitchen_island_right_lower_drawer_handle'
+        drawer_fix_lower = {'kitchen_island_right_lower_drawer_main_joint': 0}
+        handle_frame_id_upper = 'iai_kitchen/kitchen_island_right_upper_drawer_handle'
+        handle_name_upper = 'kitchen_island_right_upper_drawer_handle'
+        drawer_fix_upper = {'kitchen_island_right_upper_drawer_main_joint': 0}
+
+        base_goal.pose.position = Point(0.2, 2.5, 0)
+
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_lower, handle_name_lower, drawer_fix_lower))
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_upper, handle_name_upper, drawer_fix_upper))
+
+        for goal, handle_frame_id, handle_name, drawer_fix in open_drawers:
+            self.open_sequence(goal, handle_name, handle_frame_id, drawer_fix, kitchen_setup)
+            self.close_sequence(handle_name, handle_frame_id, kitchen_setup)
+
+    def test_kitchen_sink_open(self, kitchen_setup: HSRTestWrapper):
+        open_drawers = []
+
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position = Point(0.2, 1, 0)
+        base_goal.pose.orientation.w = 1
+
+        # Left Drawers
+        handle_frame_id_bottom = 'iai_kitchen/sink_area_left_bottom_drawer_handle'
+        handle_name_bottom = 'sink_area_left_bottom_drawer_handle'
+        drawer_fix_dict = {'sink_area_left_bottom_drawer_main_joint': 0}
+        open_drawers.append(
+            (deepcopy(base_goal), handle_frame_id_bottom, handle_name_bottom, deepcopy(drawer_fix_dict)))
+
+        handle_frame_id_middle = 'iai_kitchen/sink_area_left_middle_drawer_handle'
+        handle_name_middle = 'sink_area_left_middle_drawer_handle'
+        drawer_fix_dict = {'sink_area_left_middle_drawer_main_joint': 0}
+        open_drawers.append(
+            (deepcopy(base_goal), handle_frame_id_middle, handle_name_middle, deepcopy(drawer_fix_dict)))
+
+        handle_frame_id_upper = 'iai_kitchen/sink_area_left_upper_drawer_handle'
+        handle_name_upper = 'sink_area_left_upper_drawer_handle'
+        drawer_fix_dict = {'sink_area_left_upper_drawer_main_joint': 0}
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_upper, handle_name_upper, deepcopy(drawer_fix_dict)))
+
+        # Trash Drawer
+        handle_frame_id_trash = 'iai_kitchen/sink_area_trash_drawer_handle'
+        handle_name_trash = 'sink_area_trash_drawer_handle'
+        drawer_fix_dict = {'sink_area_trash_drawer_main_joint': 0}
+
+        base_goal.pose.position = Point(0.2, -0.2, 0)
+
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_trash, handle_name_trash, deepcopy(drawer_fix_dict)))
+
+        for goal, handle_frame_id, handle_name, drawer_fix in open_drawers:
+            self.open_sequence(goal, handle_name, handle_frame_id, drawer_fix, kitchen_setup)
+            self.close_sequence(handle_name, handle_frame_id, kitchen_setup)
+
+    def test_kitchen_oven_open(self, kitchen_setup: HSRTestWrapper):
+        open_drawers = []
+
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position = Point(0.2, 2, 0)
+        base_goal.pose.orientation.w = 1
+
+        handle_frame_id_bottom = 'iai_kitchen/oven_area_area_left_drawer_handle'
+        handle_name_bottom = 'oven_area_area_left_drawer_handle'
+        drawer_fix_dict = {'oven_area_area_left_drawer_main_joint': 0}
+        open_drawers.append(
+            (deepcopy(base_goal), handle_frame_id_bottom, handle_name_bottom, deepcopy(drawer_fix_dict)))
+
+        handle_frame_id_bottom = 'iai_kitchen/oven_area_area_right_drawer_handle'
+        handle_name_bottom = 'oven_area_area_right_drawer_handle'
+        drawer_fix_dict = {'oven_area_area_right_drawer_main_joint': 0}
+        open_drawers.append(
+            (deepcopy(base_goal), handle_frame_id_bottom, handle_name_bottom, deepcopy(drawer_fix_dict)))
+
+        handle_frame_id_lower = 'iai_kitchen/oven_area_area_middle_lower_drawer_handle'
+        handle_name_lower = 'oven_area_area_middle_lower_drawer_handle'
+        drawer_fix_lower = {'oven_area_area_middle_lower_drawer_main_joint': 0}
+        handle_frame_id_upper = 'iai_kitchen/oven_area_area_middle_upper_drawer_handle'
+        handle_name_upper = 'oven_area_area_middle_upper_drawer_handle'
+        drawer_fix_upper = {'oven_area_area_middle_upper_drawer_main_joint': 0}
+
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_upper, handle_name_upper, drawer_fix_upper))
+        open_drawers.append((deepcopy(base_goal), handle_frame_id_lower, handle_name_lower, drawer_fix_lower))
+
+        for goal, handle_frame_id, handle_name, drawer_fix in open_drawers:
+            self.open_sequence(goal, handle_name, handle_frame_id, drawer_fix, kitchen_setup)
+            self.close_sequence(handle_name, handle_frame_id, kitchen_setup)
+
+    def open_sequence(self,
+                      goal: PoseStamped,
+                      handle_name: str,
+                      handle_frame_id: str,
+                      drawer_fix: Dict[str, float],
+                      kitchen_setup: HSRTestWrapper):
+
+        kitchen_setup.open_gripper()
+        kitchen_setup.take_pose('park')
+        kitchen_setup.execute()
+        kitchen_setup.allow_all_collisions()
+        kitchen_setup.move_base(goal)
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.y = -1
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = kitchen_setup.tip
+        tip_grasp_axis.vector.x = 1
+        # %% phase 1
+        bar_grasped = kitchen_setup.monitors.add_distance_to_line(name='bar grasped',
+                                                                  root_link=kitchen_setup.default_root,
+                                                                  tip_link=kitchen_setup.tip,
+                                                                  center_point=bar_center,
+                                                                  line_axis=bar_axis,
+                                                                  line_length=.4)
+        kitchen_setup.motion_goals.add_grasp_bar(root_link=kitchen_setup.default_root,
+                                                 tip_link=kitchen_setup.tip,
+                                                 tip_grasp_axis=tip_grasp_axis,
+                                                 bar_center=bar_center,
+                                                 bar_axis=bar_axis,
+                                                 bar_length=.4,
+                                                 name='grasp bar',
+                                                 end_condition=bar_grasped)
+        kitchen_setup.motion_goals.add_joint_position(goal_state=drawer_fix,
+                                                      end_condition=bar_grasped)
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = kitchen_setup.tip
+        x_gripper.vector.z = 1
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+        kitchen_setup.motion_goals.add_align_planes(tip_link=kitchen_setup.tip,
+                                                    tip_normal=x_gripper,
+                                                    goal_normal=x_goal,
+                                                    root_link='map',
+                                                    name='orient to door',
+                                                    end_condition=bar_grasped)
+        # %% phase 2 open door
+        door_open = kitchen_setup.monitors.add_local_minimum_reached(name='door open',
+                                                                     start_condition=bar_grasped)
+        kitchen_setup.motion_goals.add_open_container(tip_link=kitchen_setup.tip,
+                                                      environment_link=handle_name,
+                                                      goal_joint_state=1.5,
+                                                      name='open door',
+                                                      start_condition=bar_grasped,
+                                                      end_condition=door_open)
+        kitchen_setup.allow_self_collision()
+        kitchen_setup.monitors.add_end_motion(start_condition=door_open)
+        kitchen_setup.execute(add_local_minimum_reached=False)
+        kitchen_setup.close_gripper()
+
+    def close_sequence(self,
+                       handle_name: str,
+                       handle_frame_id: str,
+                       kitchen_setup: HSRTestWrapper):
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.y = -1
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = kitchen_setup.tip
+        tip_grasp_axis.vector.x = 1
+        # %% phase 1
+        bar_grasped = kitchen_setup.monitors.add_distance_to_line(name='bar grasped',
+                                                                  root_link=kitchen_setup.default_root,
+                                                                  tip_link=kitchen_setup.tip,
+                                                                  center_point=bar_center,
+                                                                  line_axis=bar_axis,
+                                                                  line_length=.4)
+        kitchen_setup.motion_goals.add_grasp_bar(root_link=kitchen_setup.default_root,
+                                                 tip_link=kitchen_setup.tip,
+                                                 tip_grasp_axis=tip_grasp_axis,
+                                                 bar_center=bar_center,
+                                                 bar_axis=bar_axis,
+                                                 bar_length=.4,
+                                                 name='grasp bar',
+                                                 end_condition=bar_grasped)
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = kitchen_setup.tip
+        x_gripper.vector.z = 1
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+        kitchen_setup.motion_goals.add_align_planes(tip_link=kitchen_setup.tip,
+                                                    tip_normal=x_gripper,
+                                                    goal_normal=x_goal,
+                                                    root_link='map',
+                                                    name='orient to door',
+                                                    end_condition=bar_grasped)
+        # %% phase 2 open door
+        door_open = kitchen_setup.monitors.add_local_minimum_reached(name='door open',
+                                                                     start_condition=bar_grasped)
+        kitchen_setup.motion_goals.add_close_container(tip_link=kitchen_setup.tip,
+                                                       environment_link=handle_name,
+                                                       name='open door',
+                                                       start_condition=bar_grasped,
+                                                       end_condition=door_open)
+        kitchen_setup.allow_all_collisions()
+        kitchen_setup.monitors.add_end_motion(start_condition=door_open)
+        kitchen_setup.execute(add_local_minimum_reached=False)
