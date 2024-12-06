@@ -8,7 +8,6 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vect
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
-from casadi_wrapper import TransMatrix
 from giskardpy.data_types.exceptions import EmptyProblemException
 from giskardpy.data_types.suturo_types import GraspTypes
 from giskardpy.god_map import god_map
