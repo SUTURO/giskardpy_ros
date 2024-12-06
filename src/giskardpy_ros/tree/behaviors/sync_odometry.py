@@ -71,6 +71,8 @@ class SyncOdometryNoLock(SyncOdometry):
     @record_time
     @profile
     def update(self):
-        pose = msg_converter.ros_msg_to_giskard_obj(self.odom.pose.pose, god_map.world)
-        self.joint.update_transform(pose)
+        if self.odom is not None:
+            pose = msg_converter.ros_msg_to_giskard_obj(self.odom.pose.pose, god_map.world)
+            self.joint.update_transform(pose)
+            self.odom = None
         return Status.SUCCESS
