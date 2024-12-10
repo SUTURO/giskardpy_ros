@@ -4,7 +4,7 @@ from typing import Dict
 
 import rospy
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, Point
-from tmc_control_msgs.msg import GripperApplyEffortActionResult, GripperApplyEffortActionGoal
+from tmc_control_msgs.msg import GripperApplyEffortActionResult
 
 from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 
@@ -43,14 +43,14 @@ class Demo:
 
         for goal, handle_frame_id, handle_name, drawer_fix in open_drawers:
             self.open_sequence(goal, handle_name, handle_frame_id, drawer_fix)
-            self.close_sequence(handle_name, handle_frame_id)
+            # self.close_sequence(handle_name, handle_frame_id)
 
     def open_sequence(self,
                       goal: PoseStamped,
                       handle_name: str,
                       handle_frame_id: str,
                       drawer_fix: Dict[str, float]):
-        self.open_gripper()
+        # self.open_gripper()
 
         self.gis.motion_goals.allow_all_collisions()
         self.gis.motion_goals.add_take_pose('park')
@@ -72,6 +72,9 @@ class Demo:
         tip_grasp_axis = Vector3Stamped()
         tip_grasp_axis.header.frame_id = 'hand_gripper_tool_frame'
         tip_grasp_axis.vector.x = 1
+        grasp_offset = Vector3Stamped()
+        grasp_offset.header.frame_id = 'hand_gripper_tool_frame'
+        grasp_offset.vector.z = 0.03
         # %% phase 1
         bar_grasped = self.gis.monitors.add_distance_to_line(name='bar grasped',
                                                              root_link='map',
@@ -80,15 +83,16 @@ class Demo:
                                                              line_axis=bar_axis,
                                                              line_length=.4,
                                                              start_condition=open_gripper)
-        self.gis.motion_goals.add_grasp_bar(root_link='map',
-                                            tip_link='hand_gripper_tool_frame',
-                                            tip_grasp_axis=tip_grasp_axis,
-                                            bar_center=bar_center,
-                                            bar_axis=bar_axis,
-                                            bar_length=.4,
-                                            name='grasp bar',
-                                            start_condition=open_gripper,
-                                            end_condition=bar_grasped)
+        self.gis.motion_goals.add_grasp_bar_offset(root_link='map',
+                                                   tip_link='hand_gripper_tool_frame',
+                                                   tip_grasp_axis=tip_grasp_axis,
+                                                   bar_center=bar_center,
+                                                   bar_axis=bar_axis,
+                                                   bar_length=.4,
+                                                   name='grasp bar',
+                                                   grasp_axis_offset=grasp_offset,
+                                                   start_condition=open_gripper,
+                                                   end_condition=bar_grasped)
         self.gis.motion_goals.add_joint_position(goal_state=drawer_fix,
                                                  end_condition=bar_grasped)
         x_gripper = Vector3Stamped()
@@ -120,7 +124,7 @@ class Demo:
         self.gis.monitors.add_end_motion(start_condition=door_open)
         self.gis.execute()
 
-        self.close_gripper()
+        # self.close_gripper()
 
     def close_sequence(self,
                        handle_name: str,
@@ -133,6 +137,9 @@ class Demo:
         tip_grasp_axis = Vector3Stamped()
         tip_grasp_axis.header.frame_id = 'hand_gripper_tool_frame'
         tip_grasp_axis.vector.x = 1
+        grasp_offset = Vector3Stamped()
+        grasp_offset.header.frame_id = 'hand_gripper_tool_frame'
+        grasp_offset.vector.z = 0.03
         # %% phase 1
         bar_grasped = self.gis.monitors.add_distance_to_line(name='bar grasped',
                                                              root_link='map',
@@ -140,14 +147,15 @@ class Demo:
                                                              center_point=bar_center,
                                                              line_axis=bar_axis,
                                                              line_length=.4)
-        self.gis.motion_goals.add_grasp_bar(root_link='map',
-                                            tip_link='hand_gripper_tool_frame',
-                                            tip_grasp_axis=tip_grasp_axis,
-                                            bar_center=bar_center,
-                                            bar_axis=bar_axis,
-                                            bar_length=.4,
-                                            name='grasp bar',
-                                            end_condition=bar_grasped)
+        self.gis.motion_goals.add_grasp_bar_offset(root_link='map',
+                                                   tip_link='hand_gripper_tool_frame',
+                                                   tip_grasp_axis=tip_grasp_axis,
+                                                   bar_center=bar_center,
+                                                   bar_axis=bar_axis,
+                                                   bar_length=.4,
+                                                   name='grasp bar',
+                                                   grasp_axis_offset=grasp_offset,
+                                                   end_condition=bar_grasped)
         x_gripper = Vector3Stamped()
         x_gripper.header.frame_id = 'hand_gripper_tool_frame'
         x_gripper.vector.z = 1
@@ -160,9 +168,9 @@ class Demo:
                                                root_link='map',
                                                name='orient to door',
                                                end_condition=bar_grasped)
-        # %% phase 2 open door
+        # %% phase 2 close door
         door_close = self.gis.monitors.add_local_minimum_reached(name='door close',
-                                                                start_condition=bar_grasped)
+                                                                 start_condition=bar_grasped)
         self.gis.motion_goals.add_close_container(tip_link='hand_gripper_tool_frame',
                                                   environment_link=handle_name,
                                                   name='open close',
@@ -175,7 +183,7 @@ class Demo:
         self.gis.monitors.add_end_motion(start_condition=open_gripper)
         self.gis.execute()
 
-        self.open_gripper()
+        # self.open_gripper()
 
     def open_gripper(self):
         self.command_gripper(1.23)
