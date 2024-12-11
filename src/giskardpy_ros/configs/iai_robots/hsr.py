@@ -40,12 +40,12 @@ class WorldWithHSRConfig(WorldConfig):
         self.add_empty_link(PrefixName(self.odom_link_name))
         self.add_robot_urdf(urdf=rospy.get_param(self.robot_description_name))
 
-        # try:
-        #     self.check_for_link_name(link_name='hand_gripper_tool_frame')
-        # except ValueError as e:
-        #     get_middleware().logwarn(f'Could not find Hand Gripper Tool Frame Exception: {e}')
-        # else:
-        #     get_middleware().loginfo(f'Hand Gripper Tool Frame Found')
+        try:
+            self.check_for_link_name(link_name='hand_gripper_tool_frame')
+        except ValueError as e:
+            get_middleware().logwarn(f'Could not find Hand Gripper Tool Frame Exception: {e}')
+        else:
+            get_middleware().loginfo(f'Hand Gripper Tool Frame Found')
 
         root_link_name = self.get_root_link_of_group(self.robot_group_name)
         self.add_omni_drive_joint(parent_link_name=self.odom_link_name,
