@@ -9,18 +9,18 @@ from controller_manager_msgs.srv import ListControllers, SwitchController, Switc
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3, Quaternion
 from nav_msgs.msg import Path
 from shape_msgs.msg import SolidPrimitive
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
-from giskardpy.data_types.exceptions import MonitorInitalizationException
 from giskard_msgs.msg import ExecutionState
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
-    Monitor, WorldGoal, WorldAction, WorldResult, GiskardError
+    Monitor, WorldGoal, WorldAction, WorldResult
 from giskard_msgs.srv import DyeGroupRequest, DyeGroup, GetGroupInfoRequest, DyeGroupResponse
 from giskard_msgs.srv import GetGroupInfo, GetGroupNames
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse
 from giskardpy.data_types.data_types import goal_parameter
-from giskardpy.data_types.exceptions import LocalMinimumException
+from giskardpy.data_types.exceptions import LocalMinimumException, ForceTorqueThresholdException
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.align_to_push_door import AlignToPushDoor
 from giskardpy.goals.cartesian_goals import CartesianPose, DiffDriveBaseGoal, CartesianVelocityLimit, \
@@ -33,29 +33,28 @@ from giskardpy.goals.open_close import Close, Open
 from giskardpy.goals.pointing import Pointing
 from giskardpy.goals.pre_push_door import PrePushDoor
 from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
+from giskardpy.goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
+    AlignHeight, TakePose, Tilting, JointRotationGoalContinuous, Mixing, OpenDoorGoal
 from giskardpy.motion_graph.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, \
     PointingAt, \
     VectorsAligned, DistanceToLine
 from giskardpy.motion_graph.monitors.feature_monitors import PerpendicularMonitor, AngleMonitor, HeightMonitor, \
     DistanceMonitor
+from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
 from giskardpy.motion_graph.monitors.joint_monitors import JointGoalReached
+from giskardpy.motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
 from giskardpy.motion_graph.monitors.monitors import LocalMinimumReached, TimeAbove, Alternator, CancelMotion, EndMotion
 from giskardpy.motion_graph.monitors.overwrite_state_monitors import SetOdometry, SetSeedConfiguration
 from giskardpy.motion_graph.monitors.payload_monitors import Print, Sleep, SetMaxTrajectoryLength, \
     PayloadAlternator
+from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.utils.utils import get_all_classes_in_package
 from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath
+from giskardpy_ros.goals.realtime_goals import RealTimePointing
 from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
 from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy_ros.utils.utils import make_world_body_box
-from giskardpy_ros.goals.realtime_goals import RealTimePointing
-from giskardpy.goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
-    AlignHeight, TakePose, Tilting, JointRotationGoalContinuous, Mixing, OpenDoorGoal
-from giskardpy.motion_graph.monitors.force_torque_monitor import PayloadForceTorque
-from giskardpy.motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
-from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
 class WorldWrapper:
@@ -1528,6 +1527,7 @@ class MotionGoalWrapper:
                                handle_bar_length: float = 0,
                                tip_link: str = 'hand_gripper_tool_frame',
                                root_link: str = 'map',
+                               grasp_axis_offset: Optional[Vector3Stamped] = None,
                                bar_axis_v: Optional[Vector3Stamped] = None,
                                tip_grasp_axis_v: Optional[Vector3Stamped] = None):
         """
@@ -1537,6 +1537,7 @@ class MotionGoalWrapper:
         :param handle_bar_length: length of the door handle
         :param tip_link: robot link, that grasps the handle
         :param root_link: root link of the kinematic chain
+        :param grasp_axis_offset: Offset for end-effector
         :param bar_axis_v: Vector for changing the orientation of the door handle
         :param tip_grasp_axis_v: Vector for the orientation of the tip grasp link
         """
@@ -1558,12 +1559,21 @@ class MotionGoalWrapper:
         bar_center.header.frame_id = handle_name
         bar_center.point.y = 0.045
 
-        self.add_grasp_bar(root_link=root_link,
-                           tip_link=tip_link,
-                           tip_grasp_axis=tip_grasp_axis,
-                           bar_center=bar_center,
-                           bar_axis=bar_axis,
-                           bar_length=handle_bar_length)
+        if grasp_axis_offset is None:
+            self.add_grasp_bar(root_link=root_link,
+                               tip_link=tip_link,
+                               tip_grasp_axis=tip_grasp_axis,
+                               bar_center=bar_center,
+                               bar_axis=bar_axis,
+                               bar_length=handle_bar_length)
+        else:
+            self.add_grasp_bar_offset(root_link=root_link,
+                                      tip_link=tip_link,
+                                      tip_grasp_axis=tip_grasp_axis,
+                                      bar_center=bar_center,
+                                      bar_axis=bar_axis,
+                                      bar_length=handle_bar_length,
+                                      grasp_axis_offset=grasp_axis_offset)
 
     def hsrb_dishwasher_door_around(self,
                                     handle_name: str,
@@ -2593,7 +2603,13 @@ class GiskardWrapper:
         :param wait: this function blocks if wait=True
         :return: result from giskard
         """
-        return self._send_action_goal(MoveGoal.EXECUTE, wait)
+        result = self._send_action_goal(MoveGoal.EXECUTE, wait)
+        print("result: " + str(result))
+        if result:
+            exception = msg_converter.error_msg_to_exception(result.error)
+            if exception is not None:
+                raise exception
+            return result
 
     def projection(self, wait: bool = True) -> MoveResult:
         """
@@ -2745,7 +2761,7 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached()
 
         # FIXME: How to Error?
-        self.monitors.add_cancel_motion(local_min, MonitorInitalizationException)
+        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException)
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2797,13 +2813,19 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached()
 
         # FIXME: How to Error?
-        self.monitors.add_cancel_motion(local_min, MonitorInitalizationException)
+        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException)
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
-    def monitor_grasp_check(self,
-                            object_type: str = "",
-                            threshold_name: str = ""):
+    def monitor_force_torque_check(self,
+                                   goal_pose: PoseStamped,
+                                   tip_link: str,
+                                   root_link: str,
+                                   position_threshold: float,
+                                   orientation_threshold: float,
+                                   object_type: str = "",
+                                   threshold_name: str = "",
+                                   ):
         """
         force_torque_monitor used for grasping, activates when the hsr closes it's gripper and then checks
         via force_torque whether the necessary threshold has been undershot, thus essentially checking if
@@ -2813,33 +2835,36 @@ class GiskardWrapper:
         :param threshold_name: name of the motion, should be transport in this case, but the corresponding enum doesn't exist yet
         """
 
-        gripper_closed = self.monitors.add_close_hsr_gripper()
+        cart_monitor1 = self.monitors.add_cartesian_pose(root_link=root_link, tip_link=tip_link,
+                                                                    goal_pose=goal_pose,
+                                                                    position_threshold=position_threshold,
+                                                                    orientation_threshold=orientation_threshold,
+                                                                    name='cart goal 1')
+        end_monitor = self.monitors.add_local_minimum_reached(start_condition=cart_monitor1)
 
-        self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
-                                  name=PayloadForceTorque.__name__,
-                                  start_condition=gripper_closed,
-                                  threshold_name=threshold_name,
-                                  object_type=object_type)
+        self.motion_goals.add_cartesian_pose(name='g1', root_link=root_link, tip_link=tip_link,
+                                                        goal_pose=goal_pose,
+                                                        end_condition=cart_monitor1)
 
-    def monitor_place_check(self,
-                            object_type: str = "",
-                            threshold_name: str = ""):
-        """
-        force_torque_monitor used for placing, activates when the hsr it's gripper and then checks
-        via force_torque whether the necessary threshold has been overshot, thus essentially checking if
-        object has successfully been placed.
+        self.motion_goals.avoid_all_collisions()
+        self.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
+        # gripper_closed = self.monitors.add_close_hsr_gripper()
 
-        :param object_type: type of the object that is being transported, needed to determine correct threshold
-        :param threshold_name: name of the motion, should be transport in this case, but the corresponding enum doesn't exist yet
-        """
+        mon = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
+                                        name=PayloadForceTorque.__name__,
+                                        topic='/filtered_raw/diff',
+                                        start_condition='',
+                                        threshold_name=threshold_name,
+                                        object_type=object_type)
 
-        gripper_opened = self.monitors.add_open_hsr_gripper()
+        sleep = self.monitors.add_sleep(1)
+        # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
 
-        self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
-                                  name=PayloadForceTorque.__name__,
-                                  start_condition=gripper_opened,
-                                  threshold_name=threshold_name,
-                                  object_type=object_type)
+        # FIXME: How to Error?
+        self.monitors.add_cancel_motion(f'not {mon} and {sleep} ', ForceTorqueThresholdException('force violated'))
+        self.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
+        self.execute()
+        # self.monitors.add_max_trajectory_length(100)
 
     # TODO: put logic into giskard Interface of Planning where Monitors and Motions are used
     # also other hsrb specific methods
