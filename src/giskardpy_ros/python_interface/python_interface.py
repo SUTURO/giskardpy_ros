@@ -2760,7 +2760,6 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        # FIXME: How to Error?
         self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
@@ -2812,7 +2811,6 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        # FIXME: How to Error?
         self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
@@ -2827,23 +2825,30 @@ class GiskardWrapper:
                                    threshold_name: str = ""):
         """
         force_torque_monitor used for grasping, activates when the hsr closes it's gripper and then checks
-        via force_torque whether the necessary threshold has been undershot, thus essentially checking if
-        object has successfully been grasped.
+        via force_torque whether the necessary threshold has been overshot, thus essentially checking if
+        object has successfully been grasped/ placed.
+        This function also includes cartesian monitors from planning so that we can properly bind the
+        force_torque_monitor to the relevant motions, so that they get canceled if threshold is undershot.
 
         :param object_type: type of the object that is being transported, needed to determine correct threshold
         :param threshold_name: name of the motion, should be transport in this case, but the corresponding enum doesn't exist yet
+        :param goal_pose: goal pose for cartesian monitor
+        :param tip_link: tip link for cartesian monitor
+        :param root_link: root link for cartesian monitor
+        :param position_threshold: position threshold for cartesian monitor
+        :param orientation_threshold: orientation threshold for cartesian monitor
         """
 
         cart_monitor1 = self.monitors.add_cartesian_pose(root_link=root_link, tip_link=tip_link,
-                                                                    goal_pose=goal_pose,
-                                                                    position_threshold=position_threshold,
-                                                                    orientation_threshold=orientation_threshold,
-                                                                    name='cart goal 1')
+                                                         goal_pose=goal_pose,
+                                                         position_threshold=position_threshold,
+                                                         orientation_threshold=orientation_threshold,
+                                                         name='cart goal 1')
         end_monitor = self.monitors.add_local_minimum_reached(start_condition=cart_monitor1)
 
         self.motion_goals.add_cartesian_pose(name='g1', root_link=root_link, tip_link=tip_link,
-                                                        goal_pose=goal_pose,
-                                                        end_condition=cart_monitor1)
+                                             goal_pose=goal_pose,
+                                             end_condition=cart_monitor1)
 
         self.motion_goals.avoid_all_collisions()
         self.motion_goals.allow_collision(group1='gripper', group2=CollisionEntry.ALL)
@@ -2859,7 +2864,6 @@ class GiskardWrapper:
         sleep = self.monitors.add_sleep(1)
         # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
 
-        # FIXME: How to Error?
         self.monitors.add_cancel_motion(f'not {mon} and {sleep} ', ForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
         self.execute()
