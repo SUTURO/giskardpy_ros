@@ -2761,7 +2761,7 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached()
 
         # FIXME: How to Error?
-        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException)
+        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2813,7 +2813,7 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached()
 
         # FIXME: How to Error?
-        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException)
+        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2824,8 +2824,7 @@ class GiskardWrapper:
                                    position_threshold: float,
                                    orientation_threshold: float,
                                    object_type: str = "",
-                                   threshold_name: str = "",
-                                   ):
+                                   threshold_name: str = ""):
         """
         force_torque_monitor used for grasping, activates when the hsr closes it's gripper and then checks
         via force_torque whether the necessary threshold has been undershot, thus essentially checking if
