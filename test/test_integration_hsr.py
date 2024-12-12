@@ -867,60 +867,58 @@ class TestSUTURO:
         hohc_setup.open_shelf_door(left_handle=left_handle, left_door=left_door)
         hohc_setup.execute()
 
-    # FIXME: Compare Pose hinzufügen sobald reaching fertig ist
-    # TODO: Weitere Reaching Tests mit anderen Objekten/aus anderen Richtungen hinzufügen
     def test_reaching1(self, zero_pose: HSRTestWrapper):
 
         grasps = ['front', 'above', 'left', 'right', 'below']
 
         grasp_pose_1 = PoseStamped()
         grasp_pose_1.header.frame_id = 'map'
-        grasp_pose_1.pose.position.x = 0.99999961185233 #1.0701112670482553
+        grasp_pose_1.pose.position.x = 0.99999961185233
         grasp_pose_1.pose.position.y = 0.0001316214338790437
         grasp_pose_1.pose.position.z = 0.6900203701423123
-        grasp_pose_1.pose.orientation.x = 0.5797565621267795 #0.7071167396552901
+        grasp_pose_1.pose.orientation.x = 0.5797565621267795
         grasp_pose_1.pose.orientation.y = 6.533426136710821e-05
-        grasp_pose_1.pose.orientation.z = 0.8147895961626185 #0.7070968173260486
+        grasp_pose_1.pose.orientation.z = 0.8147895961626185
         grasp_pose_1.pose.orientation.w = -5.619679601192823e-05
 
         grasp_pose_2 = PoseStamped()
         grasp_pose_2.header.frame_id = 'map'
-        grasp_pose_2.pose.position.x = 0.9999999674340407 #1.0699999955917536
+        grasp_pose_2.pose.position.x = 0.9999999674340407
         grasp_pose_2.pose.position.y = 1.1264868679568747e-05
-        grasp_pose_2.pose.position.z = 0.7497550904127396 #0.6900040048607661
-        grasp_pose_2.pose.orientation.x = -0.9999999992475002 #-0.49989060882740377
-        grasp_pose_2.pose.orientation.y = 2.203190918889499e-09 #0.50010930896272
-        grasp_pose_2.pose.orientation.z = -3.879432524505631e-05 #-0.49972084003542927
-        grasp_pose_2.pose.orientation.w = 2.979569784671264e-09 #0.5002790624534303
+        grasp_pose_2.pose.position.z = 0.7497550904127396
+        grasp_pose_2.pose.orientation.x = -0.9999999992475002
+        grasp_pose_2.pose.orientation.y = 2.203190918889499e-09
+        grasp_pose_2.pose.orientation.z = -3.879432524505631e-05
+        grasp_pose_2.pose.orientation.w = 2.979569784671264e-09
 
         grasp_pose_3 = PoseStamped()
         grasp_pose_3.header.frame_id = 'map'
         grasp_pose_3.pose.position.x = 1.0000098440969631
         grasp_pose_3.pose.position.y = -5.5826046789126e-07
-        grasp_pose_3.pose.position.z = 0.7000118356590226 #0.6299900562082916
-        grasp_pose_3.pose.orientation.x = -0.5000840140763921 #0.9999997719507597
-        grasp_pose_3.pose.orientation.y = 0.49988866812121957 #0.0006753489230108196
-        grasp_pose_3.pose.orientation.z = -0.5001139088438252 #-1.064646728699401e-06
-        grasp_pose_3.pose.orientation.w = -0.4999133690252605 #-1.0617940975076199e-06
+        grasp_pose_3.pose.position.z = 0.7000118356590226
+        grasp_pose_3.pose.orientation.x = -0.5000840140763921
+        grasp_pose_3.pose.orientation.y = 0.49988866812121957
+        grasp_pose_3.pose.orientation.z = -0.5001139088438252
+        grasp_pose_3.pose.orientation.w = -0.4999133690252605
 
         grasp_pose_4 = PoseStamped()
         grasp_pose_4.header.frame_id = 'map'
         grasp_pose_4.pose.position.x = 0.9999945694917095
         grasp_pose_4.pose.position.y = 4.234772015936794e-05
-        grasp_pose_4.pose.position.z = 0.7000060983590498 #0.6300246315623539
-        grasp_pose_4.pose.orientation.x = -0.5000479580669888 #-0.7068005682823383
-        grasp_pose_4.pose.orientation.y = -0.4999377526131163 #0.7074128615379971
-        grasp_pose_4.pose.orientation.z = -0.5000637350884022 #-2.5258894636704497e-06
-        grasp_pose_4.pose.orientation.w = 0.49995054154847934 #-7.953924864631972e-08
+        grasp_pose_4.pose.position.z = 0.7000060983590498
+        grasp_pose_4.pose.orientation.x = -0.5000479580669888
+        grasp_pose_4.pose.orientation.y = -0.4999377526131163
+        grasp_pose_4.pose.orientation.z = -0.5000637350884022
+        grasp_pose_4.pose.orientation.w = 0.49995054154847934
 
         grasp_pose_5 = PoseStamped()
         grasp_pose_5.header.frame_id = 'map'
         grasp_pose_5.pose.position.x = 0.9999945694917095
         grasp_pose_5.pose.position.y = 4.234772015936794e-05
-        grasp_pose_5.pose.position.z = 0.6731324627618642 #0.6300246315623539
-        grasp_pose_5.pose.orientation.x = -0.0020323559934585884 #-0.7068005682823383
-        grasp_pose_5.pose.orientation.y = 4.2785611489208335e-11 #0.7074128615379971
-        grasp_pose_5.pose.orientation.z = -0.9999979347624254 #-2.5258894636704497e-06
+        grasp_pose_5.pose.position.z = 0.6731324627618642
+        grasp_pose_5.pose.orientation.x = -0.0020323559934585884
+        grasp_pose_5.pose.orientation.y = 4.2785611489208335e-11
+        grasp_pose_5.pose.orientation.z = -0.9999979347624254
         grasp_pose_5.pose.orientation.w = -7.953924864631972e-08
 
         grasp_states = {
@@ -960,7 +958,6 @@ class TestSUTURO:
             tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
             m_P_g = (god_map.world.compute_fk(root_link, tip_link))
 
-            # FIXME: compare poses doesn't work, i guess because of changes to reaching/grasping
             compare_poses(m_P_g, grasp_states[grasp].pose)
 
             zero_pose.reset_base()
@@ -1299,7 +1296,7 @@ class TestSUTURO:
         keep_rotation_pose.header.frame_id = 'map'
         keep_rotation_pose.pose.position.x = 0.9402845292991675
         keep_rotation_pose.pose.position.y = -0.7279803708852316
-        keep_rotation_pose.pose.position.z = 0.8754144094343888 # 0.8994121023446626
+        keep_rotation_pose.pose.position.z = 0.8754144094343888  # 0.8994121023446626
         keep_rotation_pose.pose.orientation.x = 0.015000397751939919
         keep_rotation_pose.pose.orientation.y = -2.1716350146486636e-07
         keep_rotation_pose.pose.orientation.z = 0.999887487627967
