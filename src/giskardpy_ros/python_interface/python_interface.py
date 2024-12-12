@@ -2604,7 +2604,6 @@ class GiskardWrapper:
         :return: result from giskard
         """
         result = self._send_action_goal(MoveGoal.EXECUTE, wait)
-        print("result: " + str(result))
         if result:
             exception = msg_converter.error_msg_to_exception(result.error)
             if exception is not None:
