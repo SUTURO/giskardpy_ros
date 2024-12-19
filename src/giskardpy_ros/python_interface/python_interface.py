@@ -20,7 +20,7 @@ from giskard_msgs.srv import DyeGroupRequest, DyeGroup, GetGroupInfoRequest, Dye
 from giskard_msgs.srv import GetGroupInfo, GetGroupNames
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse
 from giskardpy.data_types.data_types import goal_parameter
-from giskardpy.data_types.exceptions import LocalMinimumException, ForceTorqueThresholdException
+from giskardpy.data_types.exceptions import LocalMinimumException, ObjectForceTorqueThresholdException
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.align_to_push_door import AlignToPushDoor
 from giskardpy.goals.cartesian_goals import CartesianPose, DiffDriveBaseGoal, CartesianVelocityLimit, \
@@ -2759,7 +2759,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
+        self.monitors.add_cancel_motion(local_min, ObjectForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2810,7 +2810,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
+        self.monitors.add_cancel_motion(local_min, ObjectForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2863,7 +2863,7 @@ class GiskardWrapper:
         sleep = self.monitors.add_sleep(1)
         # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
 
-        self.monitors.add_cancel_motion(f'not {mon} and {sleep} ', ForceTorqueThresholdException('force violated'))
+        self.monitors.add_cancel_motion(f'not {mon} and {sleep} ', ObjectForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
         self.execute()
         # self.monitors.add_max_trajectory_length(100)
