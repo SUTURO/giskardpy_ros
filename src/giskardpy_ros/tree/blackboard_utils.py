@@ -4,6 +4,7 @@ from functools import wraps
 from typing import TypeVar, Callable, TYPE_CHECKING
 
 from py_trees import Blackboard, Status
+from rospy import ServiceProxy
 
 from giskardpy.data_types.exceptions import DontPrintStackTrace
 
@@ -24,6 +25,8 @@ class GiskardBlackboard(Blackboard):
     world_action_server: ActionServerHandler
     ros_visualizer: ROSMsgVisualization
     fill_trajectory_velocity_values: bool
+    controller_manager: ServiceProxy = None
+    # list_controller: ServiceProxy = None
 
 
 def raise_to_blackboard(exception):

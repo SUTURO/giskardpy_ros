@@ -1,6 +1,6 @@
 from py_trees import Sequence
 
-from giskardpy_ros.tree.behaviors.cleanup import CleanUpPlanning
+from giskardpy_ros.tree.behaviors.cleanup import CleanUpPlanning, ActivateHSRControllers
 from giskardpy_ros.tree.behaviors.compile_debug_expressions import CompileDebugExpressions
 from giskardpy_ros.tree.behaviors.compile_monitors import CompileMonitors
 from giskardpy_ros.tree.behaviors.init_qp_controller import InitQPController
@@ -39,6 +39,7 @@ class PrepareBaseTrajControlLoop(Sequence):
     def __init__(self, name: str = 'prepare control loop'):
         super().__init__(name)
         self.has_compile_debug_expressions = False
+        self.add_child(ActivateHSRControllers())
         self.add_child(CleanUpPlanning('CleanUpPlanning'))
         self.add_child(AddBaseTrajFollowerGoal())
         self.add_child(InitQPController('InitQPController'))

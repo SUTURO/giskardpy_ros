@@ -1,15 +1,14 @@
 import rospy
+from controller_manager_msgs.srv import SwitchController, ListControllers, SwitchControllerResponse
 from line_profiler import profile
 from py_trees import Status
 from visualization_msgs.msg import MarkerArray, Marker
 
-from giskardpy.debug_expression_manager import DebugExpressionManager
-from giskardpy.motion_graph.monitors.monitor_manager import MonitorManager
-from giskardpy.goals.motion_goal_manager import MotionGoalManager
+from giskardpy.data_types.exceptions import SetupException
 from giskardpy.god_map import god_map
 from giskardpy.model.collision_world_syncer import Collisions
-from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy.utils.decorators import record_time
+from giskardpy_ros.tree.behaviors.plugin import GiskardBehavior
 from giskardpy_ros.tree.blackboard_utils import catch_and_raise_to_blackboard, GiskardBlackboard
 
 
@@ -61,4 +60,46 @@ class CleanUpPlanning(CleanUp):
 
     @catch_and_raise_to_blackboard
     def update(self):
+        return super().update()
+
+
+class ActivateHSRControllers(GiskardBehavior):
+    def initialise(self):
+        super().initialise()
+        # Setup Services
+
+        rospy.wait_for_service('/hsrb/controller_manager/switch_controller')
+        GiskardBlackboard().controller_manager = rospy.ServiceProxy(name='/hsrb/controller_manager/switch_controller',
+                                                                    service_class=SwitchController)
+        rospy.wait_for_service('/hsrb/controller_manager/list_controllers')
+        # GiskardBlackboard().list_controller = rospy.ServiceProxy(name='/hsrb/controller_manager/list_controllers',
+        #                                                          service_class=ListControllers)
+
+    @catch_and_raise_to_blackboard
+    def update(self):
+        # if GiskardBlackboard().controller_manager is not None and GiskardBlackboard().list_controller is not None:
+        if GiskardBlackboard().controller_manager is not None:
+            resp: SwitchControllerResponse = GiskardBlackboard().controller_manager(['realtime_body_controller_real'],
+                                                                                    ['arm_trajectory_controller',
+                                                                                     'head_trajectory_controller'],
+                                                                                    2, False, 0.0)
+            if not resp.ok:
+                raise SetupException("BaseTrajectoryControllers not correctly switched!")
+        return super().update()
+
+
+class DeactivateHSRControllers(GiskardBehavior):
+    def initialise(self):
+        super().initialise()
+
+    @catch_and_raise_to_blackboard
+    def update(self):
+        # if GiskardBlackboard().controller_manager is not None and GiskardBlackboard().list_controller is not None:
+        if GiskardBlackboard().controller_manager is not None:
+            resp: SwitchControllerResponse = GiskardBlackboard().controller_manager(['arm_trajectory_controller',
+                                                                                     'head_trajectory_controller'],
+                                                                                    ['realtime_body_controller_real'],
+                                                                                    2, False, 0.0)
+            if not resp.ok:
+                raise SetupException("BaseTrajectoryControllers not correctly switched back!")
         return super().update()
