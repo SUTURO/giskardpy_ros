@@ -1,10 +1,9 @@
 import rospy
-from controller_manager_msgs.srv import SwitchController, ListControllers, SwitchControllerResponse
+from controller_manager_msgs.srv import SwitchController, SwitchControllerResponse
 from line_profiler import profile
 from py_trees import Status
 from visualization_msgs.msg import MarkerArray, Marker
 
-from giskardpy.data_types.exceptions import SetupException
 from giskardpy.god_map import god_map
 from giskardpy.model.collision_world_syncer import Collisions
 from giskardpy.utils.decorators import record_time
@@ -67,11 +66,10 @@ class ActivateHSRControllers(GiskardBehavior):
     def initialise(self):
         super().initialise()
         # Setup Services
-
         rospy.wait_for_service('/hsrb/controller_manager/switch_controller')
         GiskardBlackboard().controller_manager = rospy.ServiceProxy(name='/hsrb/controller_manager/switch_controller',
                                                                     service_class=SwitchController)
-        rospy.wait_for_service('/hsrb/controller_manager/list_controllers')
+        # rospy.wait_for_service('/hsrb/controller_manager/list_controllers')
         # GiskardBlackboard().list_controller = rospy.ServiceProxy(name='/hsrb/controller_manager/list_controllers',
         #                                                          service_class=ListControllers)
 
@@ -83,9 +81,7 @@ class ActivateHSRControllers(GiskardBehavior):
                                                                                     ['arm_trajectory_controller',
                                                                                      'head_trajectory_controller'],
                                                                                     2, False, 0.0)
-            if not resp.ok:
-                raise SetupException("BaseTrajectoryControllers not correctly switched!")
-        return super().update()
+        return Status.SUCCESS
 
 
 class DeactivateHSRControllers(GiskardBehavior):
@@ -100,6 +96,4 @@ class DeactivateHSRControllers(GiskardBehavior):
                                                                                      'head_trajectory_controller'],
                                                                                     ['realtime_body_controller_real'],
                                                                                     2, False, 0.0)
-            if not resp.ok:
-                raise SetupException("BaseTrajectoryControllers not correctly switched back!")
-        return super().update()
+        return Status.SUCCESS

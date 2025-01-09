@@ -25,8 +25,8 @@ class GiskardBlackboard(Blackboard):
     world_action_server: ActionServerHandler
     ros_visualizer: ROSMsgVisualization
     fill_trajectory_velocity_values: bool
-    controller_manager: ServiceProxy = None
-    # list_controller: ServiceProxy = None
+    controller_manager: ServiceProxy
+    # list_controller: ServiceProxy
 
 
 def raise_to_blackboard(exception):
