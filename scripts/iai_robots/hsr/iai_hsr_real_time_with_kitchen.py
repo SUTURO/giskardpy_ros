@@ -21,5 +21,5 @@ if __name__ == '__main__':
                                                               add_tf_pub=True),
                       qp_controller_config=QPControllerConfig(mpc_dt=0.025,
                                                               prediction_horizon=20,
-                                                              control_dt=0.025))
+                                                              control_dt=0.025))  # TODO: test 70 HZ dt + 10 PH
     giskard.live()
