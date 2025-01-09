@@ -2477,8 +2477,8 @@ class GiskardWrapper:
         self.clear_motion_goals_and_monitors()
         rospy.sleep(.3)
 
-        if check_controller and self.world.get_control_mode() == ControlModes.close_loop:
-            self.setup_controllers()
+        # if check_controller and self.world.get_control_mode() == ControlModes.close_loop:
+        #    self.setup_controllers()
 
     def setup_controllers(self):
         # TODO: create config for robots
