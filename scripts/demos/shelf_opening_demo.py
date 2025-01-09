@@ -91,7 +91,7 @@ class Demo:
         tip_grasp_axis = Vector3Stamped()
         tip_grasp_axis.header.frame_id = 'hand_gripper_tool_frame'
         tip_grasp_axis.vector.x = 1
-        # %% phase 1
+        # grasping motion
         bar_grasped = self.gis.monitors.add_distance_to_line(name='bar grasped',
                                                              root_link='map',
                                                              tip_link='hand_gripper_tool_frame',
@@ -126,7 +126,7 @@ class Demo:
         close_gripper = self.gis.monitors.add_close_hsr_gripper(start_condition=bar_grasped)
         sleep = self.gis.monitors.add_sleep(seconds=0.5, start_condition=close_gripper)
 
-        # %% phase 2 open door
+        # open container
         door_open = self.gis.monitors.add_local_minimum_reached(name='door open',
                                                                 start_condition=sleep)
         self.gis.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame',
