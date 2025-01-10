@@ -12,6 +12,8 @@ from shape_msgs.msg import SolidPrimitive
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
+from data_types.exceptions import MonitorInitalizationException
+from data_types.suturo_types import ForceTorqueThresholds
 from giskard_msgs.msg import ExecutionState
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
     Monitor, WorldGoal, WorldAction, WorldResult
@@ -1912,11 +1914,13 @@ class MonitorWrapper:
 
     def add_force_torque(self,
                          threshold_enum: int,
-                         object_type: str,
+                         object_type: Optional[str] = None,
                          topic: str = '/filtered_raw/diff',
                          name: Optional[str] = None,
                          stay_true: bool = True,
-                         start_condition: str = ''):
+                         start_condition: str = '',
+                         hold_condition: str = '',
+                         end_condition: str = ''):
         """
         Can be used if planning wants to use their own grasping and placing actions, only adds force_torque_monitor
         without manipulations grasping/placing goals
@@ -1928,9 +1932,14 @@ class MonitorWrapper:
         :param stay_true: whether the monitor should stay active until it is finished or not
         :param start_condition: condition for when the monitor should start checking for thresholds
         """
+        if (threshold_enum == ForceTorqueThresholds.GRASP.value or threshold_enum == ForceTorqueThresholds.PLACE.value) and object_type is None:
+            raise MonitorInitalizationException('object_type not optional for GRASP and PLACE')
+
         return self.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                 name=name,
                                 start_condition=start_condition,
+                                hold_condition=hold_condition,
+                                end_condition=end_condition,
                                 stay_true=stay_true,
                                 topic=topic,
                                 threshold_enum=threshold_enum,
