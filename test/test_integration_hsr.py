@@ -5,7 +5,7 @@ from typing import Dict
 import numpy as np
 import pytest
 import rospy
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped, Vector3, Pose
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped, Pose
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
@@ -21,7 +21,7 @@ from utils_for_tests import compare_poses, GiskardTestWrapper
 from utils_for_tests import launch_launchfile
 
 if 'GITHUB_WORKFLOW' not in os.environ:
-    from giskardpy.goals.suturo import Reaching, TakePose, GraspObject, VerticalMotion, AlignHeight
+    from giskardpy.goals.suturo import Reaching, TakePose, VerticalMotion, AlignHeight
 
 
 class HSRTestWrapper(GiskardTestWrapper):
@@ -835,6 +835,56 @@ class TestSUTURO:
         door_setup.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05)
 
         door_setup.execute()
+
+        door_setup.close_gripper()
+
+        door_setup.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=0.35,
+                                                    hinge_limit=-0.8)
+
+        door_setup.allow_all_collisions()
+
+        door_setup.execute(add_local_minimum_reached=False)
+
+        door_setup.open_gripper()
+
+    def test_open_door_force_torque(self, door_setup: HSRTestWrapper):
+
+        handle_name = "suturo_door/suturo_door_area:door_handle_inside"
+
+        door_setup.open_gripper()
+
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = door_setup.tip
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_name
+        x_goal.vector.z = -1
+        door_setup.set_align_planes_goal(tip_link=door_setup.tip,
+                                         tip_normal=x_gripper,
+                                         goal_normal=x_goal,
+                                         root_link='map')
+
+        offset = Vector3Stamped()
+        offset.header.frame_id = 'hand_gripper_tool_frame'
+        offset.vector.x = -0.1
+
+        touched = door_setup.monitors.add_local_minimum_reached(name='touched monitor')
+        door_setup.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05,
+                                                       grasp_axis_offset=offset, end_condition=touched)
+
+        goal_point = PointStamped()
+        goal_point.header.frame_id = 'base_footprint'
+        goal_point.point.x = -0.1
+
+        door_setup.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='base_link',
+                                                                goal_point=goal_point, start_condition=touched)
+        grasped = door_setup.monitors.add_local_minimum_reached(name='grasped monitor', start_condition=touched)
+
+        door_setup.monitors.add_end_motion(start_condition=grasped)
+
+        door_setup.allow_all_collisions()
+        door_setup.execute(add_local_minimum_reached=False)
 
         door_setup.close_gripper()
 

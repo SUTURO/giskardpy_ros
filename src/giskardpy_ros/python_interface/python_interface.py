@@ -9,7 +9,6 @@ from controller_manager_msgs.srv import ListControllers, SwitchController, Switc
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3, Quaternion
 from nav_msgs.msg import Path
 from shape_msgs.msg import SolidPrimitive
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
@@ -54,6 +53,7 @@ from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
 from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy_ros.utils.utils import make_world_body_box
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
 class WorldWrapper:
@@ -1528,7 +1528,10 @@ class MotionGoalWrapper:
                                root_link: str = 'map',
                                grasp_axis_offset: Optional[Vector3Stamped] = None,
                                bar_axis_v: Optional[Vector3Stamped] = None,
-                               tip_grasp_axis_v: Optional[Vector3Stamped] = None):
+                               tip_grasp_axis_v: Optional[Vector3Stamped] = None,
+                               start_condition: str = '',
+                               hold_condition: str = '',
+                               end_condition: str = ''):
         """
         HSRB specific set_grasp_bar_goal, that only needs handle_name of the door_handle
 
@@ -1564,7 +1567,10 @@ class MotionGoalWrapper:
                                tip_grasp_axis=tip_grasp_axis,
                                bar_center=bar_center,
                                bar_axis=bar_axis,
-                               bar_length=handle_bar_length)
+                               bar_length=handle_bar_length,
+                               start_condition=start_condition,
+                               hold_condition=hold_condition,
+                               end_condition=end_condition)
         else:
             self.add_grasp_bar_offset(root_link=root_link,
                                       tip_link=tip_link,
@@ -1572,7 +1578,10 @@ class MotionGoalWrapper:
                                       bar_center=bar_center,
                                       bar_axis=bar_axis,
                                       bar_length=handle_bar_length,
-                                      grasp_axis_offset=grasp_axis_offset)
+                                      grasp_axis_offset=grasp_axis_offset,
+                                      start_condition=start_condition,
+                                      hold_condition=hold_condition,
+                                      end_condition=end_condition)
 
     def hsrb_dishwasher_door_around(self,
                                     handle_name: str,
@@ -2862,7 +2871,8 @@ class GiskardWrapper:
         sleep = self.monitors.add_sleep(1)
         # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
 
-        self.monitors.add_cancel_motion(f'not {mon} and {sleep} ', ObjectForceTorqueThresholdException('force violated'))
+        self.monitors.add_cancel_motion(f'not {mon} and {sleep} ',
+                                        ObjectForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
         self.execute()
         # self.monitors.add_max_trajectory_length(100)
