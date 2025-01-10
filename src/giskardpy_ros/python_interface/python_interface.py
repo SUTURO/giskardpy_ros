@@ -1911,7 +1911,7 @@ class MonitorWrapper:
         return name
 
     def add_force_torque(self,
-                         threshold_name: str,
+                         threshold_enum: int,
                          object_type: str,
                          topic: str = '/filtered_raw/diff',
                          name: Optional[str] = None,
@@ -1921,7 +1921,7 @@ class MonitorWrapper:
         Can be used if planning wants to use their own grasping and placing actions, only adds force_torque_monitor
         without manipulations grasping/placing goals
 
-        :param threshold_name: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
+        :param threshold_enum: ID of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
         :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
         :param topic: name of the topic that the monitor should subscribe to, is hardcoded as '/filtered_raw/diff'
         :param name: name of the monitor, is optional, so can be left empty
@@ -1933,7 +1933,7 @@ class MonitorWrapper:
                                 start_condition=start_condition,
                                 stay_true=stay_true,
                                 topic=topic,
-                                threshold_name=threshold_name,
+                                threshold_enum=threshold_enum,
                                 object_type=object_type)
 
     def add_local_minimum_reached(self,
