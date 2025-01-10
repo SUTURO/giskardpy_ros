@@ -49,8 +49,7 @@ from giskardpy.motion_graph.monitors.payload_monitors import Print, Sleep, SetMa
     PayloadAlternator
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.utils.utils import get_all_classes_in_package
-from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath
-from giskardpy_ros.goals.realtime_goals import RealTimePointing
+from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath, RealTimePointing
 from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
 from giskardpy_ros.tree.control_modes import ControlModes
