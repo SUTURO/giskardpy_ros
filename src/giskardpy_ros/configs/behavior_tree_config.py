@@ -311,3 +311,9 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
             self.add_free_variable_publisher(include_prefix=False, topic_name='giskard_joint_states')
         if self.add_tf_pub:
             self.add_tf_publisher(include_prefix=True, mode=TfPublishingModes.all)
+
+        self.add_hsr_controller()
+
+    def add_hsr_controller(self):
+        self.tree.prepare_control_loop.add_hsr_controller_activate()
+        self.tree.post_processing.add_hsr_controller_deactivate()

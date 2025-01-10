@@ -23,7 +23,6 @@ class PrepareControlLoop(Sequence):
         self.add_child(InitQPController('InitQPController'))
         self.add_child(CompileMonitors())
         self.add_child(SetTrackingStartTime('start tracking time'))
-        self.add_child(ActivateHSRControllers())
 
     def add_plot_goal_graph(self):
         self.add_child(PlotTaskMonitorGraph())
@@ -32,6 +31,9 @@ class PrepareControlLoop(Sequence):
         if not self.has_compile_debug_expressions:
             self.add_child(CompileDebugExpressions())
             self.has_compile_debug_expressions = True
+
+    def add_hsr_controller_activate(self):
+        self.add_child(ActivateHSRControllers())
 
 
 class PrepareBaseTrajControlLoop(Sequence):
