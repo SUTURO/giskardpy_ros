@@ -12,8 +12,8 @@ from shape_msgs.msg import SolidPrimitive
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
-from data_types.exceptions import MonitorInitalizationException
-from data_types.suturo_types import ForceTorqueThresholds
+from giskardpy.data_types.exceptions import MonitorInitalizationException
+from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskard_msgs.msg import ExecutionState
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
     Monitor, WorldGoal, WorldAction, WorldResult
