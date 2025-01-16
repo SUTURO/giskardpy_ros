@@ -976,7 +976,7 @@ class MotionGoalWrapper:
 
     def add_carry_my_luggage(self,
                              name: str,
-                             tracked_human_position_topic_name: str = '/robokudovanessa/human_position',
+                             tracked_human_position_topic_name: str = '/human_pose',
                              laser_topic_name: str = '/hsrb/base_scan',
                              point_cloud_laser_topic_name: Optional[str] = None,
                              odom_joint_name: str = 'brumbrum',
