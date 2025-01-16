@@ -9,6 +9,8 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vect
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
+from giskardpy.data_types.exceptions import ObjectForceTorqueThresholdException
+from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskardpy.data_types.exceptions import EmptyProblemException
 from giskardpy.data_types.suturo_types import GraspTypes
 from giskardpy.god_map import god_map
@@ -869,19 +871,22 @@ class TestSUTURO:
         offset.header.frame_id = 'hand_gripper_tool_frame'
         offset.vector.x = -0.1
 
-        touched = door_setup.monitors.add_local_minimum_reached(name='touched monitor')
+        slep = door_setup.monitors.add_sleep(10)
+        force = door_setup.monitors.add_force_torque(ForceTorqueThresholds.DOOR.value)
         door_setup.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05,
-                                                       grasp_axis_offset=offset, end_condition=touched)
+                                                       grasp_axis_offset=offset, end_condition=force)
 
         goal_point = PointStamped()
         goal_point.header.frame_id = 'base_footprint'
         goal_point.point.x = -0.1
 
         door_setup.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='base_link',
-                                                                goal_point=goal_point, start_condition=touched)
-        grasped = door_setup.monitors.add_local_minimum_reached(name='grasped monitor', start_condition=touched)
+                                                                goal_point=goal_point, start_condition=force)
+        grasped = door_setup.monitors.add_local_minimum_reached(name='grasped monitor', start_condition=force)
 
         door_setup.monitors.add_end_motion(start_condition=grasped)
+        door_setup.monitors.add_cancel_motion(f'not {force} and {slep} ',
+                                              ObjectForceTorqueThresholdException('Door not touched!'))
 
         door_setup.allow_all_collisions()
         door_setup.execute(add_local_minimum_reached=False)

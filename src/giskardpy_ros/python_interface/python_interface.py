@@ -12,6 +12,8 @@ from shape_msgs.msg import SolidPrimitive
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
+from giskardpy.data_types.exceptions import MonitorInitalizationException
+from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskard_msgs.msg import ExecutionState
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
     Monitor, WorldGoal, WorldAction, WorldResult
@@ -1911,29 +1913,36 @@ class MonitorWrapper:
         return name
 
     def add_force_torque(self,
-                         threshold_name: str,
-                         object_type: str,
+                         threshold_enum: int,
+                         object_type: Optional[str] = None,
                          topic: str = '/filtered_raw/diff',
                          name: Optional[str] = None,
                          stay_true: bool = True,
-                         start_condition: str = ''):
+                         start_condition: str = '',
+                         hold_condition: str = '',
+                         end_condition: str = ''):
         """
         Can be used if planning wants to use their own grasping and placing actions, only adds force_torque_monitor
         without manipulations grasping/placing goals
 
-        :param threshold_name: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
+        :param threshold_enum: ID of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
         :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
         :param topic: name of the topic that the monitor should subscribe to, is hardcoded as '/filtered_raw/diff'
         :param name: name of the monitor, is optional, so can be left empty
         :param stay_true: whether the monitor should stay active until it is finished or not
         :param start_condition: condition for when the monitor should start checking for thresholds
         """
+        if (threshold_enum == ForceTorqueThresholds.GRASP.value or threshold_enum == ForceTorqueThresholds.PLACE.value) and object_type is None:
+            raise MonitorInitalizationException('object_type not optional for GRASP and PLACE')
+
         return self.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                 name=name,
                                 start_condition=start_condition,
+                                hold_condition=hold_condition,
+                                end_condition=end_condition,
                                 stay_true=stay_true,
                                 topic=topic,
-                                threshold_name=threshold_name,
+                                threshold_enum=threshold_enum,
                                 object_type=object_type)
 
     def add_local_minimum_reached(self,
