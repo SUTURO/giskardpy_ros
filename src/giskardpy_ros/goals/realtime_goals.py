@@ -73,9 +73,9 @@ class CarryMyBullshit(Goal):
 
     def __init__(self,
                  name: str,
-                 patrick_topic_name: str = '/robokudovanessa/human_position',
+                 patrick_topic_name: str = '/human_pose',
                  laser_topic_name: str = '/hsrb/base_scan',
-                 point_cloud_laser_topic_name: Optional[str] = '/scan',
+                 point_cloud_laser_topic_name: Optional[str] = None,
                  odom_joint_name: str = 'brumbrum',
                  root_link: Optional[str] = None,
                  camera_link: str = 'head_rgbd_sensor_link',
@@ -171,6 +171,7 @@ class CarryMyBullshit(Goal):
                                                                      LaserScan, self.point_cloud_laser_cb,
                                                                      queue_size=10)
         self.publish_tracking_radius()
+        self.publish_tracking_radius()
         self.publish_distance_to_target()
         if not self.drive_back:
             if CarryMyBullshit.target_sub is None:
@@ -229,7 +230,7 @@ class CarryMyBullshit(Goal):
         root_P_closest_point = cas.Point3([closest_x, closest_y, 0])
         # tangent = root_P_goal_point - root_P_closest_point
         # root_V_tangent = cas.Vector3([tangent.x, tangent.y, 0])
-        tip_V_pointing_axis = cas.Vector3(self.tip_V_pointing_axis)
+        tip_V_pointing_axis = self.tip_V_pointing_axis
 
         if self.drive_back:
             map_P_human = root_P_goal_point
@@ -285,6 +286,8 @@ class CarryMyBullshit(Goal):
         look_at_target = self.create_and_add_task('look at target')
         if not self.drive_back:
             look_at_target.hold_condition = target_lost.get_state_expression()
+        # god_map.debug_expression_manager.add_debug_expression('human', map_P_human)
+        # god_map.debug_expression_manager.add_debug_expression('root_P_camera', root_P_camera)
         look_at_target.add_vector_goal_constraints(frame_V_current=root_V_camera_axis,
                                                    frame_V_goal=root_V_camera_goal_axis,
                                                    reference_velocity=self.max_rotation_velocity_head,
@@ -323,7 +326,11 @@ class CarryMyBullshit(Goal):
         # %% keep the closest point in footprint radius
         stay_in_circle = self.create_and_add_task('in circle')
         buffer = self.traj_tracking_radius
-        distance_to_closest_point = cas.norm(root_P_closest_point - root_P_bf)
+        eps = 0.00001
+        distance_to_closest_point = cas.norm(root_P_closest_point - root_P_bf + cas.Point3([eps, eps, 0]))
+        god_map.debug_expression_manager.add_debug_expression('root_P_closest_point', root_P_closest_point)
+        god_map.debug_expression_manager.add_debug_expression('root_P_bf', root_P_bf)
+        god_map.debug_expression_manager.add_debug_expression('distance_to_closest_point', distance_to_closest_point)
         stay_in_circle.add_inequality_constraint(task_expression=distance_to_closest_point,
                                                  lower_error=-distance_to_closest_point - buffer,
                                                  upper_error=-distance_to_closest_point + buffer,
