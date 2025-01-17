@@ -12,8 +12,6 @@ from shape_msgs.msg import SolidPrimitive
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
-from giskardpy.data_types.exceptions import MonitorInitalizationException
-from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskard_msgs.msg import ExecutionState
 from giskard_msgs.msg import MoveAction, MoveGoal, WorldBody, CollisionEntry, MoveResult, MoveFeedback, MotionGoal, \
     Monitor, WorldGoal, WorldAction, WorldResult
@@ -22,6 +20,8 @@ from giskard_msgs.srv import GetGroupInfo, GetGroupNames
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse
 from giskardpy.data_types.data_types import goal_parameter
 from giskardpy.data_types.exceptions import LocalMinimumException, ObjectForceTorqueThresholdException
+from giskardpy.data_types.exceptions import MonitorInitalizationException
+from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskardpy.goals.align_planes import AlignPlanes
 from giskardpy.goals.align_to_push_door import AlignToPushDoor
 from giskardpy.goals.cartesian_goals import CartesianPose, DiffDriveBaseGoal, CartesianVelocityLimit, \
@@ -698,6 +698,7 @@ class MotionGoalWrapper:
                                door_handle: str,
                                tip_gripper_axis: Vector3Stamped,
                                weight: float,
+                               goal_angle: float = None,
                                tip_group: Optional[str] = None,
                                root_group: Optional[str] = None,
                                intermediate_point_scale: Optional[float] = 1,
@@ -723,6 +724,7 @@ class MotionGoalWrapper:
                              door_handle=door_handle,
                              door_object=door_object,
                              tip_gripper_axis=tip_gripper_axis,
+                             goal_angle=goal_angle,
                              tip_group=tip_group,
                              root_group=root_group,
                              intermediate_point_scale=intermediate_point_scale,
@@ -1588,7 +1590,11 @@ class MotionGoalWrapper:
     def hsrb_dishwasher_door_around(self,
                                     handle_name: str,
                                     root_link: str = 'map',
-                                    tip_link: str = 'hand_gripper_tool_frame'):
+                                    tip_link: str = 'hand_gripper_tool_frame',
+                                    goal_angle: float = None,
+                                    start_condition: str = '',
+                                    hold_condition: str = '',
+                                    end_condition: str = ''):
         """
         HSRB specific avoid dishwasher door goal
 
@@ -1600,7 +1606,11 @@ class MotionGoalWrapper:
         self.add_motion_goal(motion_goal_class=MoveAroundDishwasher.__name__,
                              handle_name=handle_name,
                              root_link=root_link,
-                             tip_link=tip_link)
+                             tip_link=tip_link,
+                             goal_angle=goal_angle,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition)
 
     def hsrb_align_to_push_door_goal(self,
                                      handle_name: str,
@@ -1750,10 +1760,16 @@ class MotionGoalWrapper:
                              **kwargs)
 
     def add_take_pose(self,
-                      pose_keyword: str):
+                      pose_keyword: str,
+                      start_condition: str = '',
+                      hold_condition: str = '',
+                      end_condition: str = ''):
 
         self.add_motion_goal(motion_goal_class=TakePose.__name__,
-                             pose_keyword=pose_keyword)
+                             pose_keyword=pose_keyword,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition)
 
     def add_tilting(self,
                     tilt_direction: Optional[str] = None,
@@ -1932,7 +1948,8 @@ class MonitorWrapper:
         :param stay_true: whether the monitor should stay active until it is finished or not
         :param start_condition: condition for when the monitor should start checking for thresholds
         """
-        if (threshold_enum == ForceTorqueThresholds.GRASP.value or threshold_enum == ForceTorqueThresholds.PLACE.value) and object_type is None:
+        if (
+                threshold_enum == ForceTorqueThresholds.GRASP.value or threshold_enum == ForceTorqueThresholds.PLACE.value) and object_type is None:
             raise MonitorInitalizationException('object_type not optional for GRASP and PLACE')
 
         return self.add_monitor(monitor_class=PayloadForceTorque.__name__,
