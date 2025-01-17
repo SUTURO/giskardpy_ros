@@ -9,12 +9,13 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vect
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
+from giskardpy.data_types.exceptions import EmptyProblemException
 from giskardpy.data_types.exceptions import ObjectForceTorqueThresholdException
 from giskardpy.data_types.suturo_types import ForceTorqueThresholds
-from giskardpy.data_types.exceptions import EmptyProblemException
 from giskardpy.data_types.suturo_types import GraspTypes
 from giskardpy.god_map import god_map
 from giskardpy.motion_graph.monitors.lidar_monitor import LidarPayloadMonitor
+from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA
 from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
@@ -655,6 +656,156 @@ class TestConstraints:
         kitchen_setup.allow_collision(kitchen_setup.default_env_name, kitchen_setup.robot_name)
         kitchen_setup.execute()
 
+    def test_open_dishwasher3(self, kitchen_setup: HSRTestWrapper):
+        if 'GITHUB_WORKFLOW' in os.environ:
+            return
+        base_goal = PoseStamped()
+        base_goal.header.frame_id = 'map'
+        base_goal.pose.position = Point(0.3, -0.3, 0)
+        base_goal.pose.orientation.w = 1
+        kitchen_setup.move_base(base_goal)
+
+        handle_frame_id = 'iai_kitchen/sink_area_dish_washer_door_handle'
+        handle_name = handle_frame_id
+        hinge_joint = god_map.world.get_movable_parent_joint(handle_frame_id)
+        door_hinge_frame_id = god_map.world.get_parent_link_of_link(handle_frame_id)
+        root_link = kitchen_setup.default_root
+        tip_link = kitchen_setup.tip
+        grasp_bar_offset = 0.02
+        goal_angle_half = 0.6
+        goal_angle_full = 1.5
+
+        first_open = kitchen_setup.monitors.add_open_hsr_gripper(name='first open')
+
+        bar_axis = Vector3Stamped()
+        bar_axis.header.frame_id = handle_frame_id
+        bar_axis.vector.y = 1
+
+        bar_center = PointStamped()
+        bar_center.header.frame_id = handle_frame_id
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.x = 1
+
+        grasp_axis_offset = Vector3Stamped()
+        grasp_axis_offset.header.frame_id = handle_frame_id
+        grasp_axis_offset.vector.x = -grasp_bar_offset
+
+        bar_grasped = kitchen_setup.monitors.add_distance_to_line(name='bar grasped',
+                                                                  root_link=root_link,
+                                                                  tip_link=tip_link,
+                                                                  center_point=bar_center,
+                                                                  line_axis=bar_axis,
+                                                                  line_length=.4)
+
+        kitchen_setup.motion_goals.add_grasp_bar_offset(name='grasp bar',
+                                                        root_link=root_link,
+                                                        tip_link=tip_link,
+                                                        tip_grasp_axis=tip_grasp_axis,
+                                                        bar_center=bar_center,
+                                                        bar_axis=bar_axis,
+                                                        bar_length=.4,
+                                                        grasp_axis_offset=grasp_axis_offset,
+                                                        start_condition=first_open,
+                                                        end_condition=bar_grasped)
+
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = tip_link
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
+
+        kitchen_setup.motion_goals.add_align_planes(tip_link=tip_link,
+                                                    tip_normal=x_gripper,
+                                                    goal_normal=x_goal,
+                                                    root_link=root_link,
+                                                    start_condition=first_open,
+                                                    end_condition=bar_grasped)
+
+        first_close = kitchen_setup.monitors.add_close_hsr_gripper(name='first close', start_condition=bar_grasped)
+
+        half_open_joint = kitchen_setup.monitors.add_joint_position(name='half open joint',
+                                                                    goal_state={hinge_joint: goal_angle_half},
+                                                                    threshold=0.02,
+                                                                    start_condition=first_close)
+
+        kitchen_setup.motion_goals.add_open_container(name='half open',
+                                                      tip_link=tip_link,
+                                                      environment_link=handle_name,
+                                                      goal_joint_state=goal_angle_half,
+                                                      start_condition=first_close,
+                                                      end_condition=half_open_joint)
+
+        final_open = kitchen_setup.monitors.add_open_hsr_gripper(name='final open', start_condition=half_open_joint)
+
+        around_local_min = kitchen_setup.monitors.add_local_minimum_reached(name='around door local min',
+                                                                            start_condition=final_open)
+
+        kitchen_setup.motion_goals.hsrb_dishwasher_door_around(handle_name=handle_name,
+                                                               root_link=root_link,
+                                                               tip_link=tip_link,
+                                                               goal_angle=goal_angle_half,
+                                                               start_condition=final_open,
+                                                               end_condition=around_local_min)
+
+        align_push_door_local_min = kitchen_setup.monitors.add_local_minimum_reached(name='around door local min',
+                                                                                     start_condition=around_local_min)
+
+        tip_grasp_axis = Vector3Stamped()
+        tip_grasp_axis.header.frame_id = tip_link
+        tip_grasp_axis.vector.y = 1
+
+        kitchen_setup.motion_goals.add_align_to_push_door(root_link=root_link,
+                                                          tip_link=tip_link,
+                                                          door_handle=handle_name,
+                                                          door_object=door_hinge_frame_id,
+                                                          tip_gripper_axis=tip_grasp_axis,
+                                                          weight=WEIGHT_ABOVE_CA,
+                                                          goal_angle=goal_angle_half,
+                                                          intermediate_point_scale=0.95,
+                                                          start_condition=around_local_min,
+                                                          end_condition=align_push_door_local_min)
+
+        final_close = kitchen_setup.monitors.add_close_hsr_gripper(name='final close',
+                                                                   start_condition=align_push_door_local_min)
+
+        pre_push_local_min = kitchen_setup.monitors.add_local_minimum_reached(name='pre push local min',
+                                                                              start_condition=final_close)
+
+        kitchen_setup.motion_goals.add_pre_push_door(root_link=root_link,
+                                                     tip_link=tip_link,
+                                                     door_handle=handle_name,
+                                                     weight=WEIGHT_ABOVE_CA,
+                                                     door_object=door_hinge_frame_id,
+                                                     start_condition=final_close,
+                                                     end_condition=pre_push_local_min)
+
+        full_open_joint = kitchen_setup.monitors.add_joint_position(name='full open joint',
+                                                                    goal_state={hinge_joint: goal_angle_full},
+                                                                    threshold=0.02,
+                                                                    start_condition=pre_push_local_min)
+
+        kitchen_setup.motion_goals.add_open_container(name='half open',
+                                                      tip_link=tip_link,
+                                                      environment_link=handle_name,
+                                                      goal_joint_state=goal_angle_full,
+                                                      start_condition=pre_push_local_min,
+                                                      end_condition=full_open_joint)
+
+        park_local_min = kitchen_setup.monitors.add_local_minimum_reached(name='park local min',
+                                                                          start_condition=full_open_joint)
+
+        kitchen_setup.motion_goals.add_take_pose(pose_keyword='park', start_condition=full_open_joint,
+                                                 end_condition=park_local_min)
+
+        kitchen_setup.monitors.add_end_motion(start_condition=park_local_min)
+
+        kitchen_setup.allow_collision(kitchen_setup.default_env_name, kitchen_setup.gripper_group)
+        kitchen_setup.execute(add_local_minimum_reached=False)
+
 
 class TestCollisionAvoidanceGoals:
 
@@ -862,17 +1013,17 @@ class TestSUTURO:
         x_goal = Vector3Stamped()
         x_goal.header.frame_id = handle_name
         x_goal.vector.z = -1
-        door_setup.set_align_planes_goal(tip_link=door_setup.tip,
-                                         tip_normal=x_gripper,
-                                         goal_normal=x_goal,
-                                         root_link='map')
+        door_setup.motion_goals.add_align_planes(tip_link=door_setup.tip,
+                                                 tip_normal=x_gripper,
+                                                 goal_normal=x_goal,
+                                                 root_link='map')
 
         offset = Vector3Stamped()
         offset.header.frame_id = 'hand_gripper_tool_frame'
         offset.vector.x = -0.1
 
-        slep = door_setup.monitors.add_sleep(10)
-        force = door_setup.monitors.add_force_torque(ForceTorqueThresholds.DOOR.value)
+        slep = door_setup.monitors.add_sleep(1000)
+        force = door_setup.monitors.add_force_torque(ForceTorqueThresholds.DOOR.value, '')
         door_setup.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05,
                                                        grasp_axis_offset=offset, end_condition=force)
 
