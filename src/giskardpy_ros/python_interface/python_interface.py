@@ -1589,6 +1589,7 @@ class MotionGoalWrapper:
 
     def hsrb_dishwasher_door_around(self,
                                     handle_name: str,
+                                    tip_gripper_axis: Vector3,
                                     root_link: str = 'map',
                                     tip_link: str = 'hand_gripper_tool_frame',
                                     goal_angle: float = None,
@@ -1608,6 +1609,7 @@ class MotionGoalWrapper:
                              root_link=root_link,
                              tip_link=tip_link,
                              goal_angle=goal_angle,
+                             tip_gripper_axis=tip_gripper_axis,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
                              end_condition=end_condition)
