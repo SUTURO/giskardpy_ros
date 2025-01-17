@@ -758,7 +758,7 @@ class TestConstraints:
                                                                start_condition=final_open,
                                                                end_condition=around_local_min)
 
-        align_push_door_local_min = kitchen_setup.monitors.add_local_minimum_reached(name='around door local min',
+        align_push_door_local_min = kitchen_setup.monitors.add_local_minimum_reached(name='align push door local min',
                                                                                      start_condition=around_local_min)
 
         kitchen_setup.motion_goals.add_align_to_push_door(root_link=root_link,
@@ -791,7 +791,7 @@ class TestConstraints:
                                                                     threshold=0.02,
                                                                     start_condition=pre_push_local_min)
 
-        kitchen_setup.motion_goals.add_open_container(name='half open',
+        kitchen_setup.motion_goals.add_open_container(name='full open',
                                                       tip_link=tip_link,
                                                       environment_link=handle_name,
                                                       goal_joint_state=goal_angle_full,
