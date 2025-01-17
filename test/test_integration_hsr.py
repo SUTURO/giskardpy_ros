@@ -674,6 +674,8 @@ class TestConstraints:
         grasp_bar_offset = 0.02
         goal_angle_half = 0.6
         goal_angle_full = 1.5
+        env_name = 'iai_kitchen'
+        gripper_group = 'gripper'
 
         first_open = kitchen_setup.monitors.add_open_hsr_gripper(name='first open')
 
@@ -684,13 +686,25 @@ class TestConstraints:
         bar_center = PointStamped()
         bar_center.header.frame_id = handle_frame_id
 
-        tip_grasp_axis = Vector3Stamped()
-        tip_grasp_axis.header.frame_id = tip_link
-        tip_grasp_axis.vector.x = 1
+        tip_grasp_axis_bar = Vector3Stamped()
+        tip_grasp_axis_bar.header.frame_id = tip_link
+        tip_grasp_axis_bar.vector.x = 1
 
         grasp_axis_offset = Vector3Stamped()
         grasp_axis_offset.header.frame_id = handle_frame_id
         grasp_axis_offset.vector.x = -grasp_bar_offset
+
+        tip_grasp_axis_push = Vector3Stamped()
+        tip_grasp_axis_push.header.frame_id = tip_link
+        tip_grasp_axis_push.vector.y = 1
+
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = tip_link
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_frame_id
+        x_goal.vector.x = -1
 
         bar_grasped = kitchen_setup.monitors.add_distance_to_line(name='bar grasped',
                                                                   root_link=root_link,
@@ -702,21 +716,13 @@ class TestConstraints:
         kitchen_setup.motion_goals.add_grasp_bar_offset(name='grasp bar',
                                                         root_link=root_link,
                                                         tip_link=tip_link,
-                                                        tip_grasp_axis=tip_grasp_axis,
+                                                        tip_grasp_axis=tip_grasp_axis_bar,
                                                         bar_center=bar_center,
                                                         bar_axis=bar_axis,
                                                         bar_length=.4,
                                                         grasp_axis_offset=grasp_axis_offset,
                                                         start_condition=first_open,
                                                         end_condition=bar_grasped)
-
-        x_gripper = Vector3Stamped()
-        x_gripper.header.frame_id = tip_link
-        x_gripper.vector.z = 1
-
-        x_goal = Vector3Stamped()
-        x_goal.header.frame_id = handle_frame_id
-        x_goal.vector.x = -1
 
         kitchen_setup.motion_goals.add_align_planes(tip_link=tip_link,
                                                     tip_normal=x_gripper,
@@ -745,6 +751,7 @@ class TestConstraints:
                                                                             start_condition=final_open)
 
         kitchen_setup.motion_goals.hsrb_dishwasher_door_around(handle_name=handle_name,
+                                                               tip_gripper_axis=tip_grasp_axis_push,
                                                                root_link=root_link,
                                                                tip_link=tip_link,
                                                                goal_angle=goal_angle_half,
@@ -754,15 +761,11 @@ class TestConstraints:
         align_push_door_local_min = kitchen_setup.monitors.add_local_minimum_reached(name='around door local min',
                                                                                      start_condition=around_local_min)
 
-        tip_grasp_axis = Vector3Stamped()
-        tip_grasp_axis.header.frame_id = tip_link
-        tip_grasp_axis.vector.y = 1
-
         kitchen_setup.motion_goals.add_align_to_push_door(root_link=root_link,
                                                           tip_link=tip_link,
                                                           door_handle=handle_name,
                                                           door_object=door_hinge_frame_id,
-                                                          tip_gripper_axis=tip_grasp_axis,
+                                                          tip_gripper_axis=tip_grasp_axis_push,
                                                           weight=WEIGHT_ABOVE_CA,
                                                           goal_angle=goal_angle_half,
                                                           intermediate_point_scale=0.95,
@@ -803,7 +806,7 @@ class TestConstraints:
 
         kitchen_setup.monitors.add_end_motion(start_condition=park_local_min)
 
-        kitchen_setup.allow_collision(kitchen_setup.default_env_name, kitchen_setup.gripper_group)
+        kitchen_setup.motion_goals.allow_collision(env_name, gripper_group)
         kitchen_setup.execute(add_local_minimum_reached=False)
 
 
