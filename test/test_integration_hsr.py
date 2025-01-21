@@ -24,7 +24,7 @@ from utils_for_tests import compare_poses, GiskardTestWrapper
 from utils_for_tests import launch_launchfile
 
 if 'GITHUB_WORKFLOW' not in os.environ:
-    from giskardpy.goals.suturo import Reaching, TakePose, VerticalMotion, AlignHeight
+    from giskardpy.goals.suturo import Reaching, TakePose, VerticalMotion, AlignHeight, Tilting
 
 
 class HSRTestWrapper(GiskardTestWrapper):
@@ -1078,8 +1078,6 @@ class TestSUTURO:
 
     def test_reaching1(self, zero_pose: HSRTestWrapper):
 
-        grasps = ['front', 'above', 'left', 'right', 'below']
-
         grasp_pose_1 = PoseStamped()
         grasp_pose_1.header.frame_id = 'map'
         grasp_pose_1.pose.position.x = 0.99999961185233
@@ -1172,6 +1170,40 @@ class TestSUTURO:
             zero_pose.reset_base()
             zero_pose.take_pose("pre_align_height")
             zero_pose.execute()
+
+        zero_pose.close_gripper()
+
+    # TODO: Rework Test for actual Tray
+    def test_funi_tray(self, zero_pose: HSRTestWrapper):
+
+        box_name = 'Tray'
+        box_pose = PoseStamped()
+        box_pose.header.frame_id = 'map'
+        box_pose.pose.position = Point(1, 0, 0.7)
+        box_pose.pose.orientation = Quaternion(0, 0, 0, 1)
+
+        zero_pose.add_box_to_world(box_name, (0.345, 0.455, 0.02), box_pose)
+
+        zero_pose.take_pose("pre_align_height")
+        zero_pose.execute()
+
+        zero_pose.open_gripper()
+
+        zero_pose.motion_goals.add_joint_position(goal_state={'wrist_roll_joint': -(0.5 * pi)}, start_condition='',
+                                                  hold_condition='', end_condition='')
+
+        zero_pose.execute()
+
+        zero_pose.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
+                                               object_name=box_name,
+                                               object_shape='box',
+                                               grasp=GraspTypes.FRONT.value,
+                                               align='test',
+                                               root_link='map',
+                                               tip_link='hand_gripper_tool_frame')
+
+        zero_pose.allow_all_collisions()
+        zero_pose.execute()
 
         zero_pose.close_gripper()
 
