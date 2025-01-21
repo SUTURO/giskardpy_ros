@@ -1206,7 +1206,7 @@ class MotionGoalWrapper:
         """
         Only meant for use with projection. Overwrites the odometry transform with base_pose.
         """
-        raise DeprecationWarning('please use monitors.set_seed_odometry instead')
+        raise DeprecationWarning('please use monitors.add_set_seed_odometry instead')
 
     def add_cartesian_pose_straight(self,
                                     goal_pose: PoseStamped,
@@ -1534,6 +1534,7 @@ class MotionGoalWrapper:
                                grasp_axis_offset: Optional[Vector3Stamped] = None,
                                bar_axis_v: Optional[Vector3Stamped] = None,
                                tip_grasp_axis_v: Optional[Vector3Stamped] = None,
+                               name: Optional[str] = None,
                                start_condition: str = '',
                                hold_condition: str = '',
                                end_condition: str = ''):
@@ -1567,7 +1568,8 @@ class MotionGoalWrapper:
         bar_center.point.y = 0.045
 
         if grasp_axis_offset is None:
-            self.add_grasp_bar(root_link=root_link,
+            self.add_grasp_bar(name=name,
+                               root_link=root_link,
                                tip_link=tip_link,
                                tip_grasp_axis=tip_grasp_axis,
                                bar_center=bar_center,
@@ -1577,7 +1579,8 @@ class MotionGoalWrapper:
                                hold_condition=hold_condition,
                                end_condition=end_condition)
         else:
-            self.add_grasp_bar_offset(root_link=root_link,
+            self.add_grasp_bar_offset(name=name,
+                                      root_link=root_link,
                                       tip_link=tip_link,
                                       tip_grasp_axis=tip_grasp_axis,
                                       bar_center=bar_center,
