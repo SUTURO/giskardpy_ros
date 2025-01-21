@@ -1512,7 +1512,7 @@ class MotionGoalWrapper:
                             hinge_limit: Optional[float] = -(np.pi / 4),
                             start_condition: str = '',
                             hold_condition: str = '',
-                            end_condition: str = ''):
+                            end_condition: str = '', ):
         """
         HSRB specific open door goal wrapper
 
@@ -1536,11 +1536,11 @@ class MotionGoalWrapper:
                                handle_bar_length: float = 0,
                                tip_link: str = 'hand_gripper_tool_frame',
                                root_link: str = 'map',
-                               ref_speed: Optional[float] = 1,
                                grasp_axis_offset: Optional[Vector3Stamped] = None,
                                bar_axis_v: Optional[Vector3Stamped] = None,
                                tip_grasp_axis_v: Optional[Vector3Stamped] = None,
                                name: Optional[str] = None,
+                               ref_speed: Optional[float] = 1,
                                start_condition: str = '',
                                hold_condition: str = '',
                                end_condition: str = ''):
