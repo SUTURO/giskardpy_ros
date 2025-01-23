@@ -2763,8 +2763,8 @@ class GiskardWrapper:
     def monitor_placing(self,
                         align: str,
                         grasp: str,
+                        threshold_enum: int,
                         goal_pose: PoseStamped,
-                        threshold_name: str = "",
                         object_type: str = "",
                         tip_link: str = 'hand_palm_link',
                         velocity: float = 0.02):
@@ -2776,7 +2776,7 @@ class GiskardWrapper:
         :param align: alignment of action, should currently be either "vertical" or an empty string if not needed
         :param grasp: the direction from which the HSR should Grasp an object, in case of this method it should be direction the HSR is placing from
         :param goal_pose: where the object should be placed
-        :param threshold_name: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
+        :param threshold_enum: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
         :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
         :param tip_link: name of the tip link, pre-defined as "hand_palm_link"
         :param velocity: the velocity that this action should be executed with
@@ -2786,7 +2786,7 @@ class GiskardWrapper:
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
                                                          start_condition='',
-                                                         threshold_name=threshold_name,
+                                                         threshold_name=threshold_enum,
                                                          object_type=object_type)
 
         self.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
@@ -2807,10 +2807,10 @@ class GiskardWrapper:
                                 goal_pose: PoseStamped,
                                 align: str,
                                 grasp: str,
+                                threshold_enum: int,
                                 reference_frame_alignment: Optional[str] = None,
                                 object_name: str = "",
                                 object_type: str = "",
-                                threshold_name: str = "",
                                 root_link: Optional[str] = None,
                                 tip_link: Optional[str] = None):
         """
@@ -2835,7 +2835,7 @@ class GiskardWrapper:
         force_torque_trigger = self.monitors.add_monitor(monitor_class=PayloadForceTorque.__name__,
                                                          name=PayloadForceTorque.__name__,
                                                          start_condition='',
-                                                         threshold_name=threshold_name,
+                                                         threshold_name=threshold_enum,
                                                          object_type=object_type)
 
         self.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
@@ -2858,10 +2858,10 @@ class GiskardWrapper:
                                    goal_pose: PoseStamped,
                                    tip_link: str,
                                    root_link: str,
+                                   threshold_enum: int,
                                    position_threshold: float,
                                    orientation_threshold: float,
-                                   object_type: str = "",
-                                   threshold_name: str = ""):
+                                   object_type: str = ""):
         """
         force_torque_monitor used for grasping, activates when the hsr closes it's gripper and then checks
         via force_torque whether the necessary threshold has been overshot, thus essentially checking if
@@ -2897,7 +2897,7 @@ class GiskardWrapper:
                                         name=PayloadForceTorque.__name__,
                                         topic='/filtered_raw/diff',
                                         start_condition='',
-                                        threshold_name=threshold_name,
+                                        threshold_enum=threshold_enum,
                                         object_type=object_type)
 
         sleep = self.monitors.add_sleep(1)

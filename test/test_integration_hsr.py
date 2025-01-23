@@ -1176,13 +1176,15 @@ class TestSUTURO:
     # TODO: Rework Test for actual Tray
     def test_funi_tray(self, zero_pose: HSRTestWrapper):
         # add actual Tray object (Object should be put in urdfs/meshes(?))
-        box_name = 'Tray'
-        box_pose = PoseStamped()
-        box_pose.header.frame_id = 'map'
-        box_pose.pose.position = Point(1, 0, 0.7)
-        box_pose.pose.orientation = Quaternion(0, 0, 0, 1)
 
-        zero_pose.add_box_to_world(box_name, (0.345, 0.455, 0.02), box_pose)
+        mesh_name = 'Tray'
+        mesh_pose = PoseStamped()
+        mesh = 'package://giskardpy_ros/test/urdfs/meshes/IAI_Tray_Complete.obj'
+        mesh_pose.header.frame_id = 'map'
+        mesh_pose.pose.position = Point(1, 0, 0.7)
+        mesh_pose.pose.orientation = Quaternion(0.2, 0, 0, 1)
+
+        zero_pose.add_mesh_to_world(name=mesh_name, mesh=mesh, pose=mesh_pose)
 
         zero_pose.take_pose("pre_align_height")
         zero_pose.execute()
@@ -1195,9 +1197,8 @@ class TestSUTURO:
         zero_pose.execute()
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
-                                               object_name=box_name,
-                                               object_shape='box',
-                                               grasp=GraspTypes.FRONT.value,
+                                               object_name=mesh_name,
+                                               grasp=GraspTypes.ABOVE.value,
                                                align='test',
                                                root_link='map',
                                                tip_link='hand_gripper_tool_frame')
