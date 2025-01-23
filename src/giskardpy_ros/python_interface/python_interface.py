@@ -9,7 +9,6 @@ from controller_manager_msgs.srv import ListControllers, SwitchController, Switc
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3, Quaternion
 from nav_msgs.msg import Path
 from shape_msgs.msg import SolidPrimitive
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
@@ -20,7 +19,7 @@ from giskard_msgs.srv import DyeGroupRequest, DyeGroup, GetGroupInfoRequest, Dye
 from giskard_msgs.srv import GetGroupInfo, GetGroupNames
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse
 from giskardpy.data_types.data_types import goal_parameter, PrefixName
-from giskardpy.data_types.exceptions import LocalMinimumException, ObjectForceTorqueThresholdException
+from giskardpy.data_types.exceptions import LocalMinimumException
 from giskardpy.data_types.exceptions import MonitorInitalizationException
 from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskardpy.goals.align_planes import AlignPlanes
@@ -37,7 +36,6 @@ from giskardpy.goals.pre_push_door import PrePushDoor
 from giskardpy.goals.set_prediction_horizon import SetPredictionHorizon
 from giskardpy.goals.suturo import GraspBarOffset, MoveAroundDishwasher, Reaching, Placing, VerticalMotion, Retracting, \
     AlignHeight, TakePose, Tilting, JointRotationGoalContinuous, Mixing, OpenDoorGoal
-from giskardpy.god_map import god_map
 from giskardpy.motion_graph.monitors.cartesian_monitors import PoseReached, PositionReached, OrientationReached, \
     PointingAt, \
     VectorsAligned, DistanceToLine
@@ -57,6 +55,7 @@ from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
 from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy_ros.utils.utils import make_world_body_box
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
 class WorldWrapper:
@@ -1510,7 +1509,10 @@ class MotionGoalWrapper:
                                 name='hand_gripper_tool_frame'),
                             name: str = 'HSRB_open_door',
                             handle_limit: Optional[float] = (np.pi / 6),
-                            hinge_limit: Optional[float] = -(np.pi / 4)):
+                            hinge_limit: Optional[float] = -(np.pi / 4),
+                            start_condition: str = '',
+                            hold_condition: str = '',
+                            end_condition: str = ''):
         """
         HSRB specific open door goal wrapper
 
@@ -1524,13 +1526,17 @@ class MotionGoalWrapper:
                                 door_handle_link=door_handle_link,
                                 name=name,
                                 handle_limit=handle_limit,
-                                hinge_limit=hinge_limit)
+                                hinge_limit=hinge_limit,
+                                start_condition=start_condition,
+                                hold_condition=hold_condition,
+                                end_condition=end_condition)
 
     def hsrb_door_handle_grasp(self,
                                handle_name: str,
                                handle_bar_length: float = 0,
                                tip_link: str = 'hand_gripper_tool_frame',
                                root_link: str = 'map',
+                               ref_speed: Optional[float] = 1,
                                grasp_axis_offset: Optional[Vector3Stamped] = None,
                                bar_axis_v: Optional[Vector3Stamped] = None,
                                tip_grasp_axis_v: Optional[Vector3Stamped] = None,
@@ -1575,6 +1581,8 @@ class MotionGoalWrapper:
                                bar_center=bar_center,
                                bar_axis=bar_axis,
                                bar_length=handle_bar_length,
+                               reference_linear_velocity=0.1 * ref_speed,
+                               reference_angular_velocity=0.5 * ref_speed,
                                start_condition=start_condition,
                                hold_condition=hold_condition,
                                end_condition=end_condition)
@@ -1586,6 +1594,8 @@ class MotionGoalWrapper:
                                       bar_center=bar_center,
                                       bar_axis=bar_axis,
                                       bar_length=handle_bar_length,
+                                      reference_linear_velocity=0.1 * ref_speed,
+                                      reference_angular_velocity=0.5 * ref_speed,
                                       grasp_axis_offset=grasp_axis_offset,
                                       start_condition=start_condition,
                                       hold_condition=hold_condition,
@@ -1833,7 +1843,10 @@ class MotionGoalWrapper:
                            door_handle_link: Union[str, giskard_msgs.LinkName],
                            name: str = None,
                            handle_limit: Optional[float] = None,
-                           hinge_limit: Optional[float] = None):
+                           hinge_limit: Optional[float] = None,
+                           start_condition: str = '',
+                           hold_condition: str = '',
+                           end_condition: str = ''):
         """
         Adds OpenDoorGoal to motion goal execution plan
 
@@ -1852,7 +1865,10 @@ class MotionGoalWrapper:
                              door_handle_link=door_handle_link,
                              name=name,
                              handle_limit=handle_limit,
-                             hinge_limit=hinge_limit)
+                             hinge_limit=hinge_limit,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition)
 
     def continuous_pointing_head(self):
         """
@@ -2799,7 +2815,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, ObjectForceTorqueThresholdException('force violated'))
+        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2850,7 +2866,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, ObjectForceTorqueThresholdException('force violated'))
+        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2904,7 +2920,7 @@ class GiskardWrapper:
         # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
 
         self.monitors.add_cancel_motion(f'not {mon} and {sleep} ',
-                                        ObjectForceTorqueThresholdException('force violated'))
+                                        ForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
         self.execute()
         # self.monitors.add_max_trajectory_length(100)
@@ -3110,7 +3126,8 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached('done', start_condition='')
         self.monitors.add_end_motion(local_min)
 
-    def hsrb_dishwasher_test(self, handle_frame_id: PrefixName, hinge_joint: PrefixName, door_hinge_frame_id: PrefixName):
+    def hsrb_dishwasher_test(self, handle_frame_id: PrefixName, hinge_joint: PrefixName,
+                             door_hinge_frame_id: PrefixName):
         handle_name = handle_frame_id
         hinge_joint = hinge_joint
         door_hinge_frame_id = door_hinge_frame_id
