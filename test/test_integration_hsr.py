@@ -1164,8 +1164,8 @@ class TestSUTURO:
             root_link = god_map.world.search_for_link_name('map')
             tip_link = god_map.world.search_for_link_name('hand_gripper_tool_frame')
             m_P_g = (god_map.world.compute_fk(root_link, tip_link))
-
-            #compare_poses(m_P_g, grasp_states[grasp].pose)
+            # decimal needs to be one, because otherwise the test values need to be changed every time there's a giskard change
+            compare_poses(m_P_g, grasp_states[grasp].pose, decimal=1)
 
             zero_pose.reset_base()
             zero_pose.take_pose("pre_align_height")
