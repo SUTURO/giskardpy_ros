@@ -5,7 +5,7 @@ from typing import Dict
 import numpy as np
 import pytest
 import rospy
-from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped, Pose
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vector3Stamped, Pose, Vector3
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
@@ -20,6 +20,7 @@ from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
+from utils.math import quaternion_from_axis_angle
 from utils_for_tests import compare_poses, GiskardTestWrapper
 from utils_for_tests import launch_launchfile
 
@@ -1174,33 +1175,35 @@ class TestSUTURO:
 
         zero_pose.close_gripper()
 
-    # TODO: Rework Test for actual Tray
-    def test_funi_tray(self, zero_pose: HSRTestWrapper):
-        # add actual Tray object (Object should be put in urdfs/meshes(?))
+    def test_grasp_tray(self, zero_pose: HSRTestWrapper):
 
+        # configuration of mesh bounds, so grasping goals can be properly executed
+        size = Vector3(0.15, 0.25, 0.15)
+        mesh_goal_pose = PoseStamped()
+        mesh_goal_pose.header.frame_id = 'Tray'
+        mesh_goal_pose.pose.orientation = Quaternion(0, 0, 0, 1)
+
+        # Configuration of Mesh
         mesh_name = 'Tray'
         mesh_pose = PoseStamped()
+        mesh_pose.pose.position = Point(1, 0, 0.7)
         mesh = 'package://giskardpy_ros/test/urdfs/meshes/IAI_Tray_Complete.obj'
         mesh_pose.header.frame_id = 'map'
-        mesh_pose.pose.position = Point(1, 0, 0.7)
-        mesh_pose.pose.orientation = Quaternion(0.2, 0, 0, 1)
+        mesh_pose.pose.orientation = Quaternion(*quaternion_from_axis_angle([1, 0, 0], np.pi / 2 + 0.03))
 
         zero_pose.add_mesh_to_world(name=mesh_name, mesh=mesh, pose=mesh_pose)
 
-        zero_pose.take_pose("pre_align_height")
+        zero_pose.take_pose("pre_tray")
         zero_pose.execute()
 
         zero_pose.open_gripper()
 
-        zero_pose.motion_goals.add_joint_position(goal_state={'wrist_roll_joint': -(0.5 * pi)}, start_condition='',
-                                                  hold_condition='', end_condition='')
-
-        zero_pose.execute()
-
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=Reaching.__name__,
                                                object_name=mesh_name,
+                                               goal_pose=mesh_goal_pose,
+                                               object_size=size,
                                                grasp=GraspTypes.ABOVE.value,
-                                               align='test',
+                                               align='vertical',  # alignment needs to be vertical so gripper is turned correctly
                                                root_link='map',
                                                tip_link='hand_gripper_tool_frame')
 
