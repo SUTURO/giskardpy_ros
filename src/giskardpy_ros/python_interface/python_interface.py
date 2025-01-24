@@ -1512,7 +1512,7 @@ class MotionGoalWrapper:
                             hinge_limit: Optional[float] = -(np.pi / 4),
                             start_condition: str = '',
                             hold_condition: str = '',
-                            end_condition: str = '', ):
+                            end_condition: str = ''):
         """
         HSRB specific open door goal wrapper
 
