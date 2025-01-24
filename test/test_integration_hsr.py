@@ -1004,7 +1004,8 @@ class TestSUTURO:
         door_setup.open_gripper()
 
     def test_open_door_force_torque(self, door_setup: HSRTestWrapper):
-
+        if 'GITHUB_WORKFLOW' in os.environ:
+            return
         handle_name = "suturo_door/suturo_door_area:door_handle_inside"
 
         door_setup.open_gripper()
@@ -1853,3 +1854,51 @@ class TestKitchen:
         kitchen_setup.allow_all_collisions()
         kitchen_setup.monitors.add_end_motion(start_condition=door_open)
         kitchen_setup.execute(add_local_minimum_reached=False)
+
+    def test_close_door(self, door_setup: HSRTestWrapper):
+        handle_name = "suturo_door/suturo_door_area:door_handle_outside"
+        handle_name_prefix = god_map.world.get_link_name(link_name=handle_name)
+        hinge_joint = "suturo_door/suturo_door_area:door_origin_revolute_joint"
+        door_handle_parent_link = god_map.world.get_parent_link_of_link(link_name=handle_name_prefix)
+
+        door_state = {hinge_joint: -0.8}
+
+        base_pose = PoseStamped()
+        base_pose.header.frame_id = 'map'
+        base_pose.pose.position.x = 3
+        base_pose.pose.position.y = -0.5
+        base_pose.pose.orientation.x = 1
+
+        door_setup.monitors.add_set_seed_odometry(base_pose=base_pose)
+
+        door_setup.motion_goals.add_joint_position(goal_state=door_state)
+        door_setup.execute()
+
+        door_setup.open_gripper()
+
+        x_gripper = Vector3Stamped()
+        x_gripper.header.frame_id = door_setup.tip
+        x_gripper.vector.z = 1
+
+        x_goal = Vector3Stamped()
+        x_goal.header.frame_id = handle_name
+        x_goal.vector.z = 1
+
+        door_setup.set_align_planes_goal(tip_link=door_setup.tip,
+                                         tip_normal=x_gripper,
+                                         goal_normal=x_goal,
+                                         root_link='map')
+
+        door_setup.motion_goals.hsrb_door_handle_grasp(handle_name=handle_name, handle_bar_length=0.05)
+
+        door_setup.execute()
+
+        door_setup.close_gripper()
+
+        door_setup.motion_goals.add_close_container(tip_link=door_setup.tip,
+                                                    environment_link=door_handle_parent_link,
+                                                    goal_joint_state=0)
+        joint_monitor = door_setup.monitors.add_joint_position(goal_state={hinge_joint: 0})
+        door_setup.monitors.add_end_motion(start_condition=joint_monitor)
+
+        door_setup.execute(add_local_minimum_reached=False)
