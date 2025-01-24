@@ -19,7 +19,7 @@ from giskard_msgs.srv import DyeGroupRequest, DyeGroup, GetGroupInfoRequest, Dye
 from giskard_msgs.srv import GetGroupInfo, GetGroupNames
 from giskard_msgs.srv import GetGroupNamesResponse, GetGroupInfoResponse
 from giskardpy.data_types.data_types import goal_parameter, PrefixName
-from giskardpy.data_types.exceptions import LocalMinimumException
+from giskardpy.data_types.exceptions import LocalMinimumException, ObjectForceTorqueThresholdException
 from giskardpy.data_types.exceptions import MonitorInitalizationException
 from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskardpy.goals.align_planes import AlignPlanes
@@ -1603,7 +1603,7 @@ class MotionGoalWrapper:
 
     def hsrb_dishwasher_door_around(self,
                                     handle_name: str,
-                                    tip_gripper_axis: Vector3 = None,
+                                    tip_gripper_axis: Vector3Stamped = None,
                                     root_link: str = 'map',
                                     tip_link: str = 'hand_gripper_tool_frame',
                                     goal_angle: float = None,
@@ -1617,7 +1617,6 @@ class MotionGoalWrapper:
         :param tip_link: robot link, that grasps the handle
         :param root_link: root link of the kinematic chain
         """
-
         self.add_motion_goal(motion_goal_class=MoveAroundDishwasher.__name__,
                              handle_name=handle_name,
                              root_link=root_link,
@@ -2815,7 +2814,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
+        self.monitors.add_cancel_motion(local_min, ObjectForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2866,7 +2865,7 @@ class GiskardWrapper:
 
         local_min = self.monitors.add_local_minimum_reached()
 
-        self.monitors.add_cancel_motion(local_min, ForceTorqueThresholdException('force violated'))
+        self.monitors.add_cancel_motion(local_min, ObjectForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=force_torque_trigger)
         self.monitors.add_max_trajectory_length(100)
 
@@ -2920,7 +2919,7 @@ class GiskardWrapper:
         # local_min = self.monitors.add_local_minimum_reached(name='force_torque_local_min')
 
         self.monitors.add_cancel_motion(f'not {mon} and {sleep} ',
-                                        ForceTorqueThresholdException('force violated'))
+                                        ObjectForceTorqueThresholdException('force violated'))
         self.monitors.add_end_motion(start_condition=f'{mon} and {sleep} and {end_monitor}')
         self.execute()
         # self.monitors.add_max_trajectory_length(100)
@@ -3126,11 +3125,8 @@ class GiskardWrapper:
         local_min = self.monitors.add_local_minimum_reached('done', start_condition='')
         self.monitors.add_end_motion(local_min)
 
-    def hsrb_dishwasher_test(self, handle_frame_id: PrefixName, hinge_joint: PrefixName,
-                             door_hinge_frame_id: PrefixName):
-        handle_name = handle_frame_id
-        hinge_joint = hinge_joint
-        door_hinge_frame_id = door_hinge_frame_id
+    def hsrb_dishwasher_test(self, handle_frame_id: str, hinge_joint: str, door_hinge_frame_id: str):
+
         root_link = 'map'
         tip_link = 'hand_gripper_tool_frame'
         grasp_bar_offset = 0.05
@@ -3138,8 +3134,6 @@ class GiskardWrapper:
         goal_angle_full = 1.35
         env_name = 'iai_kitchen'
         gripper_group = 'gripper'
-
-        first_open = self.monitors.add_open_hsr_gripper(name='first open')
 
         bar_axis = Vector3Stamped()
         bar_axis.header.frame_id = handle_frame_id
@@ -3167,6 +3161,8 @@ class GiskardWrapper:
         x_goal = Vector3Stamped()
         x_goal.header.frame_id = handle_frame_id
         x_goal.vector.x = -1
+
+        first_open = self.monitors.add_open_hsr_gripper(name='first open')
 
         bar_grasped = self.monitors.add_distance_to_line(name='bar grasped',
                                                          root_link=root_link,
@@ -3197,12 +3193,12 @@ class GiskardWrapper:
 
         half_open_joint = self.monitors.add_joint_position(name='half open joint',
                                                            goal_state={hinge_joint: goal_angle_half},
-                                                           threshold=0.02,
+                                                           threshold=0.03,
                                                            start_condition=first_close)
 
         self.motion_goals.add_open_container(name='half open',
                                              tip_link=tip_link,
-                                             environment_link=handle_name,
+                                             environment_link=handle_frame_id,
                                              goal_joint_state=goal_angle_half,
                                              start_condition=first_close,
                                              end_condition=half_open_joint)
@@ -3212,8 +3208,8 @@ class GiskardWrapper:
         around_local_min = self.monitors.add_local_minimum_reached(name='around door local min',
                                                                    start_condition=final_open)
 
-        self.motion_goals.hsrb_dishwasher_door_around(handle_name=handle_name,
-                                                      tip_gripper_axis=tip_grasp_axis_push,
+        self.motion_goals.hsrb_dishwasher_door_around(handle_name=handle_frame_id,
+                                                      tip_gripper_axis=tip_grasp_axis_bar,
                                                       root_link=root_link,
                                                       tip_link=tip_link,
                                                       goal_angle=goal_angle_half,
@@ -3225,7 +3221,7 @@ class GiskardWrapper:
 
         self.motion_goals.add_align_to_push_door(root_link=root_link,
                                                  tip_link=tip_link,
-                                                 door_handle=handle_name,
+                                                 door_handle=handle_frame_id,
                                                  door_object=door_hinge_frame_id,
                                                  tip_gripper_axis=tip_grasp_axis_push,
                                                  weight=WEIGHT_ABOVE_CA,
@@ -3242,7 +3238,7 @@ class GiskardWrapper:
 
         self.motion_goals.add_pre_push_door(root_link=root_link,
                                             tip_link=tip_link,
-                                            door_handle=handle_name,
+                                            door_handle=handle_frame_id,
                                             weight=WEIGHT_ABOVE_CA,
                                             door_object=door_hinge_frame_id,
                                             start_condition=final_close,
@@ -3255,7 +3251,7 @@ class GiskardWrapper:
 
         self.motion_goals.add_open_container(name='full open',
                                              tip_link=tip_link,
-                                             environment_link=handle_name,
+                                             environment_link=handle_frame_id,
                                              goal_joint_state=goal_angle_full,
                                              start_condition=pre_push_local_min,
                                              end_condition=full_open_joint)
