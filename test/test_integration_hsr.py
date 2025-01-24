@@ -20,7 +20,7 @@ from giskardpy.qp.qp_controller_config import QPControllerConfig
 from giskardpy_ros.configs.behavior_tree_config import StandAloneBTConfig
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.configs.iai_robots.hsr import HSRCollisionAvoidanceConfig, WorldWithHSRConfig, HSRStandaloneInterface
-from utils.math import quaternion_from_axis_angle
+from giskardpy.utils.math import quaternion_from_axis_angle
 from utils_for_tests import compare_poses, GiskardTestWrapper
 from utils_for_tests import launch_launchfile
 
@@ -1215,9 +1215,13 @@ class TestSUTURO:
     def test_placing_motion(self, zero_pose: HSRTestWrapper):
         box_name = 'asdf'
         box_pose = PoseStamped()
-        box_pose.header.frame_id = 'map'
-        box_pose.pose.position = Point(1, 0, 0.7)
+        box_pose.header.frame_id = 'hand_palm_link'
+        box_pose.pose.position = Point(0, 0, 0.7)
         box_pose.pose.orientation = Quaternion(0, 0, 0, 1)
+
+        placing_pose = PoseStamped()
+        placing_pose.header.frame_id = 'map'
+        placing_pose.pose.position = Point(1, 0, 0.7)
 
         zero_pose.add_box_to_world(box_name, (0.07, 0.04, 0.1), box_pose)
 
@@ -1225,7 +1229,7 @@ class TestSUTURO:
         zero_pose.execute()
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
-                                               goal_pose=box_pose,
+                                               goal_pose=placing_pose,
                                                align='',
                                                grasp=GraspTypes.ABOVE.value,
                                                root_link='map',
