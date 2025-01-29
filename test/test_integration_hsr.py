@@ -9,6 +9,7 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, PointStamped, Vect
 from numpy import pi
 from tf.transformations import quaternion_from_matrix, quaternion_about_axis
 
+import giskardpy_ros.ros1.tfwrapper as tf
 from giskardpy.data_types.exceptions import EmptyProblemException
 from giskardpy.data_types.exceptions import ObjectForceTorqueThresholdException
 from giskardpy.data_types.suturo_types import ForceTorqueThresholds
@@ -25,7 +26,7 @@ from utils_for_tests import compare_poses, GiskardTestWrapper
 from utils_for_tests import launch_launchfile
 
 if 'GITHUB_WORKFLOW' not in os.environ:
-    from giskardpy.goals.suturo import Reaching, TakePose, VerticalMotion, AlignHeight, Tilting, Placing
+    from giskardpy.goals.suturo import Reaching, TakePose, VerticalMotion, AlignHeight, Placing
 
 
 class HSRTestWrapper(GiskardTestWrapper):
@@ -672,9 +673,9 @@ class TestConstraints:
         door_hinge_frame_id = god_map.world.get_parent_link_of_link(handle_frame_id)
         root_link = kitchen_setup.default_root
         tip_link = kitchen_setup.tip
-        grasp_bar_offset = 0.02
+        grasp_bar_offset = 0.1
         goal_angle_half = 0.6
-        goal_angle_full = 1.5
+        goal_angle_full = 1.35
         env_name = 'iai_kitchen'
         gripper_group = 'gripper'
 
@@ -714,6 +715,8 @@ class TestConstraints:
                                                                   line_axis=bar_axis,
                                                                   line_length=.4)
 
+        bar_grasped_force = kitchen_setup.monitors.add_force_torque(threshold_enum=ForceTorqueThresholds.DOOR.value)
+
         kitchen_setup.motion_goals.add_grasp_bar_offset(name='grasp bar',
                                                         root_link=root_link,
                                                         tip_link=tip_link,
@@ -723,16 +726,36 @@ class TestConstraints:
                                                         bar_length=.4,
                                                         grasp_axis_offset=grasp_axis_offset,
                                                         start_condition=first_open,
-                                                        end_condition=bar_grasped)
+                                                        end_condition=bar_grasped_force)
 
         kitchen_setup.motion_goals.add_align_planes(tip_link=tip_link,
                                                     tip_normal=x_gripper,
                                                     goal_normal=x_goal,
                                                     root_link=root_link,
                                                     start_condition=first_open,
-                                                    end_condition=bar_grasped)
+                                                    end_condition=bar_grasped_force)
 
-        first_close = kitchen_setup.monitors.add_close_hsr_gripper(name='first close', start_condition=bar_grasped)
+        goal_point = PointStamped()
+        goal_point.header.frame_id = 'base_link'
+
+        handle_retract_direction = Vector3Stamped()
+        handle_retract_direction.header.frame_id = 'sink_area_dish_washer_door_handle'
+        handle_retract_direction.vector.x = 0.1
+
+        base_retract = tf.transform_vector(goal_point.header.frame_id, handle_retract_direction)
+
+        goal_point.point = Point(base_retract.vector.x, base_retract.vector.y, base_retract.vector.z)
+
+        grasped = kitchen_setup.monitors.add_local_minimum_reached(name='grasped monitor',
+                                                                   start_condition=bar_grasped_force)
+
+        kitchen_setup.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='base_link',
+                                                                   goal_point=goal_point,
+                                                                   name='retract after hit',
+                                                                   start_condition=bar_grasped_force,
+                                                                   end_condition=grasped)
+
+        first_close = kitchen_setup.monitors.add_close_hsr_gripper(name='first close', start_condition=grasped)
 
         half_open_joint = kitchen_setup.monitors.add_joint_position(name='half open joint',
                                                                     goal_state={hinge_joint: goal_angle_half},
