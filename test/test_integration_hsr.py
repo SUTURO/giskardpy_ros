@@ -1254,7 +1254,7 @@ class TestSUTURO:
 
         zero_pose.add_box_to_world(box_name, (0.07, 0.04, 0.1), box_pose)
 
-        zero_pose.take_pose("pre_align_height")
+        zero_pose.take_pose(TakePoseTypes.PRE_ALIGN_HEIGHT.value)
         zero_pose.execute()
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=Placing.__name__,
@@ -1270,7 +1270,7 @@ class TestSUTURO:
         zero_pose.open_gripper()
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=TakePose.__name__,
-                                               pose_keyword='park')
+                                               pose_keyword=TakePoseTypes.PARK.value)
 
         zero_pose.close_gripper()
 
@@ -1286,7 +1286,7 @@ class TestSUTURO:
         vertical_motion_pose.orientation.w = 0.5057224638312487
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class=TakePose.__name__,
-                                               pose_keyword='park')
+                                               pose_keyword=TakePoseTypes.PARK.value)
 
         zero_pose.allow_self_collision()
         zero_pose.execute()
@@ -1326,7 +1326,7 @@ class TestSUTURO:
         retracting_hand_pose.orientation.w = 0.5058130282241059
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
-                                               pose_keyword='park')
+                                               pose_keyword=TakePoseTypes.PARK.value)
 
         zero_pose.allow_self_collision()
         zero_pose.execute()
@@ -1415,7 +1415,7 @@ class TestSUTURO:
 
         for mode in execute_from_above:
             zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
-                                                   pose_keyword='pre_align_height')
+                                                   pose_keyword=TakePoseTypes.PRE_ALIGN_HEIGHT.value)
 
             zero_pose.allow_self_collision()
             zero_pose.execute()
@@ -1476,7 +1476,7 @@ class TestSUTURO:
         }
 
         zero_pose.motion_goals.add_motion_goal(motion_goal_class='TakePose',
-                                               pose_keyword='pre_align_height')
+                                               pose_keyword=TakePoseTypes.PRE_ALIGN_HEIGHT.value)
 
         zero_pose.allow_self_collision()
         zero_pose.execute()
@@ -1501,7 +1501,8 @@ class TestSUTURO:
             compare_poses(cord_data.pose, tilt_states[direction].pose)
 
     def test_take_pose(self, zero_pose: HSRTestWrapper):
-        poses = ['park', 'perceive', 'assistance', 'pre_align_height', 'carry']
+        poses = [TakePoseTypes.PARK.value, TakePoseTypes.PERCEIVE.value, TakePoseTypes.ASSISTANCE.value,
+                 TakePoseTypes.PRE_ALIGN_HEIGHT.value, TakePoseTypes.CARRY.value]
 
         park_pose = PoseStamped()
         park_pose.header.frame_id = 'map'
