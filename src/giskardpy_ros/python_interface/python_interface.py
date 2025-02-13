@@ -987,7 +987,7 @@ class MotionGoalWrapper:
                              odom_joint_name: str = 'brumbrum',
                              root_link: Optional[str] = None,
                              camera_link: str = 'head_rgbd_sensor_link',
-                             distance_to_target_stop_threshold: float = 1,
+                             distance_to_target_stop_threshold: float = 0.3,
                              laser_scan_age_threshold: float = 2,
                              laser_distance_threshold: float = 0.5,
                              laser_distance_threshold_width: float = 0.8,
@@ -1963,8 +1963,8 @@ class MonitorWrapper:
         Can be used if planning wants to use their own grasping and placing actions, only adds force_torque_monitor
         without manipulations grasping/placing goals
 
-        :param threshold_enum: ID of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
-        :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
+        :param threshold_enum: ID of the threshold to be used for the Force-Torque Monitor, options can be found in giskardpy/data_types/suturo_types.py
+        :param object_type: Name of the object that is being placed, options can be found in giskardpy/data_types/suturo_types.py
         :param topic: name of the topic that the monitor should subscribe to, is hardcoded as '/filtered_raw/diff'
         :param name: name of the monitor, is optional, so can be left empty
         :param stay_true: whether the monitor should stay active until it is finished or not
@@ -2792,8 +2792,8 @@ class GiskardWrapper:
         :param align: alignment of action, should currently be either "vertical" or an empty string if not needed
         :param grasp: the direction from which the HSR should Grasp an object, in case of this method it should be direction the HSR is placing from
         :param goal_pose: where the object should be placed
-        :param threshold_enum: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
-        :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
+        :param threshold_enum: Name of the threshold to be used for the Force-Torque Monitor, options can be found in giskardpy/data_types/suturo_types.py
+        :param object_type: Name of the object that is being placed, options can be found in giskardpy/data_types/suturo_types.py
         :param tip_link: name of the tip link, pre-defined as "hand_palm_link"
         :param velocity: the velocity that this action should be executed with
         """
@@ -3133,8 +3133,8 @@ class GiskardWrapper:
         grasp_bar_offset = 0.1
         goal_angle_half = 0.6
         goal_angle_full = 1.35
-        bar_length = 0.4
-        after_force_retract = 0.05
+        bar_length = 0.1
+        after_force_retract = 0.07
         env_name = 'iai_kitchen'
         gripper_group = 'gripper'
 
@@ -3195,8 +3195,8 @@ class GiskardWrapper:
                                                bar_center=bar_center,
                                                bar_axis=bar_axis,
                                                bar_length=bar_length,
-                                               reference_linear_velocity=0.04,
-                                               reference_angular_velocity=0.1,
+                                               reference_linear_velocity=0.02,
+                                               reference_angular_velocity=0.05,
                                                grasp_axis_offset=grasp_axis_offset,
                                                start_condition=local_min_pre_grasp,
                                                end_condition=bar_grasped_force)
