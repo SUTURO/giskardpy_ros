@@ -41,13 +41,15 @@ def setup():
 
 def grasping():
     handle_name = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
+    hinge_joint = "iai_kitchen/iai_kitchen:arena:door_origin_revolute_joint"
     tip = 'hand_gripper_tool_frame'
-    handle_length = 0.13
+    handle_length = 0.01
     ref_speed = 0.3
-    handle_retract_distance = 0.09
+    handle_retract_distance = 0.077
+    bar_center_offset = 0.02
     pre_grasp_distance = 0.15
     grasp_into_distance = -0.1
-    ft_timeout = 10000
+    ft_timeout = 10
 
     bar_axis = Vector3Stamped()
     bar_axis.header.frame_id = handle_name
@@ -59,7 +61,7 @@ def grasping():
 
     bar_center = PointStamped()
     bar_center.header.frame_id = handle_name
-    bar_center.point.y = 0.045
+    bar_center.point.y = bar_center_offset
 
     x_gripper = Vector3Stamped()
     x_gripper.header.frame_id = tip
@@ -74,6 +76,8 @@ def grasping():
     offset_pre = Vector3Stamped()
     offset_pre.header.frame_id = tip
     offset_pre.vector.y = pre_grasp_distance
+
+    gis.motion_goals.add_joint_position(goal_state={hinge_joint: 0})
 
     gis.motion_goals.hsrb_door_handle_grasp(name='pre grasp', handle_name=handle_name, handle_bar_length=handle_length,
                                             grasp_axis_offset=offset_pre, end_condition=pre_grasp)
@@ -133,11 +137,14 @@ def grasping():
 
 def handle_turning():
     handle_name = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
+    handle_joint = "iai_kitchen/iai_kitchen:arena:door_handle_joint"
+    hinge_joint = "iai_kitchen/iai_kitchen:arena:door_origin_revolute_joint"
 
+    gis.motion_goals.add_joint_position(goal_state={hinge_joint: 0})
     gis.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame', environment_link=handle_name,
-                                        goal_joint_state=0.4)
-    local_min = gis.monitors.add_local_minimum_reached()
-    gis.monitors.add_end_motion(start_condition=local_min)
+                                        goal_joint_state=0.35)
+    handle_monitor = gis.monitors.add_joint_position(goal_state={handle_joint: 0.35})
+    gis.monitors.add_end_motion(start_condition=handle_monitor)
 
     gis.execute()
 
@@ -152,8 +159,8 @@ def hinge_turning():
     x_goal.vector.z = -1
 
     x_base = Vector3Stamped()
-    x_base.header.frame_id = handle_name
-    x_base.vector.x = 1
+    x_base.header.frame_id = 'base_link'
+    x_base.vector.y = 1
 
     gis.motion_goals.add_align_planes(goal_normal=x_goal, tip_link='base_link', tip_normal=x_base, root_link='map')
     gis.motion_goals.add_close_container(tip_link='hand_gripper_tool_frame', environment_link=hinge_name)
