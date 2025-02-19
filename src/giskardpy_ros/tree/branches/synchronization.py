@@ -57,8 +57,8 @@ class Synchronization(Sequence):
         behavior = SyncOdometry(topic_name, joint_name)
         self.insert_child(child=behavior, index=0)
 
-    def sync_odometry_topic_no_lock(self, topic_name: str, joint_name: PrefixName):
-        behavior = SyncOdometryNoLock(topic_name, joint_name)
+    def sync_odometry_topic_no_lock(self, topic_name: str, joint_name: PrefixName, alpha: float = 1):
+        behavior = SyncOdometryNoLock(topic_name, joint_name, alpha=alpha)
         self.insert_child(child=behavior, index=0)
 
     def remove_group_behaviors(self, group_name: str):

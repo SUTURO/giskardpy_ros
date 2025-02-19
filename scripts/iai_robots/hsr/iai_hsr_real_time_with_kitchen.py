@@ -13,13 +13,14 @@ if __name__ == '__main__':
     rospy.init_node('giskard')
     set_middleware(ROS1Wrapper())
     debug_mode = rospy.get_param('~debug_mode', False)
+    debug_mode = True
     environment_name = 'iai_kitchen'
     giskard = Giskard(world_config=SuturoArenaWithHSRConfig(environment_name=environment_name),
                       collision_avoidance_config=HSRCollisionAvoidanceConfig(),
                       robot_interface_config=HSRVelocityInterfaceSuturo(environment_name=environment_name),
                       behavior_tree_config=ClosedLoopBTConfig(publish_free_variables=True, debug_mode=debug_mode,
                                                               add_tf_pub=True),
-                      qp_controller_config=QPControllerConfig(mpc_dt=0.025,
-                                                              prediction_horizon=20,
-                                                              control_dt=0.025))  # TODO: test 70 HZ dt + 10 PH
+                      qp_controller_config=QPControllerConfig(mpc_dt=0.017,
+                                                              prediction_horizon=15,
+                                                              control_dt=0.017))  # TODO: test 70 HZ dt + 10 PH
     giskard.live()

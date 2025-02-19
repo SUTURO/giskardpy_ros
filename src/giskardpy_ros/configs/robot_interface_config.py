@@ -41,7 +41,8 @@ class RobotInterfaceConfig(ABC):
     def control_mode(self) -> ControlModes:
         return GiskardBlackboard().tree.control_mode
 
-    def sync_odometry_topic(self, odometry_topic: str, joint_name: str, sync_in_control_loop: bool = True):
+    def sync_odometry_topic(self, odometry_topic: str, joint_name: str, sync_in_control_loop: bool = True,
+                            alpha: float = 1):
         """
         Tell Giskard to sync an odometry joint added during by the world config.
         """
@@ -50,7 +51,8 @@ class RobotInterfaceConfig(ABC):
         if sync_in_control_loop and GiskardBlackboard().tree.is_closed_loop():
             self.tree.control_loop_branch.closed_loop_synchronization.sync_odometry_topic_no_lock(
                 odometry_topic,
-                joint_name)
+                joint_name,
+                alpha=alpha)
 
     def sync_6dof_joint_with_tf_frame(self, joint_name: str, tf_parent_frame: str, tf_child_frame: str):
         """
