@@ -50,7 +50,7 @@ from giskardpy.motion_graph.monitors.payload_monitors import Print, Sleep, SetMa
     PayloadAlternator
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.utils.utils import get_all_classes_in_package
-from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath, RealTimePointing
+from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath, RealTimePointing, RealTimeConePointing
 from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1 import tfwrapper as tf
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
@@ -979,6 +979,55 @@ class MotionGoalWrapper:
                              end_condition=end_condition,
                              **kwargs)
 
+    def add_real_time_cone_pointing(self,
+                                    tip_link: Union[str, giskard_msgs.LinkName],
+                                    pointing_axis: Vector3Stamped,
+                                    cone_theta: float,
+                                    root_link: Union[str, giskard_msgs.LinkName],
+                                    topic_name: str,
+                                    tip_group: Optional[str] = None,
+                                    root_group: Optional[str] = None,
+                                    max_velocity: float = 0.3,
+                                    threshold: float = 0.01,
+                                    weight: Optional[float] = None,
+                                    start_condition: str = '',
+                                    hold_condition: str = '',
+                                    end_condition: str = '',
+                                    **kwargs: goal_parameter):
+        """
+        Will orient pointing_axis at goal_point.
+        :param tip_link: tip link of the kinematic chain.
+        :param topic_name: name of a topic of type PointStamped
+        :param root_link: root link of the kinematic chain.
+        :param tip_group: if tip_link is not unique, search this group for matches.
+        :param root_group: if root_link is not unique, search this group for matches.
+        :param pointing_axis: the axis of tip_link that will be used for pointing
+        :param cone_theta: theta angle of viewing cone (angle between right part of cone and pointing axis)
+        :param max_velocity: rad/s
+        :param threshold:
+        :param weight:
+        """
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+
+        self.add_motion_goal(motion_goal_class=RealTimeConePointing.__name__,
+                             tip_link=tip_link,
+                             tip_group=tip_group,
+                             root_link=root_link,
+                             topic_name=topic_name,
+                             root_group=root_group,
+                             pointing_axis=pointing_axis,
+                             cone_theta=cone_theta,
+                             max_velocity=max_velocity,
+                             threshold=threshold,
+                             weight=weight,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition,
+                             **kwargs)
+
     def add_carry_my_luggage(self,
                              name: str,
                              tracked_human_position_topic_name: str = '/human_pose',
@@ -996,8 +1045,8 @@ class MotionGoalWrapper:
                              base_orientation_threshold: float = np.pi / 16,
                              tracked_human_position_topic_name_timeout: int = 30,
                              max_rotation_velocity: float = 0.5,
-                             max_rotation_velocity_head: float = 1,
-                             max_translation_velocity: float = 0.38,
+                             max_rotation_velocity_head: float = 1,  #
+                             max_translation_velocity: float = 0.38,  #
                              traj_tracking_radius: float = 0.4,
                              height_for_camera_target: float = 1,
                              laser_frame_id: str = 'base_range_sensor_link',
