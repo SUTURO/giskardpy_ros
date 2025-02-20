@@ -14,7 +14,7 @@ import giskardpy_ros.ros1.msg_converter as msg_converter
 from giskardpy.data_types.data_types import PrefixName, Derivatives, ColorRGBA
 from giskardpy.data_types.exceptions import GoalInitalizationException, ExecutionException
 from giskardpy.goals.goal import Goal
-from giskardpy.goals.pointing import Pointing
+from giskardpy.goals.pointing import Pointing, PointingCone
 from giskardpy.god_map import god_map
 from giskardpy.middleware import get_middleware
 from giskardpy.model.joints import OmniDrive
@@ -57,65 +57,35 @@ class RealTimePointing(Pointing):
         self.root_P_goal_point = data
 
 
-class RealTimePointingFoV(Goal):
 
+class RealTimeConePointing(PointingCone):
     def __init__(self,
                  tip_link: PrefixName,
                  root_link: PrefixName,
                  topic_name: str,
                  pointing_axis: cas.Vector3,
+                 cone_theta: float = 0.0,
                  name: Optional[str] = None,
                  max_velocity: float = 0.3,
-                 fov: float = np.pi/4,
+                 threshold: float = 0.01,
                  weight: float = WEIGHT_BELOW_CA,
                  start_condition: cas.Expression = cas.TrueSymbol,
                  hold_condition: cas.Expression = cas.FalseSymbol,
                  end_condition: cas.Expression = cas.FalseSymbol):
         initial_goal = cas.Point3((1, 0, 1), reference_frame=god_map.world.search_for_link_name('base_footprint'))
+        super().__init__(name=name,
+                         tip_link=tip_link,
+                         goal_point=initial_goal,
+                         root_link=root_link,
+                         pointing_axis=pointing_axis,
+                         cone_theta=cone_theta,
+                         max_velocity=max_velocity,
+                         threshold=threshold,
+                         weight=weight,
+                         start_condition=start_condition,
+                         hold_condition=hold_condition,
+                         end_condition=end_condition)
         self.sub = rospy.Subscriber(topic_name, PointStamped, self.cb)
-
-        self.weight = weight
-        self.max_velocity = max_velocity
-        self.root = root_link
-        self.tip = tip_link
-        self.root_P_goal_point = god_map.world.transform(self.root, initial_goal).to_np()
-        if name is None:
-            name = f'{self.__class__.__name__}/{self.root}/{self.tip}'
-        super().__init__(name)
-
-        self.tip_V_pointing_axis = god_map.world.transform(self.tip, pointing_axis)
-        self.tip_V_pointing_axis.scale(1)
-
-        root_T_tip = god_map.world.compose_fk_expression(self.root, self.tip)
-        root_P_goal_point = symbol_manager.get_expr(f'god_map.motion_goal_manager.motion_goals[\'{str(self)}\']'
-                                                    f'.root_P_goal_point',
-                                                    input_type_hint=np.ndarray,
-                                                    output_type_hint=cas.Point3)
-        root_P_goal_point.reference_frame = self.root
-        tip_V_pointing_axis = cas.Vector3(self.tip_V_pointing_axis)
-
-        root_V_goal_axis = root_P_goal_point - root_T_tip.to_position()
-        root_V_goal_axis.scale(1)
-        root_V_pointing_axis = root_T_tip.dot(tip_V_pointing_axis)
-        root_V_pointing_axis.vis_frame = self.tip
-        root_V_goal_axis.vis_frame = self.tip
-        # self.add_debug_expr('goal_point', root_P_goal_point)
-        # self.add_debug_expr('root_V_pointing_axis', root_V_pointing_axis)
-        # self.add_debug_expr('root_V_goal_axis', root_V_goal_axis)
-        god_map.debug_expression_manager.add_debug_expression('root_V_pointing_axis',
-                                                              root_V_pointing_axis,
-                                                              color=ColorRGBA(r=1, g=0, b=0, a=1))
-        god_map.debug_expression_manager.add_debug_expression('goal_point',
-                                                              root_P_goal_point,
-                                                              color=ColorRGBA(r=0, g=0, b=1, a=1))
-        task = self.create_and_add_task('pointing')
-
-        task.add_vector_goal_constraints_fov(frame_V_current=root_V_pointing_axis,
-                                         frame_V_goal=root_V_goal_axis,
-                                         reference_velocity=self.max_velocity,
-                                             fov=fov,
-                                         weight=self.weight)
-        self.connect_monitors_to_all_tasks(start_condition, hold_condition, end_condition)
 
     def cb(self, data: PointStamped):
         data = msg_converter.ros_msg_to_giskard_obj(data, god_map.world)

@@ -141,12 +141,12 @@ if __name__ == '__main__':
                               output_topic='filtered_raw',
                               worker=Filter(fs=100,  # Sample rate, Hz, currently set to Hz of the topic
                                             cutoff=5,  # Desired cutoff frequency of the filter, Hz
-                                            order=5))  # Order of the filter))
+                                            order=5))  # Order of the filter
     diff = ForceTorqueFilter(input_topic="/hsrb/wrist_wrench/compensated",
                              output_topic='compensated/diff',
-                             worker=Diff(dt=0.01))  # Order of the filter))
+                             worker=Diff(dt=0.01))  # Order of the filter
     force_diff = ForceTorqueFilter(input_topic="filtered_raw",
                                    output_topic='filtered_raw/diff',
-                                   worker=Diff(dt=0.01))  # Order of the filter))
+                                   worker=Diff(dt=0.01))  # Order of the filter
     rospy.loginfo('wrench filter running')
     rospy.spin()

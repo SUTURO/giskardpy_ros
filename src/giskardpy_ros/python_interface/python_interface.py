@@ -51,7 +51,7 @@ from giskardpy.motion_graph.monitors.payload_monitors import Print, Sleep, SetMa
     PayloadAlternator
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.utils.utils import get_all_classes_in_package
-from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath, RealTimePointing, RealTimePointingFoV
+from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath, RealTimePointing, RealTimeConePointing
 from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1 import tfwrapper as tf
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
@@ -973,6 +973,55 @@ class MotionGoalWrapper:
                              root_group=root_group,
                              pointing_axis=pointing_axis,
                              max_velocity=max_velocity,
+                             weight=weight,
+                             start_condition=start_condition,
+                             hold_condition=hold_condition,
+                             end_condition=end_condition,
+                             **kwargs)
+
+    def add_real_time_cone_pointing(self,
+                                    tip_link: Union[str, giskard_msgs.LinkName],
+                                    pointing_axis: Vector3Stamped,
+                                    cone_theta: float,
+                                    root_link: Union[str, giskard_msgs.LinkName],
+                                    topic_name: str,
+                                    tip_group: Optional[str] = None,
+                                    root_group: Optional[str] = None,
+                                    max_velocity: float = 0.3,
+                                    threshold: float = 0.01,
+                                    weight: Optional[float] = None,
+                                    start_condition: str = '',
+                                    hold_condition: str = '',
+                                    end_condition: str = '',
+                                    **kwargs: goal_parameter):
+        """
+        Will orient pointing_axis at goal_point.
+        :param tip_link: tip link of the kinematic chain.
+        :param topic_name: name of a topic of type PointStamped
+        :param root_link: root link of the kinematic chain.
+        :param tip_group: if tip_link is not unique, search this group for matches.
+        :param root_group: if root_link is not unique, search this group for matches.
+        :param pointing_axis: the axis of tip_link that will be used for pointing
+        :param cone_theta: theta angle of viewing cone (angle between right part of cone and pointing axis)
+        :param max_velocity: rad/s
+        :param threshold:
+        :param weight:
+        """
+        if isinstance(tip_link, str):
+            tip_link = giskard_msgs.LinkName(name=tip_link)
+        if isinstance(root_link, str):
+            root_link = giskard_msgs.LinkName(name=root_link)
+
+        self.add_motion_goal(motion_goal_class=RealTimeConePointing.__name__,
+                             tip_link=tip_link,
+                             tip_group=tip_group,
+                             root_link=root_link,
+                             topic_name=topic_name,
+                             root_group=root_group,
+                             pointing_axis=pointing_axis,
+                             cone_theta=cone_theta,
+                             max_velocity=max_velocity,
+                             threshold=threshold,
                              weight=weight,
                              start_condition=start_condition,
                              hold_condition=hold_condition,
