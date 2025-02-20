@@ -11,7 +11,7 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 import giskardpy.casadi_wrapper as cas
 import giskardpy_ros.ros1.msg_converter as msg_converter
-from giskardpy.data_types.data_types import PrefixName, Derivatives
+from giskardpy.data_types.data_types import PrefixName, Derivatives, ColorRGBA
 from giskardpy.data_types.exceptions import GoalInitalizationException, ExecutionException
 from giskardpy.goals.goal import Goal
 from giskardpy.goals.pointing import Pointing, PointingCone
@@ -57,8 +57,8 @@ class RealTimePointing(Pointing):
         self.root_P_goal_point = data
 
 
-class RealTimeConePointing(PointingCone):
 
+class RealTimeConePointing(PointingCone):
     def __init__(self,
                  tip_link: PrefixName,
                  root_link: PrefixName,
@@ -91,7 +91,6 @@ class RealTimeConePointing(PointingCone):
         data = msg_converter.ros_msg_to_giskard_obj(data, god_map.world)
         data = god_map.world.transform(self.root, data).to_np()
         self.root_P_goal_point = data
-
 
 class CarryMyBullshit(Goal):
     trajectory: np.ndarray = np.array([])
@@ -693,6 +692,8 @@ class CarryMyBullshit(Goal):
                 CarryMyBullshit.traj_data.append(current_point)
 
             CarryMyBullshit.trajectory = np.array(CarryMyBullshit.traj_data)
+            self.human_point.point.x = CarryMyBullshit.traj_data[-1][0]
+            self.human_point.point.y = CarryMyBullshit.traj_data[-1][1]
             self.human_point = point
         except Exception as e:
             get_middleware().logwarn(f'rejected new target because: {e}')

@@ -9,6 +9,7 @@ from controller_manager_msgs.srv import ListControllers, SwitchController, Switc
 from geometry_msgs.msg import PoseStamped, Vector3Stamped, PointStamped, QuaternionStamped, Vector3, Quaternion, Point
 from nav_msgs.msg import Path
 from shape_msgs.msg import SolidPrimitive
+from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 from tf.transformations import quaternion_from_matrix
 
 import giskard_msgs.msg as giskard_msgs
@@ -56,7 +57,6 @@ from giskardpy_ros.ros1 import tfwrapper as tf
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
 from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy_ros.utils.utils import make_world_body_box
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 
 
 class WorldWrapper:
@@ -1036,7 +1036,7 @@ class MotionGoalWrapper:
                              odom_joint_name: str = 'brumbrum',
                              root_link: Optional[str] = None,
                              camera_link: str = 'head_rgbd_sensor_link',
-                             distance_to_target_stop_threshold: float = 1,
+                             distance_to_target_stop_threshold: float = 0.3,
                              laser_scan_age_threshold: float = 2,
                              laser_distance_threshold: float = 0.5,
                              laser_distance_threshold_width: float = 0.8,
@@ -1045,8 +1045,8 @@ class MotionGoalWrapper:
                              base_orientation_threshold: float = np.pi / 16,
                              tracked_human_position_topic_name_timeout: int = 30,
                              max_rotation_velocity: float = 0.5,
-                             max_rotation_velocity_head: float = 1,  #
-                             max_translation_velocity: float = 0.38,  #
+                             max_rotation_velocity_head: float = 1.0, # head speed
+                             max_translation_velocity: float = 0.38,
                              traj_tracking_radius: float = 0.4,
                              height_for_camera_target: float = 1,
                              laser_frame_id: str = 'base_range_sensor_link',
@@ -2012,8 +2012,8 @@ class MonitorWrapper:
         Can be used if planning wants to use their own grasping and placing actions, only adds force_torque_monitor
         without manipulations grasping/placing goals
 
-        :param threshold_enum: ID of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
-        :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
+        :param threshold_enum: ID of the threshold to be used for the Force-Torque Monitor, options can be found in giskardpy/data_types/suturo_types.py
+        :param object_type: Name of the object that is being placed, options can be found in giskardpy/data_types/suturo_types.py
         :param topic: name of the topic that the monitor should subscribe to, is hardcoded as '/filtered_raw/diff'
         :param name: name of the monitor, is optional, so can be left empty
         :param stay_true: whether the monitor should stay active until it is finished or not
@@ -2841,8 +2841,8 @@ class GiskardWrapper:
         :param align: alignment of action, should currently be either "vertical" or an empty string if not needed
         :param grasp: the direction from which the HSR should Grasp an object, in case of this method it should be direction the HSR is placing from
         :param goal_pose: where the object should be placed
-        :param threshold_enum: Name of the threshold to be used for the Force-Torque Monitor, options can be found in suturo_types.py
-        :param object_type: Name of the object that is being placed, options can be found in suturo_types.py
+        :param threshold_enum: Name of the threshold to be used for the Force-Torque Monitor, options can be found in giskardpy/data_types/suturo_types.py
+        :param object_type: Name of the object that is being placed, options can be found in giskardpy/data_types/suturo_types.py
         :param tip_link: name of the tip link, pre-defined as "hand_palm_link"
         :param velocity: the velocity that this action should be executed with
         """
@@ -3179,12 +3179,11 @@ class GiskardWrapper:
         # TODO: move to Pycram and make parameters better available
         root_link = 'map'
         tip_link = 'hand_gripper_tool_frame'
-        handle_frame_suffix = 'sink_area_dish_washer_door_handle'
         grasp_bar_offset = 0.1
         goal_angle_half = 0.6
         goal_angle_full = 1.35
-        bar_length = 0.4
-        after_force_retract = 0.03
+        bar_length = 0.1
+        after_force_retract = 0.05
         env_name = 'iai_kitchen'
         gripper_group = 'gripper'
 
@@ -3203,6 +3202,10 @@ class GiskardWrapper:
         grasp_axis_offset.header.frame_id = handle_frame_id
         grasp_axis_offset.vector.x = -grasp_bar_offset
 
+        grasp_axis_offset_pre = Vector3Stamped()
+        grasp_axis_offset_pre.header.frame_id = handle_frame_id
+        grasp_axis_offset_pre.vector.x = 0.1
+
         tip_grasp_axis_push = Vector3Stamped()
         tip_grasp_axis_push.header.frame_id = tip_link
         tip_grasp_axis_push.vector.y = 1
@@ -3217,7 +3220,22 @@ class GiskardWrapper:
 
         first_open = self.monitors.add_open_hsr_gripper(name='first open gripper')
 
-        bar_grasped_force = self.monitors.add_force_torque(threshold_enum=ForceTorqueThresholds.DOOR.value)
+        local_min_pre_grasp = self.monitors.add_local_minimum_reached(name='local min pre grasp',
+                                                                      start_condition=first_open)
+
+        self.motion_goals.add_grasp_bar_offset(name='pre grasp bar',
+                                               root_link=root_link,
+                                               tip_link=tip_link,
+                                               tip_grasp_axis=tip_grasp_axis_bar,
+                                               bar_center=bar_center,
+                                               bar_axis=bar_axis,
+                                               bar_length=bar_length,
+                                               grasp_axis_offset=grasp_axis_offset_pre,
+                                               start_condition=first_open,
+                                               end_condition=local_min_pre_grasp)
+
+        bar_grasped_force = self.monitors.add_force_torque(threshold_enum=ForceTorqueThresholds.DOOR.value,
+                                                           start_condition=local_min_pre_grasp)
 
         self.motion_goals.add_grasp_bar_offset(name='grasp bar',
                                                root_link=root_link,
@@ -3226,22 +3244,24 @@ class GiskardWrapper:
                                                bar_center=bar_center,
                                                bar_axis=bar_axis,
                                                bar_length=bar_length,
+                                               reference_linear_velocity=0.02,
+                                               reference_angular_velocity=0.05,
                                                grasp_axis_offset=grasp_axis_offset,
-                                               start_condition=first_open,
+                                               start_condition=local_min_pre_grasp,
                                                end_condition=bar_grasped_force)
 
         self.motion_goals.add_align_planes(tip_link=tip_link,
                                            tip_normal=x_gripper,
                                            goal_normal=x_goal,
                                            root_link=root_link,
-                                           start_condition=first_open,
+                                           start_condition=local_min_pre_grasp,
                                            end_condition=bar_grasped_force)
 
         goal_point = PointStamped()
         goal_point.header.frame_id = 'base_link'
 
         handle_retract_direction = Vector3Stamped()
-        handle_retract_direction.header.frame_id = handle_frame_suffix
+        handle_retract_direction.header.frame_id = handle_frame_id
         handle_retract_direction.vector.x = after_force_retract
 
         base_retract = tf.transform_vector(goal_point.header.frame_id, handle_retract_direction)
@@ -3251,13 +3271,16 @@ class GiskardWrapper:
         grasped = self.monitors.add_local_minimum_reached(name='grasped monitor',
                                                           start_condition=bar_grasped_force)
 
+        retracted = self.monitors.add_cartesian_position(root_link='map', tip_link='base_link', goal_point=goal_point,
+                                                         start_condition=bar_grasped_force)
+
         self.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='base_link',
                                                           goal_point=goal_point,
                                                           name='retract after hit',
                                                           start_condition=bar_grasped_force,
-                                                          end_condition=grasped)
+                                                          end_condition=retracted)
 
-        first_close = self.monitors.add_close_hsr_gripper(name='first close gripper', start_condition=grasped)
+        first_close = self.monitors.add_close_hsr_gripper(name='first close gripper', start_condition=retracted)
 
         half_open_joint = self.monitors.add_joint_position(name='half open joint',
                                                            goal_state={hinge_joint: goal_angle_half},
