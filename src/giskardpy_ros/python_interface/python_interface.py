@@ -51,7 +51,7 @@ from giskardpy.motion_graph.monitors.payload_monitors import Print, Sleep, SetMa
     PayloadAlternator
 from giskardpy.motion_graph.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy.utils.utils import get_all_classes_in_package
-from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath, RealTimePointing
+from giskardpy_ros.goals.realtime_goals import CarryMyBullshit, FollowNavPath, RealTimePointing, RealTimePointingFoV
 from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1 import tfwrapper as tf
 from giskardpy_ros.ros1.msg_converter import kwargs_to_json
@@ -996,7 +996,7 @@ class MotionGoalWrapper:
                              base_orientation_threshold: float = np.pi / 16,
                              tracked_human_position_topic_name_timeout: int = 30,
                              max_rotation_velocity: float = 0.5,
-                             max_rotation_velocity_head: float = 1,
+                             max_rotation_velocity_head: float = 1.0, # head speed
                              max_translation_velocity: float = 0.38,
                              traj_tracking_radius: float = 0.4,
                              height_for_camera_target: float = 1,
@@ -3134,7 +3134,7 @@ class GiskardWrapper:
         goal_angle_half = 0.6
         goal_angle_full = 1.35
         bar_length = 0.1
-        after_force_retract = 0.07
+        after_force_retract = 0.05
         env_name = 'iai_kitchen'
         gripper_group = 'gripper'
 
