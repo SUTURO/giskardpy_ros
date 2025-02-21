@@ -115,6 +115,7 @@ class CarryMyBullshit(Goal):
                  root_link: Optional[str] = None,
                  camera_link: str = 'head_rgbd_sensor_link',
                  distance_to_target_stop_threshold: float = 1,
+                 cone_theta: float = 0.2,
                  laser_scan_age_threshold: float = 2,
                  laser_distance_threshold: float = 0.5,
                  laser_distance_threshold_width: float = 0.8,
@@ -318,13 +319,22 @@ class CarryMyBullshit(Goal):
         map_P_human.z = self.height_for_camera_target
         root_V_camera_goal_axis = map_P_human - root_P_camera
         root_V_camera_goal_axis.scale(1)
+        root_V_goal_axis_proj = cas.project_to_cone(root_V_camera_axis, root_V_camera_goal_axis, cone_theta)
+        root_V_goal_axis_proj.vis_frame = self.tip
+        god_map.debug_expression_manager.add_debug_expression('cone_axis',
+                                                              root_V_goal_axis,
+                                                              color=ColorRGBA(r=1, g=1, b=0, a=1))
+        god_map.debug_expression_manager.add_debug_expression('projected_axis',
+                                                              root_V_goal_axis_proj,
+                                                              color=ColorRGBA(r=1, g=1, b=0, a=1))
+                     
         look_at_target = self.create_and_add_task('look at target')
         if not self.drive_back:
             look_at_target.hold_condition = target_lost.get_state_expression()
         # god_map.debug_expression_manager.add_debug_expression('human', map_P_human)
         # god_map.debug_expression_manager.add_debug_expression('root_P_camera', root_P_camera)
         look_at_target.add_vector_goal_constraints(frame_V_current=root_V_camera_axis,
-                                                   frame_V_goal=root_V_camera_goal_axis,
+                                                   frame_V_goal=root_V_goal_axis_proj,
                                                    reference_velocity=self.max_rotation_velocity_head,
                                                    weight=self.weight,
                                                    name='move camera')

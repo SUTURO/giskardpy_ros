@@ -1037,6 +1037,7 @@ class MotionGoalWrapper:
                              root_link: Optional[str] = None,
                              camera_link: str = 'head_rgbd_sensor_link',
                              distance_to_target_stop_threshold: float = 0.3,
+                             cone_theta: float = 0.2, # size of FoV cone
                              laser_scan_age_threshold: float = 2,
                              laser_distance_threshold: float = 0.5,
                              laser_distance_threshold_width: float = 0.8,
@@ -1103,6 +1104,7 @@ class MotionGoalWrapper:
                              root_link=root_link,
                              camera_link=camera_link,
                              distance_to_target_stop_threshold=distance_to_target_stop_threshold,
+                             cone_theta=cone_theta,
                              laser_scan_age_threshold=laser_scan_age_threshold,
                              laser_distance_threshold=laser_distance_threshold,
                              laser_distance_threshold_width=laser_distance_threshold_width,
