@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import rospy
-from geometry_msgs.msg import Vector3Stamped, PointStamped, Vector3, PoseStamped, Point
+from geometry_msgs.msg import Vector3Stamped, PointStamped, Vector3, PoseStamped, Point, PoseWithCovarianceStamped, \
+    QuaternionStamped
+from rospy import Publisher
 
 import giskardpy_ros.ros1.tfwrapper as tf
 from giskardpy.data_types.exceptions import ObjectForceTorqueThresholdException
@@ -8,7 +10,7 @@ from giskardpy.data_types.suturo_types import ForceTorqueThresholds
 from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 
 
-def setup():
+def setup(init_pose_pub: Publisher):
     handle_joint = "iai_kitchen/iai_kitchen:arena:door_handle_joint"
     hinge_joint = "iai_kitchen/iai_kitchen:arena:door_origin_revolute_joint"
     base_pose = PoseStamped()
@@ -18,12 +20,13 @@ def setup():
     base_pose.pose.orientation.z = -1
 
     odom = gis.monitors.add_local_minimum_reached()
+    joint_reset = gis.monitors.add_joint_position(goal_state={handle_joint: 0,
+                                                              hinge_joint: 0})
     gis.motion_goals.add_joint_position(goal_state={handle_joint: 0,
                                                     hinge_joint: 0})
-    sleep = gis.monitors.add_sleep(start_condition=odom, seconds=2)
-    gis.motion_goals.add_cartesian_pose(root_link='map', tip_link='base_footprint', goal_pose=base_pose,
-                                        end_condition=sleep)
-    gis.monitors.add_end_motion(start_condition=sleep)
+    gis.motion_goals.add_cartesian_pose(root_link='map', tip_link='base_footprint', goal_pose=base_pose)
+
+    gis.monitors.add_end_motion(start_condition=f'{joint_reset} and {odom}')
     gis.execute()
 
     gis.motion_goals.add_take_pose(pose_keyword='park')
@@ -38,6 +41,67 @@ def setup():
     gis.monitors.add_end_motion(start_condition=joints)
     gis.execute()
 
+    init_pose = PoseWithCovarianceStamped()
+    init_pose.header.frame_id = 'map'
+    init_pose.pose.pose = base_pose.pose
+    init_pose.pose.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                 0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
+                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853892326654787]
+
+    init_pose_pub.publish(init_pose)
+
+    rot_left = QuaternionStamped()
+    rot_left.header.frame_id = 'base_footprint'
+    rot_left.quaternion.z = 0.643
+    rot_left.quaternion.w = 0.766
+
+    rot_right = QuaternionStamped()
+    rot_right.header.frame_id = 'base_footprint'
+    rot_right.quaternion.z = 0.985
+    rot_right.quaternion.w = -0.174
+
+    starting_rot = QuaternionStamped()
+    starting_rot.header.frame_id = 'map'
+    starting_rot.quaternion.z = -1
+
+    rot_left_monitor = gis.monitors.add_cartesian_orientation(goal_orientation=rot_left,
+                                                              root_link='map',
+                                                              tip_link='base_footprint',
+                                                              name='rotation left monitor')
+    rot_right_monitor = gis.monitors.add_cartesian_orientation(goal_orientation=rot_right,
+                                                               root_link='map',
+                                                               tip_link='base_footprint',
+                                                               start_condition=rot_left_monitor,
+                                                               name='rotation right monitor')
+    rot_start_monitor = gis.monitors.add_cartesian_orientation(goal_orientation=starting_rot,
+                                                               root_link='map',
+                                                               tip_link='base_footprint',
+                                                               start_condition=rot_right_monitor,
+                                                               name='rotation start monitor')
+    gis.motion_goals.add_cartesian_orientation(goal_orientation=rot_left,
+                                               root_link='map',
+                                               tip_link='base_footprint',
+                                               end_condition=rot_left_monitor,
+                                               name='rotation left goal')
+    gis.motion_goals.add_cartesian_orientation(goal_orientation=rot_right,
+                                               root_link='map',
+                                               tip_link='base_footprint',
+                                               start_condition=rot_left_monitor,
+                                               end_condition=rot_right_monitor,
+                                               name='rotation right goal')
+    gis.motion_goals.add_cartesian_orientation(goal_orientation=starting_rot,
+                                               root_link='map',
+                                               tip_link='base_footprint',
+                                               start_condition=rot_right_monitor,
+                                               end_condition=rot_start_monitor,
+                                               name='rotation start goal')
+
+    gis.monitors.add_end_motion(start_condition=rot_start_monitor)
+    gis.execute()
+
 
 def grasping():
     handle_name = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
@@ -49,7 +113,7 @@ def grasping():
     bar_center_offset = 0.02
     pre_grasp_distance = 0.15
     grasp_into_distance = -0.1
-    ft_timeout = 10
+    ft_timeout = 10000
 
     bar_axis = Vector3Stamped()
     bar_axis.header.frame_id = handle_name
@@ -175,7 +239,7 @@ def full_opening():
 
     handle_name = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
     handle_turn_limit = 0.35
-    hinge_turn_limit = -0.8
+    hinge_turn_limit = -1.3
 
     gis.motion_goals.hsrb_open_door_goal(door_handle_link=handle_name, handle_limit=handle_turn_limit,
                                          hinge_limit=hinge_turn_limit)
@@ -186,10 +250,14 @@ def full_opening():
 
 rospy.init_node('giskard_demo')
 
+init_pub = rospy.Publisher('/initialpose', data_class=PoseWithCovarianceStamped, queue_size=10)
+
 gis = GiskardWrapper()
 test = 0
 
-setup()
+setup(init_pose_pub=init_pub)
+
+# input("Setup finished?")
 
 if test == 1:
     full_opening()
