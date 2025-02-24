@@ -3090,8 +3090,8 @@ class GiskardWrapper:
                             offset_x: float = 0.03,
                             offset_y: float = 0.01,
                             offset_z: float = -0.15,
-                            left_handle: str = 'shelf_hohc:shelf_door_left:handle',
-                            left_door: str = 'shelf_hohc:shelf_door_left'):
+                            left_handle: str = 'shelf_billy:shelf_billy:shelf_door_left:handle',
+                            left_door: str = 'shelf_billy:shelf_billy:shelf_door_left'):
         """
         Pre-Pose for opening the shelf
 
@@ -3104,19 +3104,20 @@ class GiskardWrapper:
         if left_door not in self.world.get_group_names():
             self.world.register_group(new_group_name=left_door,
                                       root_link_name=giskard_msgs.LinkName(name=left_door,
-                                                                           group_name='suturo_shelf_hohc'))
+                                                                           group_name='iai_kitchen'))
 
         first_goal = PoseStamped()
         first_goal.header.frame_id = left_handle
         first_goal.pose.position.x = offset_x
         first_goal.pose.position.y = offset_y
         first_goal.pose.position.z = offset_z
-        first_goal.pose.orientation = Quaternion(*quaternion_from_matrix(np.array([[0, 1, 0, 0],
+        first_goal.pose.orientation = Quaternion(*quaternion_from_matrix(np.array([[-1, 0, 0, 0],
                                                                                    [0, 0, 1, 0],
-                                                                                   [1, 0, 0, 0],
+                                                                                   [0, 1, 0, 0],
                                                                                    [0, 0, 0, 1]])))
 
-        pre_grasp_reached = self.monitors.add_cartesian_pose(goal_pose=first_goal,
+        pre_grasp_reached = self.monitors.add_cartesian_pose(name='pre first goal monitor',
+                                                             goal_pose=first_goal,
                                                              tip_link='hand_gripper_tool_frame',
                                                              root_link='map',
                                                              position_threshold=0.06)
@@ -3124,7 +3125,8 @@ class GiskardWrapper:
         self.motion_goals.allow_collision(group1='gripper', group2=left_door,
                                           start_condition=pre_grasp_reached)
 
-        grasp_reached = self.monitors.add_cartesian_pose(goal_pose=first_goal,
+        grasp_reached = self.monitors.add_cartesian_pose(name='first goal monitor',
+                                                         goal_pose=first_goal,
                                                          tip_link='hand_gripper_tool_frame',
                                                          root_link='map')
 
@@ -3137,8 +3139,8 @@ class GiskardWrapper:
         self.monitors.add_end_motion(start_condition=grasp_reached)
 
     def open_shelf_door(self,
-                        left_handle: str = 'shelf_hohc:shelf_door_left:handle',
-                        left_door: str = 'shelf_hohc:shelf_door_left'):
+                        left_handle: str = 'shelf_billy:shelf_billy:shelf_door_left:handle',
+                        left_door: str = 'shelf_billy:shelf_billy:shelf_door_left'):
         """
         Opens the shelf door.
         Requires the pre-pose to be reached and the gripper to be closed
@@ -3148,33 +3150,16 @@ class GiskardWrapper:
         """
         if left_door not in self.world.get_group_names():
             self.world.register_group(new_group_name=left_door,
-                                      root_link_group_name='suturo_shelf_hohc',
-                                      root_link_name=left_door)
+                                      root_link_name=giskard_msgs.LinkName(name=left_door,
+                                                                           group_name='iai_kitchen'))
 
-        first_goal = PoseStamped()
-        first_goal.header.frame_id = left_handle
-        first_goal.pose.position.x = 0.03
-        first_goal.pose.position.y = 0.01
-        first_goal.pose.position.z = -0.15
-        first_goal.pose.orientation = Quaternion(*quaternion_from_matrix(np.array([[0, 1, 0, 0],
-                                                                                   [0, 0, 1, 0],
-                                                                                   [1, 0, 0, 0],
-                                                                                   [0, 0, 0, 1]])))
-
-        pre_grasp_reached = self.monitors.add_cartesian_pose(goal_pose=first_goal,
-                                                             tip_link='hand_gripper_tool_frame',
-                                                             root_link='map',
-                                                             position_threshold=0.06)
-        self.motion_goals.avoid_all_collisions(end_condition=pre_grasp_reached)
-        self.motion_goals.allow_collision(group1='gripper', group2=left_door,
-                                          start_condition=pre_grasp_reached)
+        self.motion_goals.allow_collision(group1='gripper', group2=left_door)
 
         self.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame',
                                              environment_link=left_handle,
-                                             goal_joint_state=-1.7,
-                                             start_condition='')
+                                             goal_joint_state=-1.7)
 
-        local_min = self.monitors.add_local_minimum_reached('done', start_condition='')
+        local_min = self.monitors.add_local_minimum_reached('done')
         self.monitors.add_end_motion(local_min)
 
     def hsrb_dishwasher_test(self, handle_frame_id: str, hinge_joint: str, door_hinge_frame_id: str):
