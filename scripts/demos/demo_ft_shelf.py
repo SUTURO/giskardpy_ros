@@ -2,27 +2,16 @@
 import rospy
 from geometry_msgs.msg import PoseStamped, PointStamped, Vector3Stamped, Point
 
-from giskardpy.data_types.suturo_types import ForceTorqueThresholds
+from giskardpy.data_types.suturo_types import ForceTorqueThresholds, TakePoseTypes
 from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 from giskardpy_ros.ros1 import tfwrapper as tf
 
-rospy.init_node('giskard_demo')
 
-gis = GiskardWrapper()
-
-handle_left_id = 'shelf_billy:shelf_billy:shelf_door_left:handle'
-hinge_left_joint = 'shelf_billy:shelf_billy:shelf_door_left:joint'
-handle_right_id = 'shelf_billy:shelf_billy:shelf_door_right:handle'
-hinge_right_joint = 'shelf_billy:shelf_billy:shelf_door_right:joint'
-
-handles = [(handle_left_id, hinge_left_joint), (handle_right_id, hinge_right_joint)]
-second = False
-
-for (handle_id, hinge_joint) in handles:
+def setup(hinge_joint):
     base_pose = PoseStamped()
     base_pose.header.frame_id = 'map'
     base_pose.pose.position.x = 4.3
-    base_pose.pose.position.y = 4
+    base_pose.pose.position.y = 3.8
     base_pose.pose.orientation.w = 1
 
     odom = gis.monitors.add_local_minimum_reached()
@@ -32,12 +21,12 @@ for (handle_id, hinge_joint) in handles:
     gis.motion_goals.add_joint_position(goal_state={hinge_joint: 0}, name='door hinge monitor')
     gis.motion_goals.add_cartesian_pose(root_link='map', tip_link='base_footprint', goal_pose=base_pose)
 
-    gis.motion_goals.add_take_pose(pose_keyword='park')
+    gis.motion_goals.add_take_pose(pose_keyword=TakePoseTypes.PARK_LEFT.value)
     joints = gis.monitors.add_joint_position(goal_state={'head_pan_joint': 0.0,
                                                          'head_tilt_joint': 0.0,
                                                          'arm_lift_joint': 0.0,
                                                          'arm_flex_joint': 0.0,
-                                                         'arm_roll_joint': -1.5,
+                                                         'arm_roll_joint': 1.5,
                                                          'wrist_flex_joint': -1.5,
                                                          'wrist_roll_joint': 0.0},
                                              threshold=0.05,
@@ -46,40 +35,46 @@ for (handle_id, hinge_joint) in handles:
     gis.monitors.add_end_motion(start_condition=f'{joint_reset} and {odom} and {joints}')
     gis.execute()
 
+
+def right_door(handle_id):
     bar_center = PointStamped()
     bar_center.header.frame_id = handle_id
 
     bar_axis = Vector3Stamped()
     bar_axis.header.frame_id = handle_id
-    bar_axis.vector.y = 1
+    bar_axis.vector.z = 1
 
     tip_grasp_axis = Vector3Stamped()
     tip_grasp_axis.header.frame_id = 'hand_gripper_tool_frame'
-    tip_grasp_axis.vector.x = 1
+    tip_grasp_axis.vector.z = 1
 
-    x_gripper = Vector3Stamped()
-    x_gripper.header.frame_id = 'hand_gripper_tool_frame'
-    x_gripper.vector.z = 1
+    align_gripper = Vector3Stamped()
+    align_gripper.header.frame_id = 'hand_gripper_tool_frame'
+    align_goal = Vector3Stamped()
+    align_goal.header.frame_id = handle_id
 
-    x_goal = Vector3Stamped()
-    x_goal.header.frame_id = handle_id
-    x_goal.vector.z = 1
+    if vertical_grasp:
+        align_gripper.vector.y = -1
+        align_goal.vector.x = 1
+    else:
+        align_gripper.vector.x = -1
+        align_goal.vector.x = 1
+
+    gis.motion_goals.add_align_planes(name='pre grasp align z',
+                                      tip_link='hand_gripper_tool_frame',
+                                      tip_normal=align_gripper,
+                                      goal_normal=align_goal,
+                                      root_link='map')
 
     pre_grasp_offset = Vector3Stamped()
     pre_grasp_offset.header.frame_id = handle_id
-    pre_grasp_offset.vector.z = -0.1
+    pre_grasp_offset.vector.z = -0.05
 
     ft_offset = Vector3Stamped()
     ft_offset.header.frame_id = handle_id
     ft_offset.vector.z = 0.1
 
     gis.monitors.add_open_hsr_gripper()
-
-    gis.motion_goals.add_align_planes(name='pre grasp align',
-                                      tip_link='hand_gripper_tool_frame',
-                                      tip_normal=x_gripper,
-                                      goal_normal=x_goal,
-                                      root_link='map')
 
     local_min_pre_grasp = gis.monitors.add_local_minimum_reached(name='pre grasp local min')
     gis.motion_goals.add_grasp_bar_offset(name='pre grasp bar',
@@ -126,32 +121,63 @@ for (handle_id, hinge_joint) in handles:
     gis.monitors.add_end_motion(start_condition=close_gripper)
     gis.execute()
 
-    if second:
-        x_goal = Vector3Stamped()
-        x_goal.header.frame_id = handle_id
-        x_goal.vector.z = 1
+    align_goal = Vector3Stamped()
+    align_goal.header.frame_id = handle_id
+    align_goal.vector.z = -1
 
-        x_base = Vector3Stamped()
-        x_base.header.frame_id = 'base_link'
-        x_base.vector.y = -1
+    x_base = Vector3Stamped()
+    x_base.header.frame_id = 'base_link'
+    x_base.vector.y = 1
 
-        gis.motion_goals.add_align_planes(goal_normal=x_goal, tip_link='base_link', tip_normal=x_base, root_link='map')
-        gis.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame', environment_link=handle_id)
-    else:
-        x_goal = Vector3Stamped()
-        x_goal.header.frame_id = handle_id
-        x_goal.vector.z = 1
-
-        x_base = Vector3Stamped()
-        x_base.header.frame_id = 'base_link'
-        x_base.vector.y = 1
-
-        gis.motion_goals.add_align_planes(goal_normal=x_goal, tip_link='base_link', tip_normal=x_base, root_link='map')
-        gis.motion_goals.add_close_container(tip_link='hand_gripper_tool_frame', environment_link=handle_id)
-        second = True
+    gis.motion_goals.add_align_planes(goal_normal=align_goal, tip_link='base_link', tip_normal=x_base, root_link='map')
+    gis.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame', environment_link=handle_id)
 
     local_min = gis.monitors.add_local_minimum_reached()
     open_gripper = gis.monitors.add_open_hsr_gripper(start_condition=local_min)
 
     gis.monitors.add_end_motion(start_condition=open_gripper)
     gis.execute()
+
+
+def left_door():
+    gis.monitors.add_open_hsr_gripper()
+    js = {'hand_motor_joint': 1.23}
+    gis.motion_goals.add_joint_position(js)
+    gis.motion_goals.allow_all_collisions()
+    gis.add_default_end_motion_conditions()
+    gis.execute()
+
+    gis.pre_pose_shelf_open(offset_x=-0.1,
+                            offset_y=-0.01,
+                            offset_z=0.03)
+    gis.execute()
+
+    gis.monitors.add_close_hsr_gripper()
+    js = {'hand_motor_joint': 0}
+    gis.motion_goals.add_joint_position(js)
+    gis.motion_goals.allow_all_collisions()
+    gis.add_default_end_motion_conditions()
+    gis.execute()
+
+    gis.open_shelf_door()
+    gis.execute()
+
+
+rospy.init_node('giskard_demo')
+
+gis = GiskardWrapper()
+
+vertical_grasp = True
+
+handle_left_id = 'shelf_billy:shelf_billy:shelf_door_left:handle'
+hinge_left_joint = 'shelf_billy:shelf_billy:shelf_door_left:joint'
+handle_id = 'shelf_billy:shelf_billy:shelf_door_right:handle'
+hinge_joint = 'shelf_billy:shelf_billy:shelf_door_right:joint'
+
+setup(hinge_joint)
+
+right_door(handle_id)
+
+setup(hinge_left_joint)
+
+left_door()
