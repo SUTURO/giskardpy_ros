@@ -50,18 +50,12 @@ def setup(init_pose_pub: Publisher):
                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                  0.0, 0.0, 0.0, 0.0, 0.0, 0.06853892326654787]
-
     init_pose_pub.publish(init_pose)
 
     rot_left = QuaternionStamped()
     rot_left.header.frame_id = 'base_footprint'
     rot_left.quaternion.z = 0.643
     rot_left.quaternion.w = 0.766
-
-    rot_right = QuaternionStamped()
-    rot_right.header.frame_id = 'base_footprint'
-    rot_right.quaternion.z = 0.985
-    rot_right.quaternion.w = -0.174
 
     starting_rot = QuaternionStamped()
     starting_rot.header.frame_id = 'map'
@@ -71,31 +65,21 @@ def setup(init_pose_pub: Publisher):
                                                               root_link='map',
                                                               tip_link='base_footprint',
                                                               name='rotation left monitor')
-    rot_right_monitor = gis.monitors.add_cartesian_orientation(goal_orientation=rot_right,
-                                                               root_link='map',
-                                                               tip_link='base_footprint',
-                                                               start_condition=rot_left_monitor,
-                                                               name='rotation right monitor')
     rot_start_monitor = gis.monitors.add_cartesian_orientation(goal_orientation=starting_rot,
                                                                root_link='map',
                                                                tip_link='base_footprint',
-                                                               start_condition=rot_right_monitor,
+                                                               start_condition=rot_left_monitor,
+                                                               threshold=0.03,
                                                                name='rotation start monitor')
     gis.motion_goals.add_cartesian_orientation(goal_orientation=rot_left,
                                                root_link='map',
                                                tip_link='base_footprint',
                                                end_condition=rot_left_monitor,
                                                name='rotation left goal')
-    gis.motion_goals.add_cartesian_orientation(goal_orientation=rot_right,
-                                               root_link='map',
-                                               tip_link='base_footprint',
-                                               start_condition=rot_left_monitor,
-                                               end_condition=rot_right_monitor,
-                                               name='rotation right goal')
     gis.motion_goals.add_cartesian_orientation(goal_orientation=starting_rot,
                                                root_link='map',
                                                tip_link='base_footprint',
-                                               start_condition=rot_right_monitor,
+                                               start_condition=rot_left_monitor,
                                                end_condition=rot_start_monitor,
                                                name='rotation start goal')
 
@@ -109,11 +93,11 @@ def grasping():
     tip = 'hand_gripper_tool_frame'
     handle_length = 0.01
     ref_speed = 0.3
-    handle_retract_distance = 0.077
-    bar_center_offset = 0.02
+    handle_retract_distance = 0.063
+    bar_center_offset = 0.01
     pre_grasp_distance = 0.15
     grasp_into_distance = -0.1
-    ft_timeout = 10000
+    ft_timeout = 10
 
     bar_axis = Vector3Stamped()
     bar_axis.header.frame_id = handle_name
@@ -125,7 +109,6 @@ def grasping():
 
     bar_center = PointStamped()
     bar_center.header.frame_id = handle_name
-    bar_center.point.y = bar_center_offset
 
     x_gripper = Vector3Stamped()
     x_gripper.header.frame_id = tip
@@ -140,6 +123,7 @@ def grasping():
     offset_pre = Vector3Stamped()
     offset_pre.header.frame_id = tip
     offset_pre.vector.y = pre_grasp_distance
+    offset_pre.vector.z = bar_center_offset
 
     gis.motion_goals.add_joint_position(goal_state={hinge_joint: 0})
 
@@ -165,6 +149,7 @@ def grasping():
     offset = Vector3Stamped()
     offset.header.frame_id = tip
     offset.vector.y = grasp_into_distance
+    offset.vector.z = bar_center_offset
 
     slep = gis.monitors.add_sleep(seconds=ft_timeout, start_condition=open_gripper)
     force = gis.monitors.add_force_torque(threshold_enum=ForceTorqueThresholds.DOOR.value, object_type='',
@@ -184,8 +169,8 @@ def grasping():
 
     goal_point.point = Point(base_retract.vector.x, base_retract.vector.y, base_retract.vector.z)
 
-    gis.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='base_link',
-                                                     goal_point=goal_point, start_condition=force)
+    gis.motion_goals.add_cartesian_position(root_link='map', tip_link='base_link', reference_velocity=0.05,
+                                            goal_point=goal_point, start_condition=force)
     grasped = gis.monitors.add_cartesian_position(root_link='map', tip_link='base_link', goal_point=goal_point,
                                                   name='grasped monitor', start_condition=force)
 
