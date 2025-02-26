@@ -7,7 +7,7 @@ from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 from giskardpy_ros.ros1 import tfwrapper as tf
 
 
-def setup(hinge_joint):
+def setup(hinge_joint, takepose: str):
     base_pose = PoseStamped()
     base_pose.header.frame_id = 'map'
     base_pose.pose.position.x = 4.3
@@ -21,22 +21,33 @@ def setup(hinge_joint):
     gis.motion_goals.add_joint_position(goal_state={hinge_joint: 0}, name='door hinge monitor')
     gis.motion_goals.add_cartesian_pose(root_link='map', tip_link='base_footprint', goal_pose=base_pose)
 
-    gis.motion_goals.add_take_pose(pose_keyword=TakePoseTypes.PARK_LEFT.value)
-    joints = gis.monitors.add_joint_position(goal_state={'head_pan_joint': 0.0,
-                                                         'head_tilt_joint': 0.0,
-                                                         'arm_lift_joint': 0.0,
-                                                         'arm_flex_joint': 0.0,
-                                                         'arm_roll_joint': 1.5,
-                                                         'wrist_flex_joint': -1.5,
-                                                         'wrist_roll_joint': 0.0},
-                                             threshold=0.05,
-                                             name='park arms monitor')
+    gis.motion_goals.add_take_pose(pose_keyword=takepose)
+    if takepose == TakePoseTypes.PARK_LEFT.value:
+        joints = gis.monitors.add_joint_position(goal_state={'head_pan_joint': 0.0,
+                                                             'head_tilt_joint': 0.0,
+                                                             'arm_lift_joint': 0.0,
+                                                             'arm_flex_joint': 0.0,
+                                                             'arm_roll_joint': 1.5,
+                                                             'wrist_flex_joint': -1.5,
+                                                             'wrist_roll_joint': 0.0},
+                                                 threshold=0.05,
+                                                 name='park arms monitor')
+    else:
+        joints = gis.monitors.add_joint_position(goal_state={'head_pan_joint': 0.0,
+                                                             'head_tilt_joint': 0.0,
+                                                             'arm_lift_joint': 0.0,
+                                                             'arm_flex_joint': 0.0,
+                                                             'arm_roll_joint': -1.5,
+                                                             'wrist_flex_joint': -1.5,
+                                                             'wrist_roll_joint': 0.0},
+                                                 threshold=0.05,
+                                                 name='park arms monitor')
 
     gis.monitors.add_end_motion(start_condition=f'{joint_reset} and {odom} and {joints}')
     gis.execute()
 
 
-def right_door(handle_id):
+def right_door(handle_id, hinge_joint):
     bar_center = PointStamped()
     bar_center.header.frame_id = handle_id
 
@@ -97,6 +108,8 @@ def right_door(handle_id):
                                           bar_axis=bar_axis,
                                           bar_length=0.001,
                                           grasp_axis_offset=ft_offset,
+                                          reference_linear_velocity=0.01,
+                                          reference_angular_velocity=0.05,
                                           start_condition=local_min_pre_grasp,
                                           end_condition=ft_monitor)
 
@@ -105,14 +118,15 @@ def right_door(handle_id):
 
     handle_retract_direction = Vector3Stamped()
     handle_retract_direction.header.frame_id = handle_id
-    handle_retract_direction.vector.z = -0.1
+    handle_retract_direction.vector.z = -0.06
 
     base_retract = tf.transform_vector(goal_point.header.frame_id, handle_retract_direction)
 
     goal_point.point = Point(base_retract.vector.x, base_retract.vector.y, base_retract.vector.z)
 
-    gis.motion_goals.add_cartesian_position_straight(root_link='map', tip_link='base_link',
-                                                     goal_point=goal_point, start_condition=ft_monitor)
+    gis.motion_goals.add_cartesian_position(root_link='map', tip_link='base_link',
+                                            goal_point=goal_point, start_condition=ft_monitor,
+                                            reference_velocity=0.02)
     grasped = gis.monitors.add_cartesian_position(root_link='map', tip_link='base_link', goal_point=goal_point,
                                                   name='grasped monitor', start_condition=ft_monitor)
 
@@ -129,37 +143,48 @@ def right_door(handle_id):
     x_base.header.frame_id = 'base_link'
     x_base.vector.y = 1
 
-    gis.motion_goals.add_align_planes(goal_normal=align_goal, tip_link='base_link', tip_normal=x_base, root_link='map')
-    gis.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame', environment_link=handle_id)
+    door_open = gis.monitors.add_joint_position(goal_state={hinge_joint: 1.5})
+    open_gripper = gis.monitors.add_open_hsr_gripper(start_condition=door_open)
 
-    local_min = gis.monitors.add_local_minimum_reached()
-    open_gripper = gis.monitors.add_open_hsr_gripper(start_condition=local_min)
+    gis.motion_goals.add_align_planes(goal_normal=align_goal, tip_link='base_link', tip_normal=x_base, root_link='map',
+                                      end_condition=door_open)
+    gis.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame', environment_link=handle_id,
+                                        end_condition=door_open)
 
     gis.monitors.add_end_motion(start_condition=open_gripper)
     gis.execute()
 
 
 def left_door():
-    gis.monitors.add_open_hsr_gripper()
-    js = {'hand_motor_joint': 1.23}
-    gis.motion_goals.add_joint_position(js)
-    gis.motion_goals.allow_all_collisions()
-    gis.add_default_end_motion_conditions()
-    gis.execute()
+    #     open_gripper = gis.monitors.add_open_hsr_gripper()
+    #     # js = {'hand_motor_joint': 1.23}
+    #     # gis.motion_goals.add_joint_position(js)
+    #     # gis.motion_goals.allow_all_collisions()
+    #     gis.monitors.add_end_motion(start_condition=open_gripper)
+    #     gis.execute()
 
-    gis.pre_pose_shelf_open(offset_x=-0.1,
+    gis.pre_pose_shelf_open(offset_x=-0.18,
                             offset_y=-0.01,
                             offset_z=0.03)
     gis.execute()
 
-    gis.monitors.add_close_hsr_gripper()
-    js = {'hand_motor_joint': 0}
-    gis.motion_goals.add_joint_position(js)
-    gis.motion_goals.allow_all_collisions()
-    gis.add_default_end_motion_conditions()
+    close_gripper = gis.monitors.add_close_hsr_gripper()
+    goal_pose = PoseStamped()
+    goal_pose.header.frame_id = 'base_footprint'
+    goal_pose.pose.orientation.w = 1
+    gis.motion_goals.add_cartesian_pose(goal_pose=goal_pose, root_link='map', tip_link='base_footprint')
+    gis.monitors.add_end_motion(start_condition=close_gripper)
     gis.execute()
 
     gis.open_shelf_door()
+    gis.execute()
+
+    open_gripper = gis.monitors.add_open_hsr_gripper()
+    goal_pose = PoseStamped()
+    goal_pose.header.frame_id = 'base_footprint'
+    goal_pose.pose.orientation.w = 1
+    gis.motion_goals.add_cartesian_pose(goal_pose=goal_pose, root_link='map', tip_link='base_footprint')
+    gis.monitors.add_end_motion(start_condition=open_gripper)
     gis.execute()
 
 
@@ -169,15 +194,15 @@ gis = GiskardWrapper()
 
 vertical_grasp = True
 
-handle_left_id = 'shelf_billy:shelf_billy:shelf_door_left:handle'
-hinge_left_joint = 'shelf_billy:shelf_billy:shelf_door_left:joint'
-handle_id = 'shelf_billy:shelf_billy:shelf_door_right:handle'
-hinge_joint = 'shelf_billy:shelf_billy:shelf_door_right:joint'
+handle_left_id = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_left:handle'
+hinge_left_joint = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_left:joint'
+handle_id = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_right:handle'
+hinge_joint = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_right:joint'
 
-setup(hinge_joint)
+# setup(hinge_joint, TakePoseTypes.PARK.value)
+#
+# right_door(handle_id, hinge_joint)
 
-right_door(handle_id)
-
-setup(hinge_left_joint)
+setup(hinge_left_joint, TakePoseTypes.PARK_LEFT.value)
 
 left_door()

@@ -3120,19 +3120,22 @@ class GiskardWrapper:
                                                              goal_pose=first_goal,
                                                              tip_link='hand_gripper_tool_frame',
                                                              root_link='map',
-                                                             position_threshold=0.06)
+                                                             position_threshold=0.08,
+                                                             orientation_threshold=0.04)
         self.motion_goals.avoid_all_collisions(end_condition=pre_grasp_reached)
-        self.motion_goals.allow_collision(group1='gripper', group2=left_door,
-                                          start_condition=pre_grasp_reached)
+        self.motion_goals.allow_collision(group1='gripper', group2=left_door, start_condition=pre_grasp_reached)
 
         grasp_reached = self.monitors.add_cartesian_pose(name='first goal monitor',
                                                          goal_pose=first_goal,
                                                          tip_link='hand_gripper_tool_frame',
-                                                         root_link='map')
+                                                         root_link='map',
+                                                         position_threshold=0.04)
 
         self.motion_goals.add_cartesian_pose(goal_pose=first_goal,
                                              tip_link='hand_gripper_tool_frame',
                                              root_link='map',
+                                             reference_linear_velocity=0.05,
+                                             reference_angular_velocity=0.25,
                                              weight=WEIGHT_BELOW_CA,
                                              end_condition=grasp_reached)
 
@@ -3140,13 +3143,15 @@ class GiskardWrapper:
 
     def open_shelf_door(self,
                         left_handle: str = 'shelf_billy:shelf_billy:shelf_door_left:handle',
-                        left_door: str = 'shelf_billy:shelf_billy:shelf_door_left'):
+                        left_door: str = 'shelf_billy:shelf_billy:shelf_door_left',
+                        left_door_hinge: str = 'shelf_billy:shelf_billy:shelf_door_left:joint'):
         """
         Opens the shelf door.
         Requires the pre-pose to be reached and the gripper to be closed
 
         :param left_handle: Left door handle of the shelf
         :param left_door: Main Link of the left door
+        :param left_door_hinge: Hinge Joint of the left door
         """
         if left_door not in self.world.get_group_names():
             self.world.register_group(new_group_name=left_door,
@@ -3157,10 +3162,10 @@ class GiskardWrapper:
 
         self.motion_goals.add_open_container(tip_link='hand_gripper_tool_frame',
                                              environment_link=left_handle,
-                                             goal_joint_state=-1.7)
+                                             goal_joint_state=-1.5)
 
-        local_min = self.monitors.add_local_minimum_reached('done')
-        self.monitors.add_end_motion(local_min)
+        open_door = self.monitors.add_joint_position({left_door_hinge: -1.5})
+        self.monitors.add_end_motion(open_door)
 
     def hsrb_dishwasher_test(self, handle_frame_id: str, hinge_joint: str, door_hinge_frame_id: str):
         # TODO: move to Pycram and make parameters better available
