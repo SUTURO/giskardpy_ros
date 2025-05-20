@@ -287,9 +287,12 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
     def __init__(self, debug_mode: bool = False,
                  visualization_mode: VisualizationMode = VisualizationMode.CollisionsDecomposed,
                  publish_free_variables: bool = False,
-                 add_tf_pub: bool = False):
+                 add_tf_pub: bool = False,
+                 add_environment_pub: bool = True,
+                 environment_topic: str = 'kitchen/cram_joint_states',
+                 environment_group: str = 'iai_kitchen'):
         """
-        The default configuration for Giskard in closed loop mode. Make use to set up the robot interface accordingly.
+        The default configuration for Giskard in closed loop mode. Make, use to set up the robot interface accordingly.
         :param debug_mode: If True, will publish debug data on topics. This will significantly slow down the control loop.
         """
         super().__init__(ControlModes.close_loop)
@@ -299,6 +302,9 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
         self.publish_free_variables = publish_free_variables
         self.add_tf_pub = add_tf_pub
         self.visualization_mode = visualization_mode
+        self.add_environment_pub = add_environment_pub
+        self.environment_topic = environment_topic
+        self.environment_group = environment_group
 
     def setup(self):
         self.add_visualization_marker_publisher(add_to_sync=True, add_to_control_loop=True,
@@ -321,9 +327,10 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
         if self.add_tf_pub:
             self.add_tf_publisher(include_prefix=True, mode=TfPublishingModes.all)
 
-        self.add_free_variable_publisher(include_prefix=False,
-                                         topic_name='kitchen/cram_joint_states',
-                                         group_name='iai_kitchen')
+        if self.add_environment_pub:
+            self.add_free_variable_publisher(include_prefix=False,
+                                             topic_name=self.environment_topic,
+                                             group_name=self.environment_group)
         self.add_hsr_controller()
 
     def add_hsr_controller(self):
