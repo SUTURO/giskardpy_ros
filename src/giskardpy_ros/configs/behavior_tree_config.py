@@ -288,7 +288,7 @@ class ClosedLoopBTConfig(BehaviorTreeConfig):
                  visualization_mode: VisualizationMode = VisualizationMode.CollisionsDecomposed,
                  publish_free_variables: bool = False,
                  add_tf_pub: bool = False,
-                 add_environment_pub: bool = True,
+                 add_environment_pub: bool = False,
                  environment_topic: str = 'kitchen/cram_joint_states',
                  environment_group: str = 'iai_kitchen'):
         """
