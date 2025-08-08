@@ -22,9 +22,9 @@ class PublishState(Sequence):
         self.debug_marker_publisher = None
 
     @toggle_on('visualization_marker_behavior')
-    def add_visualization_marker_behavior(self, mode: VisualizationMode):
+    def add_visualization_marker_behavior(self, mode: VisualizationMode, scale_scale: float = 1.0, include_tf_predix: bool = False):
         if self.visualization_behavior is None:
-            self.visualization_behavior = VisualizationBehavior(mode)
+            self.visualization_behavior = VisualizationBehavior(mode, scale_scale=scale_scale, include_tf_predix=include_tf_predix)
         self.add_child(self.visualization_behavior)
 
     @toggle_off('visualization_marker_behavior')

@@ -4,6 +4,7 @@ from line_profiler import profile
 from py_trees import Status
 from visualization_msgs.msg import MarkerArray, Marker
 
+from giskardpy.debug_expression_manager import DebugExpressionManager
 from giskardpy.god_map import god_map
 from giskardpy.model.collision_world_syncer import Collisions
 from giskardpy.utils.decorators import record_time
@@ -40,8 +41,7 @@ class CleanUp(GiskardBehavior):
         god_map.closest_point = Collisions(1)
         god_map.time = 0
         god_map.control_cycle_counter = 1
-        god_map.monitor_manager.reset()
-        god_map.motion_goal_manager.reset()
+        god_map.motion_statechart_manager.reset()
         god_map.debug_expression_manager.reset()
 
         if hasattr(self.get_blackboard(), 'runtime'):

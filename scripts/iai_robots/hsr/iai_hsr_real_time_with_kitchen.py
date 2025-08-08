@@ -21,5 +21,7 @@ if __name__ == '__main__':
                                                               add_tf_pub=False, add_environment_pub=True),
                       qp_controller_config=QPControllerConfig(mpc_dt=0.017,
                                                               prediction_horizon=15,
-                                                              control_dt=0.017))  # TODO: test 70 HZ dt + 10 PH
+                                                              control_dt=0.017),
+                      additional_monitor_package_paths=['giskardpy_ros.monitors'],
+                      additional_task_package_paths=['giskardpy_ros.tasks'])  # TODO: test 70 HZ dt + 10 PH
     giskard.live()

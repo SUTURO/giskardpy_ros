@@ -133,7 +133,10 @@ class PublishDebugExpressions(GiskardBehavior):
     @record_time
     @profile
     def update(self):
-        qp_controller: QPController = god_map.qp_controller
-        msg = self.create_msg(qp_controller)
-        self.publisher.publish(msg)
+        try:
+            qp_controller: QPController = god_map.qp_controller
+            msg = self.create_msg(qp_controller)
+            self.publisher.publish(msg)
+        except AttributeError as e:
+            pass  # might be called without a qp controller running
         return Status.SUCCESS

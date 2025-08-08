@@ -2,6 +2,7 @@ import numpy as np
 import rospy
 
 from giskardpy.model.collision_avoidance_config import CollisionAvoidanceConfig
+from giskardpy.model.joints import FixedJoint, Joint6DOF
 from giskardpy.model.world_config import WorldConfig
 from giskardpy_ros.configs.robot_interface_config import StandAloneRobotInterfaceConfig, RobotInterfaceConfig
 from giskardpy.data_types.data_types import PrefixName, Derivatives
@@ -96,6 +97,17 @@ class SuturoArenaWithHSRConfig(WorldWithHSRConfig):
         kitchen_pose = tf.lookup_pose(self.map_name, 'iai_kitchen/urdf_main')
         self.add_fixed_joint(parent_link=self.map_name, child_link=root_link_name,
                              homogenous_transform=msg_converter.ros_msg_to_giskard_obj(kitchen_pose.pose, god_map.world))
+
+        # Creates fake 6dof joint between door and room to manipulate door location for handle_offset_task
+        for joint in [joint for joint in self.world.joints if 'door_hinge_joint' in joint]:
+            moveable_door_joint: FixedJoint = self.world.joints[self.world.search_for_joint_name(joint.short_name)]
+            parent_T_child = moveable_door_joint.parent_T_child
+            del self.world.joints[moveable_door_joint.name]
+            self.add_6dof_joint(parent_link=moveable_door_joint.parent_link_name, child_link=moveable_door_joint.child_link_name,
+                                joint_name=moveable_door_joint.name)
+            moveable_door_joint: Joint6DOF = self.world.joints[self.world.search_for_joint_name(joint.short_name)]
+            moveable_door_joint.update_transform(parent_T_child)
+
 
 
 class HSRCollisionAvoidanceConfig(CollisionAvoidanceConfig):

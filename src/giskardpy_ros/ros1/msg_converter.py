@@ -17,7 +17,8 @@ import trajectory_msgs.msg as trajectory_msgs
 import tf2_msgs.msg as tf2_msgs
 
 import giskard_msgs.msg as giskard_msgs
-from giskard_msgs.msg import GiskardError
+from giskardpy.data_types.exceptions import UnknownGoalException
+from giskard_msgs.msg import GiskardError, MotionStatechartNode
 from giskardpy.data_types.data_types import JointStates, PrefixName, _JointState, ColorRGBA
 from giskardpy.data_types.exceptions import GiskardException, CorruptShapeException, UnknownLinkException, \
     UnknownJointException
@@ -32,11 +33,12 @@ from rospy_message_converter.message_converter import \
     convert_dictionary_to_ros_message as original_convert_dictionary_to_ros_message, \
     convert_ros_message_to_dictionary as original_convert_ros_message_to_dictionary
 
-from giskardpy.motion_graph.monitors.monitors import EndMotion, CancelMotion, Monitor
-from giskardpy.motion_graph.tasks.task import Task
+from giskardpy.motion_statechart.monitors.monitors import EndMotion, CancelMotion, Monitor
+from giskardpy.motion_statechart.tasks.task import Task
 from giskardpy.utils.math import quaternion_from_rotation_matrix
 from giskardpy.utils.utils import get_all_classes_in_module
 from giskardpy_ros.ros1.visualization_mode import VisualizationMode
+from giskardpy.motion_statechart.goals.goal import Goal
 
 
 # TODO probably needs some consistency check
@@ -244,7 +246,6 @@ def world_to_tf_message(world: WorldTree, include_prefix: bool) -> tf2_msgs.TFMe
         p_T_c.transform.rotation.w = pose[6]
     return tf_msg
 
-
 def json_str_to_giskard_kwargs(json_str: str, world: WorldTree) -> Dict[str, Any]:
     ros_kwargs = json_str_to_ros_kwargs(json_str)
     return ros_kwargs_to_giskard_kwargs(ros_kwargs, world)
@@ -275,36 +276,29 @@ def ros_kwargs_to_giskard_kwargs(d: Any, world: WorldTree) -> Dict[str, Any]:
     elif isinstance(d, list):
         for i, element in enumerate(d):
             d[i] = ros_msg_to_giskard_obj(element, world)
+            if d[i] == element:
+                d[i] = ros_kwargs_to_giskard_kwargs(element, world)
     elif isinstance(d, dict):
         for key, value in d.copy().items():
             d[key] = ros_kwargs_to_giskard_kwargs(value, world)
     return d
 
 
-def convert_dictionary_to_ros_message(json):
+def convert_dictionary_to_ros_message(json_data):
     # maybe somehow search for message that fits to structure of json?
-    return original_convert_dictionary_to_ros_message(json['message_type'], json['message'])
+    if json_data['message_type'] == msg_type_as_str(MotionStatechartNode):
+        json_data['message']['kwargs'] = json.dumps(json_data['message']['kwargs'])
+    return original_convert_dictionary_to_ros_message(json_data['message_type'], json_data['message'])
 
 
-def monitor_to_ros_msg(monitor: Monitor) -> giskard_msgs.Monitor:
-    msg = giskard_msgs.Monitor()
-    msg.name = str(monitor.name)
-    msg.monitor_class = monitor.__class__.__name__
-    msg.start_condition = god_map.monitor_manager.format_condition(monitor.start_condition, new_line=' ')
-    msg.kwargs = kwargs_to_json({'hold_condition': god_map.monitor_manager.format_condition(monitor.hold_condition,
-                                                                                            new_line=' '),
-                                 'end_condition': god_map.monitor_manager.format_condition(monitor.end_condition,
-                                                                                           new_line=' ')})
-    return msg
-
-
-def task_to_ros_msg(task: Task) -> giskard_msgs.MotionGoal:
-    msg = giskard_msgs.MotionGoal()
-    msg.name = str(task.name)
-    msg.motion_goal_class = task.__class__.__name__
-    msg.start_condition = god_map.monitor_manager.format_condition(task.start_condition, new_line=' ')
-    msg.hold_condition = god_map.monitor_manager.format_condition(task.hold_condition, new_line=' ')
-    msg.end_condition = god_map.monitor_manager.format_condition(task.end_condition, new_line=' ')
+def motion_statechart_node_to_ros_msg(motion_graph_node: Union[Monitor, Task]) -> giskard_msgs.MotionStatechartNode:
+    msg = giskard_msgs.MotionStatechartNode()
+    msg.name = str(motion_graph_node.name)
+    msg.class_name = motion_graph_node.__class__.__name__
+    msg.start_condition = motion_graph_node.start_condition
+    msg.pause_condition = motion_graph_node.pause_condition
+    msg.end_condition = motion_graph_node.end_condition
+    msg.reset_condition = motion_graph_node.reset_condition
     return msg
 
 
@@ -370,6 +364,8 @@ def thing_to_json(thing: Any) -> Any:
         return [thing_to_json(x) for x in thing]
     if isinstance(thing, dict):
         return {k: thing_to_json(v) for k, v in thing.items()}
+    if isinstance(thing, MotionStatechartNode):
+        return thing_to_json(convert_ros_message_to_dictionary(thing))
     if is_ros_message(thing):
         return convert_ros_message_to_dictionary(thing)
     return thing
@@ -402,11 +398,11 @@ def convert_ros_message_to_dictionary(message) -> dict:
     return message
 
 
-def msg_type_as_str(msg_type):
-    module_str = msg_type.__module__
-    parts = module_str.split('.')
-    parts[-1] = str(msg_type).split('.')[-1][:-2]
-    return '/'.join(parts)
+def msg_type_as_str(msg_type) -> str:
+    type_str_parts = str(type(msg_type())).split('.')
+    part1 = type_str_parts[0].split('\'')[1]
+    part2 = type_str_parts[-1].split('\'')[0]
+    return f'{part1}/{part2}'
 
 
 def ros_msg_to_giskard_obj(msg, world: WorldTree):
@@ -434,8 +430,24 @@ def ros_msg_to_giskard_obj(msg, world: WorldTree):
                 raise e
     elif isinstance(msg, GiskardError):
         return error_msg_to_exception(msg)
+    elif isinstance(msg, MotionStatechartNode):
+        return create_node(msg, world)
     return msg
 
+def create_node(msg_node: MotionStatechartNode, world: WorldTree):
+    parsed_kwargs = json_str_to_giskard_kwargs(msg_node.kwargs, world)
+    if msg_node.class_name in god_map.motion_statechart_manager.allowed_monitor_types:
+        C = god_map.motion_statechart_manager.allowed_monitor_types[msg_node.class_name]
+        node: Monitor = C(name=msg_node.name, **parsed_kwargs)
+    elif msg_node.class_name in god_map.motion_statechart_manager.allowed_task_types:
+        C = god_map.motion_statechart_manager.allowed_task_types[msg_node.class_name]
+        node: Task = C(name=msg_node.name, **parsed_kwargs)
+    elif msg_node.class_name in god_map.motion_statechart_manager.allowed_goal_types:
+        C = god_map.motion_statechart_manager.allowed_goal_types[msg_node.class_name]
+        node: Goal = C(name=msg_node.name, **parsed_kwargs)
+    else:
+        raise UnknownGoalException(f'unknown task type: \'{msg_node.class_name}\'.')
+    return node
 
 def ros_joint_state_to_giskard_joint_state(msg: sensor_msgs.JointState, prefix: Optional[str] = None) -> JointStates:
     js = JointStates()

@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 import rospy
-from giskardpy.middleware import set_middleware
 
 from giskardpy_ros.configs.behavior_tree_config import OpenLoopBTConfig
 from giskardpy_ros.configs.giskard import Giskard
 from giskardpy_ros.configs.iai_robots.hsr import WorldWithHSRConfig, HSRCollisionAvoidanceConfig, \
     HSRJointTrajInterfaceConfig
 from giskardpy_ros.ros1.interface import ROS1Wrapper
+from giskardpy.middleware import set_middleware
 
 if __name__ == '__main__':
     rospy.init_node('giskard')
@@ -16,5 +16,7 @@ if __name__ == '__main__':
                       collision_avoidance_config=HSRCollisionAvoidanceConfig(),
                       robot_interface_config=HSRJointTrajInterfaceConfig(),
                       behavior_tree_config=OpenLoopBTConfig(publish_free_variables=True, debug_mode=debug_mode,
-                                                            add_tf_pub=True))
+                                                            add_tf_pub=False),
+                      additional_monitor_package_paths=['giskardpy_ros.monitors'],
+                      additional_task_package_paths=['giskardpy_ros.tasks'])
     giskard.live()

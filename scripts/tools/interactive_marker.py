@@ -16,6 +16,7 @@ from visualization_msgs.msg._InteractiveMarkerFeedback import InteractiveMarkerF
 from visualization_msgs.msg._Marker import Marker
 
 from giskardpy.middleware import get_middleware
+from giskardpy.motion_statechart.tasks.task import WEIGHT_ABOVE_CA, WEIGHT_BELOW_CA
 from giskardpy_ros.python_interface.old_python_interface import OldGiskardWrapper
 from giskardpy.utils.math import qv_mult
 
@@ -74,9 +75,9 @@ class IMServer(object):
         marker = Marker()
 
         marker.type = Marker.SPHERE
-        marker.scale.x = msg.scale * MARKER_SCALE * 2
-        marker.scale.y = msg.scale * MARKER_SCALE * 2
-        marker.scale.z = msg.scale * MARKER_SCALE * 2
+        marker.scale.x = msg.scale * MARKER_SCALE * 0.5
+        marker.scale.y = msg.scale * MARKER_SCALE * 0.5
+        marker.scale.z = msg.scale * MARKER_SCALE * 0.5
         marker.color.r = 0.5
         marker.color.g = 0.5
         marker.color.b = 0.5
@@ -186,14 +187,20 @@ class IMServer(object):
                 p.header.frame_id = feedback.header.frame_id
                 p.pose = feedback.pose
                 # self.giskard.set_json_goal('SetPredictionHorizon', prediction_horizon=1)
-                self.giskard.set_straight_cart_goal(root_link=self.root_link,
-                                                    tip_link=self.tip_link,
-                                                    goal_pose=p)
+                self.giskard.motion_goals.add_cartesian_pose(name='goal',
+                                                                      root_link=self.root_link,
+                                                                      tip_link=self.tip_link,
+                                                                      goal_pose=p,
+                                                                      weight=WEIGHT_BELOW_CA)
+                # self.giskard.tasks.add_justin_torso_limit(name='torso4_joint', joint_name='torso4_joint',
+                #                                           weight=WEIGHT_ABOVE_CA)
 
                 if not self.enable_self_collision:
                     self.giskard.allow_self_collision()
                 self.giskard.allow_all_collisions()
-                self.giskard.execute(wait=False)
+                local_min = self.giskard.monitors.add_local_minimum_reached(name='local minimum')
+                self.giskard.monitors.add_end_motion(start_condition=local_min)
+                self.giskard.execute(wait=False, add_default=False)
                 # self.giskard.plan(wait=False)
                 self.pub_goal_marker(feedback.header, feedback.pose)
                 self.i_server.setPose(self.marker_name, Pose())
@@ -267,6 +274,7 @@ class IMServer(object):
 if __name__ == '__main__':
     rospy.init_node('giskard_interactive_marker')
     root_tips = rospy.get_param('~interactive_marker_chains')
+    MARKER_SCALE = rospy.get_param('~marker_scale', 0.15)
     im = IMServer(root_tips)
     while not rospy.is_shutdown():
         rospy.sleep(1)

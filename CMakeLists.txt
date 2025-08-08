@@ -163,6 +163,12 @@ include_directories(
 catkin_install_python(PROGRAMS 
 	scripts/tools/clear_world.py
 	scripts/tools/collision_matrix_tool.py
+	scripts/tools/interactive_marker.py
+	scripts/tools/joystick_e_stop.py
+	scripts/tools/move_base_simple_goal.py
+	scripts/tools/move_base_simple_goal_diff_drive.py
+	scripts/tools/print_joint_state.py
+	scripts/tools/motion_statechart_inspector.py
 	scripts/iai_robots/boxy/boxy_standalone.py
 	scripts/iai_robots/donbot/donbot.py
 	scripts/iai_robots/donbot/donbot_standalone.py
@@ -180,15 +186,10 @@ catkin_install_python(PROGRAMS
 	scripts/iai_robots/tiago/tiago_standalone.py
 	scripts/iai_robots/tracy/tracy.py
 	scripts/iai_robots/tracy/tracy_standalone.py
+	scripts/other_robots/icub/icub_mujoco_vel.py
 	scripts/other_robots/armar/armar_standalone.py
-	# scripts/examples/giskard_pr2_standalone_example.py
-	scripts/tools/interactive_marker.py
-	scripts/tools/joystick_e_stop.py
+	scripts/other_robots/dlr/justin_standalone.py
 	scripts/tools/switch_controllers.py
-	scripts/tools/move_base_simple_goal.py
-	scripts/tools/move_base_simple_goal_diff_drive.py
-	scripts/tools/print_joint_state.py
-	scripts/tools/motion_graph_inspector.py
 	scripts/examples/python_interface_example.py
 	scripts/examples/old_python_interface_example.py
 	scripts/upload_env.py

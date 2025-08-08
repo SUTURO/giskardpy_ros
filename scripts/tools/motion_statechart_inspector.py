@@ -1,53 +1,80 @@
 import sys
 import rospy
-import pydot
-from PyQt5.QtGui import QPainter
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QComboBox, QHBoxLayout, QPushButton, QSizePolicy, QLabel
-from PyQt5.QtSvg import QSvgWidget
-from PyQt5.QtCore import Qt, QTimer, QRectF
+from PyQt5.QtGui import QPainter, QTransform, QKeySequence
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QComboBox, QHBoxLayout, QPushButton, QSizePolicy, \
+    QLabel, QGraphicsView, QGraphicsScene, QGraphicsItem, QShortcut
+from PyQt5.QtSvg import QSvgWidget, QGraphicsSvgItem, QSvgRenderer
+from PyQt5.QtCore import Qt, QTimer, QRectF, pyqtSignal
+from pygraphviz import ItemAttribute
+
 from giskard_msgs.msg import ExecutionState
-from giskardpy_ros.tree.behaviors.plot_motion_graph import execution_state_to_dot_graph
 from PyQt5.QtCore import QMutex, QMutexLocker
 
+from giskardpy_ros.tree.behaviors.plot_motion_graph import ExecutionStateToDotParser
 
-class MySvgWidget(QSvgWidget):
+
+compact = False
+
+
+class SvgGrahpicsView(QGraphicsView):
 
     def __init__(self, *args):
-        QSvgWidget.__init__(self, *args)
+        QGraphicsView.__init__(self, *args)
         self.mutex = QMutex()  # Mutex for synchronizing access to the widget
 
-    def paintEvent(self, event):
-        with QMutexLocker(self.mutex):  # Lock the mutex to prevent concurrent access
-            renderer = self.renderer()
-            if renderer is not None:
-                painter = QPainter(self)
-                size = renderer.defaultSize()
-                ratio = size.height() / size.width()
-                frame_ratio = self.height() / self.width()
-                if frame_ratio > ratio:
-                    new_width, new_height = self.width(), self.width() * ratio
-                else:
-                    new_width, new_height = self.height() / ratio, self.height()
-                if new_width < self.width():
-                    left = (self.width() - new_width) / 2
-                else:
-                    left = 0
-                renderer.render(painter, QRectF(left, 0, new_width, new_height))
-                painter.end()
+        # Set up the graphics scene
+        self.scene = QGraphicsScene()
+        self.setScene(self.scene)
+        self.svg_item = QGraphicsSvgItem()
+        self.scene.addItem(self.svg_item)
+
+        # Configure the view
+        self.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+
+    def wheelEvent(self, event):
+        # Only zoom when Ctrl is pressed
+        if event.modifiers() & Qt.ControlModifier:
+            delta = 1.0 + event.angleDelta().y() / 1200
+            transform = self.transform()
+            transform.scale(delta, delta)
+            self.setTransform(transform)
+        elif event.modifiers() & Qt.ShiftModifier:
+            # Horizontal scroll when Shift is pressed
+            delta = event.angleDelta().y()
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() - delta
+            )
+        else:
+            # Pass the event to parent if Ctrl or Shift is not pressed
+            super().wheelEvent(event)
+
+    def load(self, svg_path):
+        with QMutexLocker(self.mutex):
+            renderer = QSvgRenderer(svg_path)
+            self.svg_item.setSharedRenderer(renderer)
+            self.scene.setSceneRect(self.svg_item.boundingRect())
+            self.fitInView(self.svg_item, Qt.KeepAspectRatio)
+
 
 
 class DotGraphViewer(QWidget):
+    # Add this signal to communicate between threads
+    new_message_signal: pyqtSignal = pyqtSignal(object)
     last_goal_id: int
 
     def __init__(self):
         super().__init__()
         self.last_goal_id = -1
+        # Connect the signal to the slot
+        self.new_message_signal.connect(self.handle_new_message)
 
         # Initialize the ROS node
-        rospy.init_node('motion_graph_viewer', anonymous=True)
+        rospy.init_node('motion_statechart_viewer', anonymous=True)
 
         # Set up the GUI components
-        self.svg_widget = MySvgWidget(self)
+        self.svg_widget = SvgGrahpicsView(self)
         self.svg_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.svg_widget.setMinimumSize(600, 400)
 
@@ -73,6 +100,42 @@ class DotGraphViewer(QWidget):
         self.next_goal_button.clicked.connect(self.show_next_goal)
         self.latest_button.clicked.connect(self.show_latest_image)
 
+        # Add keyboard shortcuts
+        self.left_shortcut = QShortcut(QKeySequence(Qt.Key_Left), self)
+        self.left_shortcut.activated.connect(self.show_previous_image)
+        self.right_shortcut = QShortcut(QKeySequence(Qt.Key_Right), self)
+        self.right_shortcut.activated.connect(self.show_next_image)
+        self.page_down_shortcut = QShortcut(QKeySequence(Qt.Key_PageDown), self)
+        self.page_down_shortcut.activated.connect(self.show_previous_image)
+        self.page_up_shortcut = QShortcut(QKeySequence(Qt.Key_PageUp), self)
+        self.page_up_shortcut.activated.connect(self.show_next_image)
+
+        self.control_left_shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_Left), self)
+        self.control_left_shortcut.activated.connect(self.show_prev_goal)
+        self.control_right_shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_Right), self)
+        self.control_right_shortcut.activated.connect(self.show_next_goal)
+        self.control_page_down_shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_PageDown), self)
+        self.control_page_down_shortcut.activated.connect(self.show_prev_goal)
+        self.control_page_up_shortcut = QShortcut(QKeySequence(Qt.CTRL + Qt.Key_PageUp), self)
+        self.control_page_up_shortcut.activated.connect(self.show_next_goal)
+
+        self.shift_left_shortcut = QShortcut(QKeySequence(Qt.SHIFT + Qt.Key_Left), self)
+        self.shift_left_shortcut.activated.connect(self.show_first_image)
+        self.shift_right_shortcut = QShortcut(QKeySequence(Qt.SHIFT + Qt.Key_Right), self)
+        self.shift_right_shortcut.activated.connect(self.show_latest_image)
+        self.pos1_shortcut = QShortcut(QKeySequence(Qt.Key_Home), self)
+        self.pos1_shortcut.activated.connect(self.show_first_image)
+        self.end_shortcut = QShortcut(QKeySequence(Qt.Key_End), self)
+        self.end_shortcut.activated.connect(self.show_latest_image)
+
+        # Add Tooltips for Shortcuts
+        self.next_button.setToolTip('PageUp/RightArrow')
+        self.prev_button.setToolTip('PageDown/LeftArrow')
+        self.next_goal_button.setToolTip('(Ctrl + PageUp)/(Ctrl + RightArrow)')
+        self.prev_goal_button.setToolTip('(Ctrl + PageDown)/(Ctrl + LeftArrow)')
+        self.latest_button.setToolTip('End/(Shift + RightArrow)')
+        self.first_button.setToolTip('Home/(Shift + LeftArrow)')
+
         # Layout for topic selection
         top_layout = QHBoxLayout()
         top_layout.addWidget(self.topic_selector)
@@ -94,7 +157,7 @@ class DotGraphViewer(QWidget):
         layout.addLayout(nav_layout)
         self.setLayout(layout)
 
-        self.setWindowTitle('Motion Graph Viewer')
+        self.setWindowTitle('Motion Statechart Viewer')
         self.resize(800, 600)
 
         # Initialize graph history and goal tracking
@@ -134,6 +197,11 @@ class DotGraphViewer(QWidget):
             rospy.Subscriber(topic_name, ExecutionState, self.on_new_message_received, queue_size=50)
 
     def on_new_message_received(self, msg: ExecutionState) -> None:
+        # Emit signal to handle in main thread
+        self.new_message_signal.emit(msg)
+
+    def handle_new_message(self, msg: ExecutionState) -> None:
+        # This runs in the main thread
         if len(self.goals) > 0:
             navigator_at_end = (self.current_goal_index == self.goals[-1]
                                 and self.current_message_index == len(self.graphs_by_goal[self.goals[-1]]) - 1)
@@ -148,7 +216,8 @@ class DotGraphViewer(QWidget):
             self.graphs_by_goal[goal_id] = []
             self.goals.append(goal_id)
 
-        graph = execution_state_to_dot_graph(msg, use_state_color=True)
+        parser = ExecutionStateToDotParser(msg, compact=compact)
+        graph = parser.to_dot_graph()
 
         self.graphs_by_goal[goal_id].append(graph)
 
@@ -172,10 +241,8 @@ class DotGraphViewer(QWidget):
 
         svg_path = 'graph.svg'
         graph.write_svg(svg_path)
-        # graph.write_pdf('graph.pdf')
-        with QMutexLocker(self.svg_widget.mutex):  # Lock the mutex during SVG loading
-            self.svg_widget.load(svg_path)
-
+        graph.write_pdf('graph.pdf')
+        self.svg_widget.load(svg_path)
 
     def update_position_label(self) -> None:
         goal_count = len(self.goals)
