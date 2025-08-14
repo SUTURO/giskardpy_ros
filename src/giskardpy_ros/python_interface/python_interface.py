@@ -47,7 +47,7 @@ from giskardpy.motion_statechart.tasks.align_planes import AlignPlanes
 from giskardpy.motion_statechart.tasks.cartesian_tasks import CartesianPosition, CartesianOrientation, \
     JustinTorsoLimitCart, CartesianVelocityLimit
 from giskardpy.motion_statechart.tasks.feature_functions import AlignPerpendicular, HeightGoal, AngleGoal, DistanceGoal
-from giskardpy.motion_statechart.tasks.grasp_bar import GraspBar
+from giskardpy.motion_statechart.tasks.grasp_bar import GraspBar, GraspBarOffset
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionLimitList, JointPositionList, AvoidJointLimits
 from giskardpy.motion_statechart.tasks.joint_tasks import JointPositionListStop
 from giskardpy.motion_statechart.tasks.pointing import Pointing
@@ -59,8 +59,11 @@ from giskardpy.utils.utils import get_all_classes_in_package, ImmutableDict
 from giskardpy_ros.tasks.realtime_tasks import RealTimePointing
 from giskardpy_ros.goals.carry_my_luggage import CarryMyBullshit, FollowNavPath
 from giskardpy_ros.tasks.realtime_tasks import RealTimeConePointing
-from giskardpy_ros.goals.suturo import GraspBarOffset, MoveAroundHinge, Reaching, Placing, OpenDoorGoal, Mixing, \
-    JointRotationGoalContinuous, Tilting, TakePose, AlignHeight, Retracting, VerticalMotion, GraspWithForceTorqueGoal
+from giskardpy.motion_statechart.goals.suturo import Reaching, Placing, Mixing, \
+    JointRotationGoalContinuous, Tilting, TakePose, AlignHeight, Retracting, VerticalMotion
+from giskardpy.motion_statechart.goals.open_door import OpenDoorGoal
+from giskardpy.motion_statechart.goals.move_around_hinge import MoveAroundHinge
+from giskardpy_ros.goals.grasp_with_ft import GraspWithForceTorqueGoal
 from giskardpy_ros.monitors.handle_offset_monitor import HandleOffsetCorrection, OffsetCorrectionReset
 from giskardpy_ros.ros1 import msg_converter
 from giskardpy_ros.ros1 import tfwrapper as tf

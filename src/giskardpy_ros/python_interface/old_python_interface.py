@@ -21,7 +21,8 @@ from giskard_msgs.msg import GiskardError
 import giskard_msgs.msg as giskard_msgs
 from giskard_msgs.msg import MoveResult, CollisionEntry, MoveGoal, WorldResult
 from giskard_msgs.srv import DyeGroupResponse, GetGroupInfoResponse
-from giskardpy_ros.goals.suturo import MoveAroundHinge, Placing, Reaching
+from giskardpy.motion_statechart.goals.suturo import Placing, Reaching
+from giskardpy.motion_statechart.goals.move_around_hinge import MoveAroundHinge
 from giskardpy.data_types.suturo_types import GripperTypes
 from giskardpy_ros.tree.control_modes import ControlModes
 from giskardpy.data_types.data_types import goal_parameter

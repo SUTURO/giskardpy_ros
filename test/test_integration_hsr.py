@@ -30,7 +30,7 @@ from giskardpy_ros.tasks.vfh_task import VFHMoveDir
 from giskardpy_ros.utils.VFH import VectorFieldHistogram
 
 if 'GITHUB_WORKFLOW' not in os.environ:
-    from giskardpy_ros.goals.suturo import Reaching, TakePose, VerticalMotion, AlignHeight, Placing, \
+    from giskardpy.motion_statechart.goals.suturo import Reaching, TakePose, VerticalMotion, AlignHeight, Placing, \
         Retracting, Tilting, KeepRotationGoal
 from giskardpy_ros.utils.utils_for_tests import compare_poses, GiskardTestWrapper
 from giskardpy_ros.utils.utils_for_tests import launch_launchfile
