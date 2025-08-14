@@ -218,7 +218,7 @@ def grasping(with_camera: bool = False):
     bar_center_offset = 0.01
     pre_grasp_distance = -0.15
     grasp_into_distance = 0.2
-    ft_timeout = 10
+    ft_timeout = 10000
 
     bar_axis = Vector3Stamped()
     bar_axis.header.frame_id = handle_name

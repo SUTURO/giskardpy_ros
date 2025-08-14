@@ -119,7 +119,7 @@ class GraspWithForceTorqueGoal(Goal):
                                    handle_link=handle_name)
         pre_grasp.start_condition = self.start_condition
         pre_grasp.end_condition = end_condition_pre_grasp
-        self.add_goal(pre_grasp)
+        self.add_task(pre_grasp)
 
         ap_pre_grasp = AlignPlanes(name='grasp align',
                                    root_link=root_link,
@@ -128,6 +128,14 @@ class GraspWithForceTorqueGoal(Goal):
                                    goal_normal=handle_align_axis)
         ap_pre_grasp.start_condition = self.start_condition
         self.add_task(ap_pre_grasp)
+
+        ap_tip_grasp = AlignPlanes(name='tip grasp align',
+                                   root_link=root_link,
+                                   tip_link=tip_link,
+                                   tip_normal=tip_grasp_axis,
+                                   goal_normal=bar_axis)
+        ap_tip_grasp.start_condition = self.start_condition
+        self.add_task(ap_tip_grasp)
 
         sleep_cancel = Sleep(seconds=timeout, name='ft sleep cancel')
         sleep_cancel.start_condition = next_condition
@@ -164,15 +172,7 @@ class GraspWithForceTorqueGoal(Goal):
                                       handle_link=handle_name)
             ft_grasp.start_condition = next_condition
             ft_grasp.end_condition = ft_monitor
-            self.add_goal(ft_grasp)
-
-        ap_tip_grasp = AlignPlanes(name='tip grasp align',
-                                   root_link=root_link,
-                                   tip_link=tip_link,
-                                   tip_normal=tip_grasp_axis,
-                                   goal_normal=bar_axis)
-        ap_tip_grasp.start_condition = next_condition
-        self.add_task(ap_tip_grasp)
+            self.add_task(ft_grasp)
 
         retract = CartesianPosition(root_link=root_link,
                                     tip_link=tip_link,

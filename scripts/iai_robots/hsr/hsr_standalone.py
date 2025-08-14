@@ -17,5 +17,7 @@ if __name__ == '__main__':
                       collision_avoidance_config=HSRCollisionAvoidanceConfig(),
                       robot_interface_config=HSRStandaloneInterface(),
                       behavior_tree_config=StandAloneBTConfig(publish_free_variables=True, publish_tf=True,
-                                                              debug_mode=debug_mode))
+                                                              debug_mode=debug_mode),
+                      additional_monitor_package_paths=['giskardpy_ros.monitors'],
+                      additional_task_package_paths=['giskardpy_ros.tasks'])
     giskard.live()
