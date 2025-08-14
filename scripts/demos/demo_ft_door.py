@@ -4,10 +4,10 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Vector3Stamped, PointStamped, Vector3, PoseStamped, PoseWithCovarianceStamped, \
     QuaternionStamped
-from rospy import Publisher
-
 from giskardpy.data_types.suturo_types import MoveAroundHingeAlign
 from giskardpy.motion_statechart.tasks.task import WEIGHT_ABOVE_CA
+from rospy import Publisher
+
 from giskardpy_ros.python_interface.python_interface import GiskardWrapper
 
 
@@ -53,13 +53,7 @@ def reset():
     gis.execute()
 
 
-def setup_door1(init_pose_pub: Publisher):
-    base_pose = PoseStamped()
-    base_pose.header.frame_id = 'map'
-    base_pose.pose.position.x = 1.8
-    base_pose.pose.position.y = -0.8
-    base_pose.pose.orientation.z = -1
-
+def setup_door(init_pose_pub: Publisher, base_pose: PoseStamped):
     odom = gis.monitors.add_local_minimum_reached()
     gis.motion_goals.add_cartesian_pose(root_link='map', tip_link='base_footprint', goal_pose=base_pose)
 
@@ -127,98 +121,19 @@ def setup_door1(init_pose_pub: Publisher):
     gis.execute()
 
 
-def setup_door2(init_pose_pub: Publisher):
-    base_pose = PoseStamped()
-    base_pose.header.frame_id = 'map'
-    base_pose.pose.position.x = 1.8
-    base_pose.pose.position.y = 3.0
-    base_pose.pose.orientation.z = -1
-
-    odom = gis.monitors.add_local_minimum_reached()
-    gis.motion_goals.add_cartesian_pose(root_link='map', tip_link='base_footprint', goal_pose=base_pose)
-
-    gis.monitors.add_end_motion(start_condition=f'{odom}')
-    gis.motion_goals.allow_all_collisions()
-    gis.execute()
-
-    gis.motion_goals.add_take_pose(pose_keyword='park')
-    joints = gis.monitors.add_joint_position(goal_state={'head_pan_joint': 0.0,
-                                                         'head_tilt_joint': 0.0,
-                                                         'arm_lift_joint': 0.0,
-                                                         'arm_flex_joint': 0.0,
-                                                         'arm_roll_joint': -1.5,
-                                                         'wrist_flex_joint': -1.5,
-                                                         'wrist_roll_joint': 0.0},
-                                             threshold=0.05)
-    gis.monitors.add_end_motion(start_condition=joints)
-    gis.motion_goals.allow_all_collisions()
-    gis.execute()
-
-    init_pose = PoseWithCovarianceStamped()
-    init_pose.header.frame_id = 'map'
-    init_pose.pose.pose = base_pose.pose
-    init_pose.pose.covariance = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                 0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
-                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853892326654787]
-    init_pose_pub.publish(init_pose)
-
-    rot_left = QuaternionStamped()
-    rot_left.header.frame_id = 'base_footprint'
-    rot_left.quaternion.z = 0.643
-    rot_left.quaternion.w = 0.766
-
-    starting_rot = QuaternionStamped()
-    starting_rot.header.frame_id = 'base_footprint'
-    starting_rot.quaternion.z = -0.643
-    starting_rot.quaternion.w = 0.766
-
-    rot_left_monitor = gis.monitors.add_cartesian_orientation(goal_orientation=rot_left,
-                                                              root_link='map',
-                                                              tip_link='base_footprint',
-                                                              name='rotation left monitor')
-    rot_start_monitor = gis.monitors.add_cartesian_orientation(goal_orientation=starting_rot,
-                                                               root_link='map',
-                                                               tip_link='base_footprint',
-                                                               start_condition=rot_left_monitor,
-                                                               threshold=0.03,
-                                                               name='rotation start monitor')
-    gis.motion_goals.add_cartesian_orientation(goal_orientation=rot_left,
-                                               root_link='map',
-                                               tip_link='base_footprint',
-                                               end_condition=rot_left_monitor,
-                                               name='rotation left goal')
-    gis.motion_goals.add_cartesian_orientation(goal_orientation=starting_rot,
-                                               root_link='map',
-                                               tip_link='base_footprint',
-                                               start_condition=rot_left_monitor,
-                                               end_condition=rot_start_monitor,
-                                               name='rotation start goal')
-
-    gis.monitors.add_end_motion(start_condition=rot_start_monitor)
-    gis.execute()
-
-
-def grasping(with_camera: bool = False):
-    handle_name = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
-    hinge_joint = "iai_kitchen/iai_kitchen:arena:door_origin_revolute_joint"
-    # handle_name = "iai_kitchen/living_room:arena:door_handle_inside"
-    # hinge_joint = "iai_kitchen/living_room:arena:door_origin_revolute_joint"
+def grasping(handle_name: str,
+             hinge_joint: str,
+             handle_retract_distance: float,
+             with_camera: bool = False):
     tip = 'hand_gripper_tool_frame'
     if with_camera:
         camera_link = 'hand_camera_frame'
     else:
         camera_link = None
-    handle_length = 0.01
     ref_speed = 0.5
-    handle_retract_distance = -0.058
-    # handle_retract_distance = -0.065
-    bar_center_offset = 0.01
     pre_grasp_distance = -0.15
     grasp_into_distance = 0.2
-    ft_timeout = 10000
+    ft_timeout = 10
 
     bar_axis = Vector3Stamped()
     bar_axis.header.frame_id = handle_name
@@ -300,18 +215,12 @@ def grasping(with_camera: bool = False):
     gis.execute()
 
 
-def full_opening():
-    grasping()
-
-    handle_name = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
-    door_handle_for_hinge = "iai_kitchen/iai_kitchen:arena:door_handle_link"
-    door_center = "iai_kitchen/iai_kitchen:arena:door_center"
-    # handle_name = "iai_kitchen/living_room:arena:door_handle_inside"
-    # door_handle_for_hinge = "iai_kitchen/living_room:arena:door_handle_link"
-    # door_center = "iai_kitchen/living_room:arena:door_center"
-    handle_turn_limit = 0.4
+def full_opening(handle_name: str,
+                 door_handle_for_hinge: str,
+                 door_center: str,
+                 handle_turn_limit: float,
+                 full_hinge_turn_limit: float):
     pre_push_hinge_turn_limit = -0.5
-    full_hinge_turn_limit = -1.4
     open_door_name = 'OpenDoorGoal'
     tip = 'hand_gripper_tool_frame'
     root = 'map'
@@ -401,20 +310,12 @@ def full_opening():
     gis.execute()
 
 
-def full_opening_in_parts():
-    grasping(True)
-
-    handle_name = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
-    door_handle_for_hinge = "iai_kitchen/iai_kitchen:arena:door_handle_link"
-    door_center = "iai_kitchen/iai_kitchen:arena:door_center"
-    # handle_name = "iai_kitchen/living_room:arena:door_handle_inside"
-    # door_handle_for_hinge = "iai_kitchen/living_room:arena:door_handle_link"
-    # door_center = "iai_kitchen/living_room:arena:door_center"
-    handle_turn_limit = 0.4
-    # handle_turn_limit = 0.55
+def full_opening_in_parts(handle_name: str,
+                          door_handle_for_hinge: str,
+                          door_center: str,
+                          handle_turn_limit: float,
+                          full_hinge_turn_limit: float):
     pre_push_hinge_turn_limit = -0.5
-    full_hinge_turn_limit = -1.4
-    # full_hinge_turn_limit = -1.0
     open_door_name = 'OpenDoorGoal'
     tip = 'hand_gripper_tool_frame'
     root = 'map'
@@ -504,7 +405,6 @@ def full_opening_in_parts():
 
     gis.motion_goals.allow_collision(group1='arm',
                                      group2='iai_kitchen')
-    # gis.motion_goals.allow_all_collisions()
     gis.monitors.add_end_motion(start_condition=open_full)
     gis.execute()
 
@@ -514,19 +414,62 @@ rospy.init_node('giskard_demo')
 init_pub = rospy.Publisher('/initialpose', data_class=PoseWithCovarianceStamped, queue_size=10)
 
 gis = GiskardWrapper()
+door = 1
 test = 3
 
 reset()
 
-setup_door1(init_pose_pub=init_pub)
+base_pose = PoseStamped()
+base_pose.header.frame_id = 'map'
+base_pose.pose.orientation.z = -1
 
-# input("Setup finished?")
+if door == 1:
+    hinge_joint = "iai_kitchen/iai_kitchen:arena:door_origin_revolute_joint"
+    handle_name = "iai_kitchen/iai_kitchen:arena:door_handle_inside"
+    door_handle_for_hinge = "iai_kitchen/iai_kitchen:arena:door_handle_link"
+    door_center = "iai_kitchen/iai_kitchen:arena:door_center"
+    handle_turn_limit = 0.4
+    full_hinge_turn_limit = -1.4
+    handle_retract_distance = -0.058
+
+    base_pose.pose.position.x = 1.8
+    base_pose.pose.position.y = -0.8
+else:
+    hinge_joint = "iai_kitchen/living_room:arena:door_origin_revolute_joint"
+    handle_name = "iai_kitchen/living_room:arena:door_handle_inside"
+    door_handle_for_hinge = "iai_kitchen/living_room:arena:door_handle_link"
+    door_center = "iai_kitchen/living_room:arena:door_center"
+    handle_turn_limit = 0.55
+    full_hinge_turn_limit = -1.4
+    handle_retract_distance = -0.065
+
+    base_pose.pose.position.x = 1.8
+    base_pose.pose.position.y = 3.0
+
+setup_door(init_pose_pub=init_pub, base_pose=base_pose)
 
 if test == 1:
-    full_opening()
+    grasping(handle_name=handle_name,
+             hinge_joint=hinge_joint,
+             handle_retract_distance=handle_retract_distance,
+             with_camera=True)
+    full_opening(handle_name=handle_name,
+                 door_handle_for_hinge=door_handle_for_hinge,
+                 door_center=door_center,
+                 handle_turn_limit=handle_turn_limit,
+                 full_hinge_turn_limit=full_hinge_turn_limit)
 elif test == 2:
-    grasping(True)
+    grasping(handle_name=handle_name,
+             hinge_joint=hinge_joint,
+             handle_retract_distance=handle_retract_distance,
+             with_camera=True)
 elif test == 3:
-    full_opening_in_parts()
-else:
-    gis.hsr_door_opening(ft_timeout=1000)
+    grasping(handle_name=handle_name,
+             hinge_joint=hinge_joint,
+             handle_retract_distance=handle_retract_distance,
+             with_camera=True)
+    full_opening_in_parts(handle_name=handle_name,
+                          door_handle_for_hinge=door_handle_for_hinge,
+                          door_center=door_center,
+                          handle_turn_limit=handle_turn_limit,
+                          full_hinge_turn_limit=full_hinge_turn_limit)
