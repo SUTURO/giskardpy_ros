@@ -83,8 +83,8 @@ class GraspWithForceTorqueGoal(Goal):
                                                        tip_link=camera_link,
                                                        goal_vector=init_vector,
                                                        door_move_joint=door_joint,
-                                                       threshold=30,
-                                                       magic=500)
+                                                       threshold=15,
+                                                       error_adjustment=500)
             handle_correction.start_condition = pre_grasp_name
             handle_correction.end_condition = handle_correction
             self.add_monitor(handle_correction)

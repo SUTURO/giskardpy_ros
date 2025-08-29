@@ -21,7 +21,18 @@ class HandleOffsetCorrection(PayloadMonitor):
                  door_move_joint: PrefixName,
                  threshold: float = 50,
                  name: Optional[str] = None,
-                 magic: float = 20):
+                 error_adjustment: float = 20):
+        """
+        Monitor that adjusts door position based on robokudo handle_offset topic.
+
+        :param root_link: root of the kinematic chain, e.g. map
+        :param tip_link: tip of the kinematic chain, e.g. camera_link
+        :param goal_vector: initial goal vector, overwritten at run-time
+        :param door_move_joint: Joint of the door that is used to adjust position
+        :param threshold: Threshold for Vector length
+        :param name: Name of the monitor
+        :param error_adjustment: Adjusts root_V_error to reduce moveable distance in each iteration to make movement more responsive
+        """
         if name is None:
             name = f'{self.__class__.__name__}'
         super().__init__(name=name,
@@ -29,7 +40,7 @@ class HandleOffsetCorrection(PayloadMonitor):
         self.root = root_link
         self.tip = tip_link
         self.threshold = threshold
-        self.magic = magic
+        self.error_adjustment = error_adjustment
         self.door_move_joint = door_move_joint
 
         self.root_V_goal_point = god_map.world.transform(self.root, goal_vector)
@@ -46,7 +57,7 @@ class HandleOffsetCorrection(PayloadMonitor):
 
         root_P_goal_point = root_P_tip + root_V_goal_point
 
-        root_V_error = (root_P_goal_point - root_P_tip) / self.magic
+        root_V_error = (root_P_goal_point - root_P_tip) / self.error_adjustment
 
         j: Joint6DOF = god_map.world.get_joint(self.door_move_joint)
         assert isinstance(j, Joint6DOF)
