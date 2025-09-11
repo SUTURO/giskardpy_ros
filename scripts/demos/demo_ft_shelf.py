@@ -39,6 +39,7 @@ def setup(base_pose, hinge_joint, takepose: str):
                                                  name='park arms monitor')
 
     gis.monitors.add_end_motion(start_condition=f'{joint_reset} and {odom} and {joints}')
+    gis.motion_goals.allow_all_collisions()
     gis.execute()
 
 
@@ -48,17 +49,17 @@ gis = GiskardWrapper()
 
 vertical_grasp = True
 
-handle_left_id = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_left:handle'
-hinge_left_joint = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_left:joint'
-handle_right_id = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_right:handle'
-hinge_joint_right = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_right:joint'
+handle_left_id = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_left:handle'
+hinge_left_joint = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_left:joint'
+handle_right_id = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_right:handle'
+hinge_joint_right = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_right:joint'
 
 setup_pose = PoseStamped()
 setup_pose.header.frame_id = 'map'
-setup_pose.pose.position.x = 4.9
-setup_pose.pose.position.y = 2.9
-setup_pose.pose.orientation = Quaternion(*quaternion_from_axis_angle(axis=(0, 0, 1), angle=-90))
+setup_pose.pose.position.x = 4.3
+setup_pose.pose.position.y = 4.0
+setup_pose.pose.orientation = Quaternion(*quaternion_from_axis_angle(axis=(0, 0, 1), angle=0))
 
 setup(setup_pose, hinge_joint_right, TakePoseTypes.PARK.value)
 
-gis.billy_shelf_open(setup_pose=setup_pose, simulation=True)
+gis.billy_shelf_open(setup_pose=setup_pose, simulation=True, open_left=True, open_right=True)

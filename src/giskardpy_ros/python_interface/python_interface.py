@@ -4204,11 +4204,11 @@ class GiskardWrapper:
 
     def billy_shelf_open(self,
                          setup_pose: PoseStamped,
-                         handle_link_right: str = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_right:handle',
-                         hinge_joint_right: str = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_right:joint',
-                         handle_link_left: str = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_left:handle',
-                         door_link_left: str = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_left',
-                         hinge_joint_left: str = 'iai_kitchen/shelf_billy_corridor:shelf_billy:shelf_door_left:joint',
+                         handle_link_right: str = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_right:handle',
+                         hinge_joint_right: str = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_right:joint',
+                         handle_link_left: str = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_left:handle',
+                         door_link_left: str = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_left',
+                         hinge_joint_left: str = 'iai_kitchen/shelf_billy:shelf_billy:shelf_door_left:joint',
                          vertical_grasp: bool = False,
                          open_right: bool = False,
                          open_left: bool = True,
@@ -4383,6 +4383,7 @@ class GiskardWrapper:
                                                bar_axis=bar_axis,
                                                bar_length=0.001,
                                                grasp_axis_offset=pre_grasp_offset,
+                                               handle_link=handle_link_right,
                                                end_condition=local_min_pre_grasp)
         ft_monitor = self.monitors.add_force_torque(threshold_enum=ForceTorqueThresholds.DOOR.value,
                                                     start_condition=local_min_pre_grasp)
@@ -4394,6 +4395,7 @@ class GiskardWrapper:
                                                bar_axis=bar_axis,
                                                bar_length=0.001,
                                                grasp_axis_offset=ft_offset,
+                                               handle_link=handle_link_right,
                                                reference_linear_velocity=0.01,
                                                reference_angular_velocity=0.05,
                                                start_condition=local_min_pre_grasp,
