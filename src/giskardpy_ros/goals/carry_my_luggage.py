@@ -10,16 +10,14 @@ from sensor_msgs.msg import LaserScan
 from visualization_msgs.msg import MarkerArray, Marker
 
 import giskardpy.casadi_wrapper as cas
-import giskardpy_ros.ros1.msg_converter as msg_converter
 from giskardpy.data_types.data_types import PrefixName, Derivatives, ColorRGBA
 from giskardpy.data_types.exceptions import GoalInitalizationException, ExecutionException
-from giskardpy.goals.goal import Goal
-from giskardpy.goals.pointing import Pointing, PointingCone
+from giskardpy.motion_statechart.goals.goal import Goal
 from giskardpy.god_map import god_map
 from giskardpy.middleware import get_middleware
 from giskardpy.model.joints import OmniDrive
-from giskardpy.motion_graph.monitors.monitors import ExpressionMonitor, EndMotion
-from giskardpy.motion_graph.tasks.task import WEIGHT_BELOW_CA, WEIGHT_COLLISION_AVOIDANCE
+from giskardpy.motion_statechart.monitors.monitors import Monitor, EndMotion
+from giskardpy.motion_statechart.tasks.task import WEIGHT_BELOW_CA, WEIGHT_COLLISION_AVOIDANCE
 from giskardpy.symbol_manager import symbol_manager
 from giskardpy.utils.decorators import clear_memo, memoize_with_counter
 from giskardpy_ros.tree.blackboard_utils import raise_to_blackboard
@@ -67,9 +65,9 @@ class CarryMyBullshit(Goal):
                  clear_path: bool = False,
                  drive_back: bool = False,
                  enable_laser_avoidance: bool = True,
-                 start_condition: cas.Expression = cas.TrueSymbol,
-                 hold_condition: cas.Expression = cas.FalseSymbol,
-                 end_condition: cas.Expression = cas.FalseSymbol):
+                 start_condition: cas.Expression = cas.BinaryTrue,
+                 hold_condition: cas.Expression = cas.BinaryFalse,
+                 end_condition: cas.Expression = cas.BinaryFalse):
         super().__init__(name=name)
         if drive_back:
             get_middleware().loginfo('driving back')
@@ -184,7 +182,7 @@ class CarryMyBullshit(Goal):
 
         if not self.drive_back:
             last_target_age = symbol_manager.get_symbol(self.ref_str + '.last_target_age')
-            target_lost = ExpressionMonitor(name='target out of sight')
+            target_lost = Monitor(name='target out of sight')
             self.add_monitor(target_lost)
             target_lost.expression = cas.greater_equal(last_target_age, self.target_age_threshold)
 
@@ -284,18 +282,18 @@ class CarryMyBullshit(Goal):
         root_V_camera_axis.vis_frame = self.camera_link
         root_V_camera_goal_axis.vis_frame = self.camera_link
 
-        laser_violated = ExpressionMonitor(name='laser violated')
+        laser_violated = Monitor(name='laser violated')
         self.add_monitor(laser_violated)
         laser_violated.expression = cas.less(closest_laser_reading, 0)
         if self.drive_back:
-            oriented_towards_next = ExpressionMonitor(name='oriented towards next')
+            oriented_towards_next = Monitor(name='oriented towards next')
             oriented_towards_next.expression = cas.abs(map_angle_error) > self.base_orientation_threshold
             self.add_monitor(oriented_towards_next)
 
             follow_next_point.hold_condition = (laser_violated.get_state_expression()
                                                 | oriented_towards_next.get_state_expression())
         else:
-            target_too_close = ExpressionMonitor(name='target close')
+            target_too_close = Monitor(name='target close')
             self.add_monitor(target_too_close)
             target_too_close.expression = cas.less_equal(distance_to_human, self.min_distance_to_target)
 
@@ -335,7 +333,7 @@ class CarryMyBullshit(Goal):
                                                                   map_V_laser_avoidance_direction)
             odom_y_vel = self.odom_joint.y_vel.get_symbol(Derivatives.position)
 
-            active = ExpressionMonitor(name='too far from path')
+            active = Monitor(name='too far from path')
             self.add_monitor(active)
             active.expression = cas.greater(distance_to_closest_point, self.traj_tracking_radius)
 
@@ -353,7 +351,7 @@ class CarryMyBullshit(Goal):
             first_traj_x = symbol_manager.get_symbol(self.ref_str + '.get_first_traj_point()[0]')
             first_traj_y = symbol_manager.get_symbol(self.ref_str + '.get_first_traj_point()[1]')
             first_point = cas.Point3([first_traj_x, first_traj_y, 0])
-            goal_reached = ExpressionMonitor(name='goal reached?')
+            goal_reached = Monitor(name='goal reached?')
             self.add_monitor(goal_reached)
             goal_reached.expression = cas.euclidean_distance(first_point, root_P_bf) < self.traj_tracking_radius
             self.connect_end_condition_to_all_tasks(goal_reached.get_state_expression())
@@ -681,9 +679,9 @@ class FollowNavPath(Goal):
                  traj_tracking_radius: float = 0.5,
                  height_for_camera_target: float = 1,
                  laser_frame_id: str = 'base_range_sensor_link',
-                 start_condition: cas.Expression = cas.TrueSymbol,
-                 hold_condition: cas.Expression = cas.FalseSymbol,
-                 end_condition: cas.Expression = cas.FalseSymbol):
+                 start_condition: cas.Expression = cas.BinaryTrue,
+                 hold_condition: cas.Expression = cas.BinaryFalse,
+                 end_condition: cas.Expression = cas.BinaryFalse):
         super().__init__(name=name)
         self.end_of_traj_reached = False
         self.laser_thresholds = {}
@@ -811,13 +809,13 @@ class FollowNavPath(Goal):
         root_V_camera_axis.vis_frame = self.camera_link
         root_V_camera_goal_axis.vis_frame = self.camera_link
 
-        oriented_towards_next = ExpressionMonitor(name='oriented towards next')
+        oriented_towards_next = Monitor(name='oriented towards next')
         self.add_monitor(oriented_towards_next)
         oriented_towards_next.expression = cas.abs(map_angle_error) > self.base_orientation_threshold
 
         follow_next_point.hold_condition = oriented_towards_next.get_state_expression()
         if self.enable_laser_avoidance:
-            laser_violated = ExpressionMonitor(name='laser violated')
+            laser_violated = Monitor(name='laser violated')
             self.add_monitor(laser_violated)
             laser_violated.expression = cas.less(closest_laser_reading, 0)
             follow_next_point.hold_condition |= laser_violated.get_state_expression()
@@ -851,7 +849,7 @@ class FollowNavPath(Goal):
                                                                   map_V_laser_avoidance_direction)
             odom_y_vel = self.odom_joint.y_vel.get_symbol(Derivatives.position)
 
-            active = ExpressionMonitor(name='too far from path')
+            active = Monitor(name='too far from path')
             self.add_monitor(active)
             active.expression = cas.greater(distance_to_closest_point, self.traj_tracking_radius)
 
@@ -866,7 +864,7 @@ class FollowNavPath(Goal):
                                                            name='move sideways')
 
         last_point = cas.Point3([self.trajectory[-1][0], self.trajectory[-1][1], 0])
-        goal_reached = ExpressionMonitor(name='goal reached?')
+        goal_reached = Monitor(name='goal reached?')
         self.add_monitor(goal_reached)
         goal_reached.expression = cas.euclidean_distance(last_point, root_P_bf) < 0.03
         self.connect_end_condition_to_all_tasks(goal_reached.get_state_expression())
@@ -882,7 +880,7 @@ class FollowNavPath(Goal):
                                                         weight=self.weight)
         final_orientation.start_condition = goal_reached.get_state_expression()
 
-        orientation_reached = ExpressionMonitor(name='final orientation reached',
+        orientation_reached = Monitor(name='final orientation reached',
                                                 start_condition=goal_reached.get_state_expression())
         self.add_monitor(orientation_reached)
         rotation_error = cas.rotational_error(frame_R_current, frame_R_goal)

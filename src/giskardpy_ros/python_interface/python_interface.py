@@ -4691,7 +4691,7 @@ class GiskardWrapper:
                                         door_handle_for_hinge: str,
                                         door_center: str,
                                         handle_retract_distance: float = -0.15,
-                                        handle_turn_limit: float = 0.4,
+                                        handle_turn_limit: float = 0.45,
                                         full_hinge_turn_limit: float = -1.4,
                                         pre_push_hinge_turn_limit: float = -0.5,
                                         height_offset: float = -0.15):

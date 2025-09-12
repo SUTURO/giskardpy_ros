@@ -372,7 +372,7 @@ elif test == 3:
     gis.door_handle_grasping(handle_name=handle_name,
                              hinge_joint=hinge_joint,
                              handle_retract_distance=handle_retract_distance,
-                             camera_link='hand_camera_frame')
+                             camera_link=None)
     gis.door_opening_with_moving_around(handle_name=handle_name,
                                         door_handle_for_hinge=door_handle_for_hinge,
                                         door_center=door_center,
