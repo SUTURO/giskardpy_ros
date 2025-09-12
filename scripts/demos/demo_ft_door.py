@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import numpy as np
 import rospy
 from geometry_msgs.msg import Vector3Stamped, PointStamped, Vector3, PoseStamped, PoseWithCovarianceStamped, \
     QuaternionStamped
@@ -118,100 +117,6 @@ def setup_door(init_pose_pub: Publisher, base_pose: PoseStamped):
                                                name='rotation start goal')
 
     gis.monitors.add_end_motion(start_condition=rot_start_monitor)
-    gis.execute()
-
-
-def grasping(handle_name: str,
-             hinge_joint: str,
-             handle_retract_distance: float,
-             with_camera: bool = False):
-    tip = 'hand_gripper_tool_frame'
-    if with_camera:
-        camera_link = 'hand_camera_frame'
-    else:
-        camera_link = None
-    ref_speed = 0.5
-    pre_grasp_distance = -0.15
-    grasp_into_distance = 0.2
-    ft_timeout = 10
-
-    bar_axis = Vector3Stamped()
-    bar_axis.header.frame_id = handle_name
-    bar_axis.vector = Vector3(0, 1, 0)
-
-    tip_grasp_axis = Vector3Stamped()
-    tip_grasp_axis.header.frame_id = tip
-    tip_grasp_axis.vector = Vector3(1, 0, 0)
-
-    bar_center = PointStamped()
-    bar_center.header.frame_id = handle_name
-
-    x_gripper = Vector3Stamped()
-    x_gripper.header.frame_id = tip
-    x_gripper.vector.z = 1
-
-    x_goal = Vector3Stamped()
-    x_goal.header.frame_id = handle_name
-    x_goal.vector.z = -1
-
-    grasp_axis_offset = Vector3Stamped()
-    grasp_axis_offset.header.frame_id = handle_name
-    grasp_axis_offset.vector.z = grasp_into_distance
-
-    pre_grasp_axis_offset = Vector3Stamped()
-    pre_grasp_axis_offset.header.frame_id = handle_name
-    pre_grasp_axis_offset.vector.z = pre_grasp_distance
-
-    handle_retract = PointStamped()
-    handle_retract.header.frame_id = tip
-    handle_retract.point.z = handle_retract_distance
-
-    grasp_push = PointStamped()
-    grasp_push.header.frame_id = tip
-    grasp_push.point.z = grasp_into_distance - pre_grasp_distance
-
-    js = {
-        'head_pan_joint': 0,
-        'head_tilt_joint': 0,
-        'arm_flex_joint': 0,
-        'arm_roll_joint': 0,
-        'wrist_flex_joint': -np.pi / 2,
-        'wrist_roll_joint': -np.pi / 2
-    }
-    jps = gis.motion_goals.add_joint_position(goal_state=js,
-                                              name='hold fixed grasping position',
-                                              threshold=0.05)
-
-    open_gripper = gis.monitors.add_open_hsr_gripper(start_condition=jps)
-
-    handle_correction_offset = PointStamped()
-    handle_correction_offset.header.frame_id = tip
-    handle_correction_offset.point.x = 0.03
-
-    grasp = gis.motion_goals.add_grasp_with_ft_sensor(root_link='map',
-                                                      tip_link=tip,
-                                                      handle_name=handle_name,
-                                                      tip_grasp_axis=tip_grasp_axis,
-                                                      bar_axis=bar_axis,
-                                                      tip_retract=handle_retract,
-                                                      handle_align_axis=x_goal,
-                                                      tip_align_axis=x_gripper,
-                                                      grasp_axis_offset=grasp_axis_offset,
-                                                      pre_grasp_axis_offset=pre_grasp_axis_offset,
-                                                      hinge_joint=hinge_joint,
-                                                      timeout=ft_timeout,
-                                                      ft_grasp_ref_speed=ref_speed,
-                                                      camera_link=camera_link,
-                                                      tip_push=grasp_push,
-                                                      handle_correction_offset=handle_correction_offset,
-                                                      start_condition=open_gripper)
-    gis.update_end_condition(node_name=grasp, condition=grasp)
-
-    close_gripper = gis.monitors.add_close_hsr_gripper(start_condition=grasp)
-
-    gis.monitors.add_end_motion(start_condition=close_gripper)
-
-    gis.motion_goals.allow_all_collisions()
     gis.execute()
 
 
@@ -449,27 +354,29 @@ else:
 setup_door(init_pose_pub=init_pub, base_pose=base_pose)
 
 if test == 1:
-    grasping(handle_name=handle_name,
-             hinge_joint=hinge_joint,
-             handle_retract_distance=handle_retract_distance,
-             with_camera=True)
+    gis.door_handle_grasping(handle_name=handle_name,
+                             hinge_joint=hinge_joint,
+                             handle_retract_distance=handle_retract_distance,
+                             camera_link='hand_camera_frame')
     full_opening(handle_name=handle_name,
                  door_handle_for_hinge=door_handle_for_hinge,
                  door_center=door_center,
                  handle_turn_limit=handle_turn_limit,
                  full_hinge_turn_limit=full_hinge_turn_limit)
 elif test == 2:
-    grasping(handle_name=handle_name,
-             hinge_joint=hinge_joint,
-             handle_retract_distance=handle_retract_distance,
-             with_camera=True)
+    gis.door_handle_grasping(handle_name=handle_name,
+                             hinge_joint=hinge_joint,
+                             handle_retract_distance=handle_retract_distance,
+                             camera_link='hand_camera_frame')
 elif test == 3:
-    grasping(handle_name=handle_name,
-             hinge_joint=hinge_joint,
-             handle_retract_distance=handle_retract_distance,
-             with_camera=True)
-    full_opening_in_parts(handle_name=handle_name,
-                          door_handle_for_hinge=door_handle_for_hinge,
-                          door_center=door_center,
-                          handle_turn_limit=handle_turn_limit,
-                          full_hinge_turn_limit=full_hinge_turn_limit)
+    gis.door_handle_grasping(handle_name=handle_name,
+                             hinge_joint=hinge_joint,
+                             handle_retract_distance=handle_retract_distance,
+                             camera_link='hand_camera_frame')
+    gis.door_opening_with_moving_around(handle_name=handle_name,
+                                        door_handle_for_hinge=door_handle_for_hinge,
+                                        door_center=door_center,
+                                        handle_turn_limit=handle_turn_limit,
+                                        full_hinge_turn_limit=full_hinge_turn_limit,
+                                        tip_link='hand_gripper_tool_frame',
+                                        root_link='map')
