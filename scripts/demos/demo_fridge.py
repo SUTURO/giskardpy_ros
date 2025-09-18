@@ -16,9 +16,9 @@ base_goal.header.frame_id = 'map'
 base_goal.pose.position = Point(2.0, -1.0, 0.0)
 base_goal.pose.orientation.z = -0.707
 base_goal.pose.orientation.w = 0.707
-kitchen_setup.motion_goals.add_cartesian_pose(goal_pose=base_goal, tip_link='base_footprint', root_link='map')
-kitchen_setup.motion_goals.add_take_pose(pose_keyword=TakePoseTypes.PARK.value)
-kitchen_setup.add_default_end_motion_conditions()
+cart = kitchen_setup.motion_goals.add_cartesian_pose(goal_pose=base_goal, tip_link='base_footprint', root_link='map')
+take = kitchen_setup.motion_goals.add_take_pose(pose_keyword=TakePoseTypes.PARK.value)
+kitchen_setup.monitors.add_end_motion(start_condition=f"{cart}")
 kitchen_setup.motion_goals.allow_all_collisions()
 kitchen_setup.execute()
 
