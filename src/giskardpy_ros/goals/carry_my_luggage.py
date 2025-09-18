@@ -17,7 +17,7 @@ from giskardpy.god_map import god_map
 from giskardpy.middleware import get_middleware
 from giskardpy.model.joints import OmniDrive
 from giskardpy.motion_statechart.monitors.monitors import Monitor, EndMotion
-from giskardpy.motion_statechart.tasks.task import WEIGHT_BELOW_CA, WEIGHT_COLLISION_AVOIDANCE
+from giskardpy.motion_statechart.tasks.task import WEIGHT_BELOW_CA, WEIGHT_COLLISION_AVOIDANCE, Task
 from giskardpy.symbol_manager import symbol_manager
 from giskardpy.utils.decorators import clear_memo, memoize_with_counter
 from giskardpy_ros.tree.blackboard_utils import raise_to_blackboard
@@ -138,7 +138,6 @@ class CarryMyBullshit(Goal):
                                                                      LaserScan, self.point_cloud_laser_cb,
                                                                      queue_size=10)
         self.publish_tracking_radius()
-        self.publish_tracking_radius()
         self.publish_distance_to_target()
         if not self.drive_back:
             if CarryMyBullshit.target_sub is None:
@@ -209,7 +208,8 @@ class CarryMyBullshit(Goal):
             map_P_human_projected.z = 0
 
         # %% orient to goal
-        orient_to_goal = self.create_and_add_task('orient to goal')
+        orient_to_goal = Task(name='orient to goal')
+        self.add_task(orient_to_goal)
         _, _, map_odom_angle = root_T_odom.to_rotation().to_rpy()
         odom_current_angle = self.odom_joint.yaw.get_symbol(Derivatives.position)
         map_current_angle = map_odom_angle + odom_current_angle
@@ -266,9 +266,10 @@ class CarryMyBullshit(Goal):
                                                               root_V_camera_goal_axis_proj,
                                                               color=ColorRGBA(r=1, g=0.5, b=0, a=1))
 
-        look_at_target = self.create_and_add_task('look at target')
+        look_at_target = Task(name='look at target')
+        self.add_task(look_at_target)
         if not self.drive_back:
-            look_at_target.hold_condition = target_lost.get_state_expression()
+            look_at_target.pause_condition = target_lost.name
         # god_map.debug_expression_manager.add_debug_expression('human', map_P_human)
         # god_map.debug_expression_manager.add_debug_expression('root_P_camera', root_P_camera)
         look_at_target.add_vector_goal_constraints(frame_V_current=root_V_camera_axis,
@@ -278,7 +279,8 @@ class CarryMyBullshit(Goal):
                                                    name='move camera')
 
         # %% follow next point
-        follow_next_point = self.create_and_add_task('follow next')
+        follow_next_point = Task(name='follow next')
+        self.add_task(follow_next_point)
         root_V_camera_axis.vis_frame = self.camera_link
         root_V_camera_goal_axis.vis_frame = self.camera_link
 
@@ -290,16 +292,13 @@ class CarryMyBullshit(Goal):
             oriented_towards_next.expression = cas.abs(map_angle_error) > self.base_orientation_threshold
             self.add_monitor(oriented_towards_next)
 
-            follow_next_point.hold_condition = (laser_violated.get_state_expression()
-                                                | oriented_towards_next.get_state_expression())
+            follow_next_point.pause_condition = f'{laser_violated.name} or {oriented_towards_next}'
         else:
-            target_too_close = Monitor(name='target close')
+            target_too_close = Monitor(name='target too close')
             self.add_monitor(target_too_close)
             target_too_close.expression = cas.less_equal(distance_to_human, self.min_distance_to_target)
 
-            follow_next_point.hold_condition = (laser_violated.get_state_expression() |
-                                                (~target_lost.get_state_expression()
-                                                 & target_too_close.get_state_expression()))
+            follow_next_point.pause_condition = f'{laser_violated.name} or (not {target_lost.name} and {target_too_close.name})'
         follow_next_point.add_point_goal_constraints(frame_P_current=root_P_bf,
                                                      frame_P_goal=root_P_goal_point,
                                                      reference_velocity=self.max_translation_velocity,
@@ -308,7 +307,8 @@ class CarryMyBullshit(Goal):
         god_map.debug_expression_manager.add_debug_expression('root_P_goal_point', root_P_goal_point)
 
         # %% keep the closest point in footprint radius
-        stay_in_circle = self.create_and_add_task('in circle')
+        stay_in_circle = Task(name='in circle')
+        self.add_task(stay_in_circle)
         buffer = self.traj_tracking_radius
         eps = 0.00001
         distance_to_closest_point = cas.norm(root_P_closest_point - root_P_bf + cas.Point3([eps, eps, 0]))
@@ -324,7 +324,8 @@ class CarryMyBullshit(Goal):
 
         # %% laser avoidance
         if self.enable_laser_avoidance:
-            laser_avoidance_task = self.create_and_add_task('laser avoidance')
+            laser_avoidance_task = Task(name='laser avoidance')
+            self.add_task(laser_avoidance_task)
             sideways_vel = (closest_laser_left + closest_laser_right)
             bf_V_laser_avoidance_direction = cas.Vector3([0, sideways_vel, 0])
             map_V_laser_avoidance_direction = root_T_bf.dot(bf_V_laser_avoidance_direction)
@@ -339,7 +340,7 @@ class CarryMyBullshit(Goal):
 
             buffer = self.laser_avoidance_sideways_buffer / 2
 
-            laser_avoidance_task.hold_condition = active.get_state_expression()
+            laser_avoidance_task.hold_condition = active.name
             laser_avoidance_task.add_inequality_constraint(reference_velocity=self.max_translation_velocity,
                                                            lower_error=sideways_vel - buffer,
                                                            upper_error=sideways_vel + buffer,
@@ -353,14 +354,14 @@ class CarryMyBullshit(Goal):
             first_point = cas.Point3([first_traj_x, first_traj_y, 0])
             goal_reached = Monitor(name='goal reached?')
             self.add_monitor(goal_reached)
-            goal_reached.expression = cas.euclidean_distance(first_point, root_P_bf) < self.traj_tracking_radius
-            self.connect_end_condition_to_all_tasks(goal_reached.get_state_expression())
+            goal_reached.observation_expression = cas.euclidean_distance(first_point, root_P_bf) < self.traj_tracking_radius
+            self.connect_end_condition_to_all_tasks(goal_reached.name)
             end = EndMotion(name='done')
-            end.start_condition = goal_reached.get_state_expression()
+            end.start_condition = goal_reached.name
             self.add_monitor(end)
-        self.connect_start_condition_to_all_tasks(start_condition)
-        self.connect_hold_condition_to_all_tasks(hold_condition)
-        self.connect_end_condition_to_all_tasks(end_condition)
+        # self.connect_start_condition_to_all_tasks(start_condition)
+        # self.connect_hold_condition_to_all_tasks(hold_condition)
+        # self.connect_end_condition_to_all_tasks(end_condition)
 
     def clean_up(self):
         if CarryMyBullshit.target_sub is not None:
@@ -462,7 +463,7 @@ class CarryMyBullshit(Goal):
     def get_first_traj_point(self) -> np.ndarray:
         return CarryMyBullshit.traj_data[0]
 
-    @memoize_with_counter(4)
+    # @memoize_with_counter(4)
     def get_current_target(self) -> Dict[str, float]:
         self.check_laser_scan_age()
         traj = CarryMyBullshit.trajectory.copy()
@@ -626,6 +627,7 @@ class CarryMyBullshit(Goal):
         self.pub.publish(ms)
 
     def target_cb(self, point: PointStamped):
+
         try:
             current_point = np.array([point.point.x, point.point.y])
             last_point = CarryMyBullshit.traj_data[-1]
@@ -763,7 +765,8 @@ class FollowNavPath(Goal):
         map_P_human = root_P_goal_point
 
         # %% orient to goal
-        orient_to_goal = self.create_and_add_task('orient to goal')
+        orient_to_goal = Task(name='orient to goal')
+        self.add_task(orient_to_goal)
         _, _, map_odom_angle = root_T_odom.to_rotation().to_rpy()
         odom_current_angle = self.odom_joint.yaw.get_symbol(Derivatives.position)
         map_current_angle = map_odom_angle + odom_current_angle
@@ -797,7 +800,8 @@ class FollowNavPath(Goal):
         map_P_human.z = self.height_for_camera_target
         root_V_camera_goal_axis = map_P_human - root_P_camera
         root_V_camera_goal_axis.scale(1)
-        look_at_target = self.create_and_add_task('look at target')
+        look_at_target = Task(name='look at target')
+        self.add_task(look_at_target)
         look_at_target.add_vector_goal_constraints(frame_V_current=root_V_camera_axis,
                                                    frame_V_goal=root_V_camera_goal_axis,
                                                    reference_velocity=self.max_rotation_velocity_head,
@@ -805,7 +809,8 @@ class FollowNavPath(Goal):
                                                    name='move camera')
 
         # %% follow next point
-        follow_next_point = self.create_and_add_task('follow next')
+        follow_next_point = Task(name='follow next')
+        self.add_task(follow_next_point)
         root_V_camera_axis.vis_frame = self.camera_link
         root_V_camera_goal_axis.vis_frame = self.camera_link
 
@@ -813,12 +818,12 @@ class FollowNavPath(Goal):
         self.add_monitor(oriented_towards_next)
         oriented_towards_next.expression = cas.abs(map_angle_error) > self.base_orientation_threshold
 
-        follow_next_point.hold_condition = oriented_towards_next.get_state_expression()
+        follow_next_point.hold_condition = oriented_towards_next.name
         if self.enable_laser_avoidance:
             laser_violated = Monitor(name='laser violated')
             self.add_monitor(laser_violated)
             laser_violated.expression = cas.less(closest_laser_reading, 0)
-            follow_next_point.hold_condition |= laser_violated.get_state_expression()
+            follow_next_point.hold_condition |= laser_violated.name
         follow_next_point.add_point_goal_constraints(frame_P_current=root_P_bf,
                                                      frame_P_goal=root_P_goal_point,
                                                      reference_velocity=self.max_translation_velocity,
@@ -827,7 +832,8 @@ class FollowNavPath(Goal):
         god_map.debug_expression_manager.add_debug_expression('root_P_goal_point', root_P_goal_point)
 
         # %% keep the closest point in footprint radius
-        stay_in_circle = self.create_and_add_task('in circle')
+        stay_in_circle = Task(name='in circle')
+        self.add_task(stay_in_circle)
         buffer = self.traj_tracking_radius
         hack = cas.Vector3([0, 0, 0.0001])
         distance_to_closest_point = cas.norm(root_P_closest_point + hack - root_P_bf)
@@ -840,7 +846,8 @@ class FollowNavPath(Goal):
 
         # %% laser avoidance
         if self.enable_laser_avoidance:
-            laser_avoidance_task = self.create_and_add_task('laser avoidance')
+            laser_avoidance_task = Task(name='laser avoidance')
+            self.add_task(laser_avoidance_task)
             sideways_vel = (closest_laser_left + closest_laser_right)
             bf_V_laser_avoidance_direction = cas.Vector3([0, sideways_vel, 0])
             map_V_laser_avoidance_direction = root_T_bf.dot(bf_V_laser_avoidance_direction)
@@ -855,7 +862,7 @@ class FollowNavPath(Goal):
 
             buffer = self.laser_avoidance_sideways_buffer / 2
 
-            laser_avoidance_task.hold_condition = active.get_state_expression()
+            laser_avoidance_task.hold_condition = active.name
             laser_avoidance_task.add_inequality_constraint(reference_velocity=self.max_translation_velocity,
                                                            lower_error=sideways_vel - buffer,
                                                            upper_error=sideways_vel + buffer,
@@ -867,9 +874,10 @@ class FollowNavPath(Goal):
         goal_reached = Monitor(name='goal reached?')
         self.add_monitor(goal_reached)
         goal_reached.expression = cas.euclidean_distance(last_point, root_P_bf) < 0.03
-        self.connect_end_condition_to_all_tasks(goal_reached.get_state_expression())
+        self.connect_end_condition_to_all_tasks(goal_reached.name)
 
-        final_orientation = self.create_and_add_task('final orientation')
+        final_orientation = Task(name='final orientation')
+        self.add_task(final_orientation)
         frame_R_current = root_T_bf.to_rotation()
         current_R_frame_eval = god_map.world.compose_fk_evaluated_expression(self.tip, self.root).to_rotation()
         frame_R_goal = cas.TransMatrix(path.poses[-1]).to_rotation()
@@ -878,20 +886,19 @@ class FollowNavPath(Goal):
                                                         current_R_frame_eval=current_R_frame_eval,
                                                         reference_velocity=self.max_rotation_velocity,
                                                         weight=self.weight)
-        final_orientation.start_condition = goal_reached.get_state_expression()
+        final_orientation.start_condition = goal_reached.name
 
-        orientation_reached = Monitor(name='final orientation reached',
-                                                start_condition=goal_reached.get_state_expression())
+        orientation_reached = Monitor(name='final orientation reached')
         self.add_monitor(orientation_reached)
         rotation_error = cas.rotational_error(frame_R_current, frame_R_goal)
         orientation_reached.expression = cas.less(cas.abs(rotation_error), 0.01)
 
         end = EndMotion(name='done')
-        end.start_condition = orientation_reached.get_state_expression()
+        end.start_condition = orientation_reached.name
         self.add_monitor(end)
-        self.connect_start_condition_to_all_tasks(start_condition)
-        self.connect_hold_condition_to_all_tasks(hold_condition)
-        self.connect_end_condition_to_all_tasks(end_condition)
+        # self.connect_start_condition_to_all_tasks(start_condition)
+        # self.connect_hold_condition_to_all_tasks(hold_condition)
+        # self.connect_end_condition_to_all_tasks(end_condition)
 
     def path_to_trajectory(self, path: Path):
         self.traj_data = [self.get_current_point()]
@@ -1001,7 +1008,7 @@ class FollowNavPath(Goal):
         y = root_T_tip[1, 3]
         return np.array([x, y])
 
-    @memoize_with_counter(4)
+    # @memoize_with_counter(4)
     def get_current_target(self) -> Dict[str, float]:
         if self.enable_laser_avoidance:
             self.check_laser_scan_age()
