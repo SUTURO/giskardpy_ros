@@ -4490,8 +4490,8 @@ class GiskardWrapper:
                              handle_retract_distance: float,
                              tip_link: str = 'hand_gripper_tool_frame',
                              ref_speed: float = 0.5,
-                             pre_grasp_distance: float = -0.15,
-                             grasp_into_distance: float = 0.2,
+                             grasp_into_distance: float = -0.15,
+                             pre_grasp_distance: float = 0.2,
                              offset_along_handle: float = 0.03,
                              ft_timeout: float = 10.0,
                              camera_link: Optional[str] = None):
@@ -4543,7 +4543,7 @@ class GiskardWrapper:
 
         grasp_push = PointStamped()
         grasp_push.header.frame_id = tip_link
-        grasp_push.point.z = grasp_into_distance - pre_grasp_distance
+        grasp_push.point.z = pre_grasp_distance - grasp_into_distance
 
         js = {
             'head_pan_joint': 0,

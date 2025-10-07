@@ -115,7 +115,7 @@ class GraspWithForceTorqueGoal(Goal):
                                    bar_center=bar_center,
                                    bar_axis=bar_axis,
                                    bar_length=bar_length,
-                                   grasp_axis_offset=grasp_axis_offset,
+                                   grasp_axis_offset=pre_grasp_axis_offset,
                                    handle_link=handle_name)
         pre_grasp.start_condition = self.start_condition
         pre_grasp.end_condition = end_condition_pre_grasp
@@ -166,7 +166,7 @@ class GraspWithForceTorqueGoal(Goal):
                                       bar_center=bar_center,
                                       bar_axis=bar_axis,
                                       bar_length=bar_length,
-                                      grasp_axis_offset=pre_grasp_axis_offset,
+                                      grasp_axis_offset=grasp_axis_offset,
                                       reference_linear_velocity=self.reference_linear_velocity,
                                       reference_angular_velocity=self.reference_angular_velocity,
                                       handle_link=handle_name)
